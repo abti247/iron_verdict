@@ -21,12 +21,10 @@ sequenceDiagram
 
     Note over Admin,Browser: Admin fills form
     Admin->>Browser: Enter competition name
-    Admin->>Browser: Add athlete: "Alice"
-    Admin->>Browser: Add athlete: "Bob"
-    Admin->>Browser: Add athlete: "Charlie"
+    Admin->>Browser: Enter competition date
     Admin->>Browser: Click "Create Competition"
 
-    Browser->>Backend: POST /api/competitions<br/>{name, athletes: [...]}
+    Browser->>Backend: POST /api/competitions<br/>{name, date}
 
     Note over Backend: Generate secure tokens (7 required)
     Backend->>Backend: Generate adminToken (128-bit)

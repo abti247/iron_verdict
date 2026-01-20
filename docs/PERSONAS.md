@@ -16,7 +16,6 @@ Sarah organizes local and regional powerlifting competitions for her community. 
 - Share judge access links instantly via text message or email
 - **Start competition flow** by selecting a group/flight and discipline (squat/bench/deadlift)
 - Monitor competition progress from a dashboard view
-- Access historical statistics to improve future competitions
 - Minimize technical troubleshooting on competition day
 - Delegate athlete management to specialized roles
 
@@ -58,7 +57,7 @@ David works closely with competition admins to handle athlete registration and p
 
 ### Goals
 - **Primary:** Enter all athlete data accurately before competition starts
-- Create athlete records with name, weigh-in weight, and opening attempts
+- Create athlete records with name, weigh-in weight, opening attempts and rack and safety height for squat and bench
 - Organize athletes into groups and flights
 - Ensure lifting order is optimized and fair
 - Verify all data is correct before competition begins
@@ -148,6 +147,7 @@ Jake is part of the platform crew responsible for loading and unloading weights 
 - **Primary:** See next lifter's name and attempt weight clearly
 - Calculate exact plate loading (how many 25kg, 20kg, 15kg, 10kg, 5kg, 2.5kg, 1.25kg plates per side)
 - See plate breakdown visually - not just a number
+- See height settings for rack (squat, bench) and safeties (bench)
 - Know when to start preparing (see "on deck" athletes)
 - Avoid loading wrong weight (embarrassing and delays competition)
 - Work quickly to keep competition flowing
@@ -178,7 +178,7 @@ Jake is part of the platform crew responsible for loading and unloading weights 
 - **Plate Breakdown Calculator:**
   - Show: "25kg x2, 20kg x1, 5kg x1, 2.5kg x1" (per side)
   - Visual representation: colored plate diagram
-  - Account for 20kg men's bar / 15kg women's bar
+  - Account for 20kg bar
   - Display updates instantly when Athlete Manager changes weight
 
 - **Next 2-3 Athletes:**
@@ -433,20 +433,14 @@ Emma has been competing in powerlifting for 4 years. She's serious about her tra
 - Know when she's up to lift next
 - See her previous attempt results clearly
 - Understand current standings relative to competitors
-- Access results after competition ends
-- Review which judges gave red lights and why
 
 ### Pain Points
 - **Uncertainty:** Not knowing when she'll be called to lift causes stress
-- **Visibility:** Can't see judge lights from warm-up room
-- **Information gaps:** Unclear why lifts failed
-- **Post-competition:** Hard to access results after competition ends
 
 ### Motivations
 - Wants to perform her best
 - Needs to stay warm and ready without constant monitoring
 - Values fair, transparent judging
-- Uses competition results to guide training
 
 ### Technology Usage
 - Checks smartphone between lifts
@@ -489,6 +483,6 @@ These personas inform key design decisions:
 6. **Kilian (Competition Host)** → Announcer display with upcoming athletes, attempt details, "on deck" preview
 7. **Alex (Venue Audience)** → Vote lights display (all 3 at once after voting complete), large screen optimization, suspenseful reveal
 8. **Grandma (Remote Audience)** → Competition dashboard, simple standings view, "up next" athletes, large text
-9. **Emma (Athlete)** → Clear results, historical access, transparent judging
+9. **Emma (Athlete)** → Clear results, understands order of athletes in flight
 
 Every feature should serve at least one persona's primary goals.

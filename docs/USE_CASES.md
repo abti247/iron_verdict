@@ -77,6 +77,9 @@
    - Opening squat attempt weight
    - Opening bench attempt weight
    - Opening deadlift attempt weight
+   - Rack height squat
+   - Rack height bench
+   - Safety height bench
 7. Competition Manager clicks "Save Athlete"
 8. System validates input and creates athlete record
 9. System generates 9 lift attempts for athlete (3 per discipline)
@@ -109,7 +112,7 @@
 - Continue from step 4
 
 ### Postconditions
-- All athletes entered with weigh-in weights and opening attempts
+- All athletes entered with weigh-in weights, opening attempts, rack and safety heights
 - 9 lift attempts generated per athlete
 - Athletes ready to be organized into groups/flights
 
@@ -687,12 +690,17 @@
 - System finds athlete by lot number
 - Continue from step 9
 
-**A4: No Athletes Found**
+**A4: Show Last 3 Athletes**
+- At step 6: Athlete Manager sees the last 3 athletes
+- Athlete Manager clicks on athlete name
+- Continue from step 9
+
+**A5: No Athletes Found**
 - At step 7: Search returns no results
 - System displays: "No athletes found in active flight"
 - Athlete Manager clears search and tries again
 
-**A5: Flight Switches Mid-Competition**
+**A6: Flight Switches Mid-Competition**
 - During step 3: Admin starts a different flight
 - System receives `flight_started` event
 - System displays notification: "Flight changed to X"
@@ -734,16 +742,20 @@
      - Attempt number: "Attempt 2 of 3"
      - **Total weight on bar:** "125 kg" (HUGE font)
    - **Plate Loading Calculator (visual breakdown):**
-     - Bar weight: "20 kg (Men's Bar)" or "15 kg (Women's Bar)"
+     - Bar weight: "20 kg""
      - **Visual plate diagram** showing colored plates to load:
-       - 25kg plate (red) × 2
-       - 20kg plate (blue) × 1
-       - 5kg plate (white) × 1
-       - 2.5kg plate (black) × 1
+       - 25kg plate (red)
+       - 20kg plate (blue)
+       - 15kg plate (yellow)
+       - 10kg plate (green)
+       - 5kg plate (white)
+       - 2.5kg plate (black)
+       - 1.25kg plate (grey)
+       - 2.5kg collar
      - Each plate shown as colored rectangle with number
    - **Next 2-3 Athletes "On Deck":**
      - Shows: Name, Weight, Plates needed
-     - Example: "Bob Johnson - 110kg - 25×2, 15×1, 5×1"
+     - Example: "Bob Johnson - 110kg - 25×1, 15×1, 2.5×1, collar(2.5kg)x1"
      - Allows loaders to anticipate big weight jumps
 4. Platform Loader sees current athlete is on platform
 5. Platform Loader loads plates according to visual diagram
@@ -777,15 +789,7 @@
 - Platform Loader sees updated information before athlete's turn
 - Continue from step 3
 
-**A3: Switch Between Men's and Women's Athletes**
-- At step 10: Next athlete is female (previous was male)
-- System detects bar weight change: 20kg → 15kg
-- System displays alert: "BAR CHANGE: Switch to 15kg Women's Bar"
-- System recalculates all plate weights for 15kg bar
-- Platform Loader changes bar and loads plates
-- Continue from step 14
-
-**A4: Invalid or Impossible Weight**
+**A3: Invalid or Impossible Weight**
 - At step 10: Weight is not possible with standard plates (e.g., 101.25kg)
 - System displays warning: "INVALID WEIGHT: 101.25kg cannot be loaded with standard plates"
 - System shows closest possible weight: "100kg or 102.5kg"
@@ -793,7 +797,7 @@
 - Athlete Manager corrects weight
 - Continue from step 3
 
-**A5: No Active Flight**
+**A4: No Active Flight**
 - At step 3: Competition created but no flight started yet
 - System displays waiting screen:
    - Competition name
@@ -801,7 +805,7 @@
 - System listens for `flight_started` event
 - Flow continues from step 3
 
-**A6: Connection Lost**
+**A5: Connection Lost**
 - At step 8: WebSocket disconnects
 - System displays reconnection indicator (corner of screen)
 - System automatically reconnects
@@ -835,12 +839,7 @@
 - Color-coded by weight (matches real plate colors)
 - Width proportional to plate size
 - Label each plate clearly: "25 kg × 2"
-
-**Bar Weight Auto-Detection:**
-- Men's bar: 20kg
-- Women's bar: 15kg
-- System should detect gender from athlete data if available
-- Allow manual override if needed
+- Account for 2.5kg collar
 
 ---
 

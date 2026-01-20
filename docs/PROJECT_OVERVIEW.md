@@ -10,7 +10,7 @@ The application separates responsibilities across specialized roles for efficien
 
 ### Pre-Competition Setup
 1. **Admin** creates competition (name, date) → System generates 7 shareable links
-2. **Competition Manager** enters athlete data (weigh-ins, opening attempts) → Creates groups and flights
+2. **Competition Manager** enters athlete data (weigh-ins, opening attempts, rack height, safety height) → Creates groups and flights
 3. **Admin** distributes URLs to judges (shared), platform crew, athlete manager, and announcer
 
 ### Live Competition Flow
@@ -37,7 +37,7 @@ The application separates responsibilities across specialized roles for efficien
 - Delegate setup and live management to specialized roles
 
 ### For Competition Managers (Pre-Competition Setup)
-- Enter athlete data with weigh-in weights and opening attempts
+- Enter athlete data with weigh-in weights, opening attempts, rack height (squat, bench) and safety height (bench)
 - Create groups and flights with drag-and-drop interface
 - Bulk import athletes via CSV
 - Organize athletes into balanced flights
@@ -56,7 +56,6 @@ The application separates responsibilities across specialized roles for efficien
 - Shows total weight on bar
 - Highlights plate changes between lifts (ADD/REMOVE indicators)
 - "On deck" preview shows next 2-3 athletes and upcoming weights
-- Alerts for large weight jumps (>20kg) and bar changes (men's/women's)
 - Distance-readable display (10-15 feet from platform)
 - Eliminates mental math under pressure
 
@@ -105,8 +104,8 @@ The application separates responsibilities across specialized roles for efficien
 
 ## What Makes JudgeMe Different?
 
-### 1. No Authentication Required
-Traditional systems require judges to create accounts, remember passwords, and go through login flows. JudgeMe uses cryptographically secure tokens embedded in URLs - share the link, start judging. This applies to all roles: judges, competition managers, athlete managers, announcers, and audience members.
+### 1. No User Dependent Deployment
+Traditional systems require local deployment of software. JudgeMe uses cryptographically secure tokens embedded in URLs - share the link, start judging. This applies to all roles: judges, competition managers, athlete managers, announcers, and audience members.
 
 ### 2. Role Separation for Efficiency
 Instead of overwhelming the admin with all tasks, JudgeMe separates responsibilities:
@@ -148,10 +147,9 @@ Judges, athlete managers, and competition managers primarily use smartphones and
 
 ## Use Cases
 
-1. **Local Competitions** - Small to medium powerlifting meets (10-50 athletes)
+1. **Local Competitions** - Small to medium powerlifting meets
 2. **Training Meets** - Gym practice competitions
 3. **High School/College Meets** - School-level competitions
-4. **Remote Judging** - Judges in different locations voting on video submissions
 
 ## Limitations (MVP Scope)
 
@@ -163,13 +161,12 @@ Judges, athlete managers, and competition managers primarily use smartphones and
 ## Future Enhancements
 
 Planned features for post-launch:
-- Competition replay functionality
 - Advanced statistics and analytics
 - Multi-language support
-- Hardware integration (physical judge buttons/lights)
 - Live streaming integration
 - Native mobile apps
 - Federation-specific presets
+- Customization options for lights
 
 ## Target Timeline
 
