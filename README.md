@@ -1,30 +1,35 @@
 # JudgeMe
 
-**A simplified, session-based powerlifting judging application**
+**A simplified, role-separated powerlifting competition management system**
 
-> Real-time judging with no authentication required. Create a competition, share links, start judging.
+> Real-time judging and competition management with no authentication required. Create a competition, share links, start competing.
 
 ---
 
 ## 📋 Project Status
 
 **Current Phase:** Requirements & Design
-**Status:** Documentation complete, awaiting review before implementation
+**Status:** Documentation complete, ready for implementation
 
 ---
 
 ## 🎯 What is JudgeMe?
 
-JudgeMe is a web application that streamlines powerlifting competition judging by eliminating the complexity of traditional systems. Admins create competitions and share simple URL links with judges - no accounts, no passwords, no complicated setup.
+JudgeMe is a comprehensive web application that streamlines powerlifting competition management by separating responsibilities into dedicated roles. Admins create competitions and share simple URL links with different roles - no accounts, no passwords, no complicated setup.
 
 ### Key Features
 
-- ✅ **No Authentication** - Share URLs, start judging immediately
-- ✅ **Real-Time Voting** - Judges vote on mobile devices, results appear instantly
+- ✅ **No User-Dependent Deployment** - Share URLs, start judging immediately
+- ✅ **Role Separation** - 10 personas with dedicated interfaces optimized for their tasks
+- ✅ **Real-Time Updates** - Socket.IO synchronizes all displays instantly
 - ✅ **Session-Based** - Each competition is independent with unique secure links
-- ✅ **Mobile-First** - Large touch buttons optimized for smartphones
-- ✅ **Audience Display** - Real-time vote visualization on projector/TV
-- ✅ **Historical Dashboard** - View past competition statistics
+- ✅ **Mobile-First** - Large touch buttons optimized for smartphones and tablets
+- ✅ **Judge Position Selection** - Single shared judge URL, judges select LEFT/CENTER/RIGHT
+- ✅ **Center Judge Controls** - Head referee manages lift progression and timer
+- ✅ **Platform Loader Display** - Visual plate calculator with IPF color-coded plates
+- ✅ **Break Management** - Admin can set breaks with countdown timers
+- ✅ **Audience Display** - Simultaneous vote reveal for dramatic suspense
+- ✅ **Athlete Manager** - Fast weight updates during competition (< 15 sec target)
 
 ---
 
@@ -35,32 +40,66 @@ All project documentation is located in the [`/docs`](./docs) directory:
 ### Core Documentation Files
 
 1. **[PROJECT_OVERVIEW.md](./docs/PROJECT_OVERVIEW.md)**
-   High-level project description, core concept, technical highlights
+   High-level project description, core concept, technical highlights, 10-persona system
 
 2. **[PERSONAS.md](./docs/PERSONAS.md)**
-   User personas: Admin (Sarah), Judge (Marcus), Audience (Alex), Athlete (Emma)
+   10 detailed user personas:
+   - Admin (Sarah) - Competition oversight
+   - Competition Manager (David) - Pre-competition setup
+   - Athlete Manager (Lisa) - Live weight updates
+   - Platform Loader (Jake) - Plate loading calculator
+   - Head Referee (Marcus) - CENTER position with timer + progression control
+   - Side Referees (Jessica) - LEFT/RIGHT positions
+   - Competition Host (Kilian) - Announcer
+   - Venue Audience (Alex) - Big screen display
+   - Remote Audience (Grandma) - Home dashboard
+   - Athlete (Emma) - Results viewer
 
 3. **[USE_CASES.md](./docs/USE_CASES.md)**
-   Detailed use cases with flows, alternatives, and success metrics:
-   - UC1: Create Competition Session
-   - UC2: Judge Votes on Lift
-   - UC3: Admin Controls Competition Flow
-   - UC4: View Audience Display
-   - UC5: View Historical Dashboard
+   12 detailed use cases with flows, alternatives, and success metrics:
+   - UC1: Admin creates competition (7 URLs)
+   - UC1a: Competition Manager enters athletes
+   - UC1b: Competition Manager creates groups/flights
+   - UC2: Judge selects position
+   - UC2a: Judge votes on lift
+   - UC3: Admin starts flight
+   - UC3a: Athlete Manager updates weights
+   - UC3b: Platform Loader views plate calculator
+   - UC4a: Venue Audience display
+   - UC4b: Remote Audience dashboard
+   - UC5: Historical dashboard
+   - UC6: Competition Host announcer display
 
 4. **[REQUIREMENTS.md](./docs/REQUIREMENTS.md)**
-   Complete requirements specification:
-   - 30 Functional Requirements (FR1-FR30)
-   - 20 Non-Functional Requirements (NFR1-NFR20)
-   - Data, Interface, and Constraint requirements
-   - Acceptance criteria and success metrics
+   Complete requirements specification with 30+ functional requirements covering:
+   - Session management (7 URLs per competition)
+   - Competition setup (groups, flights, athlete data with rack/safety heights)
+   - Judge position selection (shared URL with runtime position claiming)
+   - Center judge lift progression control
+   - Admin break functionality
+   - Athlete Manager fast weight updates
+   - Platform Loader plate calculator (20kg bar + 2.5kg collars)
+   - Venue and remote audience displays
+   - Historical dashboard
 
-5. **[USER_FLOWS.md](./docs/USER_FLOWS.md)**
-   Visual Mermaid diagrams showing:
-   - Admin creates competition flow
-   - Judge voting process
-   - Real-time audience display updates
-   - Admin control panel decisions
+5. **[CLOCK_TIMER_REQUIREMENTS.md](./docs/CLOCK_TIMER_REQUIREMENTS.md)**
+   Detailed timer specifications:
+   - 60-second countdown timer
+   - Center judge START/RESET clock controls
+   - NEXT ATHLETE button for lift progression
+   - Real-time clock synchronization across all displays
+
+6. **[USER_FLOWS.md](./docs/USER_FLOWS.md)**
+   15 comprehensive Mermaid diagrams showing:
+   - Admin creates competition (7 URLs)
+   - Judge position selection and voting
+   - Venue audience display with simultaneous vote reveal
+   - Admin controls (starts flights, sets breaks, ends competition)
+   - Competition Manager athlete entry and groups/flights creation
+   - Athlete Manager live weight updates
+   - Platform Loader plate loading calculator
+   - Competition Host announcer display
+   - Remote Audience dashboard
    - Database state management
    - Error handling (network reconnection)
 
@@ -117,26 +156,76 @@ All project documentation is located in the [`/docs`](./docs) directory:
 
 ---
 
-## 🎨 User Roles
+## 🎨 User Roles (10 Personas)
 
-### 1. Admin (Competition Organizer)
-- Creates competitions with athlete names
-- Shares judge URLs via SMS/email
-- Controls competition flow (starts lifts)
-- Views real-time voting status
-- Accesses historical statistics
+### 1. Admin (Sarah) - Competition Oversight
+- Creates competition (name + date)
+- Distributes 7 URLs to appropriate roles
+- Starts flights by selecting group/discipline
+- Sets breaks with duration or end time
+- Ends competition
+- Monitors overall progress
 
-### 2. Judge (3 per competition)
-- Receives unique URL (LEFT, CENTER, or RIGHT position)
-- Votes WHITE or RED on each lift
-- Sees current lifter and lift information
-- No login or account required
+### 2. Competition Manager (David) - Pre-Competition Setup
+- Enters athlete data (name, weigh-in, opening attempts, rack heights, safety heights)
+- Creates groups and flights
+- Organizes athletes via drag-and-drop
+- Bulk CSV import support
+- Finalizes competition structure
 
-### 3. Audience (Spectators)
-- Views public display URL (usually projected)
-- Sees real-time vote lights
-- Watches results appear as judges vote
-- No special access needed
+### 3. Athlete Manager (Lisa) - Live Weight Updates
+- Updates next attempt weights during competition
+- Fast search by name or lot number
+- Last 3 athletes quick access
+- < 15 seconds per weight update target
+- Works at athlete check-in table
+
+### 4. Platform Loader (Jake) - Plate Loading
+- Views visual plate loading calculator
+- Sees total weight, bar (20kg), collars (2.5kg each side)
+- Color-coded IPF standard plates
+- ADD/REMOVE indicators for weight changes
+- Rack and safety height display
+- Eliminates mental math errors
+
+### 5. Head Referee (Marcus) - CENTER Position
+- Selects CENTER position on shared judge URL
+- Controls 60-second timer (START/RESET)
+- Advances to next athlete (NEXT ATHLETE button)
+- Votes on lifts (WHITE/RED)
+- Can change vote before all 3 judges vote
+
+### 6. Side Referees (Jessica) - LEFT/RIGHT Positions
+- Selects LEFT or RIGHT position on shared judge URL
+- Votes on lifts (WHITE/RED)
+- Views timer (read-only)
+- Can change vote before all 3 judges vote
+- Simplified interface (no clock controls)
+
+### 7. Competition Host (Kilian) - Announcer
+- Views current athlete + "on deck" queue (next 2-3)
+- Auto-updates with lift events and weight changes
+- Announces to audience
+- Optimized for quick glances while speaking
+
+### 8. Venue Audience (Alex) - Big Screen Display
+- Views all 3 vote lights SIMULTANEOUSLY (after all judges vote)
+- Large display optimized for 30+ feet viewing
+- Sees current athlete, weight, timer
+- Break countdown display
+- Maintains dramatic suspense
+
+### 9. Remote Audience (Grandma) - Home Viewing
+- Mobile-friendly dashboard
+- Current standings and "up next" section
+- Recent results feed
+- Search for specific athlete
+- Watches competition from home
+
+### 10. Athlete (Emma) - Competitor
+- Views current flight order
+- Sees personal lift history
+- Understands when they're "on deck"
 
 ---
 
@@ -148,29 +237,36 @@ All project documentation is located in the [`/docs`](./docs) directory:
 
 ### Development Phases
 
-1. **Foundation** (Days 1-2)
-   Project setup, database schema, basic server
+**Phase 1: Foundation (Week 1)**
+- Initialize Node.js + Express + TypeScript project
+- Set up Prisma with SQLite database
+- Create database schema with all tables (Competition, Group, Flight, Athlete, Lift, Vote, JudgePosition)
+- Implement token generation (7 URLs)
+- Test API endpoint: POST /api/competitions
 
-2. **Competition Creation** (Days 3-4)
-   Admin creates competitions, generates secure URLs
+**Phase 2: Core Competition Flow (Week 2)**
+- Competition Manager athlete entry (manual + CSV import)
+- Competition Manager groups/flights creation (drag-and-drop)
+- Admin control panel (start flight, set break, end competition)
+- Basic Socket.IO setup for real-time updates
 
-3. **Real-Time Voting** (Days 5-7)
-   Socket.IO integration, judge voting, result calculation
+**Phase 3: Live Competition (Week 3)**
+- Judge position selection + voting (shared URL)
+- Head Referee timer controls (START/RESET)
+- Center judge NEXT ATHLETE button (lift progression)
+- Athlete Manager weight updates (< 15 sec target)
+- Platform Loader plate calculator (20kg bar + 2.5kg collars)
+- Venue Audience display (simultaneous vote reveal)
+- Break display functionality
 
-4. **Admin Control Panel** (Days 8-9)
-   Lift queue management, start lift functionality
-
-5. **Audience Display** (Days 10-11)
-   Public display with vote lights and results
-
-6. **Historical Dashboard** (Days 12-13)
-   Statistics and past competition data
-
-7. **Polish & Testing** (Days 14-15)
-   Error handling, responsive design, testing
-
-8. **Deployment** (Day 16+)
-   Production deployment (Railway, Render, or VPS)
+**Phase 4: Polish (Week 4)**
+- Competition Host announcer display
+- Error handling and edge cases
+- Mobile responsiveness across all interfaces
+- Network reconnection handling
+- Testing and bug fixes
+- Historical dashboard
+- Deployment (Railway, Render, or VPS)
 
 ---
 
@@ -178,17 +274,22 @@ All project documentation is located in the [`/docs`](./docs) directory:
 
 ### Token-Based Access
 
-JudgeMe uses **cryptographically secure random tokens** instead of traditional authentication:
+JudgeMe uses **cryptographically secure random tokens** instead of traditional authentication. Each competition generates **7 unique URLs**:
 
-- **Admin token:** Full control over competition
-- **Judge tokens (3):** Vote access for specific position
-- **Audience token:** Read-only display access
+1. **Admin token:** Start flights, set breaks, end competition
+2. **Competition Manager token:** Enter athletes, create groups/flights
+3. **Athlete Manager token:** Update attempt weights during competition
+4. **Platform Loader token:** View plate loading calculator
+5. **Judge token (shared):** All 3 judges use same URL, select position on first load
+6. **Venue Audience token:** Big screen display
+7. **Competition Host token:** Announcer display
 
 **Security Properties:**
 - 128-bit entropy (2^128 possible tokens)
 - Immune to brute-force attacks
 - No password resets needed
-- Tokens expire when competition ends (or can be manually revoked)
+- Tokens expire when competition ends
+- Judge position locking prevents conflicts (server-side transactions)
 
 ---
 
@@ -198,16 +299,34 @@ JudgeMe uses **cryptographically secure random tokens** instead of traditional a
 Competition
 ├── id
 ├── name
-├── adminToken, judgeTokenLeft, judgeTokenCenter, judgeTokenRight, audienceToken
-├── status (SETUP, ACTIVE, ENDED)
-├── currentLiftId
+├── date
+├── adminToken, competitionManagerToken, athleteManagerToken, loaderToken
+├── judgeToken (shared), audienceToken, competitionHostToken
+├── status (SETUP, READY, ACTIVE, ENDED)
+├── activeFlightId
 └── timestamps
 
-Athlete
+Group
 ├── id
 ├── competitionId
 ├── name
-└── lotNumber
+└── flights[]
+
+Flight
+├── id
+├── groupId
+├── name
+└── athletes[]
+
+Athlete
+├── id
+├── flightId
+├── name
+├── lotNumber
+├── weighInWeight
+├── squatOpener, benchOpener, deadliftOpener
+├── rackHeightSquat, rackHeightBench
+└── safetyHeightBench
 
 Lift
 ├── id
@@ -216,8 +335,10 @@ Lift
 ├── liftType (SQUAT, BENCH, DEADLIFT)
 ├── attemptNumber (1, 2, 3)
 ├── weight
-├── status (PENDING, IN_PROGRESS, COMPLETED)
-└── result (GOOD_LIFT, NO_LIFT)
+├── status (PENDING, IN_PROGRESS, COMPLETED, SKIPPED)
+├── result (GOOD_LIFT, NO_LIFT)
+├── timerStartedAt
+└── timerResetCount
 
 Vote
 ├── id
@@ -225,6 +346,13 @@ Vote
 ├── judgePosition (LEFT, CENTER, RIGHT)
 ├── decision (WHITE, RED)
 └── timestamp
+
+JudgePosition
+├── competitionId
+├── position (LEFT, CENTER, RIGHT)
+├── claimedAt
+└── sessionId
+└── UNIQUE(competitionId, position)
 ```
 
 ---
@@ -233,20 +361,35 @@ Vote
 
 ### Included in MVP ✅
 - Single platform per competition
-- 3 judges (left, center, right positions)
-- Real-time voting and display
-- Admin control panel
+- 7 URLs per competition (10 personas total)
+- Judge position selection (shared URL)
+- Center judge controls lift progression
+- Competition Manager athlete data entry (manual + CSV)
+- Groups and flights organization
+- Athlete Manager live weight updates
+- Platform Loader visual plate calculator (20kg bar + 2.5kg collars)
+- Admin break functionality (duration or end time)
+- 60-second timer with START/RESET controls
+- Real-time Socket.IO synchronization
+- Venue Audience display (simultaneous vote reveal)
+- Competition Host announcer display
+- Mobile-responsive interfaces
 - Historical dashboard
-- Mobile-responsive judge interface
 
-### Not Included in MVP ❌
-- Multi-platform support
+### Nice-to-Have (Post-MVP)
+- Remote Audience dashboard (home viewing)
+- Multi-platform support (multiple platforms per competition)
+- Advanced statistics and analytics
+- Live streaming integration
+- Multi-language support
+
+### Not Included ❌
 - Video replay
 - Athlete accounts
-- Federation integration
-- Hardware judge buttons
+- Federation-specific integrations
+- Hardware judge buttons/lights
 - Native mobile apps
-- Multi-language support
+- Competition replay functionality
 
 ---
 
@@ -338,15 +481,28 @@ For questions or feedback about this project design, please open an issue.
 
 ## 🎉 Quick Start (After Implementation)
 
-1. **Admin:** Open homepage → Create competition → Get 5 URLs
-2. **Admin:** Share judge URLs via text to 3 judges
-3. **Judges:** Click link → Vote with big WHITE/RED buttons
-4. **Audience:** Project audience URL on screen → Watch votes in real-time
-5. **Admin:** Start each lift → See judges vote → Proceed to next lift
+### Pre-Competition
+1. **Admin:** Create competition (name + date) → Get 7 URLs
+2. **Admin:** Share Competition Manager URL → David enters athletes, creates groups/flights
+3. **Admin:** Share Athlete Manager, Platform Loader, Judge, Audience, Host URLs
 
-**No accounts. No passwords. Just judging.**
+### Competition Day
+1. **Admin:** Start flight (select group/flight/discipline)
+2. **Judges:** Open shared judge URL → Select position (LEFT/CENTER/RIGHT)
+3. **Center Judge (HEAD REF):**
+   - Press START CLOCK (60 seconds)
+   - All judges vote (WHITE/RED)
+   - Press NEXT ATHLETE when ready
+   - Repeat for each lift
+4. **Athlete Manager:** Update next attempt weights (< 15 sec/athlete)
+5. **Platform Loader:** Follow visual plate calculator (20kg bar + 2.5kg collars + plates)
+6. **Competition Host:** Announce athletes using "on deck" display
+7. **Venue Audience:** Watch big screen → See all 3 votes simultaneously
+8. **Admin:** Set breaks as needed → End competition when done
+
+**No accounts. No passwords. No user management. Just competing.**
 
 ---
 
-**Last Updated:** January 14, 2026
-**Status:** Requirements & design documentation complete
+**Last Updated:** January 20, 2026
+**Status:** Requirements & design documentation complete, ready for implementation

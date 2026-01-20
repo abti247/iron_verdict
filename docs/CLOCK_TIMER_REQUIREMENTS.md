@@ -25,11 +25,19 @@ The head referee (CENTER position) has an additional critical responsibility bey
 
 ---
 
-### FR-CLOCK-2: Head Referee Clock Controls
+### FR-CLOCK-2: Head Referee Clock Control and Lift Progression Buttons
 
-**Requirement:** Head referee interface shall include clock control buttons
+**Requirement:** Head referee interface shall include clock control and lift progression buttons
 
 **UI Elements:**
+- **NEXT ATHLETE button**
+  - Large button (minimum 80px height)
+  - Color: Purple or distinct color (different from clock and voting buttons)
+  - Position: Top of interface, above clock controls
+  - Label: "NEXT ATHLETE" or "➡ NEXT ATHLETE"
+  - Enabled state: Only after current lift completed (all 3 judges voted)
+  - Disabled state: Greyed out during active lift
+
 - **START CLOCK button**
   - Large, prominent button (minimum 80px height)
   - Color: Blue or neutral color (distinct from voting buttons)
@@ -59,6 +67,10 @@ The head referee (CENTER position) has an additional critical responsibility bey
 │                             │
 │  Athlete: Alice Smith       │
 │  SQUAT - Attempt 1 - 100kg  │
+│                             │
+│  ┌───────────────────────┐  │
+│  │   ➡ NEXT ATHLETE     │  │ ← Lift progression
+│  └───────────────────────┘  │
 │                             │
 │  ┌───────────────────┐      │
 │  │   TIMER: 0:45    │      │ ← Timer display
@@ -189,6 +201,38 @@ The head referee (CENTER position) has an additional critical responsibility bey
 - Technical issues shouldn't auto-fail
 
 **Priority:** Medium
+
+---
+
+### FR-CLOCK-8: Next Athlete Button Behavior
+
+**Requirement:** Center judge shall advance to next athlete in flight
+
+**Behavior:**
+- **Enabled state:** Only after `lift_completed` event (all 3 judges voted)
+- **Click action:** Marks current lift as completed, loads next lift in queue
+- **Timer state:** Timer remains at 60 seconds (not started)
+- **Next action:** Center judge must press START CLOCK for new athlete
+- **Socket.IO:** Emits `next_lift_started` event with new athlete details
+- **Flight completion:** If last athlete in flight, shows "Flight Complete - Notify Admin" message
+- **Admin notification:** System sends notification to admin dashboard that flight is complete
+
+**Priority:** High
+
+**Flow:**
+1. All 3 judges vote on current lift
+2. System emits `lift_completed` event
+3. NEXT ATHLETE button becomes enabled for center judge
+4. Center judge presses NEXT ATHLETE button
+5. System loads next athlete's information
+6. Timer resets to 60 seconds (ready state, not running)
+7. Center judge presses START CLOCK when athlete is ready
+8. Process repeats for next athlete
+
+**Edge Cases:**
+- If NEXT ATHLETE pressed on last lift in flight: Show "Flight Complete" message, disable button
+- If network disconnects during button press: System should gracefully handle reconnection and resume
+- If center judge releases position before pressing NEXT ATHLETE: New center judge can press button
 
 ---
 

@@ -64,7 +64,10 @@
 - Opening squat attempt weight (required, numeric)
 - Opening bench attempt weight (required, numeric)
 - Opening deadlift attempt weight (required, numeric)
-- **Rationale:** Separates pre-competition data entry from admin oversight
+- Rack height squat (required, numeric, in cm)
+- Rack height bench (required, numeric, in cm)
+- Safety height bench (required, numeric, in cm)
+- **Rationale:** Separates pre-competition data entry from admin oversight, includes equipment setup data
 - **Priority:** High
 
 **FR7b:** Competition Manager shall create groups and flights:
@@ -123,6 +126,7 @@
 
 **FR10c:** System shall adapt judge UI based on selected position
 - **CENTER Position UI:**
+  - NEXT ATHLETE button (advances to next lift in flight)
   - START CLOCK button
   - RESET CLOCK button
   - WHITE voting button
@@ -146,6 +150,15 @@
 - **Immediate Effect:** Stops timer countdown
 - **Sets Timer:** 60 seconds (ready state)
 - **Does NOT:** Auto-start timer (judge must press START to begin countdown)
+- **Priority:** High
+
+**FR10f:** Center judge shall control lift progression within active flight
+- **Button:** "NEXT ATHLETE" button
+- **Behavior:** Completes current lift, advances to next athlete in lifting order
+- **Constraint:** Only enabled after current lift is completed (all 3 judges voted)
+- **Does NOT:** Auto-start timer (center judge must press START CLOCK separately)
+- **Socket.IO:** Emits `next_lift_started` event to all clients
+- **Flight completion:** When last lift in flight is completed, displays "Flight Complete - Notify Admin"
 - **Priority:** High
 
 ### 1.3.2 Voting and Lift Information
@@ -207,11 +220,13 @@
 
 ## 1.4 Admin Control Panel
 
-**FR18:** Admin dashboard shall display group/flight selector
+**FR18:** Admin dashboard shall display group/flight selector and break controls
 - **Dropdown 1:** Select group (e.g., "Men's Open", "Women's Open")
 - **Dropdown 2:** Select flight within group (e.g., "Flight A", "Flight B")
 - **Dropdown 3:** Select discipline (SQUAT, BENCH, or DEADLIFT)
-- **Button:** Large "START COMPETITION" button
+- **Button:** Large "START FLIGHT" button
+- **Button:** "SET BREAK" button
+- **Button:** "END COMPETITION" button
 - **Priority:** High
 
 **FR18a:** Admin dashboard shall display active flight progress
@@ -220,28 +235,25 @@
 - **Lift Queue:** Ordered list of upcoming lifts in current flight
 - **Priority:** High
 
-**FR19:** Admin shall start competition flow by selecting group/flight and discipline
-- **Behavior:** Click "START COMPETITION" → System emits `flight_started` event
+**FR19:** Admin shall start flight by selecting group/flight/discipline
+- **Behavior:** Click "START FLIGHT" → System emits `flight_started` event
 - **Auto-activation:** System automatically activates first lift in flight
 - **Constraint:** Only one flight can be active at a time
-- **Priority:** High
-
-**FR20:** Admin shall see real-time voting status for current lift
-- **Display:** 3 indicators (LEFT, CENTER, RIGHT)
-- **States:** Empty (no vote), ✓ White (voted white), ✓ Red (voted red)
+- **Lift progression:** Center judge controls advancement to next athlete (see FR10f)
 - **Priority:** High
 
 **FR21:** Admin shall have ability to:
-- **Reset current lift votes** if error occurs (delete all votes, keep lift IN_PROGRESS)
-- **Skip lift** if athlete withdraws (mark status as SKIPPED)
+- **Set break** (specify duration or end time)
 - **End competition** (change status to ENDED, save timestamp)
-- **Priority:** Medium
+- **Priority:** High
 
-**FR22:** Admin dashboard shall display live leaderboard
-- **Calculation:** Sum of best squat, best bench, best deadlift per athlete
-- **Sorting:** Descending by total
-- **Update trigger:** After each lift completes
-- **Priority:** Low (nice-to-have for MVP)
+**FR21a:** Admin break functionality:
+- **Input options:** Either duration (e.g., "15 minutes") OR specific end time (e.g., "14:30")
+- **System calculates:** If duration entered, calculate end time = current time + duration
+- **Display:** All audience displays show "BREAK - Competition resumes at [time]"
+- **Socket.IO:** Emit `break_started` event with resumeTime
+- **Resume:** Admin clicks "END BREAK" or system auto-resumes at specified time
+- **Priority:** High
 
 ---
 
@@ -263,9 +275,10 @@
 - **Priority:** High
 
 **FR22c:** Athlete Manager interface shall provide real-time search and filtering:
+- **Default view:** Shows last 3 athletes who completed lifts (for quick access)
 - **Search input:** Types athlete name → instant filter results
 - **Search by lot number:** Types number → find athlete
-- **Auto-clear:** After successful weight update, clear search and return to full list
+- **Auto-clear:** After successful weight update, clear search and return to "last 3" view
 - **Keyboard shortcuts:** Enter key saves weight, ESC clears search
 - **Priority:** High
 
@@ -284,9 +297,14 @@
   - Athlete name (very large font, readable from 10-15 feet)
   - Discipline, attempt number
   - **Total weight on bar** (HUGE font)
+  - Rack height squat (if SQUAT lift)
+  - Rack height bench (if BENCH lift)
+  - Safety height bench (if BENCH lift)
 - **Plate Loading Calculator:**
-  - Bar weight indicator (20kg men's / 15kg women's)
-  - Weight per side calculation
+  - Bar weight: 20kg (standard Olympic barbell)
+  - Collar weight: 2.5kg each side (shown separately as reminder to loader)
+  - Fixed weight: 25kg total (20kg bar + 2.5kg × 2 collars)
+  - Weight per side calculation: (Total - 25kg) ÷ 2 = Plates needed per side
   - **Visual plate diagram** with colored rectangles representing plates
   - Plate quantities: 25kg, 20kg, 15kg, 10kg, 5kg, 2.5kg, 1.25kg
   - Each plate color-coded to match real IPF plate colors
@@ -296,10 +314,14 @@
 - **Priority:** High
 
 **FR22f:** System shall calculate plate loading using greedy algorithm:
-- **Algorithm:** Calculate (Total Weight - Bar Weight) / 2 = Weight Per Side
-- Use greedy approach: maximize largest plates first (25kg → 20kg → 15kg → 10kg → 5kg → 2.5kg → 1.25kg)
+- **Step 1:** Calculate fixed weight = 20kg (bar) + 5kg (collars: 2.5kg × 2)
+- **Step 2:** Calculate remaining weight for plates = Total weight - Fixed weight (25kg)
+- **Step 3:** Calculate weight per side = Remaining weight ÷ 2
+- **Step 4:** Apply greedy algorithm to weight per side (largest plates first: 25kg → 20kg → 15kg → 10kg → 5kg → 2.5kg → 1.25kg)
+- **Example:** 100kg total → 75kg for plates → 37.5kg per side
 - Minimize total number of plates needed
 - Display result as visual diagram with color-coded plates
+- **Display format:** "Bar: 20kg | Collars: 2.5kg each side | Plates per side: [visual]"
 - **Standard IPF Plates:**
   - 25kg: Red
   - 20kg: Blue
@@ -315,20 +337,16 @@
 - **Display:** Show "+10kg" or "-15kg" in large text
 - **Highlight:** Show which plates to ADD (green) or REMOVE (red)
 - **Example:** "REMOVE: 2.5kg × 1, ADD: 10kg × 1"
-- **Large Weight Jumps:** Alert if change > 20kg ("LARGE WEIGHT CHANGE: +45kg")
 - **Priority:** High
 
-**FR22h:** Platform Loader display shall alert on bar weight changes:
-- **Detection:** Detect switch between male (20kg bar) and female (15kg bar) athletes
-- **Display:** Large alert: "BAR CHANGE: Switch to 15kg Women's Bar"
-- **Recalculation:** Automatically recalculate all plate weights for new bar
-- **Priority:** High
-
-**FR22i:** Platform Loader display shall validate weight feasibility:
-- **Validation:** Check if weight is achievable with standard plates
-- **Granularity:** Minimum increment is 2.5kg (2 × 1.25kg plates)
+**FR22h:** Platform Loader display shall validate weight feasibility:
+- **Validation:** Check if weight is achievable with standard plates + bar (20kg) + collars (5kg total)
+- **Fixed weight:** 25kg (bar + collars)
+- **Remaining weight must be divisible evenly for both sides**
+- **Granularity:** Minimum increment is 2.5kg total (2 × 1.25kg plates, one per side)
 - **Invalid weights:** Display warning "INVALID WEIGHT: Cannot load with standard plates"
 - **Suggestion:** Show closest achievable weight
+- **Example:** 26kg is invalid (26-25=1kg, cannot divide 1kg evenly); 27.5kg is valid (27.5-25=2.5kg, 1.25kg per side)
 - **Priority:** Medium
 
 **FR22j:** Platform Loader display shall update in real-time:
@@ -419,6 +437,14 @@
 - Updates on `lift_completed` event (shows result briefly, then advances)
 - Auto-scrolls "On Deck" queue
 - **Priority:** Low
+
+**FR26g:** Audience display shall show break information when admin sets break:
+- **Display:** Large centered message
+- **Text:** "BREAK IN PROGRESS"
+- **Countdown:** "Competition resumes at [HH:MM]" or "Resumes in [X] minutes"
+- **Auto-update:** Countdown updates every minute
+- **Socket.IO:** Listen for `break_started` and `break_ended` events
+- **Priority:** High
 
 ---
 
