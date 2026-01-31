@@ -84,3 +84,35 @@ class SessionManager:
         is_head = judge["is_head"]
 
         return {"success": True, "is_head": is_head}
+
+    def lock_vote(self, code: str, position: str, color: str) -> Dict[str, Any]:
+        """
+        Lock in a judge's vote.
+
+        Args:
+            code: Session code
+            position: Judge position ("left", "center", "right")
+            color: Vote color ("white", "red", "blue", "yellow")
+
+        Returns:
+            Dict with success status and all_locked flag
+        """
+        if code not in self.sessions:
+            return {"success": False, "error": "Session not found"}
+
+        session = self.sessions[code]
+        judge = session["judges"][position]
+
+        judge["current_vote"] = color
+        judge["locked"] = True
+        session["last_activity"] = datetime.now()
+
+        # Check if all judges locked
+        all_locked = all(
+            j["locked"] for j in session["judges"].values() if j["connected"]
+        )
+
+        if all_locked:
+            session["state"] = "showing_results"
+
+        return {"success": True, "all_locked": all_locked}

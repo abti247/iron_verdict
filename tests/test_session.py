@@ -80,3 +80,47 @@ def test_join_session_invalid_role_fails():
     result = manager.join_session(code, "admin")
     assert result["success"] is False
     assert "Invalid role" in result["error"]
+
+
+def test_lock_vote_succeeds():
+    manager = SessionManager()
+    code = manager.create_session()
+    manager.join_session(code, "left_judge")
+
+    result = manager.lock_vote(code, "left", "white")
+    assert result["success"] is True
+    assert manager.sessions[code]["judges"]["left"]["current_vote"] == "white"
+    assert manager.sessions[code]["judges"]["left"]["locked"] is True
+
+
+def test_lock_vote_invalid_session_fails():
+    manager = SessionManager()
+    result = manager.lock_vote("INVALID", "left", "white")
+    assert result["success"] is False
+
+
+def test_lock_vote_updates_last_activity():
+    manager = SessionManager()
+    code = manager.create_session()
+    manager.join_session(code, "left_judge")
+
+    before = manager.sessions[code]["last_activity"]
+    manager.lock_vote(code, "left", "red")
+    after = manager.sessions[code]["last_activity"]
+
+    assert after > before
+
+
+def test_all_votes_locked_triggers_results():
+    manager = SessionManager()
+    code = manager.create_session()
+    manager.join_session(code, "left_judge")
+    manager.join_session(code, "center_judge")
+    manager.join_session(code, "right_judge")
+
+    manager.lock_vote(code, "left", "white")
+    manager.lock_vote(code, "center", "red")
+    result = manager.lock_vote(code, "right", "white")
+
+    assert result["all_locked"] is True
+    assert manager.sessions[code]["state"] == "showing_results"
