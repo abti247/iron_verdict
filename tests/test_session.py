@@ -36,3 +36,37 @@ def test_create_session_initializes_structure():
     assert session["state"] == "waiting"
     assert session["timer_state"] == "idle"
     assert "last_activity" in session
+
+
+def test_join_session_as_judge_succeeds():
+    manager = SessionManager()
+    code = manager.create_session()
+
+    result = manager.join_session(code, "left_judge")
+    assert result["success"] is True
+    assert manager.sessions[code]["judges"]["left"]["connected"] is True
+
+
+def test_join_session_invalid_code_fails():
+    manager = SessionManager()
+    result = manager.join_session("INVALID", "left_judge")
+    assert result["success"] is False
+    assert "Session not found" in result["error"]
+
+
+def test_join_session_role_already_taken_fails():
+    manager = SessionManager()
+    code = manager.create_session()
+    manager.join_session(code, "left_judge")
+
+    result = manager.join_session(code, "left_judge")
+    assert result["success"] is False
+    assert "already taken" in result["error"]
+
+
+def test_join_session_as_display_succeeds():
+    manager = SessionManager()
+    code = manager.create_session()
+
+    result = manager.join_session(code, "display")
+    assert result["success"] is True

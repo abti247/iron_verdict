@@ -45,3 +45,36 @@ class SessionManager:
             "last_activity": datetime.now(),
         }
         return code
+
+    def join_session(self, code: str, role: str) -> Dict[str, Any]:
+        """
+        Join a session with specified role.
+
+        Args:
+            code: Session code
+            role: One of "left_judge", "center_judge", "right_judge", "display"
+
+        Returns:
+            Dict with success status and error message if failed
+        """
+        if code not in self.sessions:
+            return {"success": False, "error": "Session not found"}
+
+        session = self.sessions[code]
+
+        if role == "display":
+            return {"success": True, "is_head": False}
+
+        # Parse judge role
+        position = role.replace("_judge", "")
+        if position not in ["left", "center", "right"]:
+            return {"success": False, "error": "Invalid role"}
+
+        judge = session["judges"][position]
+        if judge["connected"]:
+            return {"success": False, "error": "Role already taken"}
+
+        judge["connected"] = True
+        is_head = judge["is_head"]
+
+        return {"success": True, "is_head": is_head}
