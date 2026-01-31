@@ -1,7 +1,7 @@
 import random
 import string
-from datetime import datetime
-from typing import Dict, Any
+from datetime import datetime, timedelta
+from typing import Dict, Any, List
 
 
 class SessionManager:
@@ -131,3 +131,19 @@ class SessionManager:
         session["state"] = "waiting"
 
         return {"success": True}
+
+    def get_expired_sessions(self, hours: int = 4) -> List[str]:
+        """Get list of session codes that have expired."""
+        cutoff = datetime.now() - timedelta(hours=hours)
+        expired = []
+
+        for code, session in self.sessions.items():
+            if session["last_activity"] < cutoff:
+                expired.append(code)
+
+        return expired
+
+    def delete_session(self, code: str) -> None:
+        """Delete a session from memory."""
+        if code in self.sessions:
+            del self.sessions[code]

@@ -1,5 +1,5 @@
 from judgeme.session import SessionManager
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 def test_generate_session_code_creates_6_char_code():
@@ -138,3 +138,22 @@ def test_reset_for_next_lift_clears_votes():
     assert session["judges"]["left"]["current_vote"] is None
     assert session["judges"]["left"]["locked"] is False
     assert session["state"] == "waiting"
+
+
+def test_get_expired_sessions_returns_old_sessions():
+    manager = SessionManager()
+    code = manager.create_session()
+
+    # Manually set old timestamp
+    manager.sessions[code]["last_activity"] = datetime.now() - timedelta(hours=5)
+
+    expired = manager.get_expired_sessions(hours=4)
+    assert code in expired
+
+
+def test_delete_session_removes_from_memory():
+    manager = SessionManager()
+    code = manager.create_session()
+
+    manager.delete_session(code)
+    assert code not in manager.sessions
