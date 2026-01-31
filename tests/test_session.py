@@ -70,3 +70,13 @@ def test_join_session_as_display_succeeds():
 
     result = manager.join_session(code, "display")
     assert result["success"] is True
+    assert len(manager.sessions[code]["displays"]) == 1
+
+
+def test_join_session_invalid_role_fails():
+    manager = SessionManager()
+    code = manager.create_session()
+
+    result = manager.join_session(code, "admin")
+    assert result["success"] is False
+    assert "Invalid role" in result["error"]

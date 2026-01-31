@@ -57,12 +57,18 @@ class SessionManager:
         Returns:
             Dict with success status and error message if failed
         """
+        # Validate role
+        valid_roles = {"left_judge", "center_judge", "right_judge", "display"}
+        if not role or role not in valid_roles:
+            return {"success": False, "error": "Invalid role"}
+
         if code not in self.sessions:
             return {"success": False, "error": "Session not found"}
 
         session = self.sessions[code]
 
         if role == "display":
+            session["displays"].append({"connected": True})
             return {"success": True, "is_head": False}
 
         # Parse judge role
