@@ -116,3 +116,18 @@ class SessionManager:
             session["state"] = "showing_results"
 
         return {"success": True, "all_locked": all_locked}
+
+    def reset_for_next_lift(self, code: str) -> Dict[str, Any]:
+        """Reset session state for next lift."""
+        if code not in self.sessions:
+            return {"success": False, "error": "Session not found"}
+
+        session = self.sessions[code]
+
+        for judge in session["judges"].values():
+            judge["current_vote"] = None
+            judge["locked"] = False
+
+        session["state"] = "waiting"
+
+        return {"success": True}

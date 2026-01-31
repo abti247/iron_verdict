@@ -124,3 +124,17 @@ def test_all_votes_locked_triggers_results():
 
     assert result["all_locked"] is True
     assert manager.sessions[code]["state"] == "showing_results"
+
+
+def test_reset_for_next_lift_clears_votes():
+    manager = SessionManager()
+    code = manager.create_session()
+    manager.join_session(code, "left_judge")
+    manager.lock_vote(code, "left", "white")
+
+    manager.reset_for_next_lift(code)
+
+    session = manager.sessions[code]
+    assert session["judges"]["left"]["current_vote"] is None
+    assert session["judges"]["left"]["locked"] is False
+    assert session["state"] == "waiting"
