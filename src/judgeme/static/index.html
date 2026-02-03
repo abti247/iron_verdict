@@ -296,9 +296,38 @@
                         yellow: '#ffff44'
                     };
                     return colors[vote] || '#f0f0f0';
+                },
+
+                returnToRoleSelection() {
+                    this.intentionalNavigation = true;
+                    if (this.ws) {
+                        this.ws.close();
+                    }
+                    this.screen = 'role-select';
+                    this.selectedVote = null;
+                    this.voteLocked = false;
+                    this.resultsShown = false;
+                    this.timerDisplay = '60';
+                    this.timerExpired = false;
+                    if (this.timerInterval) {
+                        clearInterval(this.timerInterval);
+                    }
                 }
             };
         }
+
+        // Handle browser back button
+        window.addEventListener('popstate', () => {
+            const appElement = document.querySelector('[x-data]');
+            if (appElement && appElement.__x_data) {
+                const app = appElement.__x_data;
+                if ((app.screen === 'judge' || app.screen === 'display') && app.sessionCode) {
+                    app.returnToRoleSelection();
+                    // Prevent default back navigation
+                    history.pushState(null, null, location.href);
+                }
+            }
+        });
     </script>
 </body>
 </html>
