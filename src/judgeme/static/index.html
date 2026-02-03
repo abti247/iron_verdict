@@ -207,6 +207,7 @@
                         }
                     } else if (message.type === 'reset_for_next_lift') {
                         this.resetVoting();
+                        this.stopTimer();
                         if (this.role === 'display') {
                             this.displayVotes = { left: null, center: null, right: null };
                             this.displayStatus = 'Waiting for judges...';
