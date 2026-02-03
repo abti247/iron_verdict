@@ -1,6 +1,7 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
+from judgeme.config import settings
 from judgeme.session import SessionManager
 from judgeme.connection import ConnectionManager
 import json
