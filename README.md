@@ -49,9 +49,9 @@ python -m venv .venv
 source .venv/bin/activate
 ```
 
-4. Install dependencies:
+4. Install the package in editable mode:
 ```bash
-pip install -r requirements.txt
+python -m pip install -e .
 ```
 
 5. (Optional) Create `.env` file:

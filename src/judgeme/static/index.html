@@ -104,18 +104,15 @@
 
                 <div style="display: flex; justify-content: center; gap: 40px; margin-bottom: 40px;">
                     <!-- Left Judge -->
-                    <div style="width: 120px; height: 120px; border-radius: 50%; border: 3px solid #ccc;"
-                         :style="displayVotes.left ? `background: ${getVoteColor(displayVotes.left)};` : 'background: #f0f0f0;'">
+                    <div :style="`width: 120px; height: 120px; border-radius: 50%; border: 3px solid #ccc; background: ${displayVotes.left ? getVoteColor(displayVotes.left) : '#f0f0f0'};`">
                     </div>
 
                     <!-- Center Judge -->
-                    <div style="width: 120px; height: 120px; border-radius: 50%; border: 3px solid #ccc;"
-                         :style="displayVotes.center ? `background: ${getVoteColor(displayVotes.center)};` : 'background: #f0f0f0;'">
+                    <div :style="`width: 120px; height: 120px; border-radius: 50%; border: 3px solid #ccc; background: ${displayVotes.center ? getVoteColor(displayVotes.center) : '#f0f0f0'};`">
                     </div>
 
                     <!-- Right Judge -->
-                    <div style="width: 120px; height: 120px; border-radius: 50%; border: 3px solid #ccc;"
-                         :style="displayVotes.right ? `background: ${getVoteColor(displayVotes.right)};` : 'background: #f0f0f0;'">
+                    <div :style="`width: 120px; height: 120px; border-radius: 50%; border: 3px solid #ccc; background: ${displayVotes.right ? getVoteColor(displayVotes.right) : '#f0f0f0'};`">
                     </div>
                 </div>
 
