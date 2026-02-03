@@ -148,7 +148,15 @@ async def websocket_endpoint(websocket: WebSocket):
                 )
 
             elif message_type == "next_lift":
-                if not session_code:
+                if not session_code or not role:
+                    continue
+
+                # Only head judge can advance to next lift
+                if role != "center_judge":
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": "Only head judge can advance to next lift"
+                    })
                     continue
 
                 session_manager.reset_for_next_lift(session_code)
@@ -158,7 +166,15 @@ async def websocket_endpoint(websocket: WebSocket):
                 )
 
             elif message_type == "end_session_confirmed":
-                if not session_code:
+                if not session_code or not role:
+                    continue
+
+                # Only head judge can end session
+                if role != "center_judge":
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": "Only head judge can end session"
+                    })
                     continue
 
                 await connection_manager.broadcast_to_session(
@@ -166,12 +182,20 @@ async def websocket_endpoint(websocket: WebSocket):
                     {"type": "session_ended", "reason": "head_judge"}
                 )
 
-                session_manager.delete_session(session_code)
-
-                # Close all connections
+                # Close all connections first (with proper cleanup)
                 if session_code in connection_manager.active_connections:
-                    for ws in connection_manager.active_connections[session_code].values():
-                        await ws.close()
+                    # Get list of connections to avoid dict mutation during iteration
+                    connections = list(connection_manager.active_connections[session_code].items())
+                    for conn_role, ws in connections:
+                        try:
+                            await ws.close()
+                        except Exception:
+                            pass  # Connection already closed
+                        # Remove from connection manager
+                        await connection_manager.remove_connection(session_code, conn_role)
+
+                # Finally, delete session data
+                session_manager.delete_session(session_code)
             else:
                 # Issue 4: Handle post-join messages
                 # For now, just ignore unknown message types silently

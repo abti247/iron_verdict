@@ -129,6 +129,7 @@ class SessionManager:
             judge["locked"] = False
 
         session["state"] = "waiting"
+        session["last_activity"] = datetime.now()
 
         return {"success": True}
 
