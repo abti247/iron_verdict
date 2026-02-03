@@ -26,23 +26,33 @@ class ConnectionManager:
 
     async def broadcast_to_session(self, session_code: str, message: Dict[str, Any]):
         """Broadcast a message to all connections in a session."""
-        if session_code not in self.active_connections:
-            return
+        # Get connections under lock to avoid race conditions
+        async with self._lock:
+            if session_code not in self.active_connections:
+                return
+            # Create a copy of connections to iterate outside the lock
+            connections = list(self.active_connections[session_code].values())
 
-        for websocket in self.active_connections[session_code].values():
+        # Send outside lock to avoid blocking other operations
+        for websocket in connections:
             try:
                 await websocket.send_json(message)
             except Exception:
-                # Silently skip failed connections
+                # TODO: Add logging here - log error and potentially remove dead connection
                 pass
 
     async def send_to_role(self, session_code: str, role: str, message: Dict[str, Any]):
         """Send a message to a specific role in a session."""
-        if session_code in self.active_connections:
+        # Get websocket under lock
+        async with self._lock:
+            if session_code not in self.active_connections:
+                return
             websocket = self.active_connections[session_code].get(role)
-            if websocket:
-                try:
-                    await websocket.send_json(message)
-                except Exception:
-                    # Silently skip failed connections
-                    pass
+
+        # Send outside lock
+        if websocket:
+            try:
+                await websocket.send_json(message)
+            except Exception:
+                # TODO: Add logging here - log error and potentially remove dead connection
+                pass

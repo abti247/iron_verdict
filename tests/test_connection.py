@@ -81,3 +81,15 @@ async def test_broadcast_handles_failed_websocket():
 
     # Good connection should still receive message
     mock_ws_good.send_json.assert_called_once_with({"type": "test"})
+
+
+@pytest.mark.asyncio
+async def test_send_to_role_handles_failed_websocket():
+    manager = ConnectionManager()
+    mock_ws = AsyncMock()
+    mock_ws.send_json.side_effect = Exception("Connection closed")
+
+    await manager.add_connection("ABC123", "left_judge", mock_ws)
+
+    # Should not raise exception
+    await manager.send_to_role("ABC123", "left_judge", {"type": "test"})
