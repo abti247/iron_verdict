@@ -93,10 +93,34 @@
             </div>
         </div>
 
-        <!-- Display screen placeholder -->
+        <!-- Display screen -->
         <div x-show="screen === 'display'" class="hidden">
-            <h2>Display Screen</h2>
-            <p>Session: <span x-text="sessionCode"></span></p>
+            <div style="text-align: center; padding: 40px;">
+                <h1 style="font-size: 48px; margin-bottom: 40px;"
+                    :style="timerExpired ? 'color: red;' : ''"
+                    x-text="timerDisplay">
+                    60
+                </h1>
+
+                <div style="display: flex; justify-content: center; gap: 40px; margin-bottom: 40px;">
+                    <!-- Left Judge -->
+                    <div style="width: 120px; height: 120px; border-radius: 50%; border: 3px solid #ccc;"
+                         :style="displayVotes.left ? `background: ${getVoteColor(displayVotes.left)};` : 'background: #f0f0f0;'">
+                    </div>
+
+                    <!-- Center Judge -->
+                    <div style="width: 120px; height: 120px; border-radius: 50%; border: 3px solid #ccc;"
+                         :style="displayVotes.center ? `background: ${getVoteColor(displayVotes.center)};` : 'background: #f0f0f0;'">
+                    </div>
+
+                    <!-- Right Judge -->
+                    <div style="width: 120px; height: 120px; border-radius: 50%; border: 3px solid #ccc;"
+                         :style="displayVotes.right ? `background: ${getVoteColor(displayVotes.right)};` : 'background: #f0f0f0;'">
+                    </div>
+                </div>
+
+                <p style="font-size: 18px; color: #666;" x-text="displayStatus">Waiting for judges...</p>
+            </div>
         </div>
     </div>
 
@@ -115,6 +139,8 @@
                 timerDisplay: '60',
                 timerExpired: false,
                 timerInterval: null,
+                displayVotes: { left: null, center: null, right: null },
+                displayStatus: 'Waiting for judges...',
 
                 async createSession() {
                     try {
@@ -178,8 +204,16 @@
                         alert(`Error: ${sanitizedMessage}`);
                     } else if (message.type === 'show_results') {
                         this.resultsShown = true;
+                        if (this.role === 'display') {
+                            this.displayVotes = message.votes;
+                            this.displayStatus = 'Results shown';
+                        }
                     } else if (message.type === 'reset_for_next_lift') {
                         this.resetVoting();
+                        if (this.role === 'display') {
+                            this.displayVotes = { left: null, center: null, right: null };
+                            this.displayStatus = 'Waiting for judges...';
+                        }
                     } else if (message.type === 'timer_start') {
                         this.startTimerCountdown(message.server_timestamp);
                     } else if (message.type === 'timer_reset') {
@@ -255,6 +289,16 @@
                     if (confirm('Are you sure? This will disconnect all judges and the display')) {
                         this.ws.send(JSON.stringify({ type: 'end_session_confirmed' }));
                     }
+                },
+
+                getVoteColor(vote) {
+                    const colors = {
+                        white: 'white',
+                        red: '#ff4444',
+                        blue: '#4444ff',
+                        yellow: '#ffff44'
+                    };
+                    return colors[vote] || '#f0f0f0';
                 }
             };
         }
