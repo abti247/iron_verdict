@@ -32,12 +32,29 @@ git clone <repository-url>
 cd judgeme
 ```
 
-2. Install dependencies:
+2. Create a virtual environment:
+```bash
+python -m venv .venv
+```
+
+3. Activate the virtual environment:
+
+**On Windows:**
+```bash
+.venv\Scripts\activate
+```
+
+**On macOS/Linux:**
+```bash
+source .venv/bin/activate
+```
+
+4. Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-3. (Optional) Create `.env` file:
+5. (Optional) Create `.env` file:
 ```bash
 cp .env.example .env
 ```
