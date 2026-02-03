@@ -29,7 +29,7 @@
         </div>
 
         <!-- Role selection screen -->
-        <div x-show="screen === 'role-select'" class="hidden">
+        <div x-show="screen === 'role-select'">
             <h2>Select Your Role</h2>
             <p>Session: <span x-text="sessionCode"></span></p>
             <button @click="joinSession('left_judge')">Left Judge</button>
@@ -39,7 +39,7 @@
         </div>
 
         <!-- Judge screen -->
-        <div x-show="screen === 'judge'" class="hidden">
+        <div x-show="screen === 'judge'">
             <div style="background: #f5f5f5; padding: 10px; margin-bottom: 20px;">
                 <strong>Session:</strong> <span x-text="sessionCode"></span> |
                 <strong>Timer:</strong> <span x-text="timerDisplay" :style="timerExpired ? 'color: red;' : ''"></span>
@@ -94,7 +94,7 @@
         </div>
 
         <!-- Display screen -->
-        <div x-show="screen === 'display'" class="hidden">
+        <div x-show="screen === 'display'">
             <div style="text-align: center; padding: 40px;">
                 <h1 style="font-size: 48px; margin-bottom: 40px;"
                     :style="timerExpired ? 'color: red;' : ''"
