@@ -109,10 +109,30 @@ async def websocket_endpoint(websocket: WebSocket):
                             session_code,
                             {"type": "show_results", "votes": votes}
                         )
+            elif message_type == "timer_start":
+                if not session_code:
+                    continue
+
+                import time
+                await connection_manager.broadcast_to_session(
+                    session_code,
+                    {
+                        "type": "timer_start",
+                        "server_timestamp": time.time()
+                    }
+                )
+
+            elif message_type == "timer_reset":
+                if not session_code:
+                    continue
+
+                await connection_manager.broadcast_to_session(
+                    session_code,
+                    {"type": "timer_reset"}
+                )
             else:
                 # Issue 4: Handle post-join messages
                 # For now, just ignore unknown message types silently
-                # Future tasks will add timer_start, reset, etc.
                 pass
 
     except WebSocketDisconnect:
