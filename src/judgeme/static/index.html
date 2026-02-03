@@ -41,7 +41,7 @@
         <!-- Judge screen -->
         <div x-show="screen === 'judge'">
             <div style="background: #f5f5f5; padding: 10px; margin-bottom: 20px;">
-                <strong>Session:</strong> <span x-text="sessionCode" @click="returnToRoleSelection()" style="cursor: pointer; text-decoration: underline;"></span> |
+                <strong>Session:</strong> <span x-text="sessionCode" @click="returnToRoleSelection()" @keydown.enter="returnToRoleSelection()" tabindex="0" role="button" style="cursor: pointer; text-decoration: underline;"></span> |
                 <strong>Timer:</strong> <span x-text="timerDisplay" :style="timerExpired ? 'color: red;' : ''"></span>
             </div>
 
