@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JudgeMe - Powerlifting Judging</title>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: system-ui, -apple-system, sans-serif; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        button { padding: 12px 24px; font-size: 16px; cursor: pointer; border: none; border-radius: 4px; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        input { padding: 12px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; width: 100%; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container" x-data="judgemeApp()">
+        <h1>JudgeMe</h1>
+
+        <!-- Landing screen -->
+        <div x-show="screen === 'landing'">
+            <h2>Welcome</h2>
+            <button @click="createSession()">Create New Session</button>
+            <p>or</p>
+            <input type="text" x-model="joinCode" placeholder="Enter session code">
+            <button @click="screen = 'role-select'">Join Session</button>
+        </div>
+
+        <!-- Role selection screen -->
+        <div x-show="screen === 'role-select'">
+            <h2>Select Your Role</h2>
+            <p>Session: <span x-text="sessionCode"></span></p>
+            <button @click="joinSession('left_judge')">Left Judge</button>
+            <button @click="joinSession('center_judge')">Center Judge (Head)</button>
+            <button @click="joinSession('right_judge')">Right Judge</button>
+            <button @click="joinSession('display')">Display</button>
+        </div>
+
+        <!-- Judge screen -->
+        <div x-show="screen === 'judge'">
+            <div style="background: #f5f5f5; padding: 10px; margin-bottom: 20px;">
+                <strong>Session:</strong> <span x-text="sessionCode"></span> |
+                <strong>Timer:</strong> <span x-text="timerDisplay" :style="timerExpired ? 'color: red;' : ''"></span>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
+                <button
+                    @click="selectVote('white')"
+                    :disabled="voteLocked"
+                    :style="selectedVote === 'white' ? 'background: white; border: 3px solid black;' : 'background: #f0f0f0;'">
+                    White
+                </button>
+                <button
+                    @click="selectVote('red')"
+                    :disabled="voteLocked"
+                    :style="selectedVote === 'red' ? 'background: #ff4444; color: white; border: 3px solid black;' : 'background: #ffcccc;'">
+                    Red
+                </button>
+                <button
+                    @click="selectVote('blue')"
+                    :disabled="voteLocked"
+                    :style="selectedVote === 'blue' ? 'background: #4444ff; color: white; border: 3px solid black;' : 'background: #ccccff;'">
+                    Blue
+                </button>
+                <button
+                    @click="selectVote('yellow')"
+                    :disabled="voteLocked"
+                    :style="selectedVote === 'yellow' ? 'background: #ffff44; border: 3px solid black;' : 'background: #ffffcc;'">
+                    Yellow
+                </button>
+            </div>
+
+            <button
+                x-show="selectedVote && !voteLocked"
+                @click="lockVote()"
+                style="background: #28a745; color: white; width: 100%;">
+                Lock In
+            </button>
+
+            <div x-show="voteLocked" style="margin-top: 20px; padding: 10px; background: #d4edda; border-radius: 4px;">
+                Your vote: <strong x-text="selectedVote"></strong> (locked)
+            </div>
+
+            <!-- Head judge controls -->
+            <div x-show="isHead" style="margin-top: 30px; border-top: 2px solid #ccc; padding-top: 20px;">
+                <h3>Head Judge Controls</h3>
+                <button @click="startTimer()" style="background: #007bff; color: white;">Start Timer</button>
+                <button @click="resetTimer()" style="background: #6c757d; color: white;">Reset Timer</button>
+                <button @click="nextLift()" :disabled="!resultsShown" style="background: #ffc107;">Next Lift</button>
+                <button @click="confirmEndSession()" style="background: #dc3545; color: white;">End Session</button>
+            </div>
+        </div>
+
+        <!-- Display screen -->
+        <div x-show="screen === 'display'">
+            <div style="text-align: center; padding: 40px;">
+                <h1 style="font-size: 48px; margin-bottom: 40px;"
+                    :style="timerExpired ? 'color: red;' : ''"
+                    x-text="timerDisplay">
+                    60
+                </h1>
+
+                <div style="display: flex; justify-content: center; gap: 40px; margin-bottom: 40px;">
+                    <!-- Left Judge -->
+                    <div style="width: 120px; height: 120px; border-radius: 50%; border: 3px solid #ccc;"
+                         :style="displayVotes.left ? `background: ${getVoteColor(displayVotes.left)};` : 'background: #f0f0f0;'">
+                    </div>
+
+                    <!-- Center Judge -->
+                    <div style="width: 120px; height: 120px; border-radius: 50%; border: 3px solid #ccc;"
+                         :style="displayVotes.center ? `background: ${getVoteColor(displayVotes.center)};` : 'background: #f0f0f0;'">
+                    </div>
+
+                    <!-- Right Judge -->
+                    <div style="width: 120px; height: 120px; border-radius: 50%; border: 3px solid #ccc;"
+                         :style="displayVotes.right ? `background: ${getVoteColor(displayVotes.right)};` : 'background: #f0f0f0;'">
+                    </div>
+                </div>
+
+                <p style="font-size: 18px; color: #666;" x-text="displayStatus">Waiting for judges...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function judgemeApp() {
+            return {
+                screen: 'landing',
+                sessionCode: '',
+                joinCode: '',
+                role: '',
+                isHead: false,
+                ws: null,
+                selectedVote: null,
+                voteLocked: false,
+                resultsShown: false,
+                timerDisplay: '60',
+                timerExpired: false,
+                timerInterval: null,
+                displayVotes: { left: null, center: null, right: null },
+                displayStatus: 'Waiting for judges...',
+
+                async createSession() {
+                    try {
+                        const response = await fetch('/api/sessions', { method: 'POST' });
+                        if (!response.ok) {
+                            alert('Failed to create session. Please try again.');
+                            return;
+                        }
+                        const data = await response.json();
+                        this.sessionCode = data.session_code;
+                        this.screen = 'role-select';
+                    } catch (error) {
+                        alert('Error creating session. Please check your connection.');
+                        console.error('Session creation error:', error);
+                    }
+                },
+
+                joinSession(role) {
+                    this.role = role;
+                    const code = this.sessionCode || this.joinCode;
+                    this.sessionCode = code;
+
+                    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                    this.ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
+
+                    this.ws.onopen = () => {
+                        this.ws.send(JSON.stringify({
+                            type: 'join',
+                            session_code: code,
+                            role: role
+                        }));
+                    };
+
+                    this.ws.onmessage = (event) => {
+                        const message = JSON.parse(event.data);
+                        this.handleMessage(message);
+                    };
+
+                    this.ws.onerror = (error) => {
+                        console.error('WebSocket error:', error);
+                        alert('Connection error. Please check your network and try again.');
+                    };
+
+                    this.ws.onclose = (event) => {
+                        if (!event.wasClean) {
+                            console.error('WebSocket closed unexpectedly:', event);
+                            alert('Connection lost. Please refresh and try again.');
+                        }
+                    };
+                },
+
+                handleMessage(message) {
+                    if (message.type === 'join_success') {
+                        this.isHead = message.is_head;
+                        this.screen = this.role === 'display' ? 'display' : 'judge';
+                    } else if (message.type === 'join_error') {
+                        const sanitizedMessage = document.createTextNode(message.message).textContent;
+                        alert(`Failed to join session: ${sanitizedMessage}`);
+                    } else if (message.type === 'error') {
+                        const sanitizedMessage = document.createTextNode(message.message).textContent;
+                        alert(`Error: ${sanitizedMessage}`);
+                    } else if (message.type === 'show_results') {
+                        this.resultsShown = true;
+                        if (this.role === 'display') {
+                            this.displayVotes = message.votes;
+                            this.displayStatus = 'Results shown';
+                        }
+                    } else if (message.type === 'reset_for_next_lift') {
+                        this.resetVoting();
+                        if (this.role === 'display') {
+                            this.displayVotes = { left: null, center: null, right: null };
+                            this.displayStatus = 'Waiting for judges...';
+                        }
+                    } else if (message.type === 'timer_start') {
+                        this.startTimerCountdown(message.server_timestamp);
+                    } else if (message.type === 'timer_reset') {
+                        this.stopTimer();
+                    } else if (message.type === 'session_ended') {
+                        alert('Session ended');
+                        this.ws.close();
+                        this.screen = 'landing';
+                    }
+                },
+
+                selectVote(color) {
+                    if (!this.voteLocked) {
+                        this.selectedVote = color;
+                    }
+                },
+
+                lockVote() {
+                    if (this.selectedVote && !this.voteLocked) {
+                        this.voteLocked = true;
+                        this.ws.send(JSON.stringify({
+                            type: 'vote_lock',
+                            color: this.selectedVote
+                        }));
+                    }
+                },
+
+                resetVoting() {
+                    this.selectedVote = null;
+                    this.voteLocked = false;
+                    this.resultsShown = false;
+                },
+
+                startTimer() {
+                    this.ws.send(JSON.stringify({ type: 'timer_start' }));
+                },
+
+                resetTimer() {
+                    this.ws.send(JSON.stringify({ type: 'timer_reset' }));
+                },
+
+                startTimerCountdown(serverTimestamp) {
+                    this.stopTimer();
+                    const startTime = serverTimestamp * 1000;
+                    const duration = 60000; // 60 seconds
+
+                    this.timerInterval = setInterval(() => {
+                        const elapsed = Date.now() - startTime;
+                        const remaining = Math.max(0, duration - elapsed);
+                        const seconds = Math.ceil(remaining / 1000);
+                        this.timerDisplay = seconds;
+                        this.timerExpired = seconds === 0;
+
+                        if (seconds === 0) {
+                            clearInterval(this.timerInterval);
+                        }
+                    }, 100);
+                },
+
+                stopTimer() {
+                    if (this.timerInterval) {
+                        clearInterval(this.timerInterval);
+                    }
+                    this.timerDisplay = '60';
+                    this.timerExpired = false;
+                },
+
+                nextLift() {
+                    this.ws.send(JSON.stringify({ type: 'next_lift' }));
+                },
+
+                confirmEndSession() {
+                    if (confirm('Are you sure? This will disconnect all judges and the display')) {
+                        this.ws.send(JSON.stringify({ type: 'end_session_confirmed' }));
+                    }
+                },
+
+                getVoteColor(vote) {
+                    const colors = {
+                        white: 'white',
+                        red: '#ff4444',
+                        blue: '#4444ff',
+                        yellow: '#ffff44'
+                    };
+                    return colors[vote] || '#f0f0f0';
+                }
+            };
+        }
+    </script>
+</body>
+</html>
