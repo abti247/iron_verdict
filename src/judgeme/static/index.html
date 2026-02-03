@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JudgeMe - Powerlifting Judging</title>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: system-ui, -apple-system, sans-serif; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        button { padding: 12px 24px; font-size: 16px; cursor: pointer; border: none; border-radius: 4px; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        input { padding: 12px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; width: 100%; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container" x-data="judgemeApp()">
+        <h1>JudgeMe</h1>
+
+        <!-- Landing screen -->
+        <div x-show="screen === 'landing'">
+            <h2>Welcome</h2>
+            <button @click="createSession()">Create New Session</button>
+            <p>or</p>
+            <input type="text" x-model="joinCode" placeholder="Enter session code">
+            <button @click="screen = 'role-select'">Join Session</button>
+        </div>
+
+        <!-- Role selection screen -->
+        <div x-show="screen === 'role-select'" class="hidden">
+            <h2>Select Your Role</h2>
+            <p>Session: <span x-text="sessionCode"></span></p>
+            <button @click="joinSession('left_judge')">Left Judge</button>
+            <button @click="joinSession('center_judge')">Center Judge (Head)</button>
+            <button @click="joinSession('right_judge')">Right Judge</button>
+            <button @click="joinSession('display')">Display</button>
+        </div>
+
+        <!-- Judge screen placeholder -->
+        <div x-show="screen === 'judge'" class="hidden">
+            <h2>Judge Interface</h2>
+            <p>Role: <span x-text="role"></span></p>
+            <p>Connected!</p>
+        </div>
+
+        <!-- Display screen placeholder -->
+        <div x-show="screen === 'display'" class="hidden">
+            <h2>Display Screen</h2>
+            <p>Session: <span x-text="sessionCode"></span></p>
+        </div>
+    </div>
+
+    <script>
+        function judgemeApp() {
+            return {
+                screen: 'landing',
+                sessionCode: '',
+                joinCode: '',
+                role: '',
+                ws: null,
+
+                async createSession() {
+                    const response = await fetch('/api/sessions', { method: 'POST' });
+                    const data = await response.json();
+                    this.sessionCode = data.session_code;
+                    this.screen = 'role-select';
+                },
+
+                joinSession(role) {
+                    this.role = role;
+                    const code = this.sessionCode || this.joinCode;
+                    this.sessionCode = code;
+
+                    this.ws = new WebSocket(`ws://${window.location.host}/ws`);
+
+                    this.ws.onopen = () => {
+                        this.ws.send(JSON.stringify({
+                            type: 'join',
+                            session_code: code,
+                            role: role
+                        }));
+                    };
+
+                    this.ws.onmessage = (event) => {
+                        const message = JSON.parse(event.data);
+                        if (message.type === 'join_success') {
+                            this.screen = role === 'display' ? 'display' : 'judge';
+                        } else if (message.type === 'join_error') {
+                            alert(message.message);
+                        }
+                    };
+                }
+            };
+        }
+    </script>
+</body>
+</html>

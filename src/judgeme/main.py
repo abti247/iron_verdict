@@ -1,19 +1,27 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from judgeme.session import SessionManager
 from judgeme.connection import ConnectionManager
 import json
 import copy
 import time
+import os
 
 app = FastAPI(title="JudgeMe")
 session_manager = SessionManager()
 connection_manager = ConnectionManager()
 
+# Serve static files
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
-@app.get("/")
+
+@app.get("/", response_class=HTMLResponse)
 async def root():
-    return {"message": "JudgeMe API"}
+    """Serve the main HTML page."""
+    with open(os.path.join(static_dir, "index.html")) as f:
+        return f.read()
 
 
 @app.post("/api/sessions")
