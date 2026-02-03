@@ -146,6 +146,32 @@ async def websocket_endpoint(websocket: WebSocket):
                     session_code,
                     {"type": "timer_reset"}
                 )
+
+            elif message_type == "next_lift":
+                if not session_code:
+                    continue
+
+                session_manager.reset_for_next_lift(session_code)
+                await connection_manager.broadcast_to_session(
+                    session_code,
+                    {"type": "reset_for_next_lift"}
+                )
+
+            elif message_type == "end_session_confirmed":
+                if not session_code:
+                    continue
+
+                await connection_manager.broadcast_to_session(
+                    session_code,
+                    {"type": "session_ended", "reason": "head_judge"}
+                )
+
+                session_manager.delete_session(session_code)
+
+                # Close all connections
+                if session_code in connection_manager.active_connections:
+                    for ws in connection_manager.active_connections[session_code].values():
+                        await ws.close()
             else:
                 # Issue 4: Handle post-join messages
                 # For now, just ignore unknown message types silently
