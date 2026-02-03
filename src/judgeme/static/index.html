@@ -183,7 +183,7 @@
                     };
 
                     this.ws.onclose = (event) => {
-                        if (!event.wasClean) {
+                        if (!event.wasClean && !this.intentionalNavigation) {
                             console.error('WebSocket closed unexpectedly:', event);
                             alert('Connection lost. Please refresh and try again.');
                         }
