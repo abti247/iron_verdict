@@ -3,6 +3,7 @@ from fastapi.responses import HTMLResponse
 from judgeme.session import SessionManager
 from judgeme.connection import ConnectionManager
 import json
+import copy
 
 app = FastAPI(title="JudgeMe")
 session_manager = SessionManager()
@@ -32,11 +33,29 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             data = await websocket.receive_text()
-            message = json.loads(data)
 
-            if message["type"] == "join":
-                session_code = message["session_code"]
-                role = message["role"]
+            # Issue 1: Add error handling for JSON parsing
+            try:
+                message = json.loads(data)
+            except json.JSONDecodeError:
+                await websocket.send_json({
+                    "type": "error",
+                    "message": "Invalid JSON format"
+                })
+                continue
+
+            # Issue 2: Use .get() method with validation
+            message_type = message.get("type")
+            if message_type == "join":
+                session_code = message.get("session_code")
+                role = message.get("role")
+
+                if not session_code or not role:
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": "Missing required fields"
+                    })
+                    continue
 
                 # Validate join
                 result = session_manager.join_session(session_code, role)
@@ -52,8 +71,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 # Add connection
                 await connection_manager.add_connection(session_code, role, websocket)
 
-                # Send success (serialize datetime objects)
-                session_state = session_manager.sessions[session_code].copy()
+                # Issue 3: Use deep copy for nested dicts
+                session_state = copy.deepcopy(session_manager.sessions[session_code])
                 session_state["last_activity"] = session_state["last_activity"].isoformat()
 
                 await websocket.send_json({
@@ -62,6 +81,11 @@ async def websocket_endpoint(websocket: WebSocket):
                     "is_head": result["is_head"],
                     "session_state": session_state
                 })
+            else:
+                # Issue 4: Handle post-join messages
+                # For now, just ignore unknown message types silently
+                # Future tasks will add vote_lock, timer_start, etc.
+                pass
 
     except WebSocketDisconnect:
         if session_code and role:
