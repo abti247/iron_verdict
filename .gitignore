@@ -23,6 +23,7 @@ htmlcov/
 # IDE
 .vscode/
 .idea/
+.claude/
 *.swp
 *.swo
 *~
@@ -30,3 +31,4 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+nul
