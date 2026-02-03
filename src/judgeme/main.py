@@ -81,10 +81,38 @@ async def websocket_endpoint(websocket: WebSocket):
                     "is_head": result["is_head"],
                     "session_state": session_state
                 })
+            elif message_type == "vote_lock":
+                if not session_code or not role:
+                    continue
+
+                position = role.replace("_judge", "")
+                color = message.get("color")
+
+                result = session_manager.lock_vote(session_code, position, color)
+
+                if result["success"]:
+                    # Notify display that a judge voted (no color)
+                    await connection_manager.send_to_role(
+                        session_code,
+                        "display",
+                        {"type": "judge_voted", "position": position}
+                    )
+
+                    # If all locked, broadcast results
+                    if result.get("all_locked"):
+                        votes = {
+                            pos: judge["current_vote"]
+                            for pos, judge in session_manager.sessions[session_code]["judges"].items()
+                            if judge["connected"]
+                        }
+                        await connection_manager.broadcast_to_session(
+                            session_code,
+                            {"type": "show_results", "votes": votes}
+                        )
             else:
                 # Issue 4: Handle post-join messages
                 # For now, just ignore unknown message types silently
-                # Future tasks will add vote_lock, timer_start, etc.
+                # Future tasks will add timer_start, reset, etc.
                 pass
 
     except WebSocketDisconnect:
