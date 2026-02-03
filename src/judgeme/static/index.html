@@ -62,10 +62,19 @@
                 ws: null,
 
                 async createSession() {
-                    const response = await fetch('/api/sessions', { method: 'POST' });
-                    const data = await response.json();
-                    this.sessionCode = data.session_code;
-                    this.screen = 'role-select';
+                    try {
+                        const response = await fetch('/api/sessions', { method: 'POST' });
+                        if (!response.ok) {
+                            alert('Failed to create session. Please try again.');
+                            return;
+                        }
+                        const data = await response.json();
+                        this.sessionCode = data.session_code;
+                        this.screen = 'role-select';
+                    } catch (error) {
+                        alert('Error creating session. Please check your connection.');
+                        console.error('Session creation error:', error);
+                    }
                 },
 
                 joinSession(role) {
@@ -73,7 +82,8 @@
                     const code = this.sessionCode || this.joinCode;
                     this.sessionCode = code;
 
-                    this.ws = new WebSocket(`ws://${window.location.host}/ws`);
+                    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                    this.ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
 
                     this.ws.onopen = () => {
                         this.ws.send(JSON.stringify({
@@ -88,7 +98,20 @@
                         if (message.type === 'join_success') {
                             this.screen = role === 'display' ? 'display' : 'judge';
                         } else if (message.type === 'join_error') {
-                            alert(message.message);
+                            const sanitizedMessage = document.createTextNode(message.message).textContent;
+                            alert(`Failed to join session: ${sanitizedMessage}`);
+                        }
+                    };
+
+                    this.ws.onerror = (error) => {
+                        console.error('WebSocket error:', error);
+                        alert('Connection error. Please check your network and try again.');
+                    };
+
+                    this.ws.onclose = (event) => {
+                        if (!event.wasClean) {
+                            console.error('WebSocket closed unexpectedly:', event);
+                            alert('Connection lost. Please refresh and try again.');
                         }
                     };
                 }
