@@ -4,6 +4,7 @@ from judgeme.session import SessionManager
 from judgeme.connection import ConnectionManager
 import json
 import copy
+import time
 
 app = FastAPI(title="JudgeMe")
 session_manager = SessionManager()
@@ -110,10 +111,17 @@ async def websocket_endpoint(websocket: WebSocket):
                             {"type": "show_results", "votes": votes}
                         )
             elif message_type == "timer_start":
-                if not session_code:
+                if not session_code or not role:
                     continue
 
-                import time
+                # Only head judge can control timer
+                if role != "center_judge":
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": "Only head judge can control timer"
+                    })
+                    continue
+
                 await connection_manager.broadcast_to_session(
                     session_code,
                     {
@@ -123,7 +131,15 @@ async def websocket_endpoint(websocket: WebSocket):
                 )
 
             elif message_type == "timer_reset":
-                if not session_code:
+                if not session_code or not role:
+                    continue
+
+                # Only head judge can control timer
+                if role != "center_judge":
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": "Only head judge can control timer"
+                    })
                     continue
 
                 await connection_manager.broadcast_to_session(
