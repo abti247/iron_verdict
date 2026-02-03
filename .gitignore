@@ -5,8 +5,6 @@
 __pycache__/
 *.py[cod]
 *$py.class
-*.so
-.Python
 venv/
 env/
 .venv/
@@ -21,9 +19,7 @@ htmlcov/
 .env
 
 # IDE
-.vscode/
 .idea/
-.claude/
 *.swp
 *.swo
 *~
@@ -31,5 +27,4 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
-nul
 
