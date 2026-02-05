@@ -6,13 +6,72 @@
     <title>JudgeMe - Powerlifting Judging</title>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: system-ui, -apple-system, sans-serif; padding: 20px; }
-        .container { max-width: 600px; margin: 0 auto; }
-        button { padding: 12px 24px; font-size: 16px; cursor: pointer; border: none; border-radius: 4px; }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
-        input { padding: 12px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; width: 100%; }
-        .hidden { display: none; }
+:root {
+  /* Colors - Neutrals */
+  --bg-primary: #F9FAFB;
+  --bg-secondary: #FFFFFF;
+  --text-primary: #1F2937;
+  --text-secondary: #6B7280;
+  --border-color: #E5E7EB;
+
+  /* Colors - Vote Colors (IPF Standard) */
+  --vote-white: #FFFFFF;
+  --vote-red: #EF4444;
+  --vote-blue: #3B82F6;
+  --vote-yellow: #FBBF24;
+
+  /* Colors - Functional */
+  --success-color: #10B981;
+  --disabled-color: #9CA3AF;
+  --timer-expired: #EF4444;
+
+  /* Typography */
+  --font-family: system-ui, -apple-system, sans-serif;
+  --font-size-base: 16px;
+  --font-size-sm: 14px;
+  --font-size-lg: 20px;
+  --font-size-xl: 32px;
+  --font-size-2xl: 48px;
+  --font-size-timer-display: 120px;
+  --font-size-timer-judge: 32px;
+
+  --font-weight-normal: 400;
+  --font-weight-bold: 700;
+
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-base: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+
+  /* Layout */
+  --touch-target-min: 48px;
+  --border-radius: 4px;
+  --transition-duration: 150ms;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden; /* Prevent scrolling */
+}
+
+body {
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
     </style>
 </head>
 <body>
