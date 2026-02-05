@@ -16,7 +16,7 @@
     </style>
 </head>
 <body>
-    <div class="container" x-data="judgemeApp()">
+    <div class="container" x-data="judgemeApp()" x-init="init()">
         <h1>JudgeMe</h1>
 
         <!-- Landing screen -->
@@ -317,6 +317,83 @@
                     this.timerExpired = false;
                     if (this.timerInterval) {
                         clearInterval(this.timerInterval);
+                    }
+                },
+
+                getWindowSpecs(sessionCode) {
+                    const sw = window.screen.width;
+                    const sh = window.screen.height;
+                    const jw = Math.floor(sw / 3);  // judge width
+                    const jh = Math.floor(sh / 2);  // judge height
+                    const dw = sw;                  // display width (full)
+                    const dh = Math.floor(sh / 2);  // display height
+
+                    const baseUrl = `${window.location.origin}/?code=${sessionCode}`;
+
+                    return {
+                        leftJudge: {
+                            url: `${baseUrl}&demo=left_judge`,
+                            params: `width=${jw},height=${jh},left=0,top=0`
+                        },
+                        centerJudge: {
+                            url: `${baseUrl}&demo=center_judge`,
+                            params: `width=${jw},height=${jh},left=${jw},top=0`
+                        },
+                        rightJudge: {
+                            url: `${baseUrl}&demo=right_judge`,
+                            params: `width=${jw},height=${jh},left=${2*jw},top=0`
+                        },
+                        display: {
+                            url: `${baseUrl}&demo=display`,
+                            params: `width=${dw},height=${dh},left=0,top=${jh}`
+                        }
+                    };
+                },
+
+                async startDemo() {
+                    try {
+                        // Create session
+                        const response = await fetch('/api/sessions', { method: 'POST' });
+                        if (!response.ok) {
+                            alert('Failed to create session. Please try again.');
+                            return;
+                        }
+                        const data = await response.json();
+                        const sessionCode = data.session_code;
+
+                        // Calculate window positions
+                        const specs = this.getWindowSpecs(sessionCode);
+
+                        // Create unique window names using timestamp to ensure new windows are created
+                        const timestamp = Date.now();
+                        window.open(specs.leftJudge.url, `leftJudge_${timestamp}`, specs.leftJudge.params);
+                        window.open(specs.centerJudge.url, `centerJudge_${timestamp}`, specs.centerJudge.params);
+                        window.open(specs.rightJudge.url, `rightJudge_${timestamp}`, specs.rightJudge.params);
+                        window.open(specs.display.url, `display_${timestamp}`, specs.display.params);
+
+                        // Return to landing
+                        this.screen = 'landing';
+                    } catch (error) {
+                        alert('Failed to start demo. Please try again.');
+                        console.error('Demo mode error:', error);
+                    }
+                },
+
+                init() {
+                    // Check URL parameters on load
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const demoRole = urlParams.get('demo');
+                    const sessionCode = urlParams.get('code');
+
+                    if (demoRole && sessionCode) {
+                        // Skip to role selection and auto-join
+                        this.sessionCode = sessionCode;
+                        this.joinCode = sessionCode;
+                        // Defer the join to allow Alpine to finish initialization
+                        setTimeout(() => this.joinSession(demoRole), 100);
+                    } else {
+                        // Normal landing screen
+                        this.screen = 'landing';
                     }
                 }
             };
