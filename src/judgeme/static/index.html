@@ -16,7 +16,7 @@
     </style>
 </head>
 <body>
-    <div class="container" x-data="judgemeApp()">
+    <div class="container" x-data="judgemeApp()" x-init="init()">
         <h1>JudgeMe</h1>
 
         <!-- Landing screen -->
@@ -374,6 +374,24 @@
                     } catch (error) {
                         alert('Failed to start demo. Please try again.');
                         console.error('Demo mode error:', error);
+                    }
+                },
+
+                init() {
+                    // Check URL parameters on load
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const demoRole = urlParams.get('demo');
+                    const sessionCode = urlParams.get('code');
+
+                    if (demoRole && sessionCode) {
+                        // Skip to role selection and auto-join
+                        this.sessionCode = sessionCode;
+                        this.joinCode = sessionCode;
+                        // Defer the join to allow Alpine to finish initialization
+                        setTimeout(() => this.joinSession(demoRole), 100);
+                    } else {
+                        // Normal landing screen
+                        this.screen = 'landing';
                     }
                 }
             };
