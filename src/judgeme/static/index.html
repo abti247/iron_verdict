@@ -317,6 +317,36 @@
                     if (this.timerInterval) {
                         clearInterval(this.timerInterval);
                     }
+                },
+
+                getWindowSpecs(sessionCode) {
+                    const sw = window.screen.width;
+                    const sh = window.screen.height;
+                    const jw = Math.floor(sw / 3);  // judge width
+                    const jh = Math.floor(sh / 2);  // judge height
+                    const dw = sw;                  // display width (full)
+                    const dh = Math.floor(sh / 2);  // display height
+
+                    const baseUrl = `${window.location.origin}/?code=${sessionCode}`;
+
+                    return {
+                        leftJudge: {
+                            url: `${baseUrl}&demo=left_judge`,
+                            params: `width=${jw},height=${jh},left=0,top=0`
+                        },
+                        centerJudge: {
+                            url: `${baseUrl}&demo=center_judge`,
+                            params: `width=${jw},height=${jh},left=${jw},top=0`
+                        },
+                        rightJudge: {
+                            url: `${baseUrl}&demo=right_judge`,
+                            params: `width=${jw},height=${jh},left=${2*jw},top=0`
+                        },
+                        display: {
+                            url: `${baseUrl}&demo=display`,
+                            params: `width=${dw},height=${dh},left=0,top=${jh}`
+                        }
+                    };
                 }
             };
         }
