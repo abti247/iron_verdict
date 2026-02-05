@@ -292,6 +292,430 @@ button:disabled {
 .btn-full-width.lock-in:hover:not(:disabled) {
   background-color: #059669;
 }
+
+/* TASK 4: Input & Card Component Styles */
+
+/* Input Fields */
+input[type="text"] {
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  padding: var(--spacing-sm) var(--spacing-base);
+  min-height: var(--touch-target-min);
+  border: 2px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  transition: border-color var(--transition-duration) ease;
+}
+
+input[type="text"]::placeholder {
+  color: var(--text-secondary);
+}
+
+input[type="text"]:focus {
+  outline: none;
+  border-color: var(--text-primary);
+  box-shadow: 0 0 0 3px rgba(31, 41, 55, 0.1);
+}
+
+/* Cards & Panels */
+.card {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-base);
+}
+
+.card.status-locked {
+  background-color: #D1FAE5;
+  border-color: var(--success-color);
+  color: var(--text-primary);
+  text-align: center;
+  padding: var(--spacing-lg);
+  font-weight: var(--font-weight-bold);
+}
+
+/* Top Bar / Header Card */
+.header-bar {
+  background-color: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  padding: var(--spacing-base);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 60px;
+  width: 100%;
+}
+
+.header-bar-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.header-bar-item.center {
+  align-items: center;
+  flex: 1;
+}
+
+.header-bar-item.right {
+  align-items: flex-end;
+}
+
+.session-code {
+  font-family: monospace;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  text-decoration: underline;
+  transition: color var(--transition-duration) ease;
+}
+
+.session-code:hover {
+  color: var(--text-primary);
+}
+
+/* TASK 5: Landing Page Styles */
+
+/* Landing Page */
+.screen.landing {
+  padding: var(--spacing-lg);
+}
+
+.landing-content {
+  max-width: 500px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  align-items: center;
+  text-align: center;
+}
+
+.landing-logo {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-base);
+}
+
+.landing-tagline {
+  font-size: var(--font-size-lg);
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-lg);
+}
+
+.landing-actions {
+  display: flex;
+  gap: var(--spacing-base);
+  width: 100%;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.landing-actions .btn-primary {
+  flex: 1;
+  min-width: 150px;
+}
+
+.landing-join {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.landing-join input {
+  width: 100%;
+}
+
+.landing-demo {
+  margin-top: var(--spacing-base);
+  width: 100%;
+}
+
+/* Mobile: Stack buttons vertically */
+@media (max-width: 600px) {
+  .landing-actions {
+    flex-direction: column;
+  }
+
+  .landing-actions .btn-primary {
+    width: 100%;
+  }
+}
+
+/* TASK 6: Role Selection Page Styles */
+
+/* Role Selection Page */
+.screen.role-select {
+  padding: var(--spacing-lg);
+  gap: var(--spacing-lg);
+}
+
+.role-select-content {
+  max-width: 600px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  align-items: center;
+}
+
+.role-select-header {
+  text-align: center;
+}
+
+.role-select-header h2 {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  margin-bottom: var(--spacing-base);
+}
+
+.session-display {
+  font-size: var(--font-size-base);
+  color: var(--text-secondary);
+}
+
+.role-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: var(--spacing-base);
+  width: 100%;
+  margin-bottom: var(--spacing-lg);
+}
+
+.role-buttons .btn-primary {
+  width: 100%;
+  min-height: 80px;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+}
+
+.role-buttons-display {
+  display: flex;
+  width: 100%;
+  gap: var(--spacing-base);
+}
+
+.role-buttons-display .btn-primary {
+  flex: 1;
+  min-height: 80px;
+  font-size: var(--font-size-lg);
+}
+
+/* Mobile: Stack judge buttons */
+@media (max-width: 800px) {
+  .role-buttons {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* TASK 7: Judge Screen Styles */
+
+/* Judge Screen */
+.screen.judge {
+  padding: 0;
+  gap: 0;
+}
+
+.judge-header {
+  flex-shrink: 0;
+  background-color: var(--bg-secondary);
+  border-bottom: 2px solid var(--border-color);
+  padding: var(--spacing-base);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 70px;
+}
+
+.judge-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.judge-position {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  font-weight: var(--font-weight-bold);
+}
+
+.judge-header-center {
+  flex: 1;
+  text-align: center;
+}
+
+.judge-header-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--spacing-xs);
+}
+
+.judge-timer {
+  font-size: var(--font-size-timer-judge);
+  font-weight: var(--font-weight-bold);
+  font-family: monospace;
+  color: var(--text-primary);
+  transition: color var(--transition-duration) ease;
+}
+
+.judge-timer.expired {
+  color: var(--timer-expired);
+}
+
+.judge-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-lg);
+  gap: var(--spacing-lg);
+  overflow: hidden;
+  min-height: 0;
+}
+
+.judge-voting-area {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  width: 100%;
+  max-width: 400px;
+}
+
+.judge-controls {
+  flex-shrink: 0;
+  border-top: 2px solid var(--border-color);
+  padding: var(--spacing-lg) var(--spacing-base);
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-base);
+}
+
+.judge-controls h3 {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  margin-bottom: var(--spacing-sm);
+}
+
+.judge-controls-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-sm);
+  width: 100%;
+}
+
+.judge-controls-buttons .btn-primary {
+  width: 100%;
+  min-height: 56px;
+  font-size: var(--font-size-sm);
+}
+
+/* TASK 8: Display Screen Styles */
+
+/* Display Screen */
+.screen.display {
+  padding: var(--spacing-lg);
+  gap: var(--spacing-lg);
+}
+
+.display-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xl);
+  width: 100%;
+  height: 100%;
+}
+
+.display-timer {
+  font-size: var(--font-size-timer-display);
+  font-weight: var(--font-weight-bold);
+  font-family: monospace;
+  color: var(--text-primary);
+  transition: color var(--transition-duration) ease;
+  line-height: 1;
+}
+
+.display-timer.expired {
+  color: var(--timer-expired);
+}
+
+.display-lights {
+  display: flex;
+  justify-content: center;
+  gap: var(--spacing-xl);
+  width: 100%;
+}
+
+.light {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  border: 3px solid var(--border-color);
+  background-color: #F3F4F6;
+  transition: all var(--transition-duration) ease;
+  flex-shrink: 0;
+}
+
+.light.voted-white {
+  background-color: var(--vote-white);
+  border-color: var(--text-primary);
+}
+
+.light.voted-red {
+  background-color: var(--vote-red);
+  border-color: var(--vote-red);
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+}
+
+.light.voted-blue {
+  background-color: var(--vote-blue);
+  border-color: var(--vote-blue);
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+}
+
+.light.voted-yellow {
+  background-color: var(--vote-yellow);
+  border-color: var(--text-primary);
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.3);
+}
+
+.display-status {
+  font-size: var(--font-size-lg);
+  color: var(--text-secondary);
+  text-align: center;
+  font-weight: var(--font-weight-bold);
+}
+
+/* Large screens: bigger lights */
+@media (min-width: 1200px) {
+  .light {
+    width: 150px;
+    height: 150px;
+  }
+
+  .display-timer {
+    font-size: 150px;
+  }
+}
+
+/* Very large screens: even bigger */
+@media (min-width: 1920px) {
+  .light {
+    width: 180px;
+    height: 180px;
+  }
+
+  .display-timer {
+    font-size: 180px;
+  }
+}
     </style>
 </head>
 <body>
