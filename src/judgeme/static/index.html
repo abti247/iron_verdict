@@ -347,6 +347,34 @@
                             params: `width=${dw},height=${dh},left=0,top=${jh}`
                         }
                     };
+                },
+
+                async startDemo() {
+                    try {
+                        // Create session
+                        const response = await fetch('/api/sessions', { method: 'POST' });
+                        if (!response.ok) {
+                            alert('Failed to create session. Please try again.');
+                            return;
+                        }
+                        const data = await response.json();
+                        const sessionCode = data.session_code;
+
+                        // Calculate window positions
+                        const specs = this.getWindowSpecs(sessionCode);
+
+                        // Open all 4 windows
+                        window.open(specs.leftJudge.url, 'leftJudge', specs.leftJudge.params);
+                        window.open(specs.centerJudge.url, 'centerJudge', specs.centerJudge.params);
+                        window.open(specs.rightJudge.url, 'rightJudge', specs.rightJudge.params);
+                        window.open(specs.display.url, 'display', specs.display.params);
+
+                        // Return to landing
+                        this.screen = 'landing';
+                    } catch (error) {
+                        alert('Failed to start demo. Please try again.');
+                        console.error('Demo mode error:', error);
+                    }
                 }
             };
         }
