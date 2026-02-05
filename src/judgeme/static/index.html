@@ -523,6 +523,264 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        /* Judge Interface */
+        .judge-screen {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            background-color: var(--bg-primary);
+        }
+
+        .judge-content {
+            flex: 1;
+            padding: var(--spacing-lg);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .voting-area {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-lg);
+            flex: 1;
+            justify-content: center;
+        }
+
+        .vote-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-lg);
+            margin: var(--spacing-lg) auto;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .vote-btn-white {
+            background-color: var(--vote-white);
+            color: var(--bg-primary);
+            font-weight: bold;
+        }
+
+        .vote-btn-white:hover:not(:disabled) {
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+        }
+
+        .vote-btn-white.selected {
+            border: 3px solid var(--accent-gold);
+            box-shadow: 0 0 30px rgba(212, 175, 55, 0.8);
+        }
+
+        .vote-btn-red {
+            background-color: var(--vote-red);
+            color: var(--text-primary);
+            font-weight: bold;
+        }
+
+        .vote-btn-red:hover:not(:disabled) {
+            box-shadow: 0 0 20px rgba(255, 68, 68, 0.6);
+        }
+
+        .vote-btn-red.selected {
+            border: 3px solid var(--accent-gold);
+            box-shadow: 0 0 30px rgba(212, 175, 55, 0.8);
+        }
+
+        .vote-btn-blue {
+            background-color: var(--vote-blue);
+            color: var(--text-primary);
+            font-weight: bold;
+        }
+
+        .vote-btn-blue:hover:not(:disabled) {
+            box-shadow: 0 0 20px rgba(68, 68, 255, 0.6);
+        }
+
+        .vote-btn-blue.selected {
+            border: 3px solid var(--accent-gold);
+            box-shadow: 0 0 30px rgba(212, 175, 55, 0.8);
+        }
+
+        .vote-btn-yellow {
+            background-color: var(--vote-yellow);
+            color: var(--bg-primary);
+            font-weight: bold;
+        }
+
+        .vote-btn-yellow:hover:not(:disabled) {
+            box-shadow: 0 0 20px rgba(255, 255, 68, 0.6);
+        }
+
+        .vote-btn-yellow.selected {
+            border: 3px solid var(--accent-gold);
+            box-shadow: 0 0 30px rgba(212, 175, 55, 0.8);
+        }
+
+        .lock-in-section {
+            text-align: center;
+            margin: var(--spacing-lg) 0;
+        }
+
+        .head-judge-section {
+            border-top: 2px solid var(--accent-gold);
+            padding-top: var(--spacing-lg);
+            margin-top: var(--spacing-2xl);
+        }
+
+        .head-judge-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-md);
+            margin-top: var(--spacing-lg);
+        }
+
+        @media (max-width: 600px) {
+            .judge-content {
+                padding: var(--spacing-md);
+            }
+
+            .vote-buttons {
+                gap: var(--spacing-md);
+            }
+
+            .head-judge-controls {
+                gap: var(--spacing-sm);
+            }
+        }
+
+        /* Display Screen */
+        .display-screen {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            background-color: var(--bg-primary);
+        }
+
+        .display-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: var(--spacing-2xl);
+            text-align: center;
+        }
+
+        .display-timer {
+            font-size: var(--text-5xl);
+            font-weight: bold;
+            margin-bottom: var(--spacing-2xl);
+            min-height: 140px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .display-timer.expired {
+            color: var(--status-error);
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .judge-lights {
+            display: flex;
+            justify-content: center;
+            gap: var(--spacing-2xl);
+            margin-bottom: var(--spacing-2xl);
+            flex-wrap: wrap;
+        }
+
+        .judge-light {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            border: 4px solid rgba(212, 175, 55, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: bold;
+            color: var(--bg-primary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all var(--transition-normal);
+            background-color: #f5f5f5;
+        }
+
+        .judge-light.light-white {
+            background-color: var(--vote-white);
+            box-shadow: 0 0 40px rgba(255, 255, 255, 0.8);
+        }
+
+        .judge-light.light-red {
+            background-color: var(--vote-red);
+            color: white;
+            box-shadow: 0 0 40px rgba(255, 68, 68, 0.8);
+        }
+
+        .judge-light.light-blue {
+            background-color: var(--vote-blue);
+            color: white;
+            box-shadow: 0 0 40px rgba(68, 68, 255, 0.8);
+        }
+
+        .judge-light.light-yellow {
+            background-color: var(--vote-yellow);
+            box-shadow: 0 0 40px rgba(255, 255, 68, 0.8);
+        }
+
+        .display-status {
+            font-size: var(--text-xl);
+            color: var(--accent-gold);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        @media (max-width: 1200px) {
+            .judge-light {
+                width: 150px;
+                height: 150px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .judge-light {
+                width: 120px;
+                height: 120px;
+                font-size: 12px;
+            }
+
+            .judge-lights {
+                gap: var(--spacing-lg);
+            }
+
+            .display-timer {
+                font-size: 80px;
+                margin-bottom: var(--spacing-lg);
+            }
+        }
+
+        @media (max-width: 600px) {
+            .judge-light {
+                width: 100px;
+                height: 100px;
+                font-size: 10px;
+            }
+
+            .judge-lights {
+                flex-direction: column;
+                gap: var(--spacing-md);
+            }
+
+            .display-timer {
+                font-size: 64px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -599,87 +857,115 @@
         </div>
 
         <!-- Judge screen -->
-        <div x-show="screen === 'judge'">
-            <div style="background: #f5f5f5; padding: 10px; margin-bottom: 20px;">
-                <strong>Session:</strong> <span x-text="sessionCode" @click="returnToRoleSelection()" @keydown.enter="returnToRoleSelection()" tabindex="0" role="button" style="cursor: pointer; text-decoration: underline;"></span> |
-                <strong>Timer:</strong> <span x-text="timerDisplay" :style="timerExpired ? 'color: red;' : ''"></span>
+        <div x-show="screen === 'judge'" class="judge-screen">
+            <div class="header-bar">
+                <div class="header-info">
+                    <div>
+                        <strong>Session:</strong>
+                        <span class="session-code" @click="returnToRoleSelection()" :title="'Click to return'">{{ sessionCode }}</span>
+                    </div>
+                </div>
+                <div class="text-3xl" :style="timerExpired ? 'color: var(--status-error);' : 'color: var(--accent-gold);'">
+                    {{ timerDisplay }}
+                </div>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
-                <button
-                    @click="selectVote('white')"
-                    :disabled="voteLocked"
-                    :style="selectedVote === 'white' ? 'background: white; border: 3px solid black;' : 'background: #f0f0f0;'">
-                    White
-                </button>
-                <button
-                    @click="selectVote('red')"
-                    :disabled="voteLocked"
-                    :style="selectedVote === 'red' ? 'background: #ff4444; color: white; border: 3px solid black;' : 'background: #ffcccc;'">
-                    Red
-                </button>
-                <button
-                    @click="selectVote('blue')"
-                    :disabled="voteLocked"
-                    :style="selectedVote === 'blue' ? 'background: #4444ff; color: white; border: 3px solid black;' : 'background: #ccccff;'">
-                    Blue
-                </button>
-                <button
-                    @click="selectVote('yellow')"
-                    :disabled="voteLocked"
-                    :style="selectedVote === 'yellow' ? 'background: #ffff44; border: 3px solid black;' : 'background: #ffffcc;'">
-                    Yellow
-                </button>
-            </div>
+            <div class="judge-content">
+                <div class="voting-area">
+                    <h2 class="text-center mb-lg">Make Your Call</h2>
 
-            <button
-                x-show="selectedVote && !voteLocked"
-                @click="lockVote()"
-                style="background: #28a745; color: white; width: 100%;">
-                Lock In
-            </button>
+                    <div class="vote-buttons">
+                        <button
+                            @click="selectVote('white')"
+                            :disabled="voteLocked"
+                            :class="['btn-primary', 'vote-btn-white', { selected: selectedVote === 'white' }]">
+                            White
+                        </button>
+                        <button
+                            @click="selectVote('red')"
+                            :disabled="voteLocked"
+                            :class="['btn-primary', 'vote-btn-red', { selected: selectedVote === 'red' }]">
+                            Red
+                        </button>
+                        <button
+                            @click="selectVote('blue')"
+                            :disabled="voteLocked"
+                            :class="['btn-primary', 'vote-btn-blue', { selected: selectedVote === 'blue' }]">
+                            Blue
+                        </button>
+                        <button
+                            @click="selectVote('yellow')"
+                            :disabled="voteLocked"
+                            :class="['btn-primary', 'vote-btn-yellow', { selected: selectedVote === 'yellow' }]">
+                            Yellow
+                        </button>
+                    </div>
 
-            <div x-show="voteLocked" style="margin-top: 20px; padding: 10px; background: #d4edda; border-radius: 4px;">
-                Your vote: <strong x-text="selectedVote"></strong> (locked)
-            </div>
+                    <div class="lock-in-section" x-show="selectedVote && !voteLocked">
+                        <button @click="lockVote()" class="btn-primary btn-full">
+                            Lock In
+                        </button>
+                    </div>
 
-            <!-- Head judge controls -->
-            <div x-show="isHead" style="margin-top: 30px; border-top: 2px solid #ccc; padding-top: 20px;">
-                <h3>Head Judge Controls</h3>
-                <button @click="startTimer()" style="background: #007bff; color: white;">Start Timer</button>
-                <button @click="resetTimer()" style="background: #6c757d; color: white;">Reset Timer</button>
-                <button @click="nextLift()" :disabled="!resultsShown" style="background: #ffc107;">Next Lift</button>
-                <button @click="confirmEndSession()" style="background: #dc3545; color: white;">End Session</button>
+                    <div x-show="voteLocked" class="card card-sm status-success text-center">
+                        <strong>Your Vote:</strong> <span style="text-transform: uppercase;">{{ selectedVote }}</span>
+                        <br>
+                        <span style="font-size: 12px; opacity: 0.8;">(Locked)</span>
+                    </div>
+                </div>
+
+                <!-- Head judge controls -->
+                <div x-show="isHead" class="head-judge-section">
+                    <h3>Head Judge Controls</h3>
+                    <div class="head-judge-controls">
+                        <button @click="startTimer()" class="btn-primary">Start Timer</button>
+                        <button @click="resetTimer()" class="btn-secondary">Reset Timer</button>
+                        <button @click="nextLift()" :disabled="!resultsShown" class="btn-secondary">Next Lift</button>
+                        <button @click="confirmEndSession()" class="btn-danger">End Session</button>
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- Display screen -->
-        <div x-show="screen === 'display'">
-            <div style="padding: 10px; text-align: center; background: #f5f5f5; margin-bottom: 10px;">
-                <strong>Session:</strong> <span x-text="sessionCode" @click="returnToRoleSelection()" @keydown.enter="returnToRoleSelection()" tabindex="0" role="button" style="cursor: pointer; text-decoration: underline;"></span>
+        <div x-show="screen === 'display'" class="display-screen">
+            <div class="header-bar">
+                <div class="header-info">
+                    <div>
+                        <strong>Session:</strong>
+                        <span class="session-code" @click="returnToRoleSelection()" :title="'Click to return'">{{ sessionCode }}</span>
+                    </div>
+                </div>
+                <div class="text-2xl" :style="timerExpired ? 'color: var(--status-error);' : 'color: var(--accent-gold);'">
+                    {{ timerDisplay }}
+                </div>
             </div>
-            <div style="text-align: center; padding: 40px;">
-                <h1 style="font-size: 48px; margin-bottom: 40px;"
-                    :style="timerExpired ? 'color: red;' : ''"
-                    x-text="timerDisplay">
-                    60
-                </h1>
 
-                <div style="display: flex; justify-content: center; gap: 40px; margin-bottom: 40px;">
+            <div class="display-content">
+                <div class="display-timer" :class="{ expired: timerExpired }">
+                    {{ timerDisplay }}
+                </div>
+
+                <div class="judge-lights">
                     <!-- Left Judge -->
-                    <div :style="`width: 120px; height: 120px; border-radius: 50%; border: 3px solid #ccc; background: ${displayVotes.left ? getVoteColor(displayVotes.left) : '#f0f0f0'};`">
+                    <div class="judge-light" :class="displayVotes.left ? `light-${displayVotes.left}` : ''">
+                        <span>Left</span>
                     </div>
 
                     <!-- Center Judge -->
-                    <div :style="`width: 120px; height: 120px; border-radius: 50%; border: 3px solid #ccc; background: ${displayVotes.center ? getVoteColor(displayVotes.center) : '#f0f0f0'};`">
+                    <div class="judge-light" :class="displayVotes.center ? `light-${displayVotes.center}` : ''">
+                        <span>Center</span>
                     </div>
 
                     <!-- Right Judge -->
-                    <div :style="`width: 120px; height: 120px; border-radius: 50%; border: 3px solid #ccc; background: ${displayVotes.right ? getVoteColor(displayVotes.right) : '#f0f0f0'};`">
+                    <div class="judge-light" :class="displayVotes.right ? `light-${displayVotes.right}` : ''">
+                        <span>Right</span>
                     </div>
                 </div>
 
-                <p style="font-size: 18px; color: #666;" x-text="displayStatus">Waiting for judges...</p>
+                <div class="display-status">
+                    {{ displayStatus }}
+                </div>
             </div>
         </div>
     </div>
