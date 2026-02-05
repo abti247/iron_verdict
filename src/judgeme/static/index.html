@@ -364,11 +364,12 @@
                         // Calculate window positions
                         const specs = this.getWindowSpecs(sessionCode);
 
-                        // Open all 4 windows
-                        window.open(specs.leftJudge.url, 'leftJudge', specs.leftJudge.params);
-                        window.open(specs.centerJudge.url, 'centerJudge', specs.centerJudge.params);
-                        window.open(specs.rightJudge.url, 'rightJudge', specs.rightJudge.params);
-                        window.open(specs.display.url, 'display', specs.display.params);
+                        // Create unique window names using timestamp to ensure new windows are created
+                        const timestamp = Date.now();
+                        window.open(specs.leftJudge.url, `leftJudge_${timestamp}`, specs.leftJudge.params);
+                        window.open(specs.centerJudge.url, `centerJudge_${timestamp}`, specs.centerJudge.params);
+                        window.open(specs.rightJudge.url, `rightJudge_${timestamp}`, specs.rightJudge.params);
+                        window.open(specs.display.url, `display_${timestamp}`, specs.display.params);
 
                         // Return to landing
                         this.screen = 'landing';
