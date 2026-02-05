@@ -530,23 +530,72 @@
         <h1>JudgeMe</h1>
 
         <!-- Landing screen -->
-        <div x-show="screen === 'landing'">
-            <h2>Welcome</h2>
-            <button @click="createSession()">Create New Session</button>
-            <button @click="startDemo()" style="background: #17a2b8; color: white;">Start Demo</button>
-            <p>or</p>
-            <input type="text" x-model="joinCode" placeholder="Enter session code">
-            <button @click="screen = 'role-select'">Join Session</button>
+        <div x-show="screen === 'landing'" class="container-full">
+            <div class="hero">
+                <div class="hero-content">
+                    <h1>JUDGE<span class="gold">ME</span></h1>
+                    <p class="hero-subtitle">Professional Powerlifting Competition Judging</p>
+
+                    <ul class="hero-value-prop">
+                        <li>Real-time judging for sanctioned competitions</li>
+                        <li>Three independent judges, instant results</li>
+                        <li>No accounts. No setup. Just a 6-character code.</li>
+                    </ul>
+
+                    <div class="hero-cta">
+                        <button class="btn-primary btn-full" @click="createSession()">
+                            Create Session
+                        </button>
+                        <button class="btn-secondary btn-full" @click="screen = 'role-select'">
+                            Join Session
+                        </button>
+                    </div>
+
+                    <div style="margin-top: var(--spacing-xl); border-top: 1px solid rgba(212, 175, 55, 0.2); padding-top: var(--spacing-lg);">
+                        <p class="text-secondary" style="font-size: 14px; margin-bottom: var(--spacing-md);">Enter session code to join an existing competition:</p>
+                        <input type="text" x-model="joinCode" placeholder="Enter 6-character session code" style="margin-bottom: var(--spacing-md);">
+                        <button class="btn-secondary btn-full" @click="screen = 'role-select'" :disabled="joinCode.length === 0">
+                            Join with Code
+                        </button>
+                    </div>
+
+                    <button class="btn-secondary btn-full mt-xl" @click="startDemo()" style="background: rgba(23, 162, 184, 0.2); border-color: #17a2b8;">
+                        Try Demo Mode
+                    </button>
+                </div>
+            </div>
+
+            <div style="background-color: var(--bg-surface); padding: var(--spacing-xl); text-align: center; color: var(--text-secondary); font-size: 14px;">
+                <p><strong style="color: var(--accent-gold);">Built for IPF-standard competitions</strong></p>
+                <p style="margin-top: var(--spacing-sm);">No database. Sessions expire after 4 hours of inactivity.</p>
+            </div>
         </div>
 
         <!-- Role selection screen -->
-        <div x-show="screen === 'role-select'">
-            <h2>Select Your Role</h2>
-            <p>Session: <span x-text="sessionCode"></span></p>
-            <button @click="joinSession('left_judge')">Left Judge</button>
-            <button @click="joinSession('center_judge')">Center Judge (Head)</button>
-            <button @click="joinSession('right_judge')">Right Judge</button>
-            <button @click="joinSession('display')">Display</button>
+        <div x-show="screen === 'role-select'" class="container">
+            <div class="card card-lg mt-xl">
+                <h2 class="text-center mb-lg">Select Your Role</h2>
+                <p class="text-center text-secondary mb-xl">Session: <span class="text-gold text-xl" style="cursor: pointer;" @click="screen = 'landing'">{{ sessionCode || joinCode }}</span></p>
+
+                <div class="btn-grid">
+                    <button class="btn-primary" @click="joinSession('left_judge')">
+                        Left Judge
+                    </button>
+                    <button class="btn-primary" @click="joinSession('center_judge')">
+                        Center Judge
+                    </button>
+                    <button class="btn-primary" @click="joinSession('right_judge')">
+                        Right Judge
+                    </button>
+                    <button class="btn-secondary" @click="joinSession('display')">
+                        Display
+                    </button>
+                </div>
+
+                <button class="btn-secondary btn-full mt-lg" @click="screen = 'landing'">
+                    Back to Landing
+                </button>
+            </div>
         </div>
 
         <!-- Judge screen -->
