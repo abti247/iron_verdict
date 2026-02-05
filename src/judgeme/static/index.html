@@ -781,6 +781,118 @@
                 font-size: 64px;
             }
         }
+
+        /* Mobile Optimizations */
+        @media (max-width: 768px) {
+            .container {
+                padding: var(--spacing-sm);
+            }
+
+            .header-bar {
+                flex-wrap: wrap;
+                padding: var(--spacing-sm);
+            }
+
+            .header-info {
+                width: 100%;
+                gap: var(--spacing-md);
+            }
+
+            button {
+                font-size: 14px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 28px;
+            }
+
+            h2 {
+                font-size: 20px;
+            }
+
+            .hero {
+                min-height: 250px;
+                padding: var(--spacing-lg) var(--spacing-sm);
+            }
+
+            .hero h1 {
+                font-size: 28px;
+            }
+
+            button {
+                min-height: 40px;
+                padding: var(--spacing-sm) var(--spacing-md);
+                font-size: 14px;
+            }
+
+            .text-3xl {
+                font-size: 32px;
+            }
+
+            .text-2xl {
+                font-size: 24px;
+            }
+        }
+
+        /* Landscape Mode */
+        @media (max-height: 600px) and (orientation: landscape) {
+            .hero {
+                min-height: auto;
+                padding: var(--spacing-lg) var(--spacing-md);
+            }
+
+            .judge-content {
+                padding: var(--spacing-md);
+            }
+
+            .display-content {
+                padding: var(--spacing-lg);
+            }
+        }
+
+        /* Touch-friendly adjustments */
+        @media (hover: none) {
+            button:active:not(:disabled) {
+                opacity: 0.8;
+            }
+        }
+
+        /* Dark mode detection */
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: var(--bg-primary);
+                color: var(--text-primary);
+            }
+        }
+
+        /* Reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* Accessibility */
+        button:focus,
+        input:focus {
+            outline: 2px solid var(--accent-gold);
+            outline-offset: 2px;
+        }
+
+        /* High contrast mode */
+        @media (prefers-contrast: more) {
+            .btn-primary {
+                border: 2px solid var(--text-primary);
+            }
+
+            .btn-secondary {
+                border: 2px solid var(--text-primary);
+            }
+        }
     </style>
 </head>
 <body>
