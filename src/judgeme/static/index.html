@@ -23,6 +23,7 @@
         <div x-show="screen === 'landing'">
             <h2>Welcome</h2>
             <button @click="createSession()">Create New Session</button>
+            <button @click="startDemo()" style="background: #17a2b8; color: white;">Start Demo</button>
             <p>or</p>
             <input type="text" x-model="joinCode" placeholder="Enter session code">
             <button @click="screen = 'role-select'">Join Session</button>
