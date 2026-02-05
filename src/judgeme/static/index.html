@@ -6,123 +6,862 @@
     <title>JudgeMe - Powerlifting Judging</title>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: system-ui, -apple-system, sans-serif; padding: 20px; }
-        .container { max-width: 600px; margin: 0 auto; }
-        button { padding: 12px 24px; font-size: 16px; cursor: pointer; border: none; border-radius: 4px; }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
-        input { padding: 12px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; width: 100%; }
-        .hidden { display: none; }
+:root {
+  /* Colors - Neutrals */
+  --bg-primary: #F9FAFB;
+  --bg-secondary: #FFFFFF;
+  --text-primary: #1F2937;
+  --text-secondary: #6B7280;
+  --border-color: #E5E7EB;
+
+  /* Colors - Vote Colors (IPF Standard) */
+  --vote-white: #FFFFFF;
+  --vote-red: #EF4444;
+  --vote-blue: #3B82F6;
+  --vote-yellow: #FBBF24;
+
+  /* Colors - Functional */
+  --success-color: #10B981;
+  --disabled-color: #9CA3AF;
+  --timer-expired: #EF4444;
+
+  /* Typography */
+  --font-family: system-ui, -apple-system, sans-serif;
+  --font-size-base: 16px;
+  --font-size-sm: 14px;
+  --font-size-lg: 20px;
+  --font-size-xl: 32px;
+  --font-size-2xl: 48px;
+  --font-size-timer-display: 120px;
+  --font-size-timer-judge: 32px;
+
+  --font-weight-normal: 400;
+  --font-weight-bold: 700;
+
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-base: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+
+  /* Layout */
+  --touch-target-min: 48px;
+  --border-radius: 4px;
+  --transition-duration: 150ms;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden; /* Prevent scrolling */
+}
+
+body {
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Main Container & Screen Layout */
+.app-container {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  overflow: hidden;
+}
+
+.screen {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-base);
+  overflow: hidden;
+}
+
+/* Landing & Role Selection Screens - Center Content */
+.screen.centered {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+/* Judge Screen - Vertical Stack */
+.screen.judge {
+  justify-content: flex-start;
+}
+
+/* Display Screen - Center Content */
+.screen.display {
+  align-items: center;
+  justify-content: center;
+}
+
+/* Ensure no scrollbars appear */
+::-webkit-scrollbar {
+  display: none;
+}
+html, body {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Demo Mode: 4 screens on 1 display */
+/* Default: 3 judges on top (1/3 width each), display full-width below */
+@media (min-width: 1200px) {
+  /* When judge windows are shown side-by-side in demo mode */
+  .screen.judge:nth-child(1),
+  .screen.judge:nth-child(2),
+  .screen.judge:nth-child(3) {
+    width: calc(100% / 3);
+    height: 50vh;
+    padding: 8px;
+  }
+
+  .screen.display {
+    width: 100%;
+    height: 50vh;
+    padding: 8px;
+  }
+}
+
+/* Button Base Styles */
+button {
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  padding: var(--spacing-sm) var(--spacing-base);
+  min-height: var(--touch-target-min);
+  border: 2px solid transparent;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: all var(--transition-duration) ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Primary Action Button */
+.btn-primary {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--border-color);
+  border-color: var(--text-primary);
+}
+
+.btn-primary:active:not(:disabled) {
+  background-color: var(--text-primary);
+  color: var(--bg-secondary);
+}
+
+/* Secondary/Muted Button */
+.btn-secondary {
+  background-color: transparent;
+  color: var(--text-secondary);
+  border-color: var(--border-color);
+  font-size: var(--font-size-sm);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  color: var(--text-primary);
+  border-color: var(--text-primary);
+}
+
+/* Disabled State */
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Voting Buttons - Large, Color-Coded */
+.voting-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-base);
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.btn-vote {
+  min-height: 80px;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  border: 3px solid transparent;
+  border-radius: var(--border-radius);
+  transition: all var(--transition-duration) ease;
+}
+
+.btn-vote-white {
+  background-color: var(--vote-white);
+  color: var(--text-primary);
+  border: 3px solid var(--text-primary);
+}
+
+.btn-vote-white:not(:disabled):hover {
+  opacity: 0.8;
+  box-shadow: inset 0 0 0 3px var(--text-primary);
+}
+
+.btn-vote-white.selected {
+  border-color: var(--text-primary);
+  box-shadow: 0 0 0 4px var(--text-primary);
+}
+
+.btn-vote-red {
+  background-color: var(--vote-red);
+  color: white;
+  border: 3px solid var(--vote-red);
+}
+
+.btn-vote-red:not(:disabled):hover {
+  opacity: 0.9;
+  box-shadow: inset 0 0 0 3px rgba(0, 0, 0, 0.2);
+}
+
+.btn-vote-red.selected {
+  box-shadow: 0 0 0 4px var(--vote-red);
+}
+
+.btn-vote-blue {
+  background-color: var(--vote-blue);
+  color: white;
+  border: 3px solid var(--vote-blue);
+}
+
+.btn-vote-blue:not(:disabled):hover {
+  opacity: 0.9;
+  box-shadow: inset 0 0 0 3px rgba(0, 0, 0, 0.2);
+}
+
+.btn-vote-blue.selected {
+  box-shadow: 0 0 0 4px var(--vote-blue);
+}
+
+.btn-vote-yellow {
+  background-color: var(--vote-yellow);
+  color: var(--text-primary);
+  border: 3px solid var(--text-primary);
+}
+
+.btn-vote-yellow:not(:disabled):hover {
+  opacity: 0.9;
+  box-shadow: inset 0 0 0 3px rgba(0, 0, 0, 0.2);
+}
+
+.btn-vote-yellow.selected {
+  box-shadow: 0 0 0 4px var(--text-primary);
+}
+
+.btn-vote:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-full-width {
+  width: 100%;
+  padding: var(--spacing-base) var(--spacing-lg);
+  min-height: 56px;
+  font-size: var(--font-size-lg);
+}
+
+.btn-full-width.lock-in {
+  background-color: var(--success-color);
+  color: white;
+  font-weight: var(--font-weight-bold);
+}
+
+.btn-full-width.lock-in:hover:not(:disabled) {
+  background-color: #059669;
+}
+
+/* TASK 4: Input & Card Component Styles */
+
+/* Input Fields */
+input[type="text"] {
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  padding: var(--spacing-sm) var(--spacing-base);
+  min-height: var(--touch-target-min);
+  border: 2px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  transition: border-color var(--transition-duration) ease;
+}
+
+input[type="text"]::placeholder {
+  color: var(--text-secondary);
+}
+
+input[type="text"]:focus {
+  outline: none;
+  border-color: var(--text-primary);
+  box-shadow: 0 0 0 3px rgba(31, 41, 55, 0.1);
+}
+
+/* Cards & Panels */
+.card {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-base);
+}
+
+.card.status-locked {
+  background-color: #D1FAE5;
+  border-color: var(--success-color);
+  color: var(--text-primary);
+  text-align: center;
+  padding: var(--spacing-lg);
+  font-weight: var(--font-weight-bold);
+}
+
+/* Top Bar / Header Card */
+.header-bar {
+  background-color: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  padding: var(--spacing-base);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 60px;
+  width: 100%;
+}
+
+.header-bar-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.header-bar-item.center {
+  align-items: center;
+  flex: 1;
+}
+
+.header-bar-item.right {
+  align-items: flex-end;
+}
+
+.session-code {
+  font-family: monospace;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  text-decoration: underline;
+  transition: color var(--transition-duration) ease;
+}
+
+.session-code:hover {
+  color: var(--text-primary);
+}
+
+/* TASK 5: Landing Page Styles */
+
+/* Landing Page */
+.screen.landing {
+  padding: var(--spacing-lg);
+}
+
+.landing-content {
+  max-width: 500px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  align-items: center;
+  text-align: center;
+}
+
+.landing-logo {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-base);
+}
+
+.landing-tagline {
+  font-size: var(--font-size-lg);
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-lg);
+}
+
+.landing-actions {
+  display: flex;
+  gap: var(--spacing-base);
+  width: 100%;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.landing-actions .btn-primary {
+  flex: 1;
+  min-width: 150px;
+}
+
+.landing-join {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.landing-join input {
+  width: 100%;
+}
+
+.landing-demo {
+  margin-top: var(--spacing-base);
+  width: 100%;
+}
+
+/* Mobile: Stack buttons vertically */
+@media (max-width: 600px) {
+  .landing-actions {
+    flex-direction: column;
+  }
+
+  .landing-actions .btn-primary {
+    width: 100%;
+  }
+}
+
+/* TASK 6: Role Selection Page Styles */
+
+/* Role Selection Page */
+.screen.role-select {
+  padding: var(--spacing-lg);
+  gap: var(--spacing-lg);
+}
+
+.role-select-content {
+  max-width: 600px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  align-items: center;
+}
+
+.role-select-header {
+  text-align: center;
+}
+
+.role-select-header h2 {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  margin-bottom: var(--spacing-base);
+}
+
+.session-display {
+  font-size: var(--font-size-base);
+  color: var(--text-secondary);
+}
+
+.role-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: var(--spacing-base);
+  width: 100%;
+  margin-bottom: var(--spacing-lg);
+}
+
+.role-buttons .btn-primary {
+  width: 100%;
+  min-height: 80px;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+}
+
+.role-buttons-display {
+  display: flex;
+  width: 100%;
+  gap: var(--spacing-base);
+}
+
+.role-buttons-display .btn-primary {
+  flex: 1;
+  min-height: 80px;
+  font-size: var(--font-size-lg);
+}
+
+/* Mobile: Stack judge buttons */
+@media (max-width: 800px) {
+  .role-buttons {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* TASK 7: Judge Screen Styles */
+
+/* Judge Screen */
+.screen.judge {
+  padding: 0;
+  gap: 0;
+}
+
+.judge-header {
+  flex-shrink: 0;
+  background-color: var(--bg-secondary);
+  border-bottom: 2px solid var(--border-color);
+  padding: var(--spacing-base);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 70px;
+}
+
+.judge-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.judge-position {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  font-weight: var(--font-weight-bold);
+}
+
+.judge-header-center {
+  flex: 1;
+  text-align: center;
+}
+
+.judge-header-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--spacing-xs);
+}
+
+.judge-timer {
+  font-size: var(--font-size-timer-judge);
+  font-weight: var(--font-weight-bold);
+  font-family: monospace;
+  color: var(--text-primary);
+  transition: color var(--transition-duration) ease;
+}
+
+.judge-timer.expired {
+  color: var(--timer-expired);
+}
+
+.judge-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-lg);
+  gap: var(--spacing-lg);
+  overflow: hidden;
+  min-height: 0;
+}
+
+.judge-voting-area {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  width: 100%;
+  max-width: 400px;
+}
+
+.judge-controls {
+  flex-shrink: 0;
+  border-top: 2px solid var(--border-color);
+  padding: var(--spacing-lg) var(--spacing-base);
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-base);
+}
+
+.judge-controls h3 {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  margin-bottom: var(--spacing-sm);
+}
+
+.judge-controls-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-sm);
+  width: 100%;
+}
+
+.judge-controls-buttons .btn-primary {
+  width: 100%;
+  min-height: 56px;
+  font-size: var(--font-size-sm);
+}
+
+/* TASK 8: Display Screen Styles */
+
+/* Display Screen */
+.screen.display {
+  padding: var(--spacing-lg);
+  gap: var(--spacing-lg);
+}
+
+.display-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xl);
+  width: 100%;
+  height: 100%;
+}
+
+.display-timer {
+  font-size: var(--font-size-timer-display);
+  font-weight: var(--font-weight-bold);
+  font-family: monospace;
+  color: var(--text-primary);
+  transition: color var(--transition-duration) ease;
+  line-height: 1;
+}
+
+.display-timer.expired {
+  color: var(--timer-expired);
+}
+
+.display-lights {
+  display: flex;
+  justify-content: center;
+  gap: var(--spacing-xl);
+  width: 100%;
+}
+
+.light {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  border: 3px solid var(--border-color);
+  background-color: #F3F4F6;
+  transition: all var(--transition-duration) ease;
+  flex-shrink: 0;
+}
+
+.light.voted-white {
+  background-color: var(--vote-white);
+  border-color: var(--text-primary);
+}
+
+.light.voted-red {
+  background-color: var(--vote-red);
+  border-color: var(--vote-red);
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+}
+
+.light.voted-blue {
+  background-color: var(--vote-blue);
+  border-color: var(--vote-blue);
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+}
+
+.light.voted-yellow {
+  background-color: var(--vote-yellow);
+  border-color: var(--text-primary);
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.3);
+}
+
+.display-status {
+  font-size: var(--font-size-lg);
+  color: var(--text-secondary);
+  text-align: center;
+  font-weight: var(--font-weight-bold);
+}
+
+/* Large screens: bigger lights */
+@media (min-width: 1200px) {
+  .light {
+    width: 150px;
+    height: 150px;
+  }
+
+  .display-timer {
+    font-size: 150px;
+  }
+}
+
+/* Very large screens: even bigger */
+@media (min-width: 1920px) {
+  .light {
+    width: 180px;
+    height: 180px;
+  }
+
+  .display-timer {
+    font-size: 180px;
+  }
+}
     </style>
 </head>
 <body>
-    <div class="container" x-data="judgemeApp()" x-init="init()">
-        <h1>JudgeMe</h1>
+    <div class="app-container" x-data="judgemeApp()" x-init="init()">
+    <!-- Landing screen - Task 9 -->
+    <div class="screen centered landing" x-show="screen === 'landing'">
+      <div class="landing-content">
+        <div class="landing-logo">JudgeMe</div>
+        <div class="landing-tagline">Real-time powerlifting competition judging</div>
 
-        <!-- Landing screen -->
-        <div x-show="screen === 'landing'">
-            <h2>Welcome</h2>
-            <button @click="createSession()">Create New Session</button>
-            <button @click="startDemo()" style="background: #17a2b8; color: white;">Start Demo</button>
-            <p>or</p>
-            <input type="text" x-model="joinCode" placeholder="Enter session code">
-            <button @click="screen = 'role-select'">Join Session</button>
+        <div class="landing-actions">
+          <button class="btn-primary" @click="createSession()">Create New Session</button>
+          <button class="btn-primary" @click="screen = 'role-select'">Join Session</button>
         </div>
 
-        <!-- Role selection screen -->
-        <div x-show="screen === 'role-select'">
-            <h2>Select Your Role</h2>
-            <p>Session: <span x-text="sessionCode"></span></p>
-            <button @click="joinSession('left_judge')">Left Judge</button>
-            <button @click="joinSession('center_judge')">Center Judge (Head)</button>
-            <button @click="joinSession('right_judge')">Right Judge</button>
-            <button @click="joinSession('display')">Display</button>
+        <div class="landing-join">
+          <input type="text" x-model="joinCode" placeholder="Enter session code">
+          <button class="btn-primary" @click="joinSessionFromCode()">Join</button>
         </div>
 
-        <!-- Judge screen -->
-        <div x-show="screen === 'judge'">
-            <div style="background: #f5f5f5; padding: 10px; margin-bottom: 20px;">
-                <strong>Session:</strong> <span x-text="sessionCode" @click="returnToRoleSelection()" @keydown.enter="returnToRoleSelection()" tabindex="0" role="button" style="cursor: pointer; text-decoration: underline;"></span> |
-                <strong>Timer:</strong> <span x-text="timerDisplay" :style="timerExpired ? 'color: red;' : ''"></span>
-            </div>
+        <button class="btn-secondary landing-demo" @click="startDemo()">Start Demo</button>
+      </div>
+    </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
-                <button
-                    @click="selectVote('white')"
-                    :disabled="voteLocked"
-                    :style="selectedVote === 'white' ? 'background: white; border: 3px solid black;' : 'background: #f0f0f0;'">
-                    White
-                </button>
-                <button
-                    @click="selectVote('red')"
-                    :disabled="voteLocked"
-                    :style="selectedVote === 'red' ? 'background: #ff4444; color: white; border: 3px solid black;' : 'background: #ffcccc;'">
-                    Red
-                </button>
-                <button
-                    @click="selectVote('blue')"
-                    :disabled="voteLocked"
-                    :style="selectedVote === 'blue' ? 'background: #4444ff; color: white; border: 3px solid black;' : 'background: #ccccff;'">
-                    Blue
-                </button>
-                <button
-                    @click="selectVote('yellow')"
-                    :disabled="voteLocked"
-                    :style="selectedVote === 'yellow' ? 'background: #ffff44; border: 3px solid black;' : 'background: #ffffcc;'">
-                    Yellow
-                </button>
-            </div>
+    <!-- Role selection screen - Task 10 -->
+    <div class="screen centered role-select" x-show="screen === 'role-select'">
+      <div class="role-select-content">
+        <div class="role-select-header">
+          <h2>Select Your Role</h2>
+          <div class="session-display">
+            Session: <span class="session-code" @click="returnToRoleSelection()" tabindex="0" role="button" x-text="sessionCode"></span>
+          </div>
+        </div>
 
+        <div class="role-buttons">
+          <button class="btn-primary" @click="joinSession('left_judge')">Left Judge</button>
+          <button class="btn-primary" @click="joinSession('center_judge')">Center Judge (Head)</button>
+          <button class="btn-primary" @click="joinSession('right_judge')">Right Judge</button>
+        </div>
+
+        <div class="role-buttons-display">
+          <button class="btn-primary" @click="joinSession('display')">Display</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Judge screen - Task 11 -->
+    <div class="screen judge" x-show="screen === 'judge'">
+      <!-- Header Bar -->
+      <div class="judge-header">
+        <div class="judge-header-left">
+          <span class="judge-position" x-text="getJudgePositionLabel()"></span>
+        </div>
+        <div class="judge-header-center">
+          <span class="session-code" @click="returnToRoleSelection()" tabindex="0" role="button" x-text="sessionCode"></span>
+        </div>
+        <div class="judge-header-right">
+          <span class="judge-timer" :class="{ expired: timerExpired }" x-text="timerDisplay"></span>
+        </div>
+      </div>
+
+      <!-- Voting Content Area -->
+      <div class="judge-content">
+        <div class="judge-voting-area">
+          <!-- Voting Buttons Grid -->
+          <div class="voting-buttons">
             <button
-                x-show="selectedVote && !voteLocked"
-                @click="lockVote()"
-                style="background: #28a745; color: white; width: 100%;">
-                Lock In
+              class="btn-vote btn-vote-white"
+              :class="{ selected: selectedVote === 'white' }"
+              @click="selectVote('white')"
+              :disabled="voteLocked">
+              White
             </button>
+            <button
+              class="btn-vote btn-vote-red"
+              :class="{ selected: selectedVote === 'red' }"
+              @click="selectVote('red')"
+              :disabled="voteLocked">
+              Red
+            </button>
+            <button
+              class="btn-vote btn-vote-blue"
+              :class="{ selected: selectedVote === 'blue' }"
+              @click="selectVote('blue')"
+              :disabled="voteLocked">
+              Blue
+            </button>
+            <button
+              class="btn-vote btn-vote-yellow"
+              :class="{ selected: selectedVote === 'yellow' }"
+              @click="selectVote('yellow')"
+              :disabled="voteLocked">
+              Yellow
+            </button>
+          </div>
 
-            <div x-show="voteLocked" style="margin-top: 20px; padding: 10px; background: #d4edda; border-radius: 4px;">
-                Your vote: <strong x-text="selectedVote"></strong> (locked)
-            </div>
+          <!-- Lock In Button -->
+          <button
+            class="btn-full-width lock-in"
+            x-show="selectedVote && !voteLocked"
+            @click="lockVote()">
+            Lock In
+          </button>
 
-            <!-- Head judge controls -->
-            <div x-show="isHead" style="margin-top: 30px; border-top: 2px solid #ccc; padding-top: 20px;">
-                <h3>Head Judge Controls</h3>
-                <button @click="startTimer()" style="background: #007bff; color: white;">Start Timer</button>
-                <button @click="resetTimer()" style="background: #6c757d; color: white;">Reset Timer</button>
-                <button @click="nextLift()" :disabled="!resultsShown" style="background: #ffc107;">Next Lift</button>
-                <button @click="confirmEndSession()" style="background: #dc3545; color: white;">End Session</button>
-            </div>
+          <!-- Vote Status -->
+          <div class="card status-locked" x-show="voteLocked">
+            Your vote: <strong x-text="selectedVote"></strong> (locked)
+          </div>
+        </div>
+      </div>
+
+      <!-- Head Judge Controls -->
+      <div class="judge-controls" x-show="isHead">
+        <h3>Head Judge Controls</h3>
+        <div class="judge-controls-buttons">
+          <button class="btn-primary" @click="startTimer()">Start Timer</button>
+          <button class="btn-primary" @click="resetTimer()">Reset Timer</button>
+          <button class="btn-primary" @click="nextLift()" :disabled="!resultsShown">Next Lift</button>
+          <button class="btn-primary" @click="confirmEndSession()">End Session</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Display screen - Task 12 -->
+    <div class="screen display" x-show="screen === 'display'">
+      <!-- Minimal Header -->
+      <div class="header-bar" style="position: absolute; top: 0; left: 0; right: 0; width: 100%; padding: var(--spacing-base); border: none; background-color: transparent;">
+        <span class="session-code" @click="returnToRoleSelection()" tabindex="0" role="button" x-text="sessionCode"></span>
+      </div>
+
+      <!-- Display Content -->
+      <div class="display-content">
+        <!-- Massive Timer -->
+        <div class="display-timer" :class="{ expired: timerExpired }" x-text="timerDisplay"></div>
+
+        <!-- Judge Lights -->
+        <div class="display-lights">
+          <div class="light" :class="getDisplayLightClass('left')"></div>
+          <div class="light" :class="getDisplayLightClass('center')"></div>
+          <div class="light" :class="getDisplayLightClass('right')"></div>
         </div>
 
-        <!-- Display screen -->
-        <div x-show="screen === 'display'">
-            <div style="padding: 10px; text-align: center; background: #f5f5f5; margin-bottom: 10px;">
-                <strong>Session:</strong> <span x-text="sessionCode" @click="returnToRoleSelection()" @keydown.enter="returnToRoleSelection()" tabindex="0" role="button" style="cursor: pointer; text-decoration: underline;"></span>
-            </div>
-            <div style="text-align: center; padding: 40px;">
-                <h1 style="font-size: 48px; margin-bottom: 40px;"
-                    :style="timerExpired ? 'color: red;' : ''"
-                    x-text="timerDisplay">
-                    60
-                </h1>
-
-                <div style="display: flex; justify-content: center; gap: 40px; margin-bottom: 40px;">
-                    <!-- Left Judge -->
-                    <div :style="`width: 120px; height: 120px; border-radius: 50%; border: 3px solid #ccc; background: ${displayVotes.left ? getVoteColor(displayVotes.left) : '#f0f0f0'};`">
-                    </div>
-
-                    <!-- Center Judge -->
-                    <div :style="`width: 120px; height: 120px; border-radius: 50%; border: 3px solid #ccc; background: ${displayVotes.center ? getVoteColor(displayVotes.center) : '#f0f0f0'};`">
-                    </div>
-
-                    <!-- Right Judge -->
-                    <div :style="`width: 120px; height: 120px; border-radius: 50%; border: 3px solid #ccc; background: ${displayVotes.right ? getVoteColor(displayVotes.right) : '#f0f0f0'};`">
-                    </div>
-                </div>
-
-                <p style="font-size: 18px; color: #666;" x-text="displayStatus">Waiting for judges...</p>
-            </div>
-        </div>
+        <!-- Status -->
+        <div class="display-status" x-text="displayStatus"></div>
+      </div>
+    </div>
     </div>
 
     <script>
@@ -395,6 +1134,24 @@
                         // Normal landing screen
                         this.screen = 'landing';
                     }
+                },
+
+                joinSessionFromCode() {
+                    this.sessionCode = this.joinCode;
+                    this.screen = 'role-select';
+                },
+
+                getJudgePositionLabel() {
+                    if (this.role === 'left_judge') return 'Left Judge';
+                    if (this.role === 'center_judge') return 'Center Judge (Head)';
+                    if (this.role === 'right_judge') return 'Right Judge';
+                    return '';
+                },
+
+                getDisplayLightClass(position) {
+                    const vote = this.displayVotes[position];
+                    if (!vote) return '';
+                    return `voted-${vote}`;
                 }
             };
         }
