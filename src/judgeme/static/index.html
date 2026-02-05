@@ -691,7 +691,7 @@
             justify-content: center;
             gap: var(--spacing-2xl);
             margin-bottom: var(--spacing-2xl);
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
         }
 
         .judge-light {
@@ -974,12 +974,10 @@
                 <div class="header-info">
                     <div>
                         <strong>Session:</strong>
-                        <span class="session-code" @click="returnToRoleSelection()" :title="'Click to return'">{{ sessionCode }}</span>
+                        <span class="session-code" @click="returnToRoleSelection()" :title="'Click to return'" x-text="sessionCode"></span>
                     </div>
                 </div>
-                <div class="text-3xl" :style="timerExpired ? 'color: var(--status-error);' : 'color: var(--accent-gold);'">
-                    {{ timerDisplay }}
-                </div>
+                <div class="text-3xl" :style="timerExpired ? 'color: var(--status-error);' : 'color: var(--accent-gold);'" x-text="timerDisplay"></div>
             </div>
 
             <div class="judge-content">
@@ -1020,7 +1018,7 @@
                     </div>
 
                     <div x-show="voteLocked" class="card card-sm status-success text-center">
-                        <strong>Your Vote:</strong> <span style="text-transform: uppercase;">{{ selectedVote }}</span>
+                        <strong>Your Vote:</strong> <span style="text-transform: uppercase;" x-text="selectedVote"></span>
                         <br>
                         <span style="font-size: 12px; opacity: 0.8;">(Locked)</span>
                     </div>
@@ -1032,7 +1030,7 @@
                     <div class="head-judge-controls">
                         <button @click="startTimer()" class="btn-primary">Start Timer</button>
                         <button @click="resetTimer()" class="btn-secondary">Reset Timer</button>
-                        <button @click="nextLift()" :disabled="!resultsShown" class="btn-secondary">Next Lift</button>
+                        <button @click="nextLift()" class="btn-secondary">Next Lift</button>
                         <button @click="confirmEndSession()" class="btn-danger">End Session</button>
                     </div>
                 </div>
@@ -1045,18 +1043,14 @@
                 <div class="header-info">
                     <div>
                         <strong>Session:</strong>
-                        <span class="session-code" @click="returnToRoleSelection()" :title="'Click to return'">{{ sessionCode }}</span>
+                        <span class="session-code" @click="returnToRoleSelection()" :title="'Click to return'" x-text="sessionCode"></span>
                     </div>
                 </div>
-                <div class="text-2xl" :style="timerExpired ? 'color: var(--status-error);' : 'color: var(--accent-gold);'">
-                    {{ timerDisplay }}
-                </div>
+                <div class="text-2xl" :style="timerExpired ? 'color: var(--status-error);' : 'color: var(--accent-gold);'" x-text="timerDisplay"></div>
             </div>
 
             <div class="display-content">
-                <div class="display-timer" :class="{ expired: timerExpired }">
-                    {{ timerDisplay }}
-                </div>
+                <div class="display-timer" :class="{ expired: timerExpired }" x-text="timerDisplay"></div>
 
                 <div class="judge-lights">
                     <!-- Left Judge -->
@@ -1075,9 +1069,7 @@
                     </div>
                 </div>
 
-                <div class="display-status">
-                    {{ displayStatus }}
-                </div>
+                <div class="display-status" x-text="displayStatus"></div>
             </div>
         </div>
     </div>
