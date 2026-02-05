@@ -945,7 +945,7 @@
         <div x-show="screen === 'role-select'" class="container">
             <div class="card card-lg mt-xl">
                 <h2 class="text-center mb-lg">Select Your Role</h2>
-                <p class="text-center text-secondary mb-xl">Session: <span class="text-gold text-xl" style="cursor: pointer;" @click="screen = 'landing'">{{ sessionCode || joinCode }}</span></p>
+                <p class="text-center text-secondary mb-xl">Session: <span class="text-gold text-xl" style="cursor: pointer;" @click="screen = 'landing'" x-text="sessionCode || joinCode"></span></p>
 
                 <div class="btn-grid">
                     <button class="btn-primary" @click="joinSession('left_judge')">
