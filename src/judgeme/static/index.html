@@ -72,6 +72,72 @@ body {
   align-items: center;
   justify-content: center;
 }
+
+/* Main Container & Screen Layout */
+.app-container {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  overflow: hidden;
+}
+
+.screen {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-base);
+  overflow: hidden;
+}
+
+/* Landing & Role Selection Screens - Center Content */
+.screen.centered {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+/* Judge Screen - Vertical Stack */
+.screen.judge {
+  justify-content: flex-start;
+}
+
+/* Display Screen - Center Content */
+.screen.display {
+  align-items: center;
+  justify-content: center;
+}
+
+/* Ensure no scrollbars appear */
+::-webkit-scrollbar {
+  display: none;
+}
+html, body {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Demo Mode: 4 screens on 1 display */
+/* Default: 3 judges on top (1/3 width each), display full-width below */
+@media (min-width: 1200px) {
+  /* When judge windows are shown side-by-side in demo mode */
+  .screen.judge:nth-child(1),
+  .screen.judge:nth-child(2),
+  .screen.judge:nth-child(3) {
+    width: calc(100% / 3);
+    height: 50vh;
+    padding: 8px;
+  }
+
+  .screen.display {
+    width: 100%;
+    height: 50vh;
+    padding: 8px;
+  }
+}
     </style>
 </head>
 <body>
