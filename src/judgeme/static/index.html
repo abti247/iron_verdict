@@ -719,113 +719,149 @@ input[type="text"]:focus {
     </style>
 </head>
 <body>
-    <div class="container" x-data="judgemeApp()" x-init="init()">
-        <h1>JudgeMe</h1>
+    <div class="app-container" x-data="judgemeApp()" x-init="init()">
+    <!-- Landing screen - Task 9 -->
+    <div class="screen centered landing" x-show="screen === 'landing'">
+      <div class="landing-content">
+        <div class="landing-logo">JudgeMe</div>
+        <div class="landing-tagline">Real-time powerlifting competition judging</div>
 
-        <!-- Landing screen -->
-        <div x-show="screen === 'landing'">
-            <h2>Welcome</h2>
-            <button @click="createSession()">Create New Session</button>
-            <button @click="startDemo()" style="background: #17a2b8; color: white;">Start Demo</button>
-            <p>or</p>
-            <input type="text" x-model="joinCode" placeholder="Enter session code">
-            <button @click="screen = 'role-select'">Join Session</button>
+        <div class="landing-actions">
+          <button class="btn-primary" @click="createSession()">Create New Session</button>
+          <button class="btn-primary" @click="screen = 'role-select'">Join Session</button>
         </div>
 
-        <!-- Role selection screen -->
-        <div x-show="screen === 'role-select'">
-            <h2>Select Your Role</h2>
-            <p>Session: <span x-text="sessionCode"></span></p>
-            <button @click="joinSession('left_judge')">Left Judge</button>
-            <button @click="joinSession('center_judge')">Center Judge (Head)</button>
-            <button @click="joinSession('right_judge')">Right Judge</button>
-            <button @click="joinSession('display')">Display</button>
+        <div class="landing-join">
+          <input type="text" x-model="joinCode" placeholder="Enter session code">
+          <button class="btn-primary" @click="joinSessionFromCode()">Join</button>
         </div>
 
-        <!-- Judge screen -->
-        <div x-show="screen === 'judge'">
-            <div style="background: #f5f5f5; padding: 10px; margin-bottom: 20px;">
-                <strong>Session:</strong> <span x-text="sessionCode" @click="returnToRoleSelection()" @keydown.enter="returnToRoleSelection()" tabindex="0" role="button" style="cursor: pointer; text-decoration: underline;"></span> |
-                <strong>Timer:</strong> <span x-text="timerDisplay" :style="timerExpired ? 'color: red;' : ''"></span>
-            </div>
+        <button class="btn-secondary landing-demo" @click="startDemo()">Start Demo</button>
+      </div>
+    </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
-                <button
-                    @click="selectVote('white')"
-                    :disabled="voteLocked"
-                    :style="selectedVote === 'white' ? 'background: white; border: 3px solid black;' : 'background: #f0f0f0;'">
-                    White
-                </button>
-                <button
-                    @click="selectVote('red')"
-                    :disabled="voteLocked"
-                    :style="selectedVote === 'red' ? 'background: #ff4444; color: white; border: 3px solid black;' : 'background: #ffcccc;'">
-                    Red
-                </button>
-                <button
-                    @click="selectVote('blue')"
-                    :disabled="voteLocked"
-                    :style="selectedVote === 'blue' ? 'background: #4444ff; color: white; border: 3px solid black;' : 'background: #ccccff;'">
-                    Blue
-                </button>
-                <button
-                    @click="selectVote('yellow')"
-                    :disabled="voteLocked"
-                    :style="selectedVote === 'yellow' ? 'background: #ffff44; border: 3px solid black;' : 'background: #ffffcc;'">
-                    Yellow
-                </button>
-            </div>
+    <!-- Role selection screen - Task 10 -->
+    <div class="screen centered role-select" x-show="screen === 'role-select'">
+      <div class="role-select-content">
+        <div class="role-select-header">
+          <h2>Select Your Role</h2>
+          <div class="session-display">
+            Session: <span class="session-code" @click="returnToRoleSelection()" tabindex="0" role="button" x-text="sessionCode"></span>
+          </div>
+        </div>
 
+        <div class="role-buttons">
+          <button class="btn-primary" @click="joinSession('left_judge')">Left Judge</button>
+          <button class="btn-primary" @click="joinSession('center_judge')">Center Judge (Head)</button>
+          <button class="btn-primary" @click="joinSession('right_judge')">Right Judge</button>
+        </div>
+
+        <div class="role-buttons-display">
+          <button class="btn-primary" @click="joinSession('display')">Display</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Judge screen - Task 11 -->
+    <div class="screen judge" x-show="screen === 'judge'">
+      <!-- Header Bar -->
+      <div class="judge-header">
+        <div class="judge-header-left">
+          <span class="judge-position" x-text="getJudgePositionLabel()"></span>
+        </div>
+        <div class="judge-header-center">
+          <span class="session-code" @click="returnToRoleSelection()" tabindex="0" role="button" x-text="sessionCode"></span>
+        </div>
+        <div class="judge-header-right">
+          <span class="judge-timer" :class="{ expired: timerExpired }" x-text="timerDisplay"></span>
+        </div>
+      </div>
+
+      <!-- Voting Content Area -->
+      <div class="judge-content">
+        <div class="judge-voting-area">
+          <!-- Voting Buttons Grid -->
+          <div class="voting-buttons">
             <button
-                x-show="selectedVote && !voteLocked"
-                @click="lockVote()"
-                style="background: #28a745; color: white; width: 100%;">
-                Lock In
+              class="btn-vote btn-vote-white"
+              :class="{ selected: selectedVote === 'white' }"
+              @click="selectVote('white')"
+              :disabled="voteLocked">
+              White
             </button>
+            <button
+              class="btn-vote btn-vote-red"
+              :class="{ selected: selectedVote === 'red' }"
+              @click="selectVote('red')"
+              :disabled="voteLocked">
+              Red
+            </button>
+            <button
+              class="btn-vote btn-vote-blue"
+              :class="{ selected: selectedVote === 'blue' }"
+              @click="selectVote('blue')"
+              :disabled="voteLocked">
+              Blue
+            </button>
+            <button
+              class="btn-vote btn-vote-yellow"
+              :class="{ selected: selectedVote === 'yellow' }"
+              @click="selectVote('yellow')"
+              :disabled="voteLocked">
+              Yellow
+            </button>
+          </div>
 
-            <div x-show="voteLocked" style="margin-top: 20px; padding: 10px; background: #d4edda; border-radius: 4px;">
-                Your vote: <strong x-text="selectedVote"></strong> (locked)
-            </div>
+          <!-- Lock In Button -->
+          <button
+            class="btn-full-width lock-in"
+            x-show="selectedVote && !voteLocked"
+            @click="lockVote()">
+            Lock In
+          </button>
 
-            <!-- Head judge controls -->
-            <div x-show="isHead" style="margin-top: 30px; border-top: 2px solid #ccc; padding-top: 20px;">
-                <h3>Head Judge Controls</h3>
-                <button @click="startTimer()" style="background: #007bff; color: white;">Start Timer</button>
-                <button @click="resetTimer()" style="background: #6c757d; color: white;">Reset Timer</button>
-                <button @click="nextLift()" :disabled="!resultsShown" style="background: #ffc107;">Next Lift</button>
-                <button @click="confirmEndSession()" style="background: #dc3545; color: white;">End Session</button>
-            </div>
+          <!-- Vote Status -->
+          <div class="card status-locked" x-show="voteLocked">
+            Your vote: <strong x-text="selectedVote"></strong> (locked)
+          </div>
+        </div>
+      </div>
+
+      <!-- Head Judge Controls -->
+      <div class="judge-controls" x-show="isHead">
+        <h3>Head Judge Controls</h3>
+        <div class="judge-controls-buttons">
+          <button class="btn-primary" @click="startTimer()">Start Timer</button>
+          <button class="btn-primary" @click="resetTimer()">Reset Timer</button>
+          <button class="btn-primary" @click="nextLift()" :disabled="!resultsShown">Next Lift</button>
+          <button class="btn-primary" @click="confirmEndSession()">End Session</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Display screen - Task 12 -->
+    <div class="screen display" x-show="screen === 'display'">
+      <!-- Minimal Header -->
+      <div class="header-bar" style="position: absolute; top: 0; left: 0; right: 0; width: 100%; padding: var(--spacing-base); border: none; background-color: transparent;">
+        <span class="session-code" @click="returnToRoleSelection()" tabindex="0" role="button" x-text="sessionCode"></span>
+      </div>
+
+      <!-- Display Content -->
+      <div class="display-content">
+        <!-- Massive Timer -->
+        <div class="display-timer" :class="{ expired: timerExpired }" x-text="timerDisplay"></div>
+
+        <!-- Judge Lights -->
+        <div class="display-lights">
+          <div class="light" :class="getDisplayLightClass('left')"></div>
+          <div class="light" :class="getDisplayLightClass('center')"></div>
+          <div class="light" :class="getDisplayLightClass('right')"></div>
         </div>
 
-        <!-- Display screen -->
-        <div x-show="screen === 'display'">
-            <div style="padding: 10px; text-align: center; background: #f5f5f5; margin-bottom: 10px;">
-                <strong>Session:</strong> <span x-text="sessionCode" @click="returnToRoleSelection()" @keydown.enter="returnToRoleSelection()" tabindex="0" role="button" style="cursor: pointer; text-decoration: underline;"></span>
-            </div>
-            <div style="text-align: center; padding: 40px;">
-                <h1 style="font-size: 48px; margin-bottom: 40px;"
-                    :style="timerExpired ? 'color: red;' : ''"
-                    x-text="timerDisplay">
-                    60
-                </h1>
-
-                <div style="display: flex; justify-content: center; gap: 40px; margin-bottom: 40px;">
-                    <!-- Left Judge -->
-                    <div :style="`width: 120px; height: 120px; border-radius: 50%; border: 3px solid #ccc; background: ${displayVotes.left ? getVoteColor(displayVotes.left) : '#f0f0f0'};`">
-                    </div>
-
-                    <!-- Center Judge -->
-                    <div :style="`width: 120px; height: 120px; border-radius: 50%; border: 3px solid #ccc; background: ${displayVotes.center ? getVoteColor(displayVotes.center) : '#f0f0f0'};`">
-                    </div>
-
-                    <!-- Right Judge -->
-                    <div :style="`width: 120px; height: 120px; border-radius: 50%; border: 3px solid #ccc; background: ${displayVotes.right ? getVoteColor(displayVotes.right) : '#f0f0f0'};`">
-                    </div>
-                </div>
-
-                <p style="font-size: 18px; color: #666;" x-text="displayStatus">Waiting for judges...</p>
-            </div>
-        </div>
+        <!-- Status -->
+        <div class="display-status" x-text="displayStatus"></div>
+      </div>
+    </div>
     </div>
 
     <script>
@@ -1098,6 +1134,24 @@ input[type="text"]:focus {
                         // Normal landing screen
                         this.screen = 'landing';
                     }
+                },
+
+                joinSessionFromCode() {
+                    this.sessionCode = this.joinCode;
+                    this.screen = 'role-select';
+                },
+
+                getJudgePositionLabel() {
+                    if (this.role === 'left_judge') return 'Left Judge';
+                    if (this.role === 'center_judge') return 'Center Judge (Head)';
+                    if (this.role === 'right_judge') return 'Right Judge';
+                    return '';
+                },
+
+                getDisplayLightClass(position) {
+                    const vote = this.displayVotes[position];
+                    if (!vote) return '';
+                    return `voted-${vote}`;
                 }
             };
         }
