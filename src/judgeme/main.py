@@ -115,14 +115,14 @@ async def websocket_endpoint(websocket: WebSocket):
                             for pos, judge in session_manager.sessions[session_code]["judges"].items()
                             if judge["connected"]
                         }
-                        settings = session_manager.sessions[session_code]["settings"]
+                        session_settings = session_manager.sessions[session_code]["settings"]
                         await connection_manager.broadcast_to_session(
                             session_code,
                             {
                                 "type": "show_results",
                                 "votes": votes,
-                                "showExplanations": settings["show_explanations"],
-                                "liftType": settings["lift_type"],
+                                "showExplanations": session_settings["show_explanations"],
+                                "liftType": session_settings["lift_type"],
                             }
                         )
             elif message_type == "timer_start":
@@ -220,11 +220,16 @@ async def websocket_endpoint(websocket: WebSocket):
                         "message": "Only head judge can update settings"
                     })
                     continue
-                session_manager.update_settings(
+                result = session_manager.update_settings(
                     session_code,
                     message.get("showExplanations", False),
                     message.get("liftType", "squat")
                 )
+                if not result["success"]:
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": result["error"]
+                    })
             else:
                 # Issue 4: Handle post-join messages
                 # For now, just ignore unknown message types silently

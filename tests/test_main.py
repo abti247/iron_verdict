@@ -100,3 +100,21 @@ async def test_show_results_includes_settings(session_code):
             assert "liftType" in show_results
             assert show_results["showExplanations"] is True
             assert show_results["liftType"] == "bench"
+
+
+@pytest.mark.asyncio
+async def test_settings_update_invalid_lift_type_returns_error(session_code):
+    async with httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+            await ws.send_json({"type": "join", "session_code": session_code, "role": "center_judge"})
+            await ws.receive_json()  # join_success
+
+            await ws.send_json({
+                "type": "settings_update",
+                "showExplanations": False,
+                "liftType": "powerclean"
+            })
+            msg = await asyncio.wait_for(ws.receive_json(), timeout=1.0)
+            assert msg["type"] == "error"
