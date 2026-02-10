@@ -881,6 +881,8 @@
                     } else if (message.type === 'show_results') {
                         this.resultsShown = true;
                         if (this.role === 'display') {
+                            clearTimeout(this._phaseTimer1);
+                            clearTimeout(this._phaseTimer2);
                             this.displayVotes = message.votes;
                             this.displayShowExplanations = message.showExplanations;
                             this.displayLiftType = message.liftType;
