@@ -547,6 +547,65 @@
             cursor: pointer;
             min-width: 160px;
         }
+
+        .explanation-panel {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: var(--space-md);
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-md);
+            align-items: center;
+        }
+
+        .result-indicator {
+            font-size: 2.5rem;
+            font-weight: 800;
+            padding: var(--space-sm) var(--space-lg);
+            border-radius: var(--radius-md);
+            letter-spacing: 0.05em;
+        }
+
+        .result-indicator.valid {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .result-indicator.invalid {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .card-reason-group {
+            width: 100%;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .card-reason-header {
+            padding: var(--space-xs) var(--space-md);
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: white;
+        }
+
+        .reason-red    { background: var(--vote-red); }
+        .reason-blue   { background: var(--vote-blue); }
+        .reason-yellow { background: var(--vote-yellow); color: var(--text-primary); }
+
+        .card-reason-list {
+            margin: 0;
+            padding: var(--space-sm) var(--space-md) var(--space-sm) calc(var(--space-md) + 1.5em);
+            background: var(--bg-surface);
+            list-style: disc;
+        }
+
+        .card-reason-list li {
+            padding: 2px 0;
+            font-size: 1rem;
+        }
     </style>
 </head>
 <body>
@@ -672,10 +731,27 @@
             <div class="display-container">
                 <div class="display-timer" :class="timerExpired && 'expired'" x-text="timerDisplay"></div>
 
-                <div class="judge-lights">
+                <!-- Phase 1 & idle: Vote circles -->
+                <div class="judge-lights" x-show="displayPhase === 'votes' || displayPhase === 'idle'">
                     <div class="judge-light" :class="displayVotes.left && 'voted ' + displayVotes.left"></div>
                     <div class="judge-light" :class="displayVotes.center && 'voted ' + displayVotes.center"></div>
                     <div class="judge-light" :class="displayVotes.right && 'voted ' + displayVotes.right"></div>
+                </div>
+
+                <!-- Phase 2: Explanation panel -->
+                <div class="explanation-panel" x-show="displayPhase === 'explanation'">
+                    <div class="result-indicator" :class="isValidLift() ? 'valid' : 'invalid'"
+                         x-text="isValidLift() ? '✅ VALID' : '❌ INVALID'"></div>
+                    <template x-for="color in getInvalidColors()" :key="color">
+                        <div class="card-reason-group">
+                            <div class="card-reason-header" :class="'reason-' + color" x-text="color.toUpperCase() + ' CARD'"></div>
+                            <ul class="card-reason-list">
+                                <template x-for="reason in getReasons(color)" :key="reason">
+                                    <li x-text="reason"></li>
+                                </template>
+                            </ul>
+                        </div>
+                    </template>
                 </div>
 
                 <div class="display-status" x-text="displayStatus"></div>
@@ -804,13 +880,26 @@
                         this.resultsShown = true;
                         if (this.role === 'display') {
                             this.displayVotes = message.votes;
-                            this.displayStatus = 'Results shown';
+                            this.displayShowExplanations = message.showExplanations;
+                            this.displayLiftType = message.liftType;
+                            this.displayPhase = 'votes';
+
+                            setTimeout(() => {
+                                const nonWhite = Object.values(this.displayVotes).filter(c => c && c !== 'white');
+                                if (this.displayShowExplanations && nonWhite.length > 0) {
+                                    this.displayPhase = 'explanation';
+                                    setTimeout(() => { this.displayPhase = 'idle'; }, 6000);
+                                } else {
+                                    this.displayPhase = 'idle';
+                                }
+                            }, 3000);
                         }
                     } else if (message.type === 'reset_for_next_lift') {
                         this.resetVoting();
                         this.stopTimer();
                         if (this.role === 'display') {
                             this.displayVotes = { left: null, center: null, right: null };
+                            this.displayPhase = 'idle';
                             this.displayStatus = 'Waiting for judges...';
                         }
                     } else if (message.type === 'timer_start') {
@@ -910,6 +999,20 @@
                         'right_judge': 'Right Judge'
                     };
                     return names[this.role] || this.role;
+                },
+
+                isValidLift() {
+                    const whiteCount = Object.values(this.displayVotes).filter(c => c === 'white').length;
+                    return whiteCount >= 2;
+                },
+
+                getInvalidColors() {
+                    return [...new Set(Object.values(this.displayVotes).filter(c => c && c !== 'white'))];
+                },
+
+                getReasons(color) {
+                    const liftData = CARD_REASONS[this.displayLiftType];
+                    return liftData ? (liftData[color] || []) : [];
                 },
 
                 returnToLanding() {
