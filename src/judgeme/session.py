@@ -3,6 +3,8 @@ import string
 from datetime import datetime, timedelta
 from typing import Dict, Any, List
 
+VALID_LIFT_TYPES = {"squat", "bench", "deadlift"}
+
 
 class SessionManager:
     def __init__(self):
@@ -141,6 +143,8 @@ class SessionManager:
         """Update head judge display settings."""
         if code not in self.sessions:
             return {"success": False, "error": "Session not found"}
+        if lift_type not in VALID_LIFT_TYPES:
+            return {"success": False, "error": "Invalid lift type"}
         session = self.sessions[code]
         session["settings"]["show_explanations"] = show_explanations
         session["settings"]["lift_type"] = lift_type

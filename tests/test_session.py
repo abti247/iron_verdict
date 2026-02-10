@@ -181,3 +181,12 @@ def test_update_settings_invalid_session_fails():
     manager = SessionManager()
     result = manager.update_settings("INVALID", True, "squat")
     assert result["success"] is False
+    assert "Session not found" in result["error"]
+
+
+def test_update_settings_invalid_lift_type_fails():
+    manager = SessionManager()
+    code = manager.create_session()
+    result = manager.update_settings(code, False, "snatch")
+    assert result["success"] is False
+    assert "Invalid lift type" in result["error"]
