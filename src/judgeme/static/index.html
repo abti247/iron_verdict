@@ -587,7 +587,7 @@
         .card-reason-header {
             padding: var(--space-xs) var(--space-md);
             font-weight: 700;
-            font-size: 1.1rem;
+            font-size: 2rem;
             color: white;
         }
 
@@ -604,7 +604,7 @@
 
         .card-reason-list li {
             padding: 2px 0;
-            font-size: 1rem;
+            font-size: 2rem;
         }
     </style>
 </head>
@@ -880,6 +880,7 @@
                         alert(`Error: ${sanitizedMessage}`);
                     } else if (message.type === 'show_results') {
                         this.resultsShown = true;
+                        clearInterval(this.timerInterval);
                         if (this.role === 'display') {
                             clearTimeout(this._phaseTimer1);
                             clearTimeout(this._phaseTimer2);
