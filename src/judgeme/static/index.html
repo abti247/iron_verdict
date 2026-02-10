@@ -515,6 +515,37 @@
             max-width: 100%;
             min-height: 100vh;
         }
+
+        .settings-panel {
+            margin-top: var(--space-md);
+            padding: var(--space-sm) var(--space-md);
+            background: var(--color-surface);
+            border-radius: var(--radius-md);
+            border: 2px solid var(--color-border);
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            flex-wrap: wrap;
+        }
+
+        .settings-label {
+            display: flex;
+            align-items: center;
+            gap: var(--space-xs);
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .lift-select {
+            padding: var(--space-xs) var(--space-sm);
+            border-radius: var(--radius-sm);
+            border: 2px solid var(--color-border);
+            background: var(--color-background);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            min-width: 160px;
+        }
     </style>
 </head>
 <body>
@@ -617,6 +648,17 @@
                     <button class="btn-primary" @click="nextLift()" :disabled="!resultsShown">Next Lift</button>
                     <button class="btn-muted" @click="confirmEndSession()">End Session</button>
                 </div>
+                <div class="settings-panel">
+                    <label class="settings-label">
+                        <input type="checkbox" x-model="showExplanations" @change="saveSettings()">
+                        Show rule explanations
+                    </label>
+                    <select x-model="liftType" @change="saveSettings()" class="lift-select">
+                        <option value="squat">Squat</option>
+                        <option value="bench">Bench Press</option>
+                        <option value="deadlift">Deadlift</option>
+                    </select>
+                </div>
             </div>
         </div>
 
@@ -641,6 +683,24 @@
     </div>
 
     <script>
+        const CARD_REASONS = {
+            squat: {
+                red: ["Not deep enough", "No upright position"],
+                blue: ["Double bounce", "Movement during ascent"],
+                yellow: ["Foot movement", "Didn't wait for signal", "Elbow touching thighs", "Dropped the bar", "Incomplete attempt"]
+            },
+            bench: {
+                red: ["Bar didn't touch chest", "Elbows not low enough"],
+                blue: ["Downward movement during press", "Arms not fully locked"],
+                yellow: ["Bar bounced on chest", "Didn't wait for signal", "Position changed", "Feet moved or lifted", "Bar touched uprights", "Incomplete attempt"]
+            },
+            deadlift: {
+                red: ["Knees not locked", "Shoulders not back"],
+                blue: ["Downward movement", "Supported on thighs"],
+                yellow: ["Lowered before signal", "Dropped the bar", "Foot movement", "Incomplete attempt"]
+            }
+        };
+
         function judgemeApp() {
             return {
                 screen: 'landing',
@@ -658,6 +718,11 @@
                 displayVotes: { left: null, center: null, right: null },
                 displayStatus: 'Waiting for judges...',
                 intentionalNavigation: false,
+                showExplanations: false,
+                liftType: 'squat',
+                displayPhase: 'idle',
+                displayShowExplanations: false,
+                displayLiftType: 'squat',
 
                 async createSession() {
                     try {
@@ -725,6 +790,9 @@
                     if (message.type === 'join_success') {
                         this.isHead = message.is_head;
                         this.screen = this.role === 'display' ? 'display' : 'judge';
+                        if (this.isHead) {
+                            this.saveSettings();  // sync localStorage settings to server
+                        }
                     } else if (message.type === 'join_error') {
                         const sanitizedMessage = document.createTextNode(message.message).textContent;
                         alert(`Failed to join session: ${sanitizedMessage}`);
@@ -767,6 +835,18 @@
                         this.ws.send(JSON.stringify({
                             type: 'vote_lock',
                             color: this.selectedVote
+                        }));
+                    }
+                },
+
+                saveSettings() {
+                    localStorage.setItem('showExplanations', this.showExplanations);
+                    localStorage.setItem('liftType', this.liftType);
+                    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                        this.ws.send(JSON.stringify({
+                            type: 'settings_update',
+                            showExplanations: this.showExplanations,
+                            liftType: this.liftType
                         }));
                     }
                 },
@@ -914,6 +994,9 @@
                 },
 
                 init() {
+                    this.showExplanations = localStorage.getItem('showExplanations') === 'true';
+                    this.liftType = localStorage.getItem('liftType') || 'squat';
+
                     // Check URL parameters on load
                     const urlParams = new URLSearchParams(window.location.search);
                     const demoRole = urlParams.get('demo');
