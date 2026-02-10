@@ -42,6 +42,10 @@ class SessionManager:
             "displays": [],
             "state": "waiting",
             "timer_state": "idle",
+            "settings": {
+                "show_explanations": False,
+                "lift_type": "squat",
+            },
             "last_activity": datetime.now(),
         }
         return code
@@ -131,6 +135,16 @@ class SessionManager:
         session["state"] = "waiting"
         session["last_activity"] = datetime.now()
 
+        return {"success": True}
+
+    def update_settings(self, code: str, show_explanations: bool, lift_type: str) -> Dict[str, Any]:
+        """Update head judge display settings."""
+        if code not in self.sessions:
+            return {"success": False, "error": "Session not found"}
+        session = self.sessions[code]
+        session["settings"]["show_explanations"] = show_explanations
+        session["settings"]["lift_type"] = lift_type
+        session["last_activity"] = datetime.now()
         return {"success": True}
 
     def get_expired_sessions(self, hours: int = 4) -> List[str]:

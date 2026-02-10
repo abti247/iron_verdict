@@ -157,3 +157,27 @@ def test_delete_session_removes_from_memory():
 
     manager.delete_session(code)
     assert code not in manager.sessions
+
+
+def test_create_session_initializes_settings():
+    manager = SessionManager()
+    code = manager.create_session()
+    session = manager.sessions[code]
+    assert "settings" in session
+    assert session["settings"]["show_explanations"] is False
+    assert session["settings"]["lift_type"] == "squat"
+
+
+def test_update_settings_stores_values():
+    manager = SessionManager()
+    code = manager.create_session()
+    result = manager.update_settings(code, True, "bench")
+    assert result["success"] is True
+    assert manager.sessions[code]["settings"]["show_explanations"] is True
+    assert manager.sessions[code]["settings"]["lift_type"] == "bench"
+
+
+def test_update_settings_invalid_session_fails():
+    manager = SessionManager()
+    result = manager.update_settings("INVALID", True, "squat")
+    assert result["success"] is False
