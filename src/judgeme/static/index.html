@@ -800,6 +800,8 @@
                 displayPhase: 'idle',
                 displayShowExplanations: false,
                 displayLiftType: 'squat',
+                _phaseTimer1: null,
+                _phaseTimer2: null,
 
                 async createSession() {
                     try {
@@ -883,18 +885,21 @@
                             this.displayShowExplanations = message.showExplanations;
                             this.displayLiftType = message.liftType;
                             this.displayPhase = 'votes';
+                            this.displayStatus = '';
 
-                            setTimeout(() => {
+                            this._phaseTimer1 = setTimeout(() => {
                                 const nonWhite = Object.values(this.displayVotes).filter(c => c && c !== 'white');
                                 if (this.displayShowExplanations && nonWhite.length > 0) {
                                     this.displayPhase = 'explanation';
-                                    setTimeout(() => { this.displayPhase = 'idle'; }, 6000);
+                                    this._phaseTimer2 = setTimeout(() => { this.displayPhase = 'idle'; }, 6000);
                                 } else {
                                     this.displayPhase = 'idle';
                                 }
                             }, 3000);
                         }
                     } else if (message.type === 'reset_for_next_lift') {
+                        clearTimeout(this._phaseTimer1);
+                        clearTimeout(this._phaseTimer2);
                         this.resetVoting();
                         this.stopTimer();
                         if (this.role === 'display') {
