@@ -21,7 +21,7 @@ app.mount("/static", StaticFiles(directory=static_dir), name="static")
 @app.get("/", response_class=HTMLResponse)
 async def root():
     """Serve the main HTML page."""
-    with open(os.path.join(static_dir, "index.html")) as f:
+    with open(os.path.join(static_dir, "index.html"), encoding="utf-8") as f:
         return f.read()
 
 
