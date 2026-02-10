@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JudgeMe - Playful & Dimensional Design</title>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        /* Design System - Playful & Dimensional */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* Warm & Friendly Palette */
+            --bg-base: #FFF8F0;
+            --bg-surface: #FFF4E6;
+            --accent-primary: #FF7A5C;
+            --accent-secondary: #FFB088;
+            --text-primary: #3E2723;
+            --text-secondary: #6D4C41;
+            --success: #81C784;
+            --disabled: #BCAAA4;
+
+            /* IPF Judge Colors */
+            --vote-white: #FFFFFF;
+            --vote-red: #EF4444;
+            --vote-blue: #3B82F6;
+            --vote-yellow: #FBBF24;
+
+            /* Spacing */
+            --space-xs: 8px;
+            --space-sm: 12px;
+            --space-md: 16px;
+            --space-lg: 24px;
+            --space-xl: 32px;
+
+            /* Border Radius */
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+
+            /* Shadows - Multiple levels for depth */
+            --shadow-sm: 0 2px 4px rgba(62, 39, 35, 0.08);
+            --shadow-md: 0 4px 12px rgba(62, 39, 35, 0.12);
+            --shadow-lg: 0 8px 24px rgba(62, 39, 35, 0.16);
+            --shadow-xl: 0 16px 48px rgba(62, 39, 35, 0.20);
+
+            /* Transitions */
+            --transition-fast: 150ms ease;
+            --transition-smooth: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #FFF8F0 0%, #FFE8D6 100%);
+            color: var(--text-primary);
+            line-height: 1.5;
+            padding: var(--space-md);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            height: 100vh;
+            max-height: 900px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Typography */
+        h1 {
+            font-size: 32px;
+            font-weight: bold;
+            color: var(--text-primary);
+            text-align: center;
+            margin-bottom: var(--space-md);
+            text-shadow: 0 2px 4px rgba(62, 39, 35, 0.1);
+        }
+
+        h2 {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--text-primary);
+            margin-bottom: var(--space-lg);
+        }
+
+        .tagline {
+            font-size: 16px;
+            color: var(--text-secondary);
+            text-align: center;
+            margin-bottom: var(--space-xl);
+        }
+
+        /* Buttons with depth */
+        button {
+            font-family: inherit;
+            font-size: 18px;
+            font-weight: 600;
+            padding: var(--space-md) var(--space-lg);
+            border: none;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all var(--transition-smooth);
+            min-height: 60px;
+            position: relative;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-3px);
+        }
+
+        button:active:not(:disabled) {
+            transform: translateY(-1px);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #FF7A5C 0%, #FF5A3C 100%);
+            color: white;
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            box-shadow: var(--shadow-lg);
+        }
+
+        .btn-secondary {
+            background: var(--bg-surface);
+            color: var(--text-primary);
+            border: 2px solid var(--accent-secondary);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            box-shadow: var(--shadow-md);
+            border-color: var(--accent-primary);
+        }
+
+        .btn-muted {
+            background: var(--bg-surface);
+            color: var(--text-secondary);
+            font-size: 16px;
+            min-height: 48px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-muted:hover:not(:disabled) {
+            box-shadow: var(--shadow-md);
+        }
+
+        /* Input Fields with depth */
+        input[type="text"] {
+            width: 100%;
+            padding: var(--space-md);
+            font-size: 18px;
+            border: 2px solid var(--accent-secondary);
+            border-radius: var(--radius-md);
+            background: var(--bg-surface);
+            color: var(--text-primary);
+            transition: all var(--transition-smooth);
+            box-shadow: inset 0 2px 4px rgba(62, 39, 35, 0.06);
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: inset 0 2px 4px rgba(62, 39, 35, 0.06),
+                        0 0 0 3px rgba(255, 122, 92, 0.1);
+        }
+
+        input[type="text"]::placeholder {
+            color: var(--text-secondary);
+            opacity: 0.6;
+        }
+
+        /* Screen Container */
+        .screen {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-lg);
+            height: 100%;
+            justify-content: center;
+        }
+
+        /* Landing Screen */
+        .landing-actions {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-md);
+        }
+
+        .landing-divider {
+            text-align: center;
+            color: var(--text-secondary);
+            margin: var(--space-sm) 0;
+        }
+
+        /* Role Selection */
+        .role-header {
+            background: var(--bg-surface);
+            padding: var(--space-md);
+            border-radius: var(--radius-lg);
+            text-align: center;
+            box-shadow: var(--shadow-md);
+        }
+
+        .session-code {
+            font-family: ui-monospace, 'SF Mono', 'Cascadia Code', 'Consolas', 'Menlo', monospace;
+            font-size: 20px;
+            font-weight: bold;
+            color: var(--accent-primary);
+            cursor: pointer;
+            text-decoration: underline;
+            transition: all var(--transition-fast);
+            letter-spacing: -0.01em;
+        }
+
+        .session-code:hover {
+            color: #FF5A3C;
+        }
+
+        .role-buttons {
+            display: grid;
+            gap: var(--space-md);
+        }
+
+        .judge-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--space-md);
+        }
+
+        .display-row {
+            display: grid;
+            grid-template-columns: 1fr;
+        }
+
+        /* Judge Screen */
+        .judge-header {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            background: var(--bg-surface);
+            padding: var(--space-md);
+            border-radius: var(--radius-lg);
+            gap: var(--space-md);
+            box-shadow: var(--shadow-md);
+        }
+
+        .judge-position {
+            font-weight: bold;
+            color: var(--text-primary);
+            text-align: left;
+        }
+
+        .judge-timer {
+            font-size: 48px;
+            font-weight: 900;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            color: var(--text-primary);
+            text-align: center;
+            text-shadow: 0 2px 8px rgba(62, 39, 35, 0.1);
+            letter-spacing: -0.03em;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .judge-timer.expired {
+            color: var(--vote-red);
+            text-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+        }
+
+        .judge-session {
+            text-align: right;
+        }
+
+        .voting-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-md);
+            flex: 1;
+            max-height: 400px;
+        }
+
+        .vote-button {
+            font-size: 28px;
+            font-weight: bold;
+            min-height: 120px;
+            border: 4px solid transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--shadow-md);
+            transition: all var(--transition-smooth);
+        }
+
+        .vote-button:hover:not(:disabled) {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .vote-button:active:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .vote-button.selected {
+            border-color: var(--text-primary);
+            box-shadow: var(--shadow-xl);
+            transform: translateY(-2px);
+        }
+
+        .vote-button.white {
+            background: linear-gradient(135deg, #FFFFFF 0%, #F5F5F5 100%);
+            color: var(--text-primary);
+            border: 2px solid var(--text-secondary);
+        }
+
+        .vote-button.white.selected {
+            border: 4px solid var(--text-primary);
+        }
+
+        .vote-button.red {
+            background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+            color: white;
+        }
+
+        .vote-button.blue {
+            background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+            color: white;
+        }
+
+        .vote-button.yellow {
+            background: linear-gradient(135deg, #FBBF24 0%, #F59E0B 100%);
+            color: var(--text-primary);
+        }
+
+        .lock-button {
+            width: 100%;
+            background: linear-gradient(135deg, #81C784 0%, #66BB6A 100%);
+            color: white;
+            font-size: 24px;
+            min-height: 80px;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .lock-button:hover:not(:disabled) {
+            box-shadow: var(--shadow-xl);
+        }
+
+        .vote-status {
+            background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
+            padding: var(--space-md);
+            border-radius: var(--radius-md);
+            text-align: center;
+            color: var(--text-primary);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .head-controls {
+            border-top: 2px solid var(--accent-secondary);
+            padding-top: var(--space-lg);
+            margin-top: var(--space-lg);
+        }
+
+        .head-controls h3 {
+            font-size: 18px;
+            margin-bottom: var(--space-md);
+            color: var(--text-secondary);
+        }
+
+        .head-controls-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-sm);
+        }
+
+        /* Display Screen */
+        .display-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            gap: var(--space-xl);
+        }
+
+        .display-timer {
+            font-size: 240px;
+            font-weight: 900;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            color: var(--text-primary);
+            line-height: 1;
+            text-shadow: 0 8px 24px rgba(62, 39, 35, 0.15);
+            letter-spacing: -0.03em;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .display-timer.expired {
+            color: var(--vote-red);
+            text-shadow: 0 8px 32px rgba(239, 68, 68, 0.4);
+        }
+
+        .judge-lights {
+            display: flex;
+            gap: var(--space-xl);
+            justify-content: center;
+        }
+
+        .judge-light {
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #E0E0E0 0%, #BDBDBD 100%);
+            border: 4px solid var(--text-secondary);
+            transition: all var(--transition-smooth);
+            box-shadow: var(--shadow-md);
+        }
+
+        .judge-light.voted {
+            border-color: var(--text-primary);
+            box-shadow: var(--shadow-xl);
+            transform: scale(1.05);
+        }
+
+        .judge-light.white {
+            background: radial-gradient(circle at 30% 30%, #FFFFFF 0%, #F5F5F5 100%);
+        }
+        .judge-light.red {
+            background: radial-gradient(circle at 30% 30%, #EF4444 0%, #DC2626 100%);
+        }
+        .judge-light.blue {
+            background: radial-gradient(circle at 30% 30%, #3B82F6 0%, #2563EB 100%);
+        }
+        .judge-light.yellow {
+            background: radial-gradient(circle at 30% 30%, #FBBF24 0%, #F59E0B 100%);
+        }
+
+        .display-status {
+            font-size: 18px;
+            color: var(--text-secondary);
+            text-align: center;
+        }
+
+        .display-header {
+            position: fixed;
+            top: var(--space-md);
+            right: var(--space-md);
+            background: var(--bg-surface);
+            padding: var(--space-sm) var(--space-md);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-md);
+        }
+
+        /* Utility Classes */
+        .hidden {
+            display: none !important;
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 600px) {
+            .judge-header {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+
+            .judge-position,
+            .judge-session {
+                text-align: center;
+            }
+
+            .judge-timer {
+                font-size: 36px;
+            }
+
+            .display-timer {
+                font-size: 120px;
+            }
+
+            .judge-light {
+                width: 100px;
+                height: 100px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container" x-data="previewApp()" x-init="init()">
+        <!-- Landing Screen -->
+        <div class="screen" x-show="screen === 'landing'">
+            <div>
+                <h1>JudgeMe</h1>
+                <p class="tagline">Real-time powerlifting competition judging</p>
+            </div>
+
+            <div class="landing-actions">
+                <button class="btn-primary" @click="screen = 'role-select'">
+                    Create New Session
+                </button>
+
+                <div class="landing-divider">or</div>
+
+                <input type="text" placeholder="Enter 6-character session code" x-model="sessionCode">
+                <button class="btn-secondary" @click="screen = 'role-select'">
+                    Join Session
+                </button>
+            </div>
+
+            <button class="btn-muted" @click="screen = 'demo'">
+                Start Demo
+            </button>
+        </div>
+
+        <!-- Role Selection Screen -->
+        <div class="screen" x-show="screen === 'role-select'">
+            <div class="role-header">
+                <h2 style="margin-bottom: var(--space-sm);">Select Your Role</h2>
+                <div>Session: <span class="session-code" @click="screen = 'landing'">ABC123</span></div>
+            </div>
+
+            <div class="role-buttons">
+                <div class="judge-row">
+                    <button class="btn-secondary" @click="screen = 'judge-left'">
+                        Left Judge
+                    </button>
+                    <button class="btn-secondary" @click="screen = 'judge-center'">
+                        Center Judge<br>(Head)
+                    </button>
+                    <button class="btn-secondary" @click="screen = 'judge-right'">
+                        Right Judge
+                    </button>
+                </div>
+
+                <div class="display-row">
+                    <button class="btn-primary" @click="screen = 'display'">
+                        Display
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Judge Screen (Left) -->
+        <div class="screen" x-show="screen === 'judge-left'">
+            <div class="judge-header">
+                <div class="judge-position">Left Judge</div>
+                <div class="judge-timer" :class="timerExpired && 'expired'" x-text="timerDisplay"></div>
+                <div class="judge-session">
+                    Session: <span class="session-code" @click="screen = 'role-select'">ABC123</span>
+                </div>
+            </div>
+
+            <div class="voting-grid">
+                <button class="vote-button white" :class="selectedVote === 'white' && 'selected'"
+                        @click="selectedVote = 'white'" :disabled="voteLocked">
+                    WHITE
+                </button>
+                <button class="vote-button red" :class="selectedVote === 'red' && 'selected'"
+                        @click="selectedVote = 'red'" :disabled="voteLocked">
+                    RED
+                </button>
+                <button class="vote-button blue" :class="selectedVote === 'blue' && 'selected'"
+                        @click="selectedVote = 'blue'" :disabled="voteLocked">
+                    BLUE
+                </button>
+                <button class="vote-button yellow" :class="selectedVote === 'yellow' && 'selected'"
+                        @click="selectedVote = 'yellow'" :disabled="voteLocked">
+                    YELLOW
+                </button>
+            </div>
+
+            <button class="lock-button" x-show="selectedVote && !voteLocked" @click="voteLocked = true">
+                LOCK IN
+            </button>
+
+            <div class="vote-status" x-show="voteLocked">
+                Your vote: <strong x-text="selectedVote?.toUpperCase()"></strong> (locked)
+            </div>
+        </div>
+
+        <!-- Judge Screen (Center/Head) -->
+        <div class="screen" x-show="screen === 'judge-center'">
+            <div class="judge-header">
+                <div class="judge-position">Center Judge (Head)</div>
+                <div class="judge-timer" :class="timerExpired && 'expired'" x-text="timerDisplay"></div>
+                <div class="judge-session">
+                    Session: <span class="session-code" @click="screen = 'role-select'">ABC123</span>
+                </div>
+            </div>
+
+            <div class="voting-grid">
+                <button class="vote-button white" :class="selectedVote === 'white' && 'selected'"
+                        @click="selectedVote = 'white'" :disabled="voteLocked">
+                    WHITE
+                </button>
+                <button class="vote-button red" :class="selectedVote === 'red' && 'selected'"
+                        @click="selectedVote = 'red'" :disabled="voteLocked">
+                    RED
+                </button>
+                <button class="vote-button blue" :class="selectedVote === 'blue' && 'selected'"
+                        @click="selectedVote = 'blue'" :disabled="voteLocked">
+                    BLUE
+                </button>
+                <button class="vote-button yellow" :class="selectedVote === 'yellow' && 'selected'"
+                        @click="selectedVote = 'yellow'" :disabled="voteLocked">
+                    YELLOW
+                </button>
+            </div>
+
+            <button class="lock-button" x-show="selectedVote && !voteLocked" @click="voteLocked = true">
+                LOCK IN
+            </button>
+
+            <div class="vote-status" x-show="voteLocked">
+                Your vote: <strong x-text="selectedVote?.toUpperCase()"></strong> (locked)
+            </div>
+
+            <div class="head-controls">
+                <h3>Head Judge Controls</h3>
+                <div class="head-controls-grid">
+                    <button class="btn-primary" @click="startTimer">Start Timer</button>
+                    <button class="btn-secondary" @click="resetTimer">Reset Timer</button>
+                    <button class="btn-primary" @click="resetVotes">Next Lift</button>
+                    <button class="btn-muted" @click="screen = 'landing'">End Session</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Display Screen -->
+        <div class="screen" x-show="screen === 'display'">
+            <div class="display-header">
+                <span class="session-code" @click="screen = 'role-select'">ABC123</span>
+            </div>
+
+            <div class="display-container">
+                <div class="display-timer" :class="timerExpired && 'expired'" x-text="timerDisplay"></div>
+
+                <div class="judge-lights">
+                    <div class="judge-light" :class="leftJudge && 'voted ' + leftJudge"></div>
+                    <div class="judge-light" :class="centerJudge && 'voted ' + centerJudge"></div>
+                    <div class="judge-light" :class="rightJudge && 'voted ' + rightJudge"></div>
+                </div>
+
+                <div class="display-status">
+                    <span x-show="!leftJudge && !centerJudge && !rightJudge">Waiting for judges...</span>
+                    <span x-show="leftJudge || centerJudge || rightJudge">Results shown</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function previewApp() {
+            return {
+                screen: 'landing',
+                sessionCode: '',
+                selectedVote: null,
+                voteLocked: false,
+                timerDisplay: '60',
+                timerExpired: false,
+                leftJudge: null,
+                centerJudge: null,
+                rightJudge: null,
+                timerInterval: null,
+
+                init() {
+                    // Demo data for display screen
+                    setTimeout(() => {
+                        if (this.screen === 'display') {
+                            this.leftJudge = 'white';
+                            this.centerJudge = 'red';
+                            this.rightJudge = 'white';
+                        }
+                    }, 1000);
+                },
+
+                startTimer() {
+                    let timeLeft = 60;
+                    this.timerExpired = false;
+
+                    if (this.timerInterval) clearInterval(this.timerInterval);
+
+                    this.timerInterval = setInterval(() => {
+                        timeLeft--;
+                        this.timerDisplay = timeLeft.toString();
+
+                        if (timeLeft <= 0) {
+                            this.timerExpired = true;
+                            clearInterval(this.timerInterval);
+                        }
+                    }, 1000);
+                },
+
+                resetTimer() {
+                    if (this.timerInterval) clearInterval(this.timerInterval);
+                    this.timerDisplay = '60';
+                    this.timerExpired = false;
+                },
+
+                resetVotes() {
+                    this.selectedVote = null;
+                    this.voteLocked = false;
+                    this.leftJudge = null;
+                    this.centerJudge = null;
+                    this.rightJudge = null;
+                }
+            }
+        }
+    </script>
+</body>
+</html>
