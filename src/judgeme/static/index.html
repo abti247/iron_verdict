@@ -237,6 +237,18 @@
             color: #FF5A3C;
         }
 
+        .display-session-name {
+            font-family: ui-monospace, 'SF Mono', 'Cascadia Code', 'Consolas', 'Menlo', monospace;
+            font-size: 20px;
+            color: var(--accent-primary);
+        }
+
+        .display-demo-label {
+            font-family: ui-monospace, 'SF Mono', 'Cascadia Code', 'Consolas', 'Menlo', monospace;
+            font-size: 20px;
+            color: var(--text-secondary);
+        }
+
         .role-buttons {
             display: grid;
             gap: var(--space-md);
@@ -726,8 +738,8 @@
         <!-- Display Screen -->
         <div class="screen" x-show="screen === 'display'">
             <div class="display-header">
-                <span x-show="!isDemo" style="font-family: var(--font-mono); color: var(--accent-primary); font-size: 20px;" x-text="sessionName"></span>
-                <span x-show="isDemo" style="font-family: var(--font-mono); color: var(--text-muted); font-size: 20px;">DEMO</span>
+                <span class="display-session-name" x-show="!isDemo" x-text="sessionName"></span>
+                <span class="display-demo-label" x-show="isDemo">DEMO</span>
             </div>
 
             <div class="display-container">
