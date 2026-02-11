@@ -18,14 +18,14 @@ def test_generate_session_code_creates_unique_codes():
 
 def test_create_session_returns_code():
     manager = SessionManager()
-    code = manager.create_session()
+    code = manager.create_session("Test")
     assert len(code) == 6
     assert code in manager.sessions
 
 
 def test_create_session_initializes_structure():
     manager = SessionManager()
-    code = manager.create_session()
+    code = manager.create_session("Test")
     session = manager.sessions[code]
 
     assert "judges" in session
@@ -40,7 +40,7 @@ def test_create_session_initializes_structure():
 
 def test_join_session_as_judge_succeeds():
     manager = SessionManager()
-    code = manager.create_session()
+    code = manager.create_session("Test")
 
     result = manager.join_session(code, "left_judge")
     assert result["success"] is True
@@ -56,7 +56,7 @@ def test_join_session_invalid_code_fails():
 
 def test_join_session_role_already_taken_fails():
     manager = SessionManager()
-    code = manager.create_session()
+    code = manager.create_session("Test")
     manager.join_session(code, "left_judge")
 
     result = manager.join_session(code, "left_judge")
@@ -66,7 +66,7 @@ def test_join_session_role_already_taken_fails():
 
 def test_join_session_as_display_succeeds():
     manager = SessionManager()
-    code = manager.create_session()
+    code = manager.create_session("Test")
 
     result = manager.join_session(code, "display")
     assert result["success"] is True
@@ -75,7 +75,7 @@ def test_join_session_as_display_succeeds():
 
 def test_join_session_invalid_role_fails():
     manager = SessionManager()
-    code = manager.create_session()
+    code = manager.create_session("Test")
 
     result = manager.join_session(code, "admin")
     assert result["success"] is False
@@ -84,7 +84,7 @@ def test_join_session_invalid_role_fails():
 
 def test_lock_vote_succeeds():
     manager = SessionManager()
-    code = manager.create_session()
+    code = manager.create_session("Test")
     manager.join_session(code, "left_judge")
 
     result = manager.lock_vote(code, "left", "white")
@@ -101,7 +101,7 @@ def test_lock_vote_invalid_session_fails():
 
 def test_lock_vote_updates_last_activity():
     manager = SessionManager()
-    code = manager.create_session()
+    code = manager.create_session("Test")
     manager.join_session(code, "left_judge")
 
     before = manager.sessions[code]["last_activity"]
@@ -113,7 +113,7 @@ def test_lock_vote_updates_last_activity():
 
 def test_all_votes_locked_triggers_results():
     manager = SessionManager()
-    code = manager.create_session()
+    code = manager.create_session("Test")
     manager.join_session(code, "left_judge")
     manager.join_session(code, "center_judge")
     manager.join_session(code, "right_judge")
@@ -128,7 +128,7 @@ def test_all_votes_locked_triggers_results():
 
 def test_reset_for_next_lift_clears_votes():
     manager = SessionManager()
-    code = manager.create_session()
+    code = manager.create_session("Test")
     manager.join_session(code, "left_judge")
     manager.lock_vote(code, "left", "white")
 
@@ -142,7 +142,7 @@ def test_reset_for_next_lift_clears_votes():
 
 def test_get_expired_sessions_returns_old_sessions():
     manager = SessionManager()
-    code = manager.create_session()
+    code = manager.create_session("Test")
 
     # Manually set old timestamp
     manager.sessions[code]["last_activity"] = datetime.now() - timedelta(hours=5)
@@ -153,7 +153,7 @@ def test_get_expired_sessions_returns_old_sessions():
 
 def test_delete_session_removes_from_memory():
     manager = SessionManager()
-    code = manager.create_session()
+    code = manager.create_session("Test")
 
     manager.delete_session(code)
     assert code not in manager.sessions
@@ -161,7 +161,7 @@ def test_delete_session_removes_from_memory():
 
 def test_create_session_initializes_settings():
     manager = SessionManager()
-    code = manager.create_session()
+    code = manager.create_session("Test")
     session = manager.sessions[code]
     assert "settings" in session
     assert session["settings"]["show_explanations"] is False
@@ -170,7 +170,7 @@ def test_create_session_initializes_settings():
 
 def test_update_settings_stores_values():
     manager = SessionManager()
-    code = manager.create_session()
+    code = manager.create_session("Test")
     result = manager.update_settings(code, True, "bench")
     assert result["success"] is True
     assert manager.sessions[code]["settings"]["show_explanations"] is True
@@ -186,7 +186,13 @@ def test_update_settings_invalid_session_fails():
 
 def test_update_settings_invalid_lift_type_fails():
     manager = SessionManager()
-    code = manager.create_session()
+    code = manager.create_session("Test")
     result = manager.update_settings(code, False, "snatch")
     assert result["success"] is False
     assert "Invalid lift type" in result["error"]
+
+
+def test_create_session_stores_name():
+    manager = SessionManager()
+    code = manager.create_session("Platform A")
+    assert manager.sessions[code]["name"] == "Platform A"

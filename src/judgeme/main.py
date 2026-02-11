@@ -28,7 +28,7 @@ async def root():
 @app.post("/api/sessions")
 async def create_session():
     """Create a new judging session."""
-    code = session_manager.create_session()
+    code = session_manager.create_session("")
     return {"session_code": code}
 
 

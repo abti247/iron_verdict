@@ -13,9 +13,8 @@ client = TestClient(app)
 @pytest.fixture
 def session_code():
     """Create a fresh session and return its code."""
-    code = session_manager.create_session()
+    code = session_manager.create_session("Test Session")
     yield code
-    # Cleanup
     if code in session_manager.sessions:
         session_manager.delete_session(code)
 
