@@ -1,4 +1,5 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from pydantic import BaseModel, field_validator
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from judgeme.config import settings
@@ -8,6 +9,17 @@ import json
 import copy
 import time
 import os
+
+class CreateSessionRequest(BaseModel):
+    name: str
+
+    @field_validator('name')
+    @classmethod
+    def name_not_empty(cls, v):
+        if not v.strip():
+            raise ValueError('name cannot be empty')
+        return v.strip()
+
 
 app = FastAPI(title="JudgeMe")
 session_manager = SessionManager()
@@ -26,9 +38,9 @@ async def root():
 
 
 @app.post("/api/sessions")
-async def create_session():
+async def create_session(request: CreateSessionRequest):
     """Create a new judging session."""
-    code = session_manager.create_session("")
+    code = session_manager.create_session(request.name)
     return {"session_code": code}
 
 
