@@ -940,6 +940,7 @@
                     } else if (message.type === 'session_ended') {
                         alert('Session ended');
                         this.ws.close();
+                        this.isDemo = false;
                         this.screen = 'landing';
                     }
                 },
@@ -1051,6 +1052,9 @@
                     this.screen = 'landing';
                     this.sessionCode = '';
                     this.joinCode = '';
+                    this.isDemo = false;
+                    this.sessionName = '';
+                    this.newSessionName = '';
                 },
 
                 returnToRoleSelection() {
@@ -1126,6 +1130,7 @@
                         window.open(specs.display.url, `display_${timestamp}`, specs.display.params);
 
                         // Return to landing
+                        this.isDemo = false;
                         this.screen = 'landing';
                     } catch (error) {
                         alert('Failed to start demo. Please try again.');
