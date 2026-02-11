@@ -618,7 +618,8 @@
             </div>
 
             <div class="landing-actions">
-                <button class="btn-primary" @click="createSession()">
+                <input type="text" placeholder="Session name (e.g. Platform A)" x-model="newSessionName">
+                <button class="btn-primary" @click="createSession()" :disabled="!newSessionName.trim()">
                     Create New Session
                 </button>
 
@@ -725,7 +726,8 @@
         <!-- Display Screen -->
         <div class="screen" x-show="screen === 'display'">
             <div class="display-header">
-                <span class="session-code" @click="returnToRoleSelection()" x-text="sessionCode">ABC123</span>
+                <span x-show="!isDemo" style="font-family: var(--font-mono); color: var(--accent-primary); font-size: 20px;" x-text="sessionName"></span>
+                <span x-show="isDemo" style="font-family: var(--font-mono); color: var(--text-muted); font-size: 20px;">DEMO</span>
             </div>
 
             <div class="display-container">
@@ -782,6 +784,9 @@
             return {
                 screen: 'landing',
                 sessionCode: '',
+                sessionName: '',
+                newSessionName: '',
+                isDemo: false,
                 joinCode: '',
                 role: '',
                 isHead: false,
@@ -805,13 +810,18 @@
 
                 async createSession() {
                     try {
-                        const response = await fetch('/api/sessions', { method: 'POST' });
+                        const response = await fetch('/api/sessions', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ name: this.newSessionName.trim() })
+                        });
                         if (!response.ok) {
                             alert('Failed to create session. Please try again.');
                             return;
                         }
                         const data = await response.json();
                         this.sessionCode = data.session_code;
+                        this.sessionName = this.newSessionName.trim();
                         this.screen = 'role-select';
                     } catch (error) {
                         alert('Error creating session. Please check your connection.');
@@ -868,6 +878,7 @@
                 handleMessage(message) {
                     if (message.type === 'join_success') {
                         this.isHead = message.is_head;
+                        this.sessionName = message.session_state?.name || '';
                         this.screen = this.role === 'display' ? 'display' : 'judge';
                         if (this.isHead) {
                             this.saveSettings();  // sync localStorage settings to server
@@ -1080,7 +1091,11 @@
                 async startDemo() {
                     try {
                         // Create session
-                        const response = await fetch('/api/sessions', { method: 'POST' });
+                        const response = await fetch('/api/sessions', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ name: 'Demo' })
+                        });
                         if (!response.ok) {
                             alert('Failed to create session. Please try again.');
                             return;
@@ -1119,6 +1134,7 @@
                         // Skip to role selection and auto-join
                         this.sessionCode = sessionCode;
                         this.joinCode = sessionCode;
+                        this.isDemo = true;
                         // Defer the join to allow Alpine to finish initialization
                         setTimeout(() => this.joinSession(demoRole), 100);
                     } else {
