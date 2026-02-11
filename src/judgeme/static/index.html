@@ -237,6 +237,18 @@
             color: #FF5A3C;
         }
 
+        .display-session-name {
+            font-family: ui-monospace, 'SF Mono', 'Cascadia Code', 'Consolas', 'Menlo', monospace;
+            font-size: 20px;
+            color: var(--accent-primary);
+        }
+
+        .display-demo-label {
+            font-family: ui-monospace, 'SF Mono', 'Cascadia Code', 'Consolas', 'Menlo', monospace;
+            font-size: 20px;
+            color: var(--text-secondary);
+        }
+
         .role-buttons {
             display: grid;
             gap: var(--space-md);
@@ -618,7 +630,8 @@
             </div>
 
             <div class="landing-actions">
-                <button class="btn-primary" @click="createSession()">
+                <input type="text" placeholder="Session name (e.g. Platform A)" x-model="newSessionName">
+                <button class="btn-primary" @click="createSession()" :disabled="!newSessionName.trim()">
                     Create New Session
                 </button>
 
@@ -725,7 +738,8 @@
         <!-- Display Screen -->
         <div class="screen" x-show="screen === 'display'">
             <div class="display-header">
-                <span class="session-code" @click="returnToRoleSelection()" x-text="sessionCode">ABC123</span>
+                <span class="display-session-name" x-show="!isDemo" x-text="sessionName"></span>
+                <span class="display-demo-label" x-show="isDemo">DEMO</span>
             </div>
 
             <div class="display-container">
@@ -782,6 +796,9 @@
             return {
                 screen: 'landing',
                 sessionCode: '',
+                sessionName: '',
+                newSessionName: '',
+                isDemo: false,
                 joinCode: '',
                 role: '',
                 isHead: false,
@@ -805,13 +822,18 @@
 
                 async createSession() {
                     try {
-                        const response = await fetch('/api/sessions', { method: 'POST' });
+                        const response = await fetch('/api/sessions', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ name: this.newSessionName.trim() })
+                        });
                         if (!response.ok) {
                             alert('Failed to create session. Please try again.');
                             return;
                         }
                         const data = await response.json();
                         this.sessionCode = data.session_code;
+                        this.sessionName = this.newSessionName.trim();
                         this.screen = 'role-select';
                     } catch (error) {
                         alert('Error creating session. Please check your connection.');
@@ -868,6 +890,7 @@
                 handleMessage(message) {
                     if (message.type === 'join_success') {
                         this.isHead = message.is_head;
+                        this.sessionName = message.session_state?.name || '';
                         this.screen = this.role === 'display' ? 'display' : 'judge';
                         if (this.isHead) {
                             this.saveSettings();  // sync localStorage settings to server
@@ -917,6 +940,7 @@
                     } else if (message.type === 'session_ended') {
                         alert('Session ended');
                         this.ws.close();
+                        this.isDemo = false;
                         this.screen = 'landing';
                     }
                 },
@@ -1028,6 +1052,9 @@
                     this.screen = 'landing';
                     this.sessionCode = '';
                     this.joinCode = '';
+                    this.isDemo = false;
+                    this.sessionName = '';
+                    this.newSessionName = '';
                 },
 
                 returnToRoleSelection() {
@@ -1080,7 +1107,11 @@
                 async startDemo() {
                     try {
                         // Create session
-                        const response = await fetch('/api/sessions', { method: 'POST' });
+                        const response = await fetch('/api/sessions', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ name: 'Demo' })
+                        });
                         if (!response.ok) {
                             alert('Failed to create session. Please try again.');
                             return;
@@ -1099,6 +1130,7 @@
                         window.open(specs.display.url, `display_${timestamp}`, specs.display.params);
 
                         // Return to landing
+                        this.isDemo = false;
                         this.screen = 'landing';
                     } catch (error) {
                         alert('Failed to start demo. Please try again.');
@@ -1119,6 +1151,7 @@
                         // Skip to role selection and auto-join
                         this.sessionCode = sessionCode;
                         this.joinCode = sessionCode;
+                        this.isDemo = true;
                         // Defer the join to allow Alpine to finish initialization
                         setTimeout(() => this.joinSession(demoRole), 100);
                     } else {

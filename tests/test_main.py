@@ -13,19 +13,33 @@ client = TestClient(app)
 @pytest.fixture
 def session_code():
     """Create a fresh session and return its code."""
-    code = session_manager.create_session()
+    code = session_manager.create_session("Test Session")
     yield code
-    # Cleanup
     if code in session_manager.sessions:
         session_manager.delete_session(code)
 
 
 def test_create_session_returns_code():
-    response = client.post("/api/sessions")
+    response = client.post("/api/sessions", json={"name": "Test"})
     assert response.status_code == 200
     data = response.json()
     assert "session_code" in data
     assert len(data["session_code"]) == 6
+
+
+def test_create_session_requires_name():
+    response = client.post("/api/sessions", json={})
+    assert response.status_code == 422
+
+
+def test_create_session_rejects_empty_name():
+    response = client.post("/api/sessions", json={"name": ""})
+    assert response.status_code == 422
+
+
+def test_create_session_rejects_whitespace_name():
+    response = client.post("/api/sessions", json={"name": "   "})
+    assert response.status_code == 422
 
 
 @pytest.mark.asyncio

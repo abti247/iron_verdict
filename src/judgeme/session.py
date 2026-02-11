@@ -17,10 +17,11 @@ class SessionManager:
             if code not in self.sessions:
                 return code
 
-    def create_session(self) -> str:
+    def create_session(self, name: str) -> str:
         """Create a new session and return its code."""
         code = self.generate_session_code()
         self.sessions[code] = {
+            "name": name,
             "judges": {
                 "left": {
                     "connected": False,
