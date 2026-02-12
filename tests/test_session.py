@@ -2,10 +2,10 @@ from judgeme.session import SessionManager
 from datetime import datetime, timedelta
 
 
-def test_generate_session_code_creates_6_char_code():
+def test_generate_session_code_creates_8_char_code():
     manager = SessionManager()
     code = manager.generate_session_code()
-    assert len(code) == 6
+    assert len(code) == 8
     assert code.isalnum()
 
 
@@ -19,7 +19,7 @@ def test_generate_session_code_creates_unique_codes():
 def test_create_session_returns_code():
     manager = SessionManager()
     code = manager.create_session("Test")
-    assert len(code) == 6
+    assert len(code) == 8
     assert code in manager.sessions
 
 

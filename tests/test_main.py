@@ -24,7 +24,7 @@ def test_create_session_returns_code():
     assert response.status_code == 200
     data = response.json()
     assert "session_code" in data
-    assert len(data["session_code"]) == 6
+    assert len(data["session_code"]) == 8
 
 
 def test_create_session_requires_name():
@@ -132,3 +132,33 @@ async def test_settings_update_invalid_lift_type_returns_error(session_code):
             })
             msg = await asyncio.wait_for(ws.receive_json(), timeout=1.0)
             assert msg["type"] == "error"
+
+
+@pytest.mark.asyncio
+async def test_vote_lock_invalid_color_returns_error(session_code):
+    async with httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+            await ws.send_json({"type": "join", "session_code": session_code, "role": "left_judge"})
+            await ws.receive_json()  # join_success
+
+            await ws.send_json({"type": "vote_lock", "color": "HACKED"})
+            msg = await asyncio.wait_for(ws.receive_json(), timeout=1.0)
+            assert msg["type"] == "error"
+            assert "color" in msg["message"].lower()
+
+
+@pytest.mark.asyncio
+async def test_vote_lock_missing_color_returns_error(session_code):
+    async with httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+            await ws.send_json({"type": "join", "session_code": session_code, "role": "left_judge"})
+            await ws.receive_json()  # join_success
+
+            await ws.send_json({"type": "vote_lock"})  # no color field
+            msg = await asyncio.wait_for(ws.receive_json(), timeout=1.0)
+            assert msg["type"] == "error"
+            assert "color" in msg["message"].lower()

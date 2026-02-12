@@ -1,6 +1,6 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, field_validator
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 from judgeme.config import settings
 from judgeme.session import SessionManager
@@ -9,6 +9,8 @@ import json
 import copy
 import time
 import os
+
+VALID_COLORS = {"white", "red", "blue", "yellow"}
 
 class CreateSessionRequest(BaseModel):
     name: str
@@ -34,7 +36,12 @@ app.mount("/static", StaticFiles(directory=static_dir), name="static")
 async def root():
     """Serve the main HTML page."""
     with open(os.path.join(static_dir, "index.html"), encoding="utf-8") as f:
-        return f.read()
+        content = f.read()
+    return Response(
+        content=content,
+        media_type="text/html",
+        headers={"Cache-Control": "no-cache"},
+    )
 
 
 @app.post("/api/sessions")
@@ -109,6 +116,13 @@ async def websocket_endpoint(websocket: WebSocket):
 
                 position = role.replace("_judge", "")
                 color = message.get("color")
+
+                if color not in VALID_COLORS:
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": "Invalid vote color"
+                    })
+                    continue
 
                 result = session_manager.lock_vote(session_code, position, color)
 

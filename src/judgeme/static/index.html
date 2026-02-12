@@ -4,7 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JudgeMe - Powerlifting Judging</title>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script>
+        // Read demo join params from URL before Alpine loads.
+        // Demo popup URLs contain ?code=&demo= so Alpine's init() can auto-join.
+        // These params only ever appear in demo sessions (not real competitions),
+        // so no sensitive data is exposed.
+        (function () {
+            var p = new URLSearchParams(window.location.search);
+            var code = p.get('code');
+            var demo = p.get('demo');
+            window._demoParams = (code && demo) ? { code: code, demo: demo } : null;
+        })();
+    </script>
+    <script
+        defer
+        src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"
+        integrity="sha384-l8f0VcPi/M1iHPv8egOnY/15TDwqgbOR1anMIJWvU6nLRgZVLTLSaNqi/TOoT5Fh"
+        crossorigin="anonymous">
+    </script>
     <style>
         /* Design System - Playful & Dimensional */
         * {
@@ -621,7 +638,7 @@
     </style>
 </head>
 <body>
-    <div class="container" x-data="judgemeApp()" x-init="init()">
+    <div class="container" x-data="judgemeApp()">
         <!-- Landing Screen -->
         <div class="screen" x-show="screen === 'landing'">
             <div>
@@ -1125,22 +1142,10 @@
                     const baseUrl = `${window.location.origin}/?code=${sessionCode}`;
 
                     return {
-                        leftJudge: {
-                            url: `${baseUrl}&demo=left_judge`,
-                            params: `width=${jw},height=${jh},left=0,top=0`
-                        },
-                        centerJudge: {
-                            url: `${baseUrl}&demo=center_judge`,
-                            params: `width=${jw},height=${jh},left=${jw},top=0`
-                        },
-                        rightJudge: {
-                            url: `${baseUrl}&demo=right_judge`,
-                            params: `width=${jw},height=${jh},left=${2*jw},top=0`
-                        },
-                        display: {
-                            url: `${baseUrl}&demo=display`,
-                            params: `width=${dw},height=${dh},left=0,top=${jh}`
-                        }
+                        leftJudge:   { url: `${baseUrl}&demo=left_judge`,   params: `width=${jw},height=${jh},left=0,top=0` },
+                        centerJudge: { url: `${baseUrl}&demo=center_judge`, params: `width=${jw},height=${jh},left=${jw},top=0` },
+                        rightJudge:  { url: `${baseUrl}&demo=right_judge`,  params: `width=${jw},height=${jh},left=${2*jw},top=0` },
+                        display:     { url: `${baseUrl}&demo=display`,      params: `width=${dw},height=${dh},left=0,top=${jh}` }
                     };
                 },
 
@@ -1159,15 +1164,14 @@
                         const data = await response.json();
                         const sessionCode = data.session_code;
 
-                        // Calculate window positions
+                        // Open each demo window with its role encoded in the URL.
+                        // These are demo-only sessions, so the code in the URL is acceptable.
                         const specs = this.getWindowSpecs(sessionCode);
-
-                        // Create unique window names using timestamp to ensure new windows are created
                         const timestamp = Date.now();
-                        window.open(specs.leftJudge.url, `leftJudge_${timestamp}`, specs.leftJudge.params);
+                        window.open(specs.leftJudge.url,   `leftJudge_${timestamp}`,   specs.leftJudge.params);
                         window.open(specs.centerJudge.url, `centerJudge_${timestamp}`, specs.centerJudge.params);
-                        window.open(specs.rightJudge.url, `rightJudge_${timestamp}`, specs.rightJudge.params);
-                        window.open(specs.display.url, `display_${timestamp}`, specs.display.params);
+                        window.open(specs.rightJudge.url,  `rightJudge_${timestamp}`,  specs.rightJudge.params);
+                        window.open(specs.display.url,     `display_${timestamp}`,     specs.display.params);
 
                         // Return to landing
                         this.isDemo = false;
@@ -1182,18 +1186,15 @@
                     this.showExplanations = localStorage.getItem('showExplanations') === 'true';
                     this.liftType = localStorage.getItem('liftType') || 'squat';
 
-                    // Check URL parameters on load
-                    const urlParams = new URLSearchParams(window.location.search);
-                    const demoRole = urlParams.get('demo');
-                    const sessionCode = urlParams.get('code');
-
-                    if (demoRole && sessionCode) {
-                        // Skip to role selection and auto-join
-                        this.sessionCode = sessionCode;
-                        this.joinCode = sessionCode;
+                    // Check for demo join params set by the inline script (see <head>).
+                    const params = window._demoParams;
+                    if (params) {
+                        window._demoParams = null;
+                        this.sessionCode = params.code;
+                        this.joinCode = params.code;
                         this.isDemo = true;
                         // Defer the join to allow Alpine to finish initialization
-                        setTimeout(() => this.joinSession(demoRole), 100);
+                        setTimeout(() => this.joinSession(params.demo), 100);
                     } else {
                         // Normal landing screen
                         this.screen = 'landing';
