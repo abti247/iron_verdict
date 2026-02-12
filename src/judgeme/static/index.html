@@ -1188,6 +1188,7 @@
                     const sessionCode = urlParams.get('code');
 
                     if (demoRole && sessionCode) {
+                        history.replaceState({}, '', window.location.pathname);
                         // Skip to role selection and auto-join
                         this.sessionCode = sessionCode;
                         this.joinCode = sessionCode;
