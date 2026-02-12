@@ -1,4 +1,4 @@
-import random
+import secrets
 import string
 from datetime import datetime, timedelta
 from typing import Dict, Any, List
@@ -11,9 +11,9 @@ class SessionManager:
         self.sessions: Dict[str, Dict[str, Any]] = {}
 
     def generate_session_code(self) -> str:
-        """Generate a unique 6-character alphanumeric session code."""
+        """Generate a unique 8-character alphanumeric session code."""
         while True:
-            code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+            code = ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
             if code not in self.sessions:
                 return code
 

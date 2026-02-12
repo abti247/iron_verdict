@@ -24,7 +24,7 @@ def test_create_session_returns_code():
     assert response.status_code == 200
     data = response.json()
     assert "session_code" in data
-    assert len(data["session_code"]) == 6
+    assert len(data["session_code"]) == 8
 
 
 def test_create_session_requires_name():
