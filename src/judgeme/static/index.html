@@ -4,6 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JudgeMe - Powerlifting Judging</title>
+    <script>
+        // Read and immediately clear demo join params before Alpine loads.
+        // Using an inline (non-deferred) script ensures history.replaceState
+        // executes synchronously, which works reliably in Chrome popup windows
+        // where deferred-script history API calls are silently ignored.
+        (function () {
+            var p = new URLSearchParams(window.location.search);
+            var code = p.get('code');
+            var demo = p.get('demo');
+            if (code && demo) {
+                try { history.replaceState({}, '', window.location.pathname); } catch (e) {}
+            }
+            window._demoParams = (code && demo) ? { code: code, demo: demo } : null;
+        })();
+    </script>
     <script
         defer
         src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"
@@ -626,7 +641,7 @@
     </style>
 </head>
 <body>
-    <div class="container" x-data="judgemeApp()" x-init="init()">
+    <div class="container" x-data="judgemeApp()">
         <!-- Landing Screen -->
         <div class="screen" x-show="screen === 'landing'">
             <div>
@@ -1187,19 +1202,17 @@
                     this.showExplanations = localStorage.getItem('showExplanations') === 'true';
                     this.liftType = localStorage.getItem('liftType') || 'squat';
 
-                    // Check URL parameters on load
-                    const urlParams = new URLSearchParams(window.location.search);
-                    const demoRole = urlParams.get('demo');
-                    const sessionCode = urlParams.get('code');
-
-                    if (demoRole && sessionCode) {
-                        history.replaceState({}, '', window.location.pathname);
-                        // Skip to role selection and auto-join
-                        this.sessionCode = sessionCode;
-                        this.joinCode = sessionCode;
+                    // Params were read and URL was cleared by the inline script before
+                    // Alpine loaded (see window._demoParams). This avoids the Chrome
+                    // popup-window restriction on history.replaceState in deferred scripts.
+                    const params = window._demoParams;
+                    if (params) {
+                        window._demoParams = null;
+                        this.sessionCode = params.code;
+                        this.joinCode = params.code;
                         this.isDemo = true;
                         // Defer the join to allow Alpine to finish initialization
-                        setTimeout(() => this.joinSession(demoRole), 100);
+                        setTimeout(() => this.joinSession(params.demo), 100);
                     } else {
                         // Normal landing screen
                         this.screen = 'landing';
