@@ -10,6 +10,8 @@ import copy
 import time
 import os
 
+VALID_COLORS = {"white", "red", "blue", "yellow"}
+
 class CreateSessionRequest(BaseModel):
     name: str
 
@@ -109,6 +111,13 @@ async def websocket_endpoint(websocket: WebSocket):
 
                 position = role.replace("_judge", "")
                 color = message.get("color")
+
+                if color not in VALID_COLORS:
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": "Invalid vote color"
+                    })
+                    continue
 
                 result = session_manager.lock_vote(session_code, position, color)
 
