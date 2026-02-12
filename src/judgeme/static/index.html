@@ -755,7 +755,7 @@
                 <!-- Phase 2: Explanation panel -->
                 <div class="explanation-panel" x-show="displayPhase === 'explanation'">
                     <div class="result-indicator" :class="isValidLift() ? 'valid' : 'invalid'"
-                         x-text="isValidLift() ? '✅ VALID' : '❌ INVALID'"></div>
+                        x-text="isValidLift() ? '✅ VALID' : '❌ INVALID'"></div>
                     <template x-for="color in getInvalidColors()" :key="color">
                         <div class="card-reason-group">
                             <div class="card-reason-header" :class="'reason-' + color" x-text="color.toUpperCase() + ' CARD'"></div>
@@ -776,19 +776,59 @@
     <script>
         const CARD_REASONS = {
             squat: {
-                red: ["Not deep enough", "No upright position"],
-                blue: ["Double bounce", "Movement during ascent"],
-                yellow: ["Foot movement", "Didn't wait for signal", "Elbow touching thighs", "Dropped the bar", "Incomplete attempt"]
+                red: [
+                    "Not deep enough (hip crease not below top of knees)"
+                ],
+                blue: [
+                    "Knees not locked at start or finish",
+                    "Double bounce or downward movement during ascent"
+                ],
+                yellow: [
+                    "Foot movement (stepping forward/backward/laterally)",
+                    "Didn't wait for signal (start or rack)",
+                    "Elbow/upper arm contact supporting on legs",
+                    "Dropped or dumped the bar after completion",
+                    "Spotter/loader contact during lift",
+                    "Incomplete / non-compliance with rules of performance"
+                ]
             },
             bench: {
-                red: ["Bar didn't touch chest", "Elbows not low enough"],
-                blue: ["Downward movement during press", "Arms not fully locked"],
-                yellow: ["Bar bounced on chest", "Didn't wait for signal", "Position changed", "Feet moved or lifted", "Bar touched uprights", "Incomplete attempt"]
+                red: [
+                    "Bar not lowered to chest/abdomen (or touching belt)",
+                    "Elbows not lowered level with or below shoulders"
+                ],
+                blue: [
+                    "Downward movement during press",
+                    "Arms not locked out at completion",
+                    "Arms not locked before START command"
+                ],
+                yellow: [
+                    "Heaving or sinking bar after motionless on chest",
+                    "Didn't wait for signal (start, press, or rack)",
+                    "Upper body thrust to initiate press off chest",
+                    "Position change (head/shoulders/buttocks lifting, hands shifting)",
+                    "Feet touched bench or supports",
+                    "Deliberate bar contact with rack supports",
+                    "Spotter/loader contact during lift",
+                    "Incomplete / non-compliance with rules of performance"
+                ]
             },
             deadlift: {
-                red: ["Knees not locked", "Shoulders not back"],
-                blue: ["Downward movement", "Supported on thighs"],
-                yellow: ["Lowered before signal", "Dropped the bar", "Foot movement", "Incomplete attempt"]
+                red: [
+                    "Knees not locked straight",
+                    "Shoulders not back (deltoid not behind bar projection)"
+                ],
+                blue: [
+                    "Downward movement before final position",
+                    "Supported bar on thighs"
+                ],
+                yellow: [
+                    "Lowered bar before 'Down' signal",
+                    "Dropped bar / released from palms",
+                    "Foot movement (stepping forward/backward/laterally)",
+                    "Spotter/loader contact during lift",
+                    "Incomplete / non-compliance with rules of performance"
+                ]
             }
         };
 
