@@ -5,39 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JudgeMe - Powerlifting Judging</title>
     <script>
-        // Extract demo join params before Alpine loads and store in window._demoParams.
-        //
-        // Primary path (demo popups):
-        //   startDemo() stores the session code in localStorage under '_demo_code' and
-        //   opens each popup with window.open(cleanUrl, roleName, features).  The popup's
-        //   window.name is therefore just the role string ('display', 'left_judge', …).
-        //   This inline script detects that, reads the code from localStorage, and clears
-        //   the entry.  Using localStorage avoids putting the session code in the URL at
-        //   all, and simple role strings are unambiguous window names.
-        //
-        // Fallback path (manually shared ?code=&demo= links):
-        //   URL params are still accepted with a best-effort history.replaceState.
+        // Read demo join params from URL before Alpine loads.
+        // Demo popup URLs contain ?code=&demo= so Alpine's init() can auto-join.
+        // These params only ever appear in demo sessions (not real competitions),
+        // so no sensitive data is exposed.
         (function () {
-            var params = null;
-            var KNOWN_ROLES = ['display', 'left_judge', 'center_judge', 'right_judge'];
-            if (KNOWN_ROLES.indexOf(window.name) !== -1) {
-                try {
-                    var code = localStorage.getItem('_demo_code');
-                    if (code) {
-                        params = { code: code, demo: window.name };
-                    }
-                } catch (e) {}
-            }
-            if (!params) {
-                var p = new URLSearchParams(window.location.search);
-                var code = p.get('code');
-                var demo = p.get('demo');
-                if (code && demo) {
-                    try { history.replaceState({}, '', window.location.pathname); } catch (e) {}
-                    params = { code: code, demo: demo };
-                }
-            }
-            window._demoParams = params;
+            var p = new URLSearchParams(window.location.search);
+            var code = p.get('code');
+            var demo = p.get('demo');
+            window._demoParams = (code && demo) ? { code: code, demo: demo } : null;
         })();
     </script>
     <script
@@ -1155,7 +1131,7 @@
                     }
                 },
 
-                getWindowSpecs() {
+                getWindowSpecs(sessionCode) {
                     const sw = window.screen.width;
                     const sh = window.screen.height;
                     const jw = Math.floor(sw / 3);  // judge width
@@ -1163,18 +1139,13 @@
                     const dw = sw;                  // display width (full)
                     const dh = Math.floor(sh / 2);  // display height
 
-                    // Open each popup at the clean root URL.  The session code is passed
-                    // via localStorage ('_demo_code'), not the URL.  window.name is set to
-                    // just the role string so the inline script can pick the right role
-                    // without any JSON parsing.  Using the role as the window target also
-                    // lets the browser reuse popup windows across demo sessions.
-                    const cleanUrl = window.location.origin + window.location.pathname;
+                    const baseUrl = `${window.location.origin}/?code=${sessionCode}`;
 
                     return {
-                        leftJudge:   { url: cleanUrl, name: 'left_judge',   params: `width=${jw},height=${jh},left=0,top=0` },
-                        centerJudge: { url: cleanUrl, name: 'center_judge', params: `width=${jw},height=${jh},left=${jw},top=0` },
-                        rightJudge:  { url: cleanUrl, name: 'right_judge',  params: `width=${jw},height=${jh},left=${2*jw},top=0` },
-                        display:     { url: cleanUrl, name: 'display',      params: `width=${dw},height=${dh},left=0,top=${jh}` }
+                        leftJudge:   { url: `${baseUrl}&demo=left_judge`,   params: `width=${jw},height=${jh},left=0,top=0` },
+                        centerJudge: { url: `${baseUrl}&demo=center_judge`, params: `width=${jw},height=${jh},left=${jw},top=0` },
+                        rightJudge:  { url: `${baseUrl}&demo=right_judge`,  params: `width=${jw},height=${jh},left=${2*jw},top=0` },
+                        display:     { url: `${baseUrl}&demo=display`,      params: `width=${dw},height=${dh},left=0,top=${jh}` }
                     };
                 },
 
@@ -1193,18 +1164,14 @@
                         const data = await response.json();
                         const sessionCode = data.session_code;
 
-                        // Store code in localStorage so popup windows can read it on load.
-                        // The entry is removed after 15 s — well past the time any popup
-                        // needs to initialise (typically < 1 s).
-                        localStorage.setItem('_demo_code', sessionCode);
-                        setTimeout(() => localStorage.removeItem('_demo_code'), 15000);
-
-                        // Calculate window positions and open popups at the clean URL.
-                        const specs = this.getWindowSpecs();
-                        window.open(specs.leftJudge.url, specs.leftJudge.name, specs.leftJudge.params);
-                        window.open(specs.centerJudge.url, specs.centerJudge.name, specs.centerJudge.params);
-                        window.open(specs.rightJudge.url, specs.rightJudge.name, specs.rightJudge.params);
-                        window.open(specs.display.url, specs.display.name, specs.display.params);
+                        // Open each demo window with its role encoded in the URL.
+                        // These are demo-only sessions, so the code in the URL is acceptable.
+                        const specs = this.getWindowSpecs(sessionCode);
+                        const timestamp = Date.now();
+                        window.open(specs.leftJudge.url,   `leftJudge_${timestamp}`,   specs.leftJudge.params);
+                        window.open(specs.centerJudge.url, `centerJudge_${timestamp}`, specs.centerJudge.params);
+                        window.open(specs.rightJudge.url,  `rightJudge_${timestamp}`,  specs.rightJudge.params);
+                        window.open(specs.display.url,     `display_${timestamp}`,     specs.display.params);
 
                         // Return to landing
                         this.isDemo = false;
@@ -1219,9 +1186,7 @@
                     this.showExplanations = localStorage.getItem('showExplanations') === 'true';
                     this.liftType = localStorage.getItem('liftType') || 'squat';
 
-                    // Params were read and URL was cleared by the inline script before
-                    // Alpine loaded (see window._demoParams). This avoids the Chrome
-                    // popup-window restriction on history.replaceState in deferred scripts.
+                    // Check for demo join params set by the inline script (see <head>).
                     const params = window._demoParams;
                     if (params) {
                         window._demoParams = null;
