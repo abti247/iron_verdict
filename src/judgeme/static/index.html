@@ -5,18 +5,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JudgeMe - Powerlifting Judging</title>
     <script>
-        // Read and immediately clear demo join params before Alpine loads.
-        // Using an inline (non-deferred) script ensures history.replaceState
-        // executes synchronously, which works reliably in Chrome popup windows
-        // where deferred-script history API calls are silently ignored.
+        // Extract demo join params before Alpine loads and store in window._demoParams.
+        // Primary path: demo popups opened by startDemo() encode params as JSON in
+        // window.name (the second argument to window.open). Reading window.name here
+        // avoids putting the session code in the URL entirely, so there is nothing to
+        // clear from the address bar.  window.name is cleared immediately after reading.
+        // Fallback path: a ?code=&demo= query string is still accepted (e.g. manually
+        // shared links) with a best-effort history.replaceState to tidy the URL.
         (function () {
-            var p = new URLSearchParams(window.location.search);
-            var code = p.get('code');
-            var demo = p.get('demo');
-            if (code && demo) {
-                try { history.replaceState({}, '', window.location.pathname); } catch (e) {}
+            var params = null;
+            try {
+                var named = JSON.parse(window.name);
+                if (named && named.code && named.demo) {
+                    params = named;
+                    window.name = '';
+                }
+            } catch (e) {}
+            if (!params) {
+                var p = new URLSearchParams(window.location.search);
+                var code = p.get('code');
+                var demo = p.get('demo');
+                if (code && demo) {
+                    try { history.replaceState({}, '', window.location.pathname); } catch (e) {}
+                    params = { code: code, demo: demo };
+                }
             }
-            window._demoParams = (code && demo) ? { code: code, demo: demo } : null;
+            window._demoParams = params;
         })();
     </script>
     <script
@@ -1142,23 +1156,30 @@
                     const dw = sw;                  // display width (full)
                     const dh = Math.floor(sh / 2);  // display height
 
-                    const baseUrl = `${window.location.origin}/?code=${sessionCode}`;
+                    // Pass params via window.name (read by the inline script on load)
+                    // so the session code never appears in the popup address bar.
+                    const cleanUrl = window.location.origin + window.location.pathname;
+                    const name = (role) => JSON.stringify({ code: sessionCode, demo: role });
 
                     return {
                         leftJudge: {
-                            url: `${baseUrl}&demo=left_judge`,
+                            url: cleanUrl,
+                            name: name('left_judge'),
                             params: `width=${jw},height=${jh},left=0,top=0`
                         },
                         centerJudge: {
-                            url: `${baseUrl}&demo=center_judge`,
+                            url: cleanUrl,
+                            name: name('center_judge'),
                             params: `width=${jw},height=${jh},left=${jw},top=0`
                         },
                         rightJudge: {
-                            url: `${baseUrl}&demo=right_judge`,
+                            url: cleanUrl,
+                            name: name('right_judge'),
                             params: `width=${jw},height=${jh},left=${2*jw},top=0`
                         },
                         display: {
-                            url: `${baseUrl}&demo=display`,
+                            url: cleanUrl,
+                            name: name('display'),
                             params: `width=${dw},height=${dh},left=0,top=${jh}`
                         }
                     };
@@ -1182,12 +1203,12 @@
                         // Calculate window positions
                         const specs = this.getWindowSpecs(sessionCode);
 
-                        // Create unique window names using timestamp to ensure new windows are created
-                        const timestamp = Date.now();
-                        window.open(specs.leftJudge.url, `leftJudge_${timestamp}`, specs.leftJudge.params);
-                        window.open(specs.centerJudge.url, `centerJudge_${timestamp}`, specs.centerJudge.params);
-                        window.open(specs.rightJudge.url, `rightJudge_${timestamp}`, specs.rightJudge.params);
-                        window.open(specs.display.url, `display_${timestamp}`, specs.display.params);
+                        // Pass params via window.name (JSON) so the session code never
+                        // appears in the popup URL.  Each JSON string is unique per session.
+                        window.open(specs.leftJudge.url, specs.leftJudge.name, specs.leftJudge.params);
+                        window.open(specs.centerJudge.url, specs.centerJudge.name, specs.centerJudge.params);
+                        window.open(specs.rightJudge.url, specs.rightJudge.name, specs.rightJudge.params);
+                        window.open(specs.display.url, specs.display.name, specs.display.params);
 
                         // Return to landing
                         this.isDemo = false;
