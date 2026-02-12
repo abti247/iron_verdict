@@ -630,14 +630,14 @@
             </div>
 
             <div class="landing-actions">
-                <input type="text" placeholder="Session name (e.g. Platform A)" x-model="newSessionName">
+                <input type="text" placeholder="Session name (e.g. Platform A)" x-model="newSessionName" @keyup.enter="createSession()">
                 <button class="btn-primary" @click="createSession()" :disabled="!newSessionName.trim()">
                     Create New Session
                 </button>
 
                 <div class="landing-divider">or</div>
 
-                <input type="text" placeholder="Enter 6-character session code" x-model="joinCode">
+                <input type="text" placeholder="Enter 6-character session code" x-model="joinCode" @keyup.enter="joinExistingSession()">
                 <button class="btn-secondary" @click="joinExistingSession()">
                     Join Session
                 </button>
