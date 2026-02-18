@@ -93,3 +93,45 @@ async def test_send_to_role_handles_failed_websocket():
 
     # Should not raise exception
     await manager.send_to_role("ABC123", "left_judge", {"type": "test"})
+
+
+@pytest.mark.asyncio
+async def test_count_displays_returns_zero_for_empty_session():
+    manager = ConnectionManager()
+    assert await manager.count_displays("ABC123") == 0
+
+
+@pytest.mark.asyncio
+async def test_count_displays_counts_only_display_connections():
+    manager = ConnectionManager()
+    await manager.add_connection("ABC123", "display_aabb1122", AsyncMock())
+    await manager.add_connection("ABC123", "display_ccdd3344", AsyncMock())
+    await manager.add_connection("ABC123", "left_judge", AsyncMock())
+
+    assert await manager.count_displays("ABC123") == 2
+
+
+@pytest.mark.asyncio
+async def test_send_to_displays_sends_to_all_displays():
+    manager = ConnectionManager()
+    mock_display1 = AsyncMock()
+    mock_display2 = AsyncMock()
+    mock_judge = AsyncMock()
+
+    await manager.add_connection("ABC123", "display_aabb1122", mock_display1)
+    await manager.add_connection("ABC123", "display_ccdd3344", mock_display2)
+    await manager.add_connection("ABC123", "left_judge", mock_judge)
+
+    message = {"type": "judge_voted", "position": "left"}
+    await manager.send_to_displays("ABC123", message)
+
+    mock_display1.send_json.assert_called_once_with(message)
+    mock_display2.send_json.assert_called_once_with(message)
+    mock_judge.send_json.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_send_to_displays_no_op_for_empty_session():
+    manager = ConnectionManager()
+    # Should not raise
+    await manager.send_to_displays("INVALID", {"type": "test"})

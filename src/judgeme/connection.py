@@ -56,3 +56,29 @@ class ConnectionManager:
             except Exception:
                 # TODO: Add logging here - log error and potentially remove dead connection
                 pass
+
+    async def count_displays(self, session_code: str) -> int:
+        """Count active display connections in a session."""
+        async with self._lock:
+            if session_code not in self.active_connections:
+                return 0
+            return sum(
+                1 for role in self.active_connections[session_code]
+                if role.startswith("display_")
+            )
+
+    async def send_to_displays(self, session_code: str, message: Dict[str, Any]):
+        """Send a message to all display connections in a session."""
+        async with self._lock:
+            if session_code not in self.active_connections:
+                return
+            websockets = [
+                ws for role, ws in self.active_connections[session_code].items()
+                if role.startswith("display_")
+            ]
+
+        for websocket in websockets:
+            try:
+                await websocket.send_json(message)
+            except Exception:
+                pass
