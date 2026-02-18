@@ -89,9 +89,22 @@ async def websocket_endpoint(websocket: WebSocket):
     session_code = None
     role = None
 
+    msg_count = 0
+    window_start = time.monotonic()
+
     try:
         while True:
             data = await websocket.receive_text()
+
+            now = time.monotonic()
+            if now - window_start >= 1.0:
+                window_start = now
+                msg_count = 1
+            else:
+                msg_count += 1
+            if msg_count > 20:
+                await websocket.close(code=1008)
+                return
 
             # Issue 1: Add error handling for JSON parsing
             try:
