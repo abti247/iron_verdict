@@ -65,7 +65,7 @@ async def root():
 @app.post("/api/sessions")
 async def create_session(request: CreateSessionRequest):
     """Create a new judging session."""
-    code = session_manager.create_session(request.name)
+    code = await session_manager.create_session(request.name)
     return {"session_code": code}
 
 
@@ -142,7 +142,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     })
                     continue
 
-                result = session_manager.lock_vote(session_code, position, color)
+                result = await session_manager.lock_vote(session_code, position, color)
 
                 if result["success"]:
                     # Notify display that a judge voted (no color)
@@ -218,7 +218,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     })
                     continue
 
-                session_manager.reset_for_next_lift(session_code)
+                await session_manager.reset_for_next_lift(session_code)
                 await connection_manager.broadcast_to_session(
                     session_code,
                     {"type": "reset_for_next_lift"}

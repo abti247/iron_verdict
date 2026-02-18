@@ -11,9 +11,9 @@ client = TestClient(app)
 
 
 @pytest.fixture
-def session_code():
+async def session_code():
     """Create a fresh session and return its code."""
-    code = session_manager.create_session("Test Session")
+    code = await session_manager.create_session("Test Session")
     yield code
     if code in session_manager.sessions:
         session_manager.delete_session(code)

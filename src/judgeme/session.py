@@ -1,3 +1,4 @@
+import asyncio
 import secrets
 import string
 from datetime import datetime, timedelta
@@ -9,6 +10,7 @@ VALID_LIFT_TYPES = {"squat", "bench", "deadlift"}
 class SessionManager:
     def __init__(self):
         self.sessions: Dict[str, Dict[str, Any]] = {}
+        self._lock = asyncio.Lock()
 
     def generate_session_code(self) -> str:
         """Generate a unique 8-character alphanumeric session code."""
@@ -17,41 +19,42 @@ class SessionManager:
             if code not in self.sessions:
                 return code
 
-    def create_session(self, name: str) -> str:
+    async def create_session(self, name: str) -> str:
         """Create a new session and return its code."""
-        code = self.generate_session_code()
-        self.sessions[code] = {
-            "name": name,
-            "judges": {
-                "left": {
-                    "connected": False,
-                    "is_head": False,
-                    "current_vote": None,
-                    "locked": False,
+        async with self._lock:
+            code = self.generate_session_code()
+            self.sessions[code] = {
+                "name": name,
+                "judges": {
+                    "left": {
+                        "connected": False,
+                        "is_head": False,
+                        "current_vote": None,
+                        "locked": False,
+                    },
+                    "center": {
+                        "connected": False,
+                        "is_head": True,
+                        "current_vote": None,
+                        "locked": False,
+                    },
+                    "right": {
+                        "connected": False,
+                        "is_head": False,
+                        "current_vote": None,
+                        "locked": False,
+                    },
                 },
-                "center": {
-                    "connected": False,
-                    "is_head": True,
-                    "current_vote": None,
-                    "locked": False,
+                "displays": [],
+                "state": "waiting",
+                "timer_state": "idle",
+                "settings": {
+                    "show_explanations": False,
+                    "lift_type": "squat",
                 },
-                "right": {
-                    "connected": False,
-                    "is_head": False,
-                    "current_vote": None,
-                    "locked": False,
-                },
-            },
-            "displays": [],
-            "state": "waiting",
-            "timer_state": "idle",
-            "settings": {
-                "show_explanations": False,
-                "lift_type": "squat",
-            },
-            "last_activity": datetime.now(),
-        }
-        return code
+                "last_activity": datetime.now(),
+            }
+            return code
 
     def join_session(self, code: str, role: str) -> Dict[str, Any]:
         """
@@ -92,7 +95,7 @@ class SessionManager:
 
         return {"success": True, "is_head": is_head}
 
-    def lock_vote(self, code: str, position: str, color: str) -> Dict[str, Any]:
+    async def lock_vote(self, code: str, position: str, color: str) -> Dict[str, Any]:
         """
         Lock in a judge's vote.
 
@@ -104,41 +107,43 @@ class SessionManager:
         Returns:
             Dict with success status and all_locked flag
         """
-        if code not in self.sessions:
-            return {"success": False, "error": "Session not found"}
+        async with self._lock:
+            if code not in self.sessions:
+                return {"success": False, "error": "Session not found"}
 
-        session = self.sessions[code]
-        judge = session["judges"][position]
+            session = self.sessions[code]
+            judge = session["judges"][position]
 
-        judge["current_vote"] = color
-        judge["locked"] = True
-        session["last_activity"] = datetime.now()
+            judge["current_vote"] = color
+            judge["locked"] = True
+            session["last_activity"] = datetime.now()
 
-        # Check if all judges locked
-        all_locked = all(
-            j["locked"] for j in session["judges"].values() if j["connected"]
-        )
+            # Check if all judges locked
+            all_locked = all(
+                j["locked"] for j in session["judges"].values() if j["connected"]
+            )
 
-        if all_locked:
-            session["state"] = "showing_results"
+            if all_locked:
+                session["state"] = "showing_results"
 
-        return {"success": True, "all_locked": all_locked}
+            return {"success": True, "all_locked": all_locked}
 
-    def reset_for_next_lift(self, code: str) -> Dict[str, Any]:
+    async def reset_for_next_lift(self, code: str) -> Dict[str, Any]:
         """Reset session state for next lift."""
-        if code not in self.sessions:
-            return {"success": False, "error": "Session not found"}
+        async with self._lock:
+            if code not in self.sessions:
+                return {"success": False, "error": "Session not found"}
 
-        session = self.sessions[code]
+            session = self.sessions[code]
 
-        for judge in session["judges"].values():
-            judge["current_vote"] = None
-            judge["locked"] = False
+            for judge in session["judges"].values():
+                judge["current_vote"] = None
+                judge["locked"] = False
 
-        session["state"] = "waiting"
-        session["last_activity"] = datetime.now()
+            session["state"] = "waiting"
+            session["last_activity"] = datetime.now()
 
-        return {"success": True}
+            return {"success": True}
 
     def update_settings(self, code: str, show_explanations: bool, lift_type: str) -> Dict[str, Any]:
         """Update head judge display settings."""

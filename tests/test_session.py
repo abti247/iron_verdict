@@ -1,3 +1,4 @@
+import pytest
 from judgeme.session import SessionManager
 from datetime import datetime, timedelta
 
@@ -16,16 +17,16 @@ def test_generate_session_code_creates_unique_codes():
     assert code1 != code2
 
 
-def test_create_session_returns_code():
+async def test_create_session_returns_code():
     manager = SessionManager()
-    code = manager.create_session("Test")
+    code = await manager.create_session("Test")
     assert len(code) == 8
     assert code in manager.sessions
 
 
-def test_create_session_initializes_structure():
+async def test_create_session_initializes_structure():
     manager = SessionManager()
-    code = manager.create_session("Test")
+    code = await manager.create_session("Test")
     session = manager.sessions[code]
 
     assert "judges" in session
@@ -38,9 +39,9 @@ def test_create_session_initializes_structure():
     assert "last_activity" in session
 
 
-def test_join_session_as_judge_succeeds():
+async def test_join_session_as_judge_succeeds():
     manager = SessionManager()
-    code = manager.create_session("Test")
+    code = await manager.create_session("Test")
 
     result = manager.join_session(code, "left_judge")
     assert result["success"] is True
@@ -54,9 +55,9 @@ def test_join_session_invalid_code_fails():
     assert "Session not found" in result["error"]
 
 
-def test_join_session_role_already_taken_fails():
+async def test_join_session_role_already_taken_fails():
     manager = SessionManager()
-    code = manager.create_session("Test")
+    code = await manager.create_session("Test")
     manager.join_session(code, "left_judge")
 
     result = manager.join_session(code, "left_judge")
@@ -64,75 +65,75 @@ def test_join_session_role_already_taken_fails():
     assert "already taken" in result["error"]
 
 
-def test_join_session_as_display_succeeds():
+async def test_join_session_as_display_succeeds():
     manager = SessionManager()
-    code = manager.create_session("Test")
+    code = await manager.create_session("Test")
 
     result = manager.join_session(code, "display")
     assert result["success"] is True
     assert len(manager.sessions[code]["displays"]) == 1
 
 
-def test_join_session_invalid_role_fails():
+async def test_join_session_invalid_role_fails():
     manager = SessionManager()
-    code = manager.create_session("Test")
+    code = await manager.create_session("Test")
 
     result = manager.join_session(code, "admin")
     assert result["success"] is False
     assert "Invalid role" in result["error"]
 
 
-def test_lock_vote_succeeds():
+async def test_lock_vote_succeeds():
     manager = SessionManager()
-    code = manager.create_session("Test")
+    code = await manager.create_session("Test")
     manager.join_session(code, "left_judge")
 
-    result = manager.lock_vote(code, "left", "white")
+    result = await manager.lock_vote(code, "left", "white")
     assert result["success"] is True
     assert manager.sessions[code]["judges"]["left"]["current_vote"] == "white"
     assert manager.sessions[code]["judges"]["left"]["locked"] is True
 
 
-def test_lock_vote_invalid_session_fails():
+async def test_lock_vote_invalid_session_fails():
     manager = SessionManager()
-    result = manager.lock_vote("INVALID", "left", "white")
+    result = await manager.lock_vote("INVALID", "left", "white")
     assert result["success"] is False
 
 
-def test_lock_vote_updates_last_activity():
+async def test_lock_vote_updates_last_activity():
     manager = SessionManager()
-    code = manager.create_session("Test")
+    code = await manager.create_session("Test")
     manager.join_session(code, "left_judge")
 
     before = manager.sessions[code]["last_activity"]
-    manager.lock_vote(code, "left", "red")
+    await manager.lock_vote(code, "left", "red")
     after = manager.sessions[code]["last_activity"]
 
     assert after > before
 
 
-def test_all_votes_locked_triggers_results():
+async def test_all_votes_locked_triggers_results():
     manager = SessionManager()
-    code = manager.create_session("Test")
+    code = await manager.create_session("Test")
     manager.join_session(code, "left_judge")
     manager.join_session(code, "center_judge")
     manager.join_session(code, "right_judge")
 
-    manager.lock_vote(code, "left", "white")
-    manager.lock_vote(code, "center", "red")
-    result = manager.lock_vote(code, "right", "white")
+    await manager.lock_vote(code, "left", "white")
+    await manager.lock_vote(code, "center", "red")
+    result = await manager.lock_vote(code, "right", "white")
 
     assert result["all_locked"] is True
     assert manager.sessions[code]["state"] == "showing_results"
 
 
-def test_reset_for_next_lift_clears_votes():
+async def test_reset_for_next_lift_clears_votes():
     manager = SessionManager()
-    code = manager.create_session("Test")
+    code = await manager.create_session("Test")
     manager.join_session(code, "left_judge")
-    manager.lock_vote(code, "left", "white")
+    await manager.lock_vote(code, "left", "white")
 
-    manager.reset_for_next_lift(code)
+    await manager.reset_for_next_lift(code)
 
     session = manager.sessions[code]
     assert session["judges"]["left"]["current_vote"] is None
@@ -140,9 +141,9 @@ def test_reset_for_next_lift_clears_votes():
     assert session["state"] == "waiting"
 
 
-def test_get_expired_sessions_returns_old_sessions():
+async def test_get_expired_sessions_returns_old_sessions():
     manager = SessionManager()
-    code = manager.create_session("Test")
+    code = await manager.create_session("Test")
 
     # Manually set old timestamp
     manager.sessions[code]["last_activity"] = datetime.now() - timedelta(hours=5)
@@ -151,26 +152,26 @@ def test_get_expired_sessions_returns_old_sessions():
     assert code in expired
 
 
-def test_delete_session_removes_from_memory():
+async def test_delete_session_removes_from_memory():
     manager = SessionManager()
-    code = manager.create_session("Test")
+    code = await manager.create_session("Test")
 
     manager.delete_session(code)
     assert code not in manager.sessions
 
 
-def test_create_session_initializes_settings():
+async def test_create_session_initializes_settings():
     manager = SessionManager()
-    code = manager.create_session("Test")
+    code = await manager.create_session("Test")
     session = manager.sessions[code]
     assert "settings" in session
     assert session["settings"]["show_explanations"] is False
     assert session["settings"]["lift_type"] == "squat"
 
 
-def test_update_settings_stores_values():
+async def test_update_settings_stores_values():
     manager = SessionManager()
-    code = manager.create_session("Test")
+    code = await manager.create_session("Test")
     result = manager.update_settings(code, True, "bench")
     assert result["success"] is True
     assert manager.sessions[code]["settings"]["show_explanations"] is True
@@ -184,24 +185,24 @@ def test_update_settings_invalid_session_fails():
     assert "Session not found" in result["error"]
 
 
-def test_update_settings_invalid_lift_type_fails():
+async def test_update_settings_invalid_lift_type_fails():
     manager = SessionManager()
-    code = manager.create_session("Test")
+    code = await manager.create_session("Test")
     result = manager.update_settings(code, False, "snatch")
     assert result["success"] is False
     assert "Invalid lift type" in result["error"]
 
 
-def test_create_session_stores_name():
+async def test_create_session_stores_name():
     manager = SessionManager()
-    code = manager.create_session("Platform A")
+    code = await manager.create_session("Platform A")
     assert manager.sessions[code]["name"] == "Platform A"
 
 
-def test_cleanup_expired_removes_stale_keeps_fresh():
+async def test_cleanup_expired_removes_stale_keeps_fresh():
     manager = SessionManager()
-    old_code = manager.create_session("Old")
-    new_code = manager.create_session("New")
+    old_code = await manager.create_session("Old")
+    new_code = await manager.create_session("New")
     manager.sessions[old_code]["last_activity"] = datetime.now() - timedelta(hours=5)
 
     manager.cleanup_expired(hours=4)
