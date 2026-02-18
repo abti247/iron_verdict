@@ -5,6 +5,7 @@ import httpx_ws
 from httpx_ws.transport import ASGIWebSocketTransport
 from fastapi.testclient import TestClient
 from judgeme.main import app, session_manager
+from judgeme.config import settings
 
 
 client = TestClient(app)
@@ -162,3 +163,21 @@ async def test_vote_lock_missing_color_returns_error(session_code):
             msg = await asyncio.wait_for(ws.receive_json(), timeout=1.0)
             assert msg["type"] == "error"
             assert "color" in msg["message"].lower()
+
+
+@pytest.mark.asyncio
+async def test_display_cap_rejects_when_full(monkeypatch):
+    """Setting DISPLAY_CAP=0 immediately rejects any display join."""
+    monkeypatch.setattr(settings, "DISPLAY_CAP", 0)
+    code = await session_manager.create_session("Cap Test")
+    try:
+        async with httpx.AsyncClient(
+            transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+        ) as ac:
+            async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+                await ws.send_json({"type": "join", "session_code": code, "role": "display"})
+                response = await ws.receive_json()
+                assert response["type"] == "join_error"
+                assert "cap" in response["message"].lower()
+    finally:
+        session_manager.delete_session(code)

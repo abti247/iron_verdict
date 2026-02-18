@@ -11,6 +11,7 @@ import json
 import copy
 import time
 import os
+import secrets
 
 VALID_COLORS = {"white", "red", "blue", "yellow"}
 
@@ -115,6 +116,16 @@ async def websocket_endpoint(websocket: WebSocket):
                     await websocket.close()
                     return
 
+                if role == "display":
+                    if await connection_manager.count_displays(session_code) >= settings.DISPLAY_CAP:
+                        await websocket.send_json({
+                            "type": "join_error",
+                            "message": "Display cap reached"
+                        })
+                        await websocket.close()
+                        return
+                    role = f"display_{secrets.token_hex(4)}"
+
                 # Add connection
                 await connection_manager.add_connection(session_code, role, websocket)
 
@@ -124,7 +135,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
                 await websocket.send_json({
                     "type": "join_success",
-                    "role": role,
+                    "role": "display" if role.startswith("display_") else role,
                     "is_head": result["is_head"],
                     "session_state": session_state
                 })
@@ -146,9 +157,8 @@ async def websocket_endpoint(websocket: WebSocket):
 
                 if result["success"]:
                     # Notify display that a judge voted (no color)
-                    await connection_manager.send_to_role(
+                    await connection_manager.send_to_displays(
                         session_code,
-                        "display",
                         {"type": "judge_voted", "position": position}
                     )
 
