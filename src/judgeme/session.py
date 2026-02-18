@@ -45,7 +45,6 @@ class SessionManager:
                         "locked": False,
                     },
                 },
-                "displays": [],
                 "state": "waiting",
                 "timer_state": "idle",
                 "settings": {
@@ -78,7 +77,6 @@ class SessionManager:
         session = self.sessions[code]
 
         if role == "display":
-            session["displays"].append({"connected": True})
             return {"success": True, "is_head": False}
 
         # Parse judge role

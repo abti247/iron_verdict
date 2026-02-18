@@ -33,7 +33,6 @@ async def test_create_session_initializes_structure():
     assert "left" in session["judges"]
     assert "center" in session["judges"]
     assert "right" in session["judges"]
-    assert "displays" in session
     assert session["state"] == "waiting"
     assert session["timer_state"] == "idle"
     assert "last_activity" in session
@@ -71,7 +70,7 @@ async def test_join_session_as_display_succeeds():
 
     result = manager.join_session(code, "display")
     assert result["success"] is True
-    assert len(manager.sessions[code]["displays"]) == 1
+    assert result["is_head"] is False
 
 
 async def test_join_session_invalid_role_fails():
