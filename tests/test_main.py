@@ -192,3 +192,13 @@ async def test_display_cap_rejects_when_full(monkeypatch):
                 assert "cap" in response["message"].lower()
     finally:
         session_manager.delete_session(code)
+
+
+def test_create_session_rate_limited_after_10_requests():
+    """11th request from the same IP within an hour returns 429."""
+    for i in range(10):
+        r = client.post("/api/sessions", json={"name": f"S{i}"})
+        assert r.status_code == 200, f"Request {i+1} should succeed, got {r.status_code}"
+
+    r = client.post("/api/sessions", json={"name": "overflow"})
+    assert r.status_code == 429
