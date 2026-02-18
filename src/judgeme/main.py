@@ -5,6 +5,8 @@ from fastapi.staticfiles import StaticFiles
 from judgeme.config import settings
 from judgeme.session import SessionManager
 from judgeme.connection import ConnectionManager
+import asyncio
+from contextlib import asynccontextmanager
 import json
 import copy
 import time
@@ -23,9 +25,25 @@ class CreateSessionRequest(BaseModel):
         return v.strip()
 
 
-app = FastAPI(title="JudgeMe")
 session_manager = SessionManager()
 connection_manager = ConnectionManager()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    async def _cleanup_loop():
+        while True:
+            await asyncio.sleep(30 * 60)
+            session_manager.cleanup_expired(settings.SESSION_TIMEOUT_HOURS)
+
+    task = asyncio.create_task(_cleanup_loop())
+    yield
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
+
+app = FastAPI(title="JudgeMe", lifespan=lifespan)
 
 # Serve static files
 static_dir = os.path.join(os.path.dirname(__file__), "static")
