@@ -1,4 +1,4 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from pydantic import BaseModel, field_validator
 from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -12,6 +12,9 @@ import copy
 import time
 import os
 import secrets
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 VALID_COLORS = {"white", "red", "blue", "yellow"}
 
@@ -26,6 +29,7 @@ class CreateSessionRequest(BaseModel):
         return v.strip()
 
 
+limiter = Limiter(key_func=get_remote_address)
 session_manager = SessionManager()
 connection_manager = ConnectionManager()
 
@@ -45,6 +49,8 @@ async def lifespan(app: FastAPI):
         pass
 
 app = FastAPI(title="JudgeMe", lifespan=lifespan)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Serve static files
 static_dir = os.path.join(os.path.dirname(__file__), "static")
@@ -64,9 +70,10 @@ async def root():
 
 
 @app.post("/api/sessions")
-async def create_session(request: CreateSessionRequest):
+@limiter.limit("10/hour")
+async def create_session(request: Request, body: CreateSessionRequest):
     """Create a new judging session."""
-    code = await session_manager.create_session(request.name)
+    code = await session_manager.create_session(body.name)
     return {"session_code": code}
 
 
