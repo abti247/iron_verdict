@@ -215,8 +215,13 @@ async def test_websocket_rejects_wrong_origin(monkeypatch):
         async with httpx_ws.aconnect_ws(
             "ws://test/ws", ac, headers={"origin": "https://evil.com"}
         ) as ws:
-            with pytest.raises(Exception):
-                await ws.receive_json()
+            try:
+                msg = await asyncio.wait_for(ws.receive_json(), timeout=1.0)
+                pytest.fail(f"Expected connection to be closed, got message: {msg}")
+            except asyncio.TimeoutError:
+                pytest.fail("Expected WebSocket close on origin mismatch, got timeout")
+            except Exception:
+                pass  # Connection was closed/rejected as expected
 
 
 @pytest.mark.asyncio
