@@ -8,6 +8,17 @@ from judgeme.main import app, session_manager
 from judgeme.config import settings
 
 
+@pytest.fixture(autouse=True)
+def reset_rate_limiter():
+    """Reset in-memory rate-limit counters so tests don't bleed into each other."""
+    try:
+        from judgeme.main import limiter
+        limiter._storage.reset()
+    except (ImportError, AttributeError):
+        pass
+    yield
+
+
 client = TestClient(app)
 
 
