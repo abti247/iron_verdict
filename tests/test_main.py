@@ -202,3 +202,34 @@ def test_create_session_rate_limited_after_10_requests():
 
     r = client.post("/api/sessions", json={"name": "overflow"})
     assert r.status_code == 429
+
+
+@pytest.mark.asyncio
+async def test_websocket_rejects_wrong_origin(monkeypatch):
+    """WS connection with wrong Origin is closed with code 1008."""
+    monkeypatch.setattr(settings, "ALLOWED_ORIGIN", "https://app.example.com")
+
+    async with httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as ac:
+        async with httpx_ws.aconnect_ws(
+            "ws://test/ws", ac, headers={"origin": "https://evil.com"}
+        ) as ws:
+            with pytest.raises(Exception):
+                await ws.receive_json()
+
+
+@pytest.mark.asyncio
+async def test_websocket_accepts_matching_origin(monkeypatch, session_code):
+    """WS connection with correct Origin is accepted normally."""
+    monkeypatch.setattr(settings, "ALLOWED_ORIGIN", "https://app.example.com")
+
+    async with httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as ac:
+        async with httpx_ws.aconnect_ws(
+            "ws://test/ws", ac, headers={"origin": "https://app.example.com"}
+        ) as ws:
+            await ws.send_json({"type": "join", "session_code": session_code, "role": "left_judge"})
+            msg = await ws.receive_json()
+            assert msg["type"] == "join_success"
