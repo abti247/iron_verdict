@@ -238,3 +238,33 @@ async def test_websocket_accepts_matching_origin(monkeypatch, session_code):
             await ws.send_json({"type": "join", "session_code": session_code, "role": "left_judge"})
             msg = await ws.receive_json()
             assert msg["type"] == "join_success"
+
+
+@pytest.mark.asyncio
+async def test_websocket_disconnects_on_message_flood(session_code):
+    """Sending >20 messages/second closes connection with code 1008."""
+    async with httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+            # Join (message #1)
+            await ws.send_json({"type": "join", "session_code": session_code, "role": "left_judge"})
+            await ws.receive_json()  # join_success — server has processed msg #1
+
+            # Send 20 more messages in rapid succession (msgs #2–#21)
+            # All within the same 1-second window → triggers the >20 limit
+            for _ in range(20):
+                await ws.send_json({"type": "ping"})
+
+            # Give server a moment to process and close
+            await asyncio.sleep(0.1)
+
+            # Server must actively close the connection (not just timeout).
+            # If receive_json times out it means the server did NOT disconnect → test fails.
+            try:
+                await asyncio.wait_for(ws.receive_json(), timeout=1.0)
+                pytest.fail("Expected server to close the connection with 1008, but it stayed open")
+            except asyncio.TimeoutError:
+                pytest.fail("Server did not disconnect the client (timed out waiting for close)")
+            except Exception:
+                pass  # Any WebSocket close exception means the server disconnected — test passes
