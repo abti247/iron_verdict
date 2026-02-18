@@ -167,3 +167,9 @@ class SessionManager:
         """Delete a session from memory."""
         if code in self.sessions:
             del self.sessions[code]
+
+    def cleanup_expired(self, hours: int) -> None:
+        """Delete all sessions inactive for longer than `hours`."""
+        expired = self.get_expired_sessions(hours)
+        for code in expired:
+            self.delete_session(code)

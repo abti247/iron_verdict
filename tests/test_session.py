@@ -196,3 +196,15 @@ def test_create_session_stores_name():
     manager = SessionManager()
     code = manager.create_session("Platform A")
     assert manager.sessions[code]["name"] == "Platform A"
+
+
+def test_cleanup_expired_removes_stale_keeps_fresh():
+    manager = SessionManager()
+    old_code = manager.create_session("Old")
+    new_code = manager.create_session("New")
+    manager.sessions[old_code]["last_activity"] = datetime.now() - timedelta(hours=5)
+
+    manager.cleanup_expired(hours=4)
+
+    assert old_code not in manager.sessions
+    assert new_code in manager.sessions
