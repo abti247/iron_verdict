@@ -80,6 +80,10 @@ async def create_session(request: Request, body: CreateSessionRequest):
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     """WebSocket endpoint for real-time communication."""
+    origin = websocket.headers.get("origin", "")
+    if settings.ALLOWED_ORIGIN != "*" and origin != settings.ALLOWED_ORIGIN:
+        await websocket.close(code=1008)
+        return
     await websocket.accept()
 
     session_code = None
