@@ -281,6 +281,8 @@ def test_security_headers_on_root():
     assert "default-src 'self'" in csp
     assert "cdn.jsdelivr.net" in csp
     assert "'unsafe-eval'" in csp  # Alpine.js requires eval for x-show/x-bind expression evaluation
+    assert "fonts.googleapis.com" in csp
+    assert "fonts.gstatic.com" in csp
 
 
 def test_security_headers_on_api():
