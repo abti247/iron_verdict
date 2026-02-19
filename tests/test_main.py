@@ -279,6 +279,7 @@ def test_security_headers_on_root():
     csp = response.headers["Content-Security-Policy"]
     assert "default-src 'self'" in csp
     assert "cdn.jsdelivr.net" in csp
+    assert "'unsafe-eval'" in csp  # Alpine.js requires eval for x-show/x-bind expression evaluation
 
 
 def test_security_headers_on_api():

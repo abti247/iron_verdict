@@ -32,7 +32,7 @@ class CreateSessionRequest(BaseModel):
 
 _CSP = (
     "default-src 'self'; "
-    "script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; "
+    "script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline' 'unsafe-eval'; "
     "connect-src 'self' ws: wss:; "
     "style-src 'self' 'unsafe-inline'; "
     "img-src 'self' data:; "
