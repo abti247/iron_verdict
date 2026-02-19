@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import pytest
 import httpx
 import httpx_ws
@@ -286,3 +287,177 @@ def test_security_headers_on_api():
     response = client.post("/api/sessions", json={"name": "Test"})
     assert response.headers["X-Content-Type-Options"] == "nosniff"
     assert "Content-Security-Policy" in response.headers
+
+
+# ---- Session creation logging ----
+
+@pytest.mark.asyncio
+async def test_create_session_logs_info(caplog):
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        with caplog.at_level(logging.INFO, logger="judgeme"):
+            resp = await ac.post("/api/sessions", json={"name": "TestMeet"})
+    assert resp.status_code == 200
+    messages = [r.getMessage() for r in caplog.records]
+    assert any("session_created" in m for m in messages)
+
+
+# ---- WebSocket join logging ----
+
+@pytest.mark.asyncio
+async def test_ws_join_success_logs_role_and_session(caplog):
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        resp = await ac.post("/api/sessions", json={"name": "Test"})
+    code = resp.json()["session_code"]
+
+    async with httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as ac:
+        with caplog.at_level(logging.INFO, logger="judgeme"):
+            async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+                await ws.send_json({"type": "join", "session_code": code, "role": "left_judge"})
+                await ws.receive_json()
+
+    records = [r for r in caplog.records if r.getMessage() == "role_joined"]
+    assert len(records) == 1
+    assert records[0].session_code == code
+    assert records[0].role == "left_judge"
+
+
+@pytest.mark.asyncio
+async def test_ws_disconnect_logs_info(caplog):
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        resp = await ac.post("/api/sessions", json={"name": "Test"})
+    code = resp.json()["session_code"]
+
+    with caplog.at_level(logging.INFO, logger="judgeme"):
+        async with httpx.AsyncClient(
+            transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+        ) as ac:
+            async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+                await ws.send_json({"type": "join", "session_code": code, "role": "left_judge"})
+                await ws.receive_json()
+            # ws context exit triggers disconnect
+
+    records = [r for r in caplog.records if r.getMessage() == "role_disconnected"]
+    assert len(records) == 1
+    assert records[0].session_code == code
+    assert records[0].role == "left_judge"
+
+
+@pytest.mark.asyncio
+async def test_vote_lock_logs_info(caplog):
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as ac:
+        resp = await ac.post("/api/sessions", json={"name": "Test"})
+    code = resp.json()["session_code"]
+
+    async with httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as ac:
+        with caplog.at_level(logging.INFO, logger="judgeme"):
+            async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+                await ws.send_json({"type": "join", "session_code": code, "role": "left_judge"})
+                await ws.receive_json()
+                await ws.send_json({"type": "vote_lock", "color": "white"})
+                await ws.receive_json()
+
+    records = [r for r in caplog.records if r.getMessage() == "vote_locked"]
+    assert len(records) == 1
+    assert records[0].session_code == code
+    assert records[0].position == "left"
+    assert records[0].color == "white"
+
+
+@pytest.mark.asyncio
+async def test_timer_start_logs_info(caplog):
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as ac:
+        resp = await ac.post("/api/sessions", json={"name": "Test"})
+    code = resp.json()["session_code"]
+
+    async with httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as ac:
+        with caplog.at_level(logging.INFO, logger="judgeme"):
+            async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+                await ws.send_json({"type": "join", "session_code": code, "role": "center_judge"})
+                await ws.receive_json()
+                await ws.send_json({"type": "timer_start"})
+                await ws.receive_json()
+
+    records = [r for r in caplog.records if r.getMessage() == "timer_start"]
+    assert len(records) == 1
+    assert records[0].session_code == code
+
+
+@pytest.mark.asyncio
+async def test_session_end_logs_info(caplog):
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as ac:
+        resp = await ac.post("/api/sessions", json={"name": "Test"})
+    code = resp.json()["session_code"]
+
+    async with httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as ac:
+        with caplog.at_level(logging.INFO, logger="judgeme"):
+            async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+                await ws.send_json({"type": "join", "session_code": code, "role": "center_judge"})
+                await ws.receive_json()
+                await ws.send_json({"type": "end_session_confirmed"})
+                try:
+                    await ws.receive_json()
+                except Exception:
+                    pass
+
+    records = [r for r in caplog.records if r.getMessage() == "session_ended"]
+    assert len(records) == 1
+    assert records[0].session_code == code
+
+
+@pytest.mark.asyncio
+async def test_origin_rejection_logs_warning(caplog, monkeypatch):
+    monkeypatch.setattr(settings, "ALLOWED_ORIGIN", "https://allowed.example.com")
+
+    async with httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as ac:
+        with caplog.at_level(logging.WARNING, logger="judgeme"):
+            try:
+                async with httpx_ws.aconnect_ws(
+                    "ws://test/ws", ac,
+                    headers={"origin": "https://evil.example.com"}
+                ) as ws:
+                    pass
+            except Exception:
+                pass
+
+    records = [r for r in caplog.records if r.getMessage() == "origin_rejected"]
+    assert len(records) == 1
+    assert records[0].origin == "https://evil.example.com"
+
+
+@pytest.mark.asyncio
+async def test_message_flood_logs_warning(caplog):
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as ac:
+        resp = await ac.post("/api/sessions", json={"name": "Test"})
+    code = resp.json()["session_code"]
+
+    async with httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as ac:
+        with caplog.at_level(logging.WARNING, logger="judgeme"):
+            async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+                await ws.send_json({"type": "join", "session_code": code, "role": "left_judge"})
+                await ws.receive_json()
+                for _ in range(25):
+                    try:
+                        await ws.send_json({"type": "vote_lock", "color": "white"})
+                    except Exception:
+                        break
+
+    records = [r for r in caplog.records if r.getMessage() == "message_flood_disconnect"]
+    assert len(records) == 1

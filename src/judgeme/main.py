@@ -16,8 +16,23 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from starlette.middleware.base import BaseHTTPMiddleware
+import logging
+from judgeme.logging_config import setup_logging
+
+logger = logging.getLogger("judgeme")
 
 VALID_COLORS = {"white", "red", "blue", "yellow"}
+
+
+def _get_http_client_ip(request: Request) -> str:
+    fwd = request.headers.get("x-forwarded-for")
+    return fwd.split(",")[0].strip() if fwd else (request.client.host if request.client else "unknown")
+
+
+def _get_ws_client_ip(websocket: WebSocket) -> str:
+    fwd = websocket.headers.get("x-forwarded-for")
+    return fwd.split(",")[0].strip() if fwd else (websocket.client.host if websocket.client else "unknown")
+
 
 class CreateSessionRequest(BaseModel):
     name: str
@@ -57,6 +72,8 @@ connection_manager = ConnectionManager()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    setup_logging()
+
     async def _cleanup_loop():
         while True:
             await asyncio.sleep(30 * 60)
@@ -97,6 +114,7 @@ async def root():
 async def create_session(request: Request, body: CreateSessionRequest):
     """Create a new judging session."""
     code = await session_manager.create_session(body.name)
+    logger.info("session_created", extra={"session_code": code, "client_ip": _get_http_client_ip(request)})
     return {"session_code": code}
 
 
@@ -105,6 +123,10 @@ async def websocket_endpoint(websocket: WebSocket):
     """WebSocket endpoint for real-time communication."""
     origin = websocket.headers.get("origin", "")
     if settings.ALLOWED_ORIGIN != "*" and origin != settings.ALLOWED_ORIGIN:
+        logger.warning("origin_rejected", extra={
+            "origin": origin,
+            "client_ip": _get_ws_client_ip(websocket),
+        })
         await websocket.close(code=1008)
         return
     await websocket.accept()
@@ -126,6 +148,7 @@ async def websocket_endpoint(websocket: WebSocket):
             else:
                 msg_count += 1
             if msg_count > 20:
+                logger.warning("message_flood_disconnect", extra={"client_ip": _get_ws_client_ip(websocket)})
                 await websocket.close(code=1008)
                 return
 
@@ -156,6 +179,12 @@ async def websocket_endpoint(websocket: WebSocket):
                 result = session_manager.join_session(session_code, role)
 
                 if not result["success"]:
+                    logger.warning("role_join_failed", extra={
+                        "session_code": session_code,
+                        "role": message.get("role"),
+                        "reason": result["error"],
+                        "client_ip": _get_ws_client_ip(websocket),
+                    })
                     await websocket.send_json({
                         "type": "join_error",
                         "message": result["error"]
@@ -175,6 +204,11 @@ async def websocket_endpoint(websocket: WebSocket):
 
                 # Add connection
                 await connection_manager.add_connection(session_code, role, websocket)
+                logger.info("role_joined", extra={
+                    "session_code": session_code,
+                    "role": "display" if role.startswith("display_") else role,
+                    "client_ip": _get_ws_client_ip(websocket),
+                })
 
                 # Issue 3: Use deep copy for nested dicts
                 session_state = copy.deepcopy(session_manager.sessions[session_code])
@@ -203,6 +237,12 @@ async def websocket_endpoint(websocket: WebSocket):
                 result = await session_manager.lock_vote(session_code, position, color)
 
                 if result["success"]:
+                    logger.info("vote_locked", extra={
+                        "session_code": session_code,
+                        "position": position,
+                        "color": color,
+                        "all_locked": result.get("all_locked", False),
+                    })
                     # Notify display that a judge voted (no color)
                     await connection_manager.send_to_displays(
                         session_code,
@@ -238,6 +278,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     })
                     continue
 
+                logger.info("timer_start", extra={"session_code": session_code})
                 await connection_manager.broadcast_to_session(
                     session_code,
                     {
@@ -258,6 +299,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     })
                     continue
 
+                logger.info("timer_reset", extra={"session_code": session_code})
                 await connection_manager.broadcast_to_session(
                     session_code,
                     {"type": "timer_reset"}
@@ -275,6 +317,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     })
                     continue
 
+                logger.info("next_lift", extra={"session_code": session_code})
                 await session_manager.reset_for_next_lift(session_code)
                 await connection_manager.broadcast_to_session(
                     session_code,
@@ -293,6 +336,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     })
                     continue
 
+                logger.info("session_ended", extra={"session_code": session_code})
                 await connection_manager.broadcast_to_session(
                     session_code,
                     {"type": "session_ended", "reason": "head_judge"}
@@ -339,6 +383,10 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         if session_code and role:
             await connection_manager.remove_connection(session_code, role)
+            logger.info("role_disconnected", extra={
+                "session_code": session_code,
+                "role": "display" if role.startswith("display_") else role,
+            })
             # Update session state if judge disconnected
             if role.endswith("_judge"):
                 position = role.replace("_judge", "")
