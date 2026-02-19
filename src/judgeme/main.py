@@ -23,6 +23,17 @@ logger = logging.getLogger("judgeme")
 
 VALID_COLORS = {"white", "red", "blue", "yellow"}
 
+
+def _get_http_client_ip(request: Request) -> str:
+    fwd = request.headers.get("x-forwarded-for")
+    return fwd.split(",")[0].strip() if fwd else (request.client.host if request.client else "unknown")
+
+
+def _get_ws_client_ip(websocket: WebSocket) -> str:
+    fwd = websocket.headers.get("x-forwarded-for")
+    return fwd.split(",")[0].strip() if fwd else (websocket.client.host if websocket.client else "unknown")
+
+
 class CreateSessionRequest(BaseModel):
     name: str
 
@@ -103,6 +114,7 @@ async def root():
 async def create_session(request: Request, body: CreateSessionRequest):
     """Create a new judging session."""
     code = await session_manager.create_session(body.name)
+    logger.info("session_created", extra={"session_code": code, "client_ip": _get_http_client_ip(request)})
     return {"session_code": code}
 
 
@@ -162,6 +174,12 @@ async def websocket_endpoint(websocket: WebSocket):
                 result = session_manager.join_session(session_code, role)
 
                 if not result["success"]:
+                    logger.warning("role_join_failed", extra={
+                        "session_code": session_code,
+                        "role": message.get("role"),
+                        "reason": result["error"],
+                        "client_ip": _get_ws_client_ip(websocket),
+                    })
                     await websocket.send_json({
                         "type": "join_error",
                         "message": result["error"]
@@ -181,6 +199,11 @@ async def websocket_endpoint(websocket: WebSocket):
 
                 # Add connection
                 await connection_manager.add_connection(session_code, role, websocket)
+                logger.info("role_joined", extra={
+                    "session_code": session_code,
+                    "role": "display" if role.startswith("display_") else role,
+                    "client_ip": _get_ws_client_ip(websocket),
+                })
 
                 # Issue 3: Use deep copy for nested dicts
                 session_state = copy.deepcopy(session_manager.sessions[session_code])
@@ -345,6 +368,10 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         if session_code and role:
             await connection_manager.remove_connection(session_code, role)
+            logger.info("role_disconnected", extra={
+                "session_code": session_code,
+                "role": "display" if role.startswith("display_") else role,
+            })
             # Update session state if judge disconnected
             if role.endswith("_judge"):
                 position = role.replace("_judge", "")
