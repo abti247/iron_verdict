@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iron Verdict — Design 2: Blood & Chrome</title>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-void: #0A0A0A;
+            --bg-surface: #141414;
+            --bg-raised: #1E1E1E;
+            --chrome-light: #C0C0C0;
+            --chrome-mid: #808080;
+            --chrome-dark: #404040;
+            --blood: #B91C1C;
+            --blood-bright: #EF4444;
+            --blood-glow: rgba(185,28,28,0.3);
+            --text-chrome: #D4D4D4;
+            --text-dim: #6B6B6B;
+            --vote-white: #F0F0F0;
+            --vote-red: #DC2626;
+            --vote-blue: #2563EB;
+            --vote-yellow: #EAB308;
+            --success: #22C55E;
+        }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: var(--bg-void);
+            color: var(--text-chrome);
+            min-height: 100vh;
+        }
+
+        /* ===== CHROME GRADIENT TEXT ===== */
+        .chrome-text {
+            background: linear-gradient(180deg, #FFFFFF 0%, #C0C0C0 40%, #808080 60%, #A0A0A0 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* ===== ANGULAR CUT CORNERS ===== */
+        .cut-corner {
+            clip-path: polygon(
+                12px 0%, 100% 0%,
+                100% calc(100% - 12px),
+                calc(100% - 12px) 100%,
+                0% 100%,
+                0% 12px
+            );
+        }
+
+        .cut-corner-sm {
+            clip-path: polygon(
+                8px 0%, 100% 0%,
+                100% calc(100% - 8px),
+                calc(100% - 8px) 100%,
+                0% 100%,
+                0% 8px
+            );
+        }
+
+        /* ===== DEMO SECTIONS ===== */
+        .demo-section {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .demo-label {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 22px;
+            letter-spacing: 4px;
+            color: var(--blood-bright);
+            border-left: 4px solid var(--blood);
+            padding-left: 12px;
+            margin-bottom: 20px;
+        }
+
+        /* ============================================
+           LANDING
+           ============================================ */
+        .landing-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+            background:
+                linear-gradient(135deg, var(--bg-void) 60%, rgba(185,28,28,0.05) 100%);
+            position: relative;
+        }
+
+        /* Diagonal slash decoration */
+        .landing-wrap::before {
+            content: '';
+            position: absolute;
+            top: 0; right: 0;
+            width: 200px; height: 100%;
+            background: linear-gradient(135deg, transparent 48%, rgba(185,28,28,0.03) 49%, rgba(185,28,28,0.03) 51%, transparent 52%);
+        }
+
+        .landing-panel {
+            width: 100%;
+            max-width: 440px;
+            background: var(--bg-surface);
+            border: 1px solid var(--chrome-dark);
+            padding: 40px 32px;
+            position: relative;
+        }
+
+        .landing-panel::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--blood), var(--blood-bright), var(--blood));
+        }
+
+        .brand-iron {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 64px;
+            letter-spacing: 10px;
+            line-height: 1;
+            text-align: center;
+        }
+
+        .brand-verdict-sub {
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 600;
+            font-size: 13px;
+            letter-spacing: 10px;
+            text-transform: uppercase;
+            color: var(--blood-bright);
+            text-align: center;
+            margin-top: -2px;
+        }
+
+        .chrome-input {
+            width: 100%;
+            padding: 14px 16px;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 17px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            background: var(--bg-void);
+            border: 1px solid var(--chrome-dark);
+            border-left: 3px solid var(--blood);
+            color: var(--text-chrome);
+            transition: all 0.2s;
+        }
+
+        .chrome-input::placeholder { color: var(--text-dim); }
+        .chrome-input:focus {
+            outline: none;
+            border-color: var(--blood);
+            box-shadow: 0 0 0 1px var(--blood-glow);
+        }
+
+        .btn-blood {
+            width: 100%;
+            padding: 16px;
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 20px;
+            letter-spacing: 4px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.15s;
+            text-transform: uppercase;
+        }
+
+        .btn-blood:active { transform: scale(0.98); }
+
+        .btn-blood-primary {
+            background: linear-gradient(180deg, #DC2626 0%, #991B1B 100%);
+            color: #fff;
+            box-shadow: 0 4px 20px var(--blood-glow);
+        }
+
+        .btn-blood-primary:hover {
+            box-shadow: 0 6px 30px rgba(185,28,28,0.5);
+        }
+
+        .btn-blood-secondary {
+            background: var(--bg-raised);
+            color: var(--text-chrome);
+            border: 1px solid var(--chrome-dark);
+        }
+
+        .btn-blood-secondary:hover {
+            border-color: var(--blood);
+        }
+
+        .btn-blood-ghost {
+            background: transparent;
+            color: var(--text-dim);
+            border: 1px solid #2a2a2a;
+            font-size: 16px;
+            letter-spacing: 3px;
+        }
+        .btn-blood-ghost:hover { color: var(--text-chrome); border-color: var(--chrome-dark); }
+
+        .slash-divider {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin: 12px 0;
+            color: var(--text-dim);
+            font-size: 13px;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+        }
+
+        .slash-divider::before, .slash-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--chrome-dark), transparent);
+        }
+
+        .form-stack { display: flex; flex-direction: column; gap: 12px; margin-top: 32px; }
+
+        /* ============================================
+           ROLE SELECTION
+           ============================================ */
+        .role-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+            background: var(--bg-void);
+        }
+
+        .role-panel {
+            width: 100%;
+            max-width: 500px;
+            background: var(--bg-surface);
+            border: 1px solid var(--chrome-dark);
+            padding: 32px;
+            position: relative;
+        }
+
+        .role-panel::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--blood), var(--blood-bright), var(--blood));
+        }
+
+        .session-tag {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 18px;
+            letter-spacing: 3px;
+            text-align: center;
+            margin: 16px 0 24px;
+            color: var(--text-dim);
+        }
+
+        .session-tag .code {
+            color: var(--blood-bright);
+            font-size: 22px;
+        }
+
+        .role-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .role-btn {
+            padding: 24px 8px;
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 18px;
+            letter-spacing: 2px;
+            text-align: center;
+            background: var(--bg-raised);
+            border: 1px solid var(--chrome-dark);
+            color: var(--text-chrome);
+            cursor: pointer;
+            transition: all 0.2s;
+            line-height: 1.3;
+        }
+
+        .role-btn:hover {
+            border-color: var(--blood);
+            box-shadow: inset 0 0 20px rgba(185,28,28,0.1);
+        }
+
+        .role-btn .sub {
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 12px;
+            color: var(--text-dim);
+            display: block;
+            margin-top: 2px;
+            letter-spacing: 1px;
+        }
+
+        .role-display-btn {
+            grid-column: 1 / -1;
+            margin-top: 6px;
+            background: linear-gradient(180deg, #DC2626 0%, #991B1B 100%);
+            color: #fff;
+            border-color: var(--blood);
+        }
+
+        /* ============================================
+           JUDGE SCREEN
+           ============================================ */
+        .judge-wrap {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            padding: 10px;
+            gap: 10px;
+            background: var(--bg-void);
+        }
+
+        .judge-bar {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            padding: 10px 16px;
+            background: var(--bg-surface);
+            border-bottom: 2px solid var(--blood);
+        }
+
+        .judge-role-label {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 18px;
+            letter-spacing: 3px;
+            color: var(--blood-bright);
+        }
+
+        .judge-timer {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 60px;
+            color: var(--text-chrome);
+            line-height: 1;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .judge-timer.expired {
+            color: var(--vote-red);
+            text-shadow: 0 0 20px var(--blood-glow);
+            animation: pulse-red 1s ease infinite;
+        }
+
+        @keyframes pulse-red {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .judge-code {
+            text-align: right;
+            font-size: 14px;
+            color: var(--text-dim);
+            letter-spacing: 1px;
+        }
+
+        .vote-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            flex: 1;
+            max-height: 420px;
+        }
+
+        .vote-btn {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 32px;
+            letter-spacing: 5px;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.12s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 110px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Diagonal slash overlay */
+        .vote-btn::before {
+            content: '';
+            position: absolute;
+            top: -50%; right: -50%;
+            width: 100%; height: 200%;
+            background: linear-gradient(135deg, transparent 48%, rgba(255,255,255,0.04) 49%, transparent 51%);
+            pointer-events: none;
+        }
+
+        .vote-btn.selected {
+            transform: scale(0.96);
+            border-color: #fff !important;
+            box-shadow: inset 0 0 30px rgba(255,255,255,0.1);
+        }
+
+        .vote-white {
+            background: linear-gradient(180deg, #F0F0F0 0%, #C8C8C8 100%);
+            color: #0A0A0A;
+            border-color: #888;
+        }
+
+        .vote-red {
+            background: linear-gradient(180deg, #EF4444 0%, #991B1B 100%);
+            color: #fff;
+        }
+
+        .vote-blue {
+            background: linear-gradient(180deg, #3B82F6 0%, #1E40AF 100%);
+            color: #fff;
+        }
+
+        .vote-yellow {
+            background: linear-gradient(180deg, #FBBF24 0%, #B45309 100%);
+            color: #0A0A0A;
+        }
+
+        .lock-btn {
+            width: 100%;
+            padding: 20px;
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 26px;
+            letter-spacing: 6px;
+            background: linear-gradient(180deg, var(--success) 0%, #15803D 100%);
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(34,197,94,0.3);
+        }
+
+        .locked-status {
+            text-align: center;
+            padding: 16px;
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 20px;
+            letter-spacing: 4px;
+            color: var(--success);
+            border: 1px solid var(--success);
+            background: rgba(34,197,94,0.05);
+        }
+
+        .head-section {
+            border-top: 2px solid var(--chrome-dark);
+            padding-top: 14px;
+        }
+
+        .head-title {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 16px;
+            letter-spacing: 4px;
+            color: var(--text-dim);
+            margin-bottom: 10px;
+        }
+
+        .head-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .head-grid .btn-blood { font-size: 16px; padding: 12px; letter-spacing: 2px; }
+
+        .settings-bar {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+            padding: 8px 12px;
+            border: 1px solid #2a2a2a;
+            background: var(--bg-surface);
+        }
+
+        .settings-bar label {
+            font-size: 14px;
+            color: var(--text-dim);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+        }
+
+        .settings-bar select {
+            padding: 5px 8px;
+            background: var(--bg-void);
+            border: 1px solid #2a2a2a;
+            color: var(--text-chrome);
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        /* ============================================
+           DISPLAY SCREEN
+           ============================================ */
+        .display-full {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background:
+                radial-gradient(circle at 50% 80%, rgba(185,28,28,0.06) 0%, transparent 50%),
+                var(--bg-void);
+            padding: 40px;
+            gap: 36px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Diagonal slash accents */
+        .display-full::before, .display-full::after {
+            content: '';
+            position: absolute;
+            width: 2px;
+            height: 120%;
+            background: rgba(185,28,28,0.08);
+            transform: rotate(15deg);
+        }
+        .display-full::before { left: 10%; }
+        .display-full::after { right: 10%; }
+
+        .display-tag {
+            position: absolute;
+            top: 16px;
+            right: 20px;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 600;
+            font-size: 18px;
+            letter-spacing: 2px;
+            color: var(--text-dim);
+        }
+
+        .display-timer-big {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: min(30vw, 300px);
+            color: var(--text-chrome);
+            line-height: 1;
+            font-variant-numeric: tabular-nums;
+            text-shadow: 0 0 60px rgba(255,255,255,0.03);
+        }
+
+        .display-timer-big.expired {
+            color: var(--vote-red);
+            text-shadow: 0 0 80px var(--blood-glow);
+        }
+
+        .display-lights {
+            display: flex;
+            gap: 40px;
+        }
+
+        .display-orb {
+            width: min(20vw, 200px);
+            height: min(20vw, 200px);
+            border-radius: 50%;
+            background: radial-gradient(circle at 40% 40%, #2a2a2a, #141414);
+            border: 3px solid var(--chrome-dark);
+            transition: all 0.3s;
+            box-shadow: inset 0 4px 12px rgba(0,0,0,0.5);
+        }
+
+        .display-orb.white {
+            background: radial-gradient(circle at 35% 35%, #FFFFFF, #B8B8B8);
+            border-color: #999;
+            box-shadow: 0 0 50px rgba(255,255,255,0.3), 0 0 100px rgba(255,255,255,0.1);
+        }
+        .display-orb.red {
+            background: radial-gradient(circle at 35% 35%, #EF4444, #7F1D1D);
+            border-color: #DC2626;
+            box-shadow: 0 0 50px rgba(220,38,38,0.4), 0 0 100px rgba(220,38,38,0.15);
+        }
+        .display-orb.blue {
+            background: radial-gradient(circle at 35% 35%, #3B82F6, #1E3A8A);
+            border-color: #2563EB;
+            box-shadow: 0 0 50px rgba(59,130,246,0.4), 0 0 100px rgba(59,130,246,0.15);
+        }
+        .display-orb.yellow {
+            background: radial-gradient(circle at 35% 35%, #FBBF24, #78350F);
+            border-color: #EAB308;
+            box-shadow: 0 0 50px rgba(251,191,36,0.4), 0 0 100px rgba(251,191,36,0.15);
+        }
+
+        .display-status {
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 600;
+            font-size: 22px;
+            letter-spacing: 6px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+        }
+
+        /* Verdict */
+        .display-verdict {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            width: 100%;
+            max-width: 800px;
+        }
+
+        .verdict-stamp {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: min(7vw, 60px);
+            letter-spacing: 8px;
+            padding: 10px 48px;
+            position: relative;
+        }
+
+        .verdict-stamp.valid {
+            color: var(--success);
+            border: 3px solid var(--success);
+            box-shadow: 0 0 30px rgba(34,197,94,0.15);
+        }
+
+        .verdict-stamp.invalid {
+            color: var(--blood-bright);
+            border: 3px solid var(--blood);
+            box-shadow: 0 0 30px var(--blood-glow);
+        }
+
+        .reason-card {
+            width: 100%;
+            overflow: hidden;
+            border: 1px solid var(--chrome-dark);
+        }
+
+        .reason-card-header {
+            padding: 8px 20px;
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: min(3.5vw, 28px);
+            letter-spacing: 4px;
+            color: #fff;
+        }
+
+        .reason-card-header.red { background: var(--vote-red); }
+        .reason-card-header.blue { background: var(--vote-blue); }
+        .reason-card-header.yellow { background: var(--vote-yellow); color: #0A0A0A; }
+
+        .reason-card-body {
+            padding: 12px 20px 12px 44px;
+            background: var(--bg-surface);
+            list-style: disc;
+        }
+
+        .reason-card-body li {
+            padding: 3px 0;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: min(2.8vw, 26px);
+            font-weight: 600;
+            color: var(--text-chrome);
+            line-height: 1.4;
+        }
+
+        @media (max-width: 600px) {
+            .judge-timer { font-size: 48px; }
+            .vote-btn { font-size: 24px; min-height: 90px; }
+            .role-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ============ LANDING ============ -->
+<div class="demo-section"><div class="demo-label">Landing Screen (Phone)</div></div>
+<div class="landing-wrap" style="min-height: auto; padding: 40px 20px;">
+    <div class="landing-panel cut-corner">
+        <div class="brand-iron chrome-text">Iron Verdict</div>
+        <div class="brand-verdict-sub">Powerlifting Judging</div>
+
+        <div class="form-stack">
+            <input class="chrome-input" placeholder="Session name (e.g. Platform A)" value="">
+            <button class="btn-blood btn-blood-primary cut-corner-sm">Create New Session</button>
+
+            <div class="slash-divider">or</div>
+
+            <input class="chrome-input" placeholder="Enter 6-character code">
+            <button class="btn-blood btn-blood-secondary cut-corner-sm">Join Session</button>
+        </div>
+
+        <div style="margin-top: 16px;">
+            <button class="btn-blood btn-blood-ghost">Start Demo</button>
+        </div>
+    </div>
+</div>
+
+<!-- ============ ROLE SELECTION ============ -->
+<div class="demo-section"><div class="demo-label">Role Selection (Phone)</div></div>
+<div class="role-wrap" style="min-height: auto; padding: 40px 20px;">
+    <div class="role-panel cut-corner" style="text-align: center;">
+        <div style="font-family: 'Bebas Neue', sans-serif; font-size: 32px; letter-spacing: 4px;" class="chrome-text">Select Role</div>
+        <div class="session-tag">Session: <span class="code">X7K92M</span></div>
+
+        <div class="role-grid">
+            <button class="role-btn cut-corner-sm">Left<br>Judge</button>
+            <button class="role-btn cut-corner-sm">Center<br>Judge<span class="sub">(Head)</span></button>
+            <button class="role-btn cut-corner-sm">Right<br>Judge</button>
+            <button class="role-btn role-display-btn cut-corner-sm">Display Screen</button>
+        </div>
+    </div>
+</div>
+
+<!-- ============ JUDGE SCREEN ============ -->
+<div class="demo-section"><div class="demo-label">Judge Screen — Head Judge (Phone)</div></div>
+<div class="judge-wrap" style="min-height: auto; max-width: 500px;">
+    <div class="judge-bar">
+        <div class="judge-role-label">Center Judge</div>
+        <div class="judge-timer">47</div>
+        <div class="judge-code">X7K92M</div>
+    </div>
+
+    <div class="vote-grid">
+        <button class="vote-btn vote-white cut-corner-sm">White</button>
+        <button class="vote-btn vote-red cut-corner-sm selected">Red</button>
+        <button class="vote-btn vote-blue cut-corner-sm">Blue</button>
+        <button class="vote-btn vote-yellow cut-corner-sm">Yellow</button>
+    </div>
+
+    <button class="lock-btn cut-corner-sm">Lock In</button>
+
+    <div class="head-section">
+        <div class="head-title">Head Judge Controls</div>
+        <div class="head-grid">
+            <button class="btn-blood btn-blood-primary cut-corner-sm" style="font-size: 16px; padding: 12px; letter-spacing: 2px;">Start Timer</button>
+            <button class="btn-blood btn-blood-secondary cut-corner-sm" style="font-size: 16px; padding: 12px; letter-spacing: 2px;">Reset Timer</button>
+            <button class="btn-blood btn-blood-primary cut-corner-sm" style="font-size: 16px; padding: 12px; letter-spacing: 2px;">Next Lift</button>
+            <button class="btn-blood btn-blood-ghost" style="font-size: 16px; padding: 12px; letter-spacing: 2px;">End Session</button>
+        </div>
+        <div class="settings-bar">
+            <label><input type="checkbox" checked> Show explanations</label>
+            <select><option>Squat</option><option>Bench Press</option><option>Deadlift</option></select>
+        </div>
+    </div>
+</div>
+
+<!-- ============ JUDGE LOCKED ============ -->
+<div class="demo-section"><div class="demo-label">Judge Screen — Locked (Phone)</div></div>
+<div class="judge-wrap" style="min-height: auto; max-width: 500px;">
+    <div class="judge-bar">
+        <div class="judge-role-label">Right Judge</div>
+        <div class="judge-timer">28</div>
+        <div class="judge-code">X7K92M</div>
+    </div>
+
+    <div class="vote-grid" style="opacity: 0.35; pointer-events: none;">
+        <button class="vote-btn vote-white cut-corner-sm">White</button>
+        <button class="vote-btn vote-red cut-corner-sm">Red</button>
+        <button class="vote-btn vote-blue cut-corner-sm selected">Blue</button>
+        <button class="vote-btn vote-yellow cut-corner-sm">Yellow</button>
+    </div>
+
+    <div class="locked-status">✓ Vote Locked — Blue</div>
+</div>
+
+<!-- ============ DISPLAY: TIMER ============ -->
+<div class="demo-section"><div class="demo-label">Display — Timer Running (TV/Projector)</div></div>
+<div class="display-full" style="min-height: auto; padding: 60px 40px;">
+    <div class="display-tag">Platform A</div>
+    <div class="display-timer-big">47</div>
+    <div class="display-lights">
+        <div class="display-orb"></div>
+        <div class="display-orb"></div>
+        <div class="display-orb"></div>
+    </div>
+    <div class="display-status">Awaiting Verdict…</div>
+</div>
+
+<!-- ============ DISPLAY: VALID ============ -->
+<div class="demo-section"><div class="demo-label">Display — Valid Lift (TV/Projector)</div></div>
+<div class="display-full" style="min-height: auto; padding: 60px 40px;">
+    <div class="display-tag">Platform A</div>
+    <div class="display-lights">
+        <div class="display-orb white"></div>
+        <div class="display-orb white"></div>
+        <div class="display-orb red"></div>
+    </div>
+    <div class="display-verdict">
+        <div class="verdict-stamp valid">Good Lift</div>
+    </div>
+</div>
+
+<!-- ============ DISPLAY: INVALID + REASONS ============ -->
+<div class="demo-section"><div class="demo-label">Display — Invalid + Reasons (TV/Projector)</div></div>
+<div class="display-full" style="min-height: auto; padding: 60px 40px;">
+    <div class="display-tag">Platform A</div>
+    <div class="display-lights">
+        <div class="display-orb red"></div>
+        <div class="display-orb white"></div>
+        <div class="display-orb blue"></div>
+    </div>
+    <div class="display-verdict">
+        <div class="verdict-stamp invalid">No Lift</div>
+
+        <div class="reason-card">
+            <div class="reason-card-header red">Red Card</div>
+            <ul class="reason-card-body">
+                <li>Not deep enough (hip crease not below top of knees)</li>
+            </ul>
+        </div>
+
+        <div class="reason-card">
+            <div class="reason-card-header blue">Blue Card</div>
+            <ul class="reason-card-body">
+                <li>Knees not locked at start or finish</li>
+                <li>Double bounce or downward movement during ascent</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
