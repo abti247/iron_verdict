@@ -49,9 +49,9 @@ _CSP = (
     "default-src 'self'; "
     "script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline' 'unsafe-eval'; "
     "connect-src 'self' ws: wss:; "
-    "style-src 'self' 'unsafe-inline'; "
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
     "img-src 'self' data:; "
-    "font-src 'self'"
+    "font-src 'self' https://fonts.gstatic.com"
 )
 
 
