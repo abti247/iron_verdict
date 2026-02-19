@@ -232,6 +232,12 @@ async def websocket_endpoint(websocket: WebSocket):
                 result = await session_manager.lock_vote(session_code, position, color)
 
                 if result["success"]:
+                    logger.info("vote_locked", extra={
+                        "session_code": session_code,
+                        "position": position,
+                        "color": color,
+                        "all_locked": result.get("all_locked", False),
+                    })
                     # Notify display that a judge voted (no color)
                     await connection_manager.send_to_displays(
                         session_code,
@@ -267,6 +273,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     })
                     continue
 
+                logger.info("timer_start", extra={"session_code": session_code})
                 await connection_manager.broadcast_to_session(
                     session_code,
                     {
@@ -287,6 +294,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     })
                     continue
 
+                logger.info("timer_reset", extra={"session_code": session_code})
                 await connection_manager.broadcast_to_session(
                     session_code,
                     {"type": "timer_reset"}
@@ -304,6 +312,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     })
                     continue
 
+                logger.info("next_lift", extra={"session_code": session_code})
                 await session_manager.reset_for_next_lift(session_code)
                 await connection_manager.broadcast_to_session(
                     session_code,
@@ -322,6 +331,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     })
                     continue
 
+                logger.info("session_ended", extra={"session_code": session_code})
                 await connection_manager.broadcast_to_session(
                     session_code,
                     {"type": "session_ended", "reason": "head_judge"}
