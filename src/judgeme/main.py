@@ -15,6 +15,7 @@ import secrets
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+from starlette.middleware.base import BaseHTTPMiddleware
 
 VALID_COLORS = {"white", "red", "blue", "yellow"}
 
@@ -27,6 +28,27 @@ class CreateSessionRequest(BaseModel):
         if not v.strip():
             raise ValueError('name cannot be empty')
         return v.strip()
+
+
+_CSP = (
+    "default-src 'self'; "
+    "script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline' 'unsafe-eval'; "
+    "connect-src 'self' ws: wss:; "
+    "style-src 'self' 'unsafe-inline'; "
+    "img-src 'self' data:; "
+    "font-src 'self'"
+)
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        response.headers["Content-Security-Policy"] = _CSP
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        return response
 
 
 limiter = Limiter(key_func=get_remote_address)
@@ -49,6 +71,7 @@ async def lifespan(app: FastAPI):
         pass
 
 app = FastAPI(title="JudgeMe", lifespan=lifespan)
+app.add_middleware(SecurityHeadersMiddleware)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 

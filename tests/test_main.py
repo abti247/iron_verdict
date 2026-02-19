@@ -268,3 +268,21 @@ async def test_websocket_disconnects_on_message_flood(session_code):
                 pytest.fail("Server did not disconnect the client (timed out waiting for close)")
             except Exception:
                 pass  # Any WebSocket close exception means the server disconnected — test passes
+
+
+def test_security_headers_on_root():
+    response = client.get("/")
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert response.headers["X-Frame-Options"] == "DENY"
+    assert response.headers["Referrer-Policy"] == "no-referrer"
+    assert "max-age=31536000" in response.headers["Strict-Transport-Security"]
+    csp = response.headers["Content-Security-Policy"]
+    assert "default-src 'self'" in csp
+    assert "cdn.jsdelivr.net" in csp
+    assert "'unsafe-eval'" in csp  # Alpine.js requires eval for x-show/x-bind expression evaluation
+
+
+def test_security_headers_on_api():
+    response = client.post("/api/sessions", json={"name": "Test"})
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert "Content-Security-Policy" in response.headers
