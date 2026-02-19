@@ -1,3 +1,4 @@
+import logging
 import pytest
 from unittest.mock import AsyncMock
 from judgeme.connection import ConnectionManager
@@ -135,3 +136,45 @@ async def test_send_to_displays_no_op_for_empty_session():
     manager = ConnectionManager()
     # Should not raise
     await manager.send_to_displays("INVALID", {"type": "test"})
+
+
+@pytest.mark.asyncio
+async def test_broadcast_failure_logs_warning(caplog):
+    manager = ConnectionManager()
+    broken_ws = AsyncMock()
+    broken_ws.send_json.side_effect = Exception("connection lost")
+    await manager.add_connection("SESS", "left_judge", broken_ws)
+
+    with caplog.at_level(logging.WARNING, logger="judgeme"):
+        await manager.broadcast_to_session("SESS", {"type": "test"})
+
+    records = [r for r in caplog.records if r.getMessage() == "broadcast_send_failed"]
+    assert len(records) == 1
+
+
+@pytest.mark.asyncio
+async def test_send_to_role_failure_logs_warning(caplog):
+    manager = ConnectionManager()
+    broken_ws = AsyncMock()
+    broken_ws.send_json.side_effect = Exception("connection lost")
+    await manager.add_connection("SESS", "left_judge", broken_ws)
+
+    with caplog.at_level(logging.WARNING, logger="judgeme"):
+        await manager.send_to_role("SESS", "left_judge", {"type": "test"})
+
+    records = [r for r in caplog.records if r.getMessage() == "send_to_role_failed"]
+    assert len(records) == 1
+
+
+@pytest.mark.asyncio
+async def test_send_to_displays_failure_logs_warning(caplog):
+    manager = ConnectionManager()
+    broken_ws = AsyncMock()
+    broken_ws.send_json.side_effect = Exception("connection lost")
+    await manager.add_connection("SESS", "display_abc", broken_ws)
+
+    with caplog.at_level(logging.WARNING, logger="judgeme"):
+        await manager.send_to_displays("SESS", {"type": "test"})
+
+    records = [r for r in caplog.records if r.getMessage() == "send_to_display_failed"]
+    assert len(records) == 1
