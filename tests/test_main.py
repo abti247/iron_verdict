@@ -8,6 +8,17 @@ from judgeme.main import app, session_manager
 from judgeme.config import settings
 
 
+@pytest.fixture(autouse=True)
+def reset_rate_limiter():
+    """Reset in-memory rate-limit counters so tests don't bleed into each other."""
+    try:
+        from judgeme.main import limiter
+        limiter._storage.reset()
+    except (ImportError, AttributeError):
+        pass
+    yield
+
+
 client = TestClient(app)
 
 
@@ -181,3 +192,79 @@ async def test_display_cap_rejects_when_full(monkeypatch):
                 assert "cap" in response["message"].lower()
     finally:
         session_manager.delete_session(code)
+
+
+def test_create_session_rate_limited_after_10_requests():
+    """11th request from the same IP within an hour returns 429."""
+    for i in range(10):
+        r = client.post("/api/sessions", json={"name": f"S{i}"})
+        assert r.status_code == 200, f"Request {i+1} should succeed, got {r.status_code}"
+
+    r = client.post("/api/sessions", json={"name": "overflow"})
+    assert r.status_code == 429
+
+
+@pytest.mark.asyncio
+async def test_websocket_rejects_wrong_origin(monkeypatch):
+    """WS connection with wrong Origin is closed with code 1008."""
+    monkeypatch.setattr(settings, "ALLOWED_ORIGIN", "https://app.example.com")
+
+    async with httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as ac:
+        try:
+            async with httpx_ws.aconnect_ws(
+                "ws://test/ws", ac, headers={"origin": "https://evil.com"}
+            ) as ws:
+                msg = await asyncio.wait_for(ws.receive_json(), timeout=1.0)
+                pytest.fail(f"Expected connection to be closed, got message: {msg}")
+        except asyncio.TimeoutError:
+            pytest.fail("Expected WebSocket close on origin mismatch, got timeout")
+        except Exception:
+            pass  # Connection was closed/rejected as expected (1008 close)
+
+
+@pytest.mark.asyncio
+async def test_websocket_accepts_matching_origin(monkeypatch, session_code):
+    """WS connection with correct Origin is accepted normally."""
+    monkeypatch.setattr(settings, "ALLOWED_ORIGIN", "https://app.example.com")
+
+    async with httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as ac:
+        async with httpx_ws.aconnect_ws(
+            "ws://test/ws", ac, headers={"origin": "https://app.example.com"}
+        ) as ws:
+            await ws.send_json({"type": "join", "session_code": session_code, "role": "left_judge"})
+            msg = await ws.receive_json()
+            assert msg["type"] == "join_success"
+
+
+@pytest.mark.asyncio
+async def test_websocket_disconnects_on_message_flood(session_code):
+    """Sending >20 messages/second closes connection with code 1008."""
+    async with httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+            # Join (message #1)
+            await ws.send_json({"type": "join", "session_code": session_code, "role": "left_judge"})
+            await ws.receive_json()  # join_success — server has processed msg #1
+
+            # Send 20 more messages in rapid succession (msgs #2–#21)
+            # All within the same 1-second window → triggers the >20 limit
+            for _ in range(20):
+                await ws.send_json({"type": "ping"})
+
+            # Give server a moment to process and close
+            await asyncio.sleep(0.1)
+
+            # Server must actively close the connection (not just timeout).
+            # If receive_json times out it means the server did NOT disconnect → test fails.
+            try:
+                await asyncio.wait_for(ws.receive_json(), timeout=1.0)
+                pytest.fail("Expected server to close the connection with 1008, but it stayed open")
+            except asyncio.TimeoutError:
+                pytest.fail("Server did not disconnect the client (timed out waiting for close)")
+            except Exception:
+                pass  # Any WebSocket close exception means the server disconnected — test passes
