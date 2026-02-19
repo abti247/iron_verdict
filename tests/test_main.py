@@ -347,3 +347,4 @@ async def test_ws_disconnect_logs_info(caplog):
     records = [r for r in caplog.records if r.getMessage() == "role_disconnected"]
     assert len(records) == 1
     assert records[0].session_code == code
+    assert records[0].role == "left_judge"
