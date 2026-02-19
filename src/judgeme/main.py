@@ -123,6 +123,10 @@ async def websocket_endpoint(websocket: WebSocket):
     """WebSocket endpoint for real-time communication."""
     origin = websocket.headers.get("origin", "")
     if settings.ALLOWED_ORIGIN != "*" and origin != settings.ALLOWED_ORIGIN:
+        logger.warning("origin_rejected", extra={
+            "origin": origin,
+            "client_ip": _get_ws_client_ip(websocket),
+        })
         await websocket.close(code=1008)
         return
     await websocket.accept()
@@ -144,6 +148,7 @@ async def websocket_endpoint(websocket: WebSocket):
             else:
                 msg_count += 1
             if msg_count > 20:
+                logger.warning("message_flood_disconnect", extra={"client_ip": _get_ws_client_ip(websocket)})
                 await websocket.close(code=1008)
                 return
 

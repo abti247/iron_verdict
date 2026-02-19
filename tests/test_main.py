@@ -416,3 +416,48 @@ async def test_session_end_logs_info(caplog):
     records = [r for r in caplog.records if r.getMessage() == "session_ended"]
     assert len(records) == 1
     assert records[0].session_code == code
+
+
+@pytest.mark.asyncio
+async def test_origin_rejection_logs_warning(caplog, monkeypatch):
+    monkeypatch.setattr(settings, "ALLOWED_ORIGIN", "https://allowed.example.com")
+
+    async with httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as ac:
+        with caplog.at_level(logging.WARNING, logger="judgeme"):
+            try:
+                async with httpx_ws.aconnect_ws(
+                    "ws://test/ws", ac,
+                    headers={"origin": "https://evil.example.com"}
+                ) as ws:
+                    pass
+            except Exception:
+                pass
+
+    records = [r for r in caplog.records if r.getMessage() == "origin_rejected"]
+    assert len(records) == 1
+    assert records[0].origin == "https://evil.example.com"
+
+
+@pytest.mark.asyncio
+async def test_message_flood_logs_warning(caplog):
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as ac:
+        resp = await ac.post("/api/sessions", json={"name": "Test"})
+    code = resp.json()["session_code"]
+
+    async with httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as ac:
+        with caplog.at_level(logging.WARNING, logger="judgeme"):
+            async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+                await ws.send_json({"type": "join", "session_code": code, "role": "left_judge"})
+                await ws.receive_json()
+                for _ in range(25):
+                    try:
+                        await ws.send_json({"type": "vote_lock", "color": "white"})
+                    except Exception:
+                        break
+
+    records = [r for r in caplog.records if r.getMessage() == "message_flood_disconnect"]
+    assert len(records) == 1
