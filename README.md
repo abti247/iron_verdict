@@ -1,4 +1,4 @@
-# JudgeMe
+# Iron Verdict
 
 A real-time powerlifting competition judging application.
 
