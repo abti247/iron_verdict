@@ -214,6 +214,13 @@ async def websocket_endpoint(websocket: WebSocket):
                 session_state = copy.deepcopy(session_manager.sessions[session_code])
                 session_state["last_activity"] = session_state["last_activity"].isoformat()
 
+                # Compute time_remaining_ms for late-joining clients
+                if session_state.get("timer_started_at"):
+                    elapsed_ms = (time.time() - session_state["timer_started_at"]) * 1000
+                    session_state["time_remaining_ms"] = max(0, 60000 - elapsed_ms)
+                else:
+                    session_state["time_remaining_ms"] = None
+
                 await websocket.send_json({
                     "type": "join_success",
                     "role": "display" if role.startswith("display_") else role,
