@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-JudgeMe application runner.
+Iron Verdict application runner.
 """
 import os
 import uvicorn
