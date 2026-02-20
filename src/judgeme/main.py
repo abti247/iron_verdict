@@ -279,11 +279,12 @@ async def websocket_endpoint(websocket: WebSocket):
                     continue
 
                 logger.info("timer_start", extra={"session_code": session_code})
+                session_manager.sessions[session_code]["timer_started_at"] = time.time()
                 await connection_manager.broadcast_to_session(
                     session_code,
                     {
                         "type": "timer_start",
-                        "server_timestamp": time.time()
+                        "time_remaining_ms": 60000
                     }
                 )
 
