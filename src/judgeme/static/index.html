@@ -1008,6 +1008,10 @@
                         if (this.isHead) {
                             this.saveSettings();  // sync localStorage settings to server
                         }
+                        const trms = message.session_state?.time_remaining_ms;
+                        if (trms > 0) {
+                            this.startTimerCountdown(trms);
+                        }
                     } else if (message.type === 'join_error') {
                         const sanitizedMessage = document.createTextNode(message.message).textContent;
                         alert(`Failed to join session: ${sanitizedMessage}`);
@@ -1047,7 +1051,7 @@
                             this.displayStatus = 'Waiting for judges...';
                         }
                     } else if (message.type === 'timer_start') {
-                        this.startTimerCountdown(message.server_timestamp);
+                        this.startTimerCountdown(message.time_remaining_ms);
                     } else if (message.type === 'timer_reset') {
                         this.stopTimer();
                     } else if (message.type === 'session_ended') {
@@ -1101,14 +1105,13 @@
                     this.ws.send(JSON.stringify({ type: 'timer_reset' }));
                 },
 
-                startTimerCountdown(serverTimestamp) {
+                startTimerCountdown(timeRemainingMs) {
                     this.stopTimer();
-                    const startTime = serverTimestamp * 1000;
-                    const duration = 60000; // 60 seconds
+                    const startedAt = Date.now();
+                    const initial = timeRemainingMs;
 
                     this.timerInterval = setInterval(() => {
-                        const elapsed = Date.now() - startTime;
-                        const remaining = Math.max(0, duration - elapsed);
+                        const remaining = Math.max(0, initial - (Date.now() - startedAt));
                         const seconds = Math.ceil(remaining / 1000);
                         this.timerDisplay = seconds;
                         this.timerExpired = seconds === 0;
