@@ -69,7 +69,7 @@ python run.py
 
 Or directly with uvicorn:
 ```bash
-uvicorn judgeme.main:app --reload
+uvicorn iron_verdict.main:app --reload
 ```
 
 The application will be available at http://localhost:8000
@@ -109,7 +109,7 @@ pytest
 ### Run Tests with Coverage
 
 ```bash
-pytest --cov=judgeme --cov-report=html
+pytest --cov=iron_verdict --cov-report=html
 ```
 
 ### Manual Testing
@@ -120,7 +120,7 @@ See [docs/TESTING.md](docs/TESTING.md) for detailed multi-tab testing procedures
 
 ```
 judgeme/
-├── src/judgeme/
+├── src/iron_verdict/
 │   ├── __init__.py
 │   ├── main.py              # FastAPI application
 │   ├── session.py           # Session management logic

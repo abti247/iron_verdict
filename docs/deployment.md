@@ -18,10 +18,10 @@ yourdomain.com {
 
 Caddy handles HTTPS automatically. Port 80 and 443 must be open.
 
-### 3. Run JudgeMe
+### 3. Run Iron Verdict
 
 ```bash
-uvicorn judgeme.main:app --host 127.0.0.1 --port 8000
+uvicorn iron_verdict.main:app --host 127.0.0.1 --port 8000
 ```
 
 Bind to `127.0.0.1` so the app is only reachable through Caddy, not directly from the internet.
