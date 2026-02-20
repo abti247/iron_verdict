@@ -1,7 +1,7 @@
 import logging
 import pytest
 from unittest.mock import AsyncMock
-from judgeme.connection import ConnectionManager
+from iron_verdict.connection import ConnectionManager
 
 
 @pytest.mark.asyncio

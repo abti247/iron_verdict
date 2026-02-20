@@ -1,6 +1,6 @@
 import json
 import logging
-from judgeme.logging_config import JsonFormatter
+from iron_verdict.logging_config import JsonFormatter
 
 
 def test_json_formatter_produces_valid_json():

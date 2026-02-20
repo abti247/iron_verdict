@@ -22,8 +22,8 @@ class JsonFormatter(logging.Formatter):
 
 
 def setup_logging() -> None:
-    """Configure root 'judgeme' logger with JSON output to stdout."""
-    logger = logging.getLogger("judgeme")
+    """Configure root 'iron_verdict' logger with JSON output to stdout."""
+    logger = logging.getLogger("iron_verdict")
     if not logger.handlers:
         handler = logging.StreamHandler(sys.stdout)
         handler.setFormatter(JsonFormatter())
