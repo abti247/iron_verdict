@@ -208,3 +208,18 @@ async def test_cleanup_expired_removes_stale_keeps_fresh():
 
     assert old_code not in manager.sessions
     assert new_code in manager.sessions
+
+
+async def test_create_session_includes_timer_started_at():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    assert manager.sessions[code]["timer_started_at"] is None
+
+
+async def test_reset_for_next_lift_clears_timer_started_at():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    import time
+    manager.sessions[code]["timer_started_at"] = time.time()
+    await manager.reset_for_next_lift(code)
+    assert manager.sessions[code]["timer_started_at"] is None

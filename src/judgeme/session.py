@@ -47,6 +47,7 @@ class SessionManager:
                 },
                 "state": "waiting",
                 "timer_state": "idle",
+                "timer_started_at": None,
                 "settings": {
                     "show_explanations": False,
                     "lift_type": "squat",
@@ -139,6 +140,7 @@ class SessionManager:
                 judge["locked"] = False
 
             session["state"] = "waiting"
+            session["timer_started_at"] = None
             session["last_activity"] = datetime.now()
 
             return {"success": True}

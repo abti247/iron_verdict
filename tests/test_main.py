@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import time
 import pytest
 import httpx
 import httpx_ws
@@ -443,6 +444,46 @@ async def test_origin_rejection_logs_warning(caplog, monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_timer_start_broadcasts_time_remaining_ms():
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as ac:
+        resp = await ac.post("/api/sessions", json={"name": "Test"})
+    code = resp.json()["session_code"]
+
+    async with httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+            await ws.send_json({"type": "join", "session_code": code, "role": "center_judge"})
+            await ws.receive_json()  # join_success
+            await ws.send_json({"type": "timer_start"})
+            msg = await ws.receive_json()
+
+    assert msg["type"] == "timer_start"
+    assert "time_remaining_ms" in msg
+    assert "server_timestamp" not in msg
+    assert msg["time_remaining_ms"] == 60000
+
+
+@pytest.mark.asyncio
+async def test_timer_start_stores_timer_started_at():
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as ac:
+        resp = await ac.post("/api/sessions", json={"name": "Test"})
+    code = resp.json()["session_code"]
+
+    async with httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+            await ws.send_json({"type": "join", "session_code": code, "role": "center_judge"})
+            await ws.receive_json()
+            await ws.send_json({"type": "timer_start"})
+            await ws.receive_json()
+
+    assert session_manager.sessions[code]["timer_started_at"] is not None
+    assert abs(session_manager.sessions[code]["timer_started_at"] - time.time()) < 2
+
+
+@pytest.mark.asyncio
 async def test_message_flood_logs_warning(caplog):
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as ac:
         resp = await ac.post("/api/sessions", json={"name": "Test"})
@@ -463,3 +504,67 @@ async def test_message_flood_logs_warning(caplog):
 
     records = [r for r in caplog.records if r.getMessage() == "message_flood_disconnect"]
     assert len(records) == 1
+
+
+@pytest.mark.asyncio
+async def test_timer_reset_clears_timer_started_at():
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as ac:
+        resp = await ac.post("/api/sessions", json={"name": "Test"})
+    code = resp.json()["session_code"]
+
+    async with httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+            await ws.send_json({"type": "join", "session_code": code, "role": "center_judge"})
+            await ws.receive_json()
+            await ws.send_json({"type": "timer_start"})
+            await ws.receive_json()
+            await ws.send_json({"type": "timer_reset"})
+            await ws.receive_json()
+
+    assert session_manager.sessions[code]["timer_started_at"] is None
+
+
+@pytest.mark.asyncio
+async def test_join_success_time_remaining_ms_when_timer_not_running():
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as ac:
+        resp = await ac.post("/api/sessions", json={"name": "Test"})
+    code = resp.json()["session_code"]
+
+    async with httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+            await ws.send_json({"type": "join", "session_code": code, "role": "left_judge"})
+            msg = await ws.receive_json()
+
+    assert msg["type"] == "join_success"
+    assert msg["session_state"]["time_remaining_ms"] is None
+
+
+@pytest.mark.asyncio
+async def test_join_success_time_remaining_ms_when_timer_running():
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as ac:
+        resp = await ac.post("/api/sessions", json={"name": "Test"})
+    code = resp.json()["session_code"]
+
+    async with httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as ac:
+        # Head judge starts timer
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+            await ws.send_json({"type": "join", "session_code": code, "role": "center_judge"})
+            await ws.receive_json()
+            await ws.send_json({"type": "timer_start"})
+            await ws.receive_json()
+
+        # New client joins mid-timer
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws2:
+            await ws2.send_json({"type": "join", "session_code": code, "role": "left_judge"})
+            msg = await ws2.receive_json()
+
+    assert msg["type"] == "join_success"
+    trms = msg["session_state"]["time_remaining_ms"]
+    assert trms is not None
+    assert 58000 <= trms <= 60000
