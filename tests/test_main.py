@@ -504,3 +504,23 @@ async def test_message_flood_logs_warning(caplog):
 
     records = [r for r in caplog.records if r.getMessage() == "message_flood_disconnect"]
     assert len(records) == 1
+
+
+@pytest.mark.asyncio
+async def test_timer_reset_clears_timer_started_at():
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as ac:
+        resp = await ac.post("/api/sessions", json={"name": "Test"})
+    code = resp.json()["session_code"]
+
+    async with httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+            await ws.send_json({"type": "join", "session_code": code, "role": "center_judge"})
+            await ws.receive_json()
+            await ws.send_json({"type": "timer_start"})
+            await ws.receive_json()
+            await ws.send_json({"type": "timer_reset"})
+            await ws.receive_json()
+
+    assert session_manager.sessions[code]["timer_started_at"] is None
