@@ -857,8 +857,8 @@
             </div>
         </div>
 
-        <!-- Verdict shown alongside orbs -->
-        <div class="display-verdict-inline" x-show="displayPhase === 'votes'">
+        <!-- Verdict shown alongside orbs; always in layout to prevent orbs from shifting -->
+        <div class="display-verdict-inline" :style="displayPhase !== 'votes' ? 'visibility:hidden' : ''">
             <div class="verdict-stamp"
                  :class="isValidLift() ? 'valid' : 'invalid'"
                  x-text="isValidLift() ? 'Good Lift' : 'No Lift'"></div>
@@ -1059,9 +1059,6 @@
                             this.displayPhase = 'votes';
                             this.displayStatus = '';
 
-                            this._phaseTimer1 = setTimeout(() => {
-                                this.displayPhase = 'idle';
-                            }, 3000);
                         }
                     } else if (message.type === 'reset_for_next_lift') {
                         clearTimeout(this._phaseTimer1);
