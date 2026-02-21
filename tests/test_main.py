@@ -568,3 +568,116 @@ async def test_join_success_time_remaining_ms_when_timer_running():
     trms = msg["session_state"]["time_remaining_ms"]
     assert trms is not None
     assert 58000 <= trms <= 60000
+
+
+# ---- Reason selection (Task 3) ----
+
+@pytest.mark.asyncio
+async def test_vote_lock_reason_stored_in_session():
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as ac:
+        resp = await ac.post("/api/sessions", json={"name": "Test"})
+    session_code = resp.json()["session_code"]
+
+    async with httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+            await ws.send_json({"type": "join", "session_code": session_code, "role": "left_judge"})
+            await ws.receive_json()  # join_success
+            await ws.send_json({"type": "vote_lock", "color": "yellow", "reason": "Buttocks up"})
+            await ws.receive_json()  # judge_voted or similar
+
+    assert session_manager.sessions[session_code]["judges"]["left"]["current_reason"] == "Buttocks up"
+
+
+@pytest.mark.asyncio
+async def test_vote_lock_requires_reason_when_mandatory():
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as ac:
+        resp = await ac.post("/api/sessions", json={"name": "Test"})
+    session_code = resp.json()["session_code"]
+
+    session_manager.sessions[session_code]["settings"]["require_reasons"] = True
+
+    async with httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+            await ws.send_json({"type": "join", "session_code": session_code, "role": "left_judge"})
+            await ws.receive_json()  # join_success
+            await ws.send_json({"type": "vote_lock", "color": "yellow"})  # no reason
+            msg = await ws.receive_json()
+            assert msg["type"] == "error"
+            assert "Reason required" in msg["message"]
+
+
+@pytest.mark.asyncio
+async def test_vote_lock_white_no_reason_ok_when_mandatory():
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as ac:
+        resp = await ac.post("/api/sessions", json={"name": "Test"})
+    session_code = resp.json()["session_code"]
+
+    session_manager.sessions[session_code]["settings"]["require_reasons"] = True
+
+    async with httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+            await ws.send_json({"type": "join", "session_code": session_code, "role": "left_judge"})
+            await ws.receive_json()  # join_success
+            await ws.send_json({"type": "vote_lock", "color": "white"})  # no reason, white is fine
+            # Drain show_results broadcast (left is the only connected judge, so all_locked fires)
+            try:
+                await asyncio.wait_for(ws.receive_json(), timeout=1.0)
+            except asyncio.TimeoutError:
+                pass
+
+    assert session_manager.sessions[session_code]["judges"]["left"]["locked"] is True
+
+
+@pytest.mark.asyncio
+async def test_show_results_includes_reasons():
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as ac:
+        resp = await ac.post("/api/sessions", json={"name": "Test"})
+    session_code = resp.json()["session_code"]
+
+    async with httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as left_ac, \
+    httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as center_ac, \
+    httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as right_ac:
+
+        async with httpx_ws.aconnect_ws("ws://test/ws", left_ac) as left_ws, \
+                   httpx_ws.aconnect_ws("ws://test/ws", center_ac) as center_ws, \
+                   httpx_ws.aconnect_ws("ws://test/ws", right_ac) as right_ws:
+
+            await left_ws.send_json({"type": "join", "session_code": session_code, "role": "left_judge"})
+            await left_ws.receive_json()  # join_success
+            await center_ws.send_json({"type": "join", "session_code": session_code, "role": "center_judge"})
+            await center_ws.receive_json()  # join_success
+            await right_ws.send_json({"type": "join", "session_code": session_code, "role": "right_judge"})
+            await right_ws.receive_json()  # join_success
+
+            await left_ws.send_json({"type": "vote_lock", "color": "yellow", "reason": "Buttocks up"})
+            await center_ws.send_json({"type": "vote_lock", "color": "white"})
+            await right_ws.send_json({"type": "vote_lock", "color": "yellow", "reason": "Incomplete lift"})
+
+            # Collect messages from right_ws until we find show_results
+            show_results_msg = None
+            for _ in range(20):
+                try:
+                    msg = await asyncio.wait_for(right_ws.receive_json(), timeout=1.0)
+                    if msg["type"] == "show_results":
+                        show_results_msg = msg
+                        break
+                except asyncio.TimeoutError:
+                    break
+
+            assert show_results_msg is not None
+            assert "reasons" in show_results_msg
+            assert show_results_msg["reasons"]["left"] == "Buttocks up"
+            assert show_results_msg["reasons"]["center"] is None
+            assert show_results_msg["reasons"]["right"] == "Incomplete lift"

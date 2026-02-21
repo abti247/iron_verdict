@@ -241,7 +241,18 @@ async def websocket_endpoint(websocket: WebSocket):
                     })
                     continue
 
-                result = await session_manager.lock_vote(session_code, position, color)
+                reason = message.get("reason")
+                session = session_manager.sessions.get(session_code)
+                require_reasons = session["settings"].get("require_reasons", False) if session else False
+
+                if require_reasons and color != "white" and not reason:
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": "Reason required before locking in"
+                    })
+                    continue
+
+                result = await session_manager.lock_vote(session_code, position, color, reason=reason)
 
                 if result["success"]:
                     logger.info("vote_locked", extra={
@@ -258,9 +269,15 @@ async def websocket_endpoint(websocket: WebSocket):
 
                     # If all locked, broadcast results
                     if result.get("all_locked"):
+                        judges = session_manager.sessions[session_code]["judges"]
                         votes = {
                             pos: judge["current_vote"]
-                            for pos, judge in session_manager.sessions[session_code]["judges"].items()
+                            for pos, judge in judges.items()
+                            if judge["connected"]
+                        }
+                        reasons = {
+                            pos: judge["current_reason"]
+                            for pos, judge in judges.items()
                             if judge["connected"]
                         }
                         session_settings = session_manager.sessions[session_code]["settings"]
@@ -269,6 +286,7 @@ async def websocket_endpoint(websocket: WebSocket):
                             {
                                 "type": "show_results",
                                 "votes": votes,
+                                "reasons": reasons,
                                 "showExplanations": session_settings["show_explanations"],
                                 "liftType": session_settings["lift_type"],
                             }
