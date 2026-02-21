@@ -31,18 +31,21 @@ class SessionManager:
                         "is_head": False,
                         "current_vote": None,
                         "locked": False,
+                        "current_reason": None,
                     },
                     "center": {
                         "connected": False,
                         "is_head": True,
                         "current_vote": None,
                         "locked": False,
+                        "current_reason": None,
                     },
                     "right": {
                         "connected": False,
                         "is_head": False,
                         "current_vote": None,
                         "locked": False,
+                        "current_reason": None,
                     },
                 },
                 "state": "waiting",
@@ -94,7 +97,7 @@ class SessionManager:
 
         return {"success": True, "is_head": is_head}
 
-    async def lock_vote(self, code: str, position: str, color: str) -> Dict[str, Any]:
+    async def lock_vote(self, code: str, position: str, color: str, reason: str | None = None) -> Dict[str, Any]:
         """
         Lock in a judge's vote.
 
@@ -114,6 +117,7 @@ class SessionManager:
             judge = session["judges"][position]
 
             judge["current_vote"] = color
+            judge["current_reason"] = reason
             judge["locked"] = True
             session["last_activity"] = datetime.now()
 
@@ -137,6 +141,7 @@ class SessionManager:
 
             for judge in session["judges"].values():
                 judge["current_vote"] = None
+                judge["current_reason"] = None
                 judge["locked"] = False
 
             session["state"] = "waiting"
