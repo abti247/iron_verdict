@@ -242,6 +242,12 @@ async def websocket_endpoint(websocket: WebSocket):
                     continue
 
                 reason = message.get("reason")
+                if reason is not None and (not isinstance(reason, str) or len(reason) > 200):
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": "Invalid reason"
+                    })
+                    continue
                 session = session_manager.sessions.get(session_code)
                 require_reasons = session["settings"].get("require_reasons", False) if session else False
 
