@@ -667,38 +667,6 @@
         box-shadow: 0 0 30px var(--blood-glow);
     }
 
-    .reason-card {
-        width: 100%;
-        overflow: hidden;
-        border: 1px solid var(--chrome-dark);
-    }
-
-    .reason-card-header {
-        padding: 8px 20px;
-        font-family: 'Bebas Neue', sans-serif;
-        font-size: min(3.5vw, 28px);
-        letter-spacing: 4px;
-        color: #fff;
-    }
-
-    .reason-card-header.red   { background: var(--vote-red); }
-    .reason-card-header.blue  { background: var(--vote-blue); }
-    .reason-card-header.yellow { background: var(--vote-yellow); color: #0A0A0A; }
-
-    .reason-card-body {
-        padding: 12px 20px 12px 44px;
-        background: var(--bg-surface);
-        list-style: disc;
-    }
-
-    .reason-card-body li {
-        padding: 3px 0;
-        font-family: 'Rajdhani', sans-serif;
-        font-size: min(2.8vw, 26px);
-        font-weight: 600;
-        color: var(--text-chrome);
-        line-height: 1.4;
-    }
 
     .hidden { display: none !important; }
 
@@ -992,7 +960,6 @@
                 displayShowExplanations: false,
                 displayLiftType: 'squat',
                 _phaseTimer1: null,
-                _phaseTimer2: null,
 
                 async createSession() {
                     try {
@@ -1085,7 +1052,6 @@
                         clearInterval(this.timerInterval);
                         if (this.role === 'display') {
                             clearTimeout(this._phaseTimer1);
-                            clearTimeout(this._phaseTimer2);
                             this.displayVotes = message.votes;
                             this.displayReasons = message.reasons || { left: null, center: null, right: null };
                             this.displayShowExplanations = message.showExplanations;
@@ -1099,7 +1065,6 @@
                         }
                     } else if (message.type === 'reset_for_next_lift') {
                         clearTimeout(this._phaseTimer1);
-                        clearTimeout(this._phaseTimer2);
                         this.resetVoting();
                         this.stopTimer();
                         if (this.role === 'display') {
@@ -1250,14 +1215,7 @@
                     return whiteCount >= 2;
                 },
 
-                getInvalidColors() {
-                    return [...new Set(Object.values(this.displayVotes).filter(c => c && c !== 'white'))];
-                },
 
-                getReasons(color) {
-                    const liftData = CARD_REASONS[this.displayLiftType];
-                    return liftData ? (liftData[color] || []) : [];
-                },
 
                 returnToLanding() {
                     this.intentionalNavigation = true;
