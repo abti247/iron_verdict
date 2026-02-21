@@ -1052,10 +1052,12 @@
                     } else if (message.type === 'show_results') {
                         this.resultsShown = true;
                         clearInterval(this.timerInterval);
+                        this.judgeResultVotes = message.votes;
+                        this.judgeResultReasons = message.reasons || { left: null, center: null, right: null };
                         if (this.role === 'display') {
                             clearTimeout(this._phaseTimer1);
-                            this.displayVotes = message.votes;
-                            this.displayReasons = message.reasons || { left: null, center: null, right: null };
+                            this.displayVotes = this.judgeResultVotes;
+                            this.displayReasons = this.judgeResultReasons;
                             this.displayShowExplanations = message.showExplanations;
                             this.displayLiftType = message.liftType;
                             this.displayPhase = 'votes';
