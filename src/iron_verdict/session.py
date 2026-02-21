@@ -54,6 +54,7 @@ class SessionManager:
                 "settings": {
                     "show_explanations": False,
                     "lift_type": "squat",
+                    "require_reasons": False,
                 },
                 "last_activity": datetime.now(),
             }
@@ -151,7 +152,7 @@ class SessionManager:
 
             return {"success": True}
 
-    def update_settings(self, code: str, show_explanations: bool, lift_type: str) -> Dict[str, Any]:
+    def update_settings(self, code: str, show_explanations: bool, lift_type: str, require_reasons: bool = False) -> Dict[str, Any]:
         """Update head judge display settings."""
         if code not in self.sessions:
             return {"success": False, "error": "Session not found"}
@@ -160,6 +161,7 @@ class SessionManager:
         session = self.sessions[code]
         session["settings"]["show_explanations"] = show_explanations
         session["settings"]["lift_type"] = lift_type
+        session["settings"]["require_reasons"] = require_reasons
         session["last_activity"] = datetime.now()
         return {"success": True}
 
