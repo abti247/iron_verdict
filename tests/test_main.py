@@ -149,6 +149,56 @@ async def test_settings_update_invalid_lift_type_returns_error(session_code):
 
 
 @pytest.mark.asyncio
+async def test_settings_update_broadcasts_to_all_clients(session_code):
+    """settings_update message should be broadcast to all connected clients."""
+    async with httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as center_client, \
+           httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as left_client, \
+           httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as right_client:
+
+        async with httpx_ws.aconnect_ws("ws://test/ws", center_client) as center_ws, \
+                   httpx_ws.aconnect_ws("ws://test/ws", left_client) as left_ws, \
+                   httpx_ws.aconnect_ws("ws://test/ws", right_client) as right_ws:
+
+            # All judges join
+            await center_ws.send_json({"type": "join", "session_code": session_code, "role": "center_judge"})
+            await left_ws.send_json({"type": "join", "session_code": session_code, "role": "left_judge"})
+            await right_ws.send_json({"type": "join", "session_code": session_code, "role": "right_judge"})
+
+            # Consume join_success messages
+            await center_ws.receive_json()
+            await left_ws.receive_json()
+            await right_ws.receive_json()
+
+            # Head judge sends settings_update
+            await center_ws.send_json({
+                "type": "settings_update",
+                "showExplanations": True,
+                "liftType": "bench",
+                "requireReasons": True
+            })
+
+            # All other clients should receive the broadcast
+            msg_left = await asyncio.wait_for(left_ws.receive_json(), timeout=1.0)
+            msg_right = await asyncio.wait_for(right_ws.receive_json(), timeout=1.0)
+
+            assert msg_left["type"] == "settings_update"
+            assert msg_left["showExplanations"] is True
+            assert msg_left["liftType"] == "bench"
+            assert msg_left["requireReasons"] is True
+
+            assert msg_right["type"] == "settings_update"
+            assert msg_right["showExplanations"] is True
+            assert msg_right["liftType"] == "bench"
+            assert msg_right["requireReasons"] is True
+
+
+@pytest.mark.asyncio
 async def test_vote_lock_invalid_color_returns_error(session_code):
     async with httpx.AsyncClient(
         transport=ASGIWebSocketTransport(app=app), base_url="http://test"

@@ -409,6 +409,18 @@ async def websocket_endpoint(websocket: WebSocket):
                         "type": "error",
                         "message": result["error"]
                     })
+                else:
+                    # Broadcast settings update to all connected clients
+                    session_settings = session_manager.sessions[session_code]["settings"]
+                    await connection_manager.broadcast_to_session(
+                        session_code,
+                        {
+                            "type": "settings_update",
+                            "showExplanations": session_settings["show_explanations"],
+                            "liftType": session_settings["lift_type"],
+                            "requireReasons": session_settings["require_reasons"],
+                        }
+                    )
             else:
                 # Issue 4: Handle post-join messages
                 # For now, just ignore unknown message types silently
