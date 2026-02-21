@@ -3,7 +3,7 @@ import logging
 from typing import Dict, Any
 from fastapi import WebSocket
 
-logger = logging.getLogger("judgeme")
+logger = logging.getLogger("iron_verdict")
 
 
 class ConnectionManager:

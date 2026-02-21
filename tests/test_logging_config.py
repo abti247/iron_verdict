@@ -1,12 +1,12 @@
 import json
 import logging
-from judgeme.logging_config import JsonFormatter
+from iron_verdict.logging_config import JsonFormatter
 
 
 def test_json_formatter_produces_valid_json():
     formatter = JsonFormatter()
     record = logging.LogRecord(
-        name="judgeme", level=logging.INFO, pathname="", lineno=0,
+        name="iron_verdict", level=logging.INFO, pathname="", lineno=0,
         msg="test message", args=(), exc_info=None
     )
     output = formatter.format(record)
@@ -19,7 +19,7 @@ def test_json_formatter_produces_valid_json():
 def test_json_formatter_includes_extra_fields():
     formatter = JsonFormatter()
     record = logging.LogRecord(
-        name="judgeme", level=logging.INFO, pathname="", lineno=0,
+        name="iron_verdict", level=logging.INFO, pathname="", lineno=0,
         msg="session created", args=(), exc_info=None
     )
     record.session_code = "ABC12345"

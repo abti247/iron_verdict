@@ -1,5 +1,5 @@
 import pytest
-from judgeme.session import SessionManager
+from iron_verdict.session import SessionManager
 from datetime import datetime, timedelta
 
 

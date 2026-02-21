@@ -1,6 +1,6 @@
 # Project Overview
 
-**JudgeMe** - a web app for powerlifting competition judging.
+**Iron Verdict** - a web app for powerlifting competition judging.
 
 The goal of the app is to provide an easy access to a tool for powerlifting judging.
 

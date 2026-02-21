@@ -6,15 +6,15 @@ import httpx
 import httpx_ws
 from httpx_ws.transport import ASGIWebSocketTransport
 from fastapi.testclient import TestClient
-from judgeme.main import app, session_manager
-from judgeme.config import settings
+from iron_verdict.main import app, session_manager
+from iron_verdict.config import settings
 
 
 @pytest.fixture(autouse=True)
 def reset_rate_limiter():
     """Reset in-memory rate-limit counters so tests don't bleed into each other."""
     try:
-        from judgeme.main import limiter
+        from iron_verdict.main import limiter
         limiter._storage.reset()
     except (ImportError, AttributeError):
         pass
@@ -299,7 +299,7 @@ async def test_create_session_logs_info(caplog):
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app), base_url="http://test"
     ) as ac:
-        with caplog.at_level(logging.INFO, logger="judgeme"):
+        with caplog.at_level(logging.INFO, logger="iron_verdict"):
             resp = await ac.post("/api/sessions", json={"name": "TestMeet"})
     assert resp.status_code == 200
     messages = [r.getMessage() for r in caplog.records]
@@ -319,7 +319,7 @@ async def test_ws_join_success_logs_role_and_session(caplog):
     async with httpx.AsyncClient(
         transport=ASGIWebSocketTransport(app=app), base_url="http://test"
     ) as ac:
-        with caplog.at_level(logging.INFO, logger="judgeme"):
+        with caplog.at_level(logging.INFO, logger="iron_verdict"):
             async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
                 await ws.send_json({"type": "join", "session_code": code, "role": "left_judge"})
                 await ws.receive_json()
@@ -338,7 +338,7 @@ async def test_ws_disconnect_logs_info(caplog):
         resp = await ac.post("/api/sessions", json={"name": "Test"})
     code = resp.json()["session_code"]
 
-    with caplog.at_level(logging.INFO, logger="judgeme"):
+    with caplog.at_level(logging.INFO, logger="iron_verdict"):
         async with httpx.AsyncClient(
             transport=ASGIWebSocketTransport(app=app), base_url="http://test"
         ) as ac:
@@ -362,7 +362,7 @@ async def test_vote_lock_logs_info(caplog):
     async with httpx.AsyncClient(
         transport=ASGIWebSocketTransport(app=app), base_url="http://test"
     ) as ac:
-        with caplog.at_level(logging.INFO, logger="judgeme"):
+        with caplog.at_level(logging.INFO, logger="iron_verdict"):
             async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
                 await ws.send_json({"type": "join", "session_code": code, "role": "left_judge"})
                 await ws.receive_json()
@@ -385,7 +385,7 @@ async def test_timer_start_logs_info(caplog):
     async with httpx.AsyncClient(
         transport=ASGIWebSocketTransport(app=app), base_url="http://test"
     ) as ac:
-        with caplog.at_level(logging.INFO, logger="judgeme"):
+        with caplog.at_level(logging.INFO, logger="iron_verdict"):
             async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
                 await ws.send_json({"type": "join", "session_code": code, "role": "center_judge"})
                 await ws.receive_json()
@@ -406,7 +406,7 @@ async def test_session_end_logs_info(caplog):
     async with httpx.AsyncClient(
         transport=ASGIWebSocketTransport(app=app), base_url="http://test"
     ) as ac:
-        with caplog.at_level(logging.INFO, logger="judgeme"):
+        with caplog.at_level(logging.INFO, logger="iron_verdict"):
             async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
                 await ws.send_json({"type": "join", "session_code": code, "role": "center_judge"})
                 await ws.receive_json()
@@ -428,7 +428,7 @@ async def test_origin_rejection_logs_warning(caplog, monkeypatch):
     async with httpx.AsyncClient(
         transport=ASGIWebSocketTransport(app=app), base_url="http://test"
     ) as ac:
-        with caplog.at_level(logging.WARNING, logger="judgeme"):
+        with caplog.at_level(logging.WARNING, logger="iron_verdict"):
             try:
                 async with httpx_ws.aconnect_ws(
                     "ws://test/ws", ac,
@@ -492,7 +492,7 @@ async def test_message_flood_logs_warning(caplog):
     async with httpx.AsyncClient(
         transport=ASGIWebSocketTransport(app=app), base_url="http://test"
     ) as ac:
-        with caplog.at_level(logging.WARNING, logger="judgeme"):
+        with caplog.at_level(logging.WARNING, logger="iron_verdict"):
             async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
                 await ws.send_json({"type": "join", "session_code": code, "role": "left_judge"})
                 await ws.receive_json()

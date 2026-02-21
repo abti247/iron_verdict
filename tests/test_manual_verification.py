@@ -324,7 +324,7 @@ async def test_5_no_error_alerts():
 async def main():
     """Run all tests."""
     print("\n" + "#"*70)
-    print("# MANUAL TESTING VERIFICATION - JudgeMe Application")
+    print("# MANUAL TESTING VERIFICATION - Iron Verdict Application")
     print("#"*70)
     print("\nAll implementation tasks (1-6) are complete.")
     print("Verifying all features work correctly...\n")

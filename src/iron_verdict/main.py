@@ -2,9 +2,9 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from pydantic import BaseModel, field_validator
 from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
-from judgeme.config import settings
-from judgeme.session import SessionManager
-from judgeme.connection import ConnectionManager
+from iron_verdict.config import settings
+from iron_verdict.session import SessionManager
+from iron_verdict.connection import ConnectionManager
 import asyncio
 from contextlib import asynccontextmanager
 import json
@@ -17,9 +17,9 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from starlette.middleware.base import BaseHTTPMiddleware
 import logging
-from judgeme.logging_config import setup_logging
+from iron_verdict.logging_config import setup_logging
 
-logger = logging.getLogger("judgeme")
+logger = logging.getLogger("iron_verdict")
 
 VALID_COLORS = {"white", "red", "blue", "yellow"}
 
@@ -87,7 +87,7 @@ async def lifespan(app: FastAPI):
     except asyncio.CancelledError:
         pass
 
-app = FastAPI(title="JudgeMe", lifespan=lifespan)
+app = FastAPI(title="Iron Verdict", lifespan=lifespan)
 app.add_middleware(SecurityHeadersMiddleware)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)

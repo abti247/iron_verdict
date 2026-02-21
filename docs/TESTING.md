@@ -1,9 +1,9 @@
-# JudgeMe Manual Testing Guide
+# Iron Verdict Manual Testing Guide
 
 ## Multi-Tab Testing Procedure
 
 ### Setup
-1. Start server: `uvicorn judgeme.main:app --reload`
+1. Start server: `uvicorn iron_verdict.main:app --reload`
 2. Open 4 browser tabs/windows
 
 ### Test Flow

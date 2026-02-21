@@ -1,7 +1,7 @@
 import logging
 import pytest
 from unittest.mock import AsyncMock
-from judgeme.connection import ConnectionManager
+from iron_verdict.connection import ConnectionManager
 
 
 @pytest.mark.asyncio
@@ -145,7 +145,7 @@ async def test_broadcast_failure_logs_warning(caplog):
     broken_ws.send_json.side_effect = Exception("connection lost")
     await manager.add_connection("SESS", "left_judge", broken_ws)
 
-    with caplog.at_level(logging.WARNING, logger="judgeme"):
+    with caplog.at_level(logging.WARNING, logger="iron_verdict"):
         await manager.broadcast_to_session("SESS", {"type": "test"})
 
     records = [r for r in caplog.records if r.getMessage() == "broadcast_send_failed"]
@@ -159,7 +159,7 @@ async def test_send_to_role_failure_logs_warning(caplog):
     broken_ws.send_json.side_effect = Exception("connection lost")
     await manager.add_connection("SESS", "left_judge", broken_ws)
 
-    with caplog.at_level(logging.WARNING, logger="judgeme"):
+    with caplog.at_level(logging.WARNING, logger="iron_verdict"):
         await manager.send_to_role("SESS", "left_judge", {"type": "test"})
 
     records = [r for r in caplog.records if r.getMessage() == "send_to_role_failed"]
@@ -173,7 +173,7 @@ async def test_send_to_displays_failure_logs_warning(caplog):
     broken_ws.send_json.side_effect = Exception("connection lost")
     await manager.add_connection("SESS", "display_abc", broken_ws)
 
-    with caplog.at_level(logging.WARNING, logger="judgeme"):
+    with caplog.at_level(logging.WARNING, logger="iron_verdict"):
         await manager.send_to_displays("SESS", {"type": "test"})
 
     records = [r for r in caplog.records if r.getMessage() == "send_to_display_failed"]
