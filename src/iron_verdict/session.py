@@ -105,6 +105,7 @@ class SessionManager:
             code: Session code
             position: Judge position ("left", "center", "right")
             color: Vote color ("white", "red", "blue", "yellow")
+            reason: Optional reason string for a red/yellow card; None if no reason given
 
         Returns:
             Dict with success status and all_locked flag
