@@ -460,6 +460,20 @@
         background: rgba(34,197,94,0.05);
     }
 
+    .reason-step { display: flex; flex-direction: column; gap: 0.5rem; width: 100%; }
+    .reason-step-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.25rem; }
+    .back-btn { background: transparent; border: 1px solid rgba(255,255,255,0.3); color: white; padding: 0.4rem 0.9rem; border-radius: 6px; cursor: pointer; font-size: 0.9rem; }
+    .back-btn:active { background: rgba(255,255,255,0.1); }
+    .reason-step-color { font-weight: 700; font-size: 1.1rem; letter-spacing: 0.05em; }
+    .reason-step-color.yellow { color: #fbbf24; }
+    .reason-step-color.red { color: #ef4444; }
+    .reason-step-color.blue { color: #60a5fa; }
+    .reason-list { display: flex; flex-direction: column; overflow-y: auto; max-height: 55vh; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); }
+    .reason-item { padding: 1rem 1.2rem; background: rgba(255,255,255,0.07); border-bottom: 1px solid rgba(255,255,255,0.08); cursor: pointer; font-size: 1rem; color: white; transition: background 0.15s; }
+    .reason-item:last-child { border-bottom: none; }
+    .reason-item:active, .reason-item:hover { background: rgba(255,255,255,0.15); }
+    .reason-item.selected { background: rgba(255,255,255,0.18); border-left: 3px solid white; padding-left: calc(1.2rem - 3px); }
+
     .head-section {
         border-top: 2px solid var(--chrome-dark);
         padding-top: 14px;
@@ -748,7 +762,7 @@
             </div>
         </div>
 
-        <div class="vote-grid" :style="voteLocked ? 'opacity:0.35;pointer-events:none' : ''">
+        <div class="vote-grid" x-show="!showingReasonStep" :style="voteLocked ? 'opacity:0.35;pointer-events:none' : ''">
             <button class="vote-btn vote-white cut-corner-sm"
                     :class="selectedVote === 'white' && 'selected'"
                     @click="selectVote('white')" :disabled="voteLocked">
@@ -771,8 +785,24 @@
             </button>
         </div>
 
+        <div class="reason-step" x-show="showingReasonStep && !voteLocked">
+            <div class="reason-step-header">
+                <button class="back-btn" @click="goBackToColorStep()">&#8592; back</button>
+                <span class="reason-step-color" :class="selectedVote" x-text="selectedVote?.toUpperCase()"></span>
+            </div>
+            <div class="reason-list">
+                <template x-for="reason in getJudgeReasons()" :key="reason">
+                    <div class="reason-item"
+                         :class="{ selected: selectedReason === reason }"
+                         @click="selectReason(reason)"
+                         x-text="reason">
+                    </div>
+                </template>
+            </div>
+        </div>
+
         <button class="lock-btn cut-corner-sm"
-                x-show="selectedVote && !voteLocked"
+                x-show="canLockIn() && !voteLocked"
                 @click="lockVote()">
             LOCK IN
         </button>
@@ -933,6 +963,8 @@
                 intentionalNavigation: false,
                 showExplanations: false,
                 requireReasons: false,
+                selectedReason: null,
+                showingReasonStep: false,
                 liftType: 'squat',
                 displayPhase: 'idle',
                 displayShowExplanations: false,
@@ -1083,15 +1115,39 @@
                 selectVote(color) {
                     if (!this.voteLocked) {
                         this.selectedVote = color;
+                        this.selectedReason = null;
+                        this.showingReasonStep = (color !== 'white');
                     }
                 },
 
+                goBackToColorStep() {
+                    this.showingReasonStep = false;
+                    this.selectedReason = null;
+                },
+
+                selectReason(reason) {
+                    this.selectedReason = reason;
+                },
+
+                getJudgeReasons() {
+                    const liftType = this.liftType || 'squat';
+                    return CARD_REASONS[liftType]?.[this.selectedVote] || [];
+                },
+
+                canLockIn() {
+                    if (!this.selectedVote || this.voteLocked) return false;
+                    if (this.selectedVote === 'white') return true;
+                    if (this.requireReasons) return !!this.selectedReason;
+                    return true;
+                },
+
                 lockVote() {
-                    if (this.selectedVote && !this.voteLocked) {
+                    if (this.canLockIn()) {
                         this.voteLocked = true;
                         this.ws.send(JSON.stringify({
                             type: 'vote_lock',
-                            color: this.selectedVote
+                            color: this.selectedVote,
+                            reason: this.selectedVote !== 'white' ? this.selectedReason : null,
                         }));
                     }
                 },
@@ -1115,6 +1171,8 @@
                     this.selectedVote = null;
                     this.voteLocked = false;
                     this.resultsShown = false;
+                    this.selectedReason = null;
+                    this.showingReasonStep = false;
                 },
 
                 startTimer() {
