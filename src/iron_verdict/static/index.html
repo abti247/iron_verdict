@@ -798,6 +798,10 @@
                     <input type="checkbox" x-model="showExplanations" @change="saveSettings()">
                     Show rule explanations
                 </label>
+                <label>
+                    <input type="checkbox" x-model="requireReasons" @change="saveSettings()">
+                    Require reasons
+                </label>
                 <select x-model="liftType" @change="saveSettings()">
                     <option value="squat">Squat</option>
                     <option value="bench">Bench Press</option>
@@ -928,6 +932,7 @@
                 displayStatus: 'Waiting for judges...',
                 intentionalNavigation: false,
                 showExplanations: false,
+                requireReasons: false,
                 liftType: 'squat',
                 displayPhase: 'idle',
                 displayShowExplanations: false,
@@ -1008,6 +1013,7 @@
                         this.sessionName = message.session_state?.name || '';
                         this.screen = this.role === 'display' ? 'display' : 'judge';
                         if (this.isHead) {
+                            this.requireReasons = message.session_state?.settings?.require_reasons ?? false;
                             this.saveSettings();  // sync localStorage settings to server
                         }
                         const trms = message.session_state?.time_remaining_ms;
@@ -1061,6 +1067,16 @@
                         this.ws.close();
                         this.isDemo = false;
                         this.screen = 'landing';
+                    } else if (message.type === 'settings_update') {
+                        if (message.showExplanations !== undefined) {
+                            this.showExplanations = message.showExplanations;
+                        }
+                        if (message.liftType !== undefined) {
+                            this.liftType = message.liftType;
+                        }
+                        if (message.requireReasons !== undefined) {
+                            this.requireReasons = message.requireReasons;
+                        }
                     }
                 },
 
@@ -1084,11 +1100,13 @@
                     if (!this.isHead) return;
                     localStorage.setItem('showExplanations', this.showExplanations);
                     localStorage.setItem('liftType', this.liftType);
+                    localStorage.setItem('requireReasons', this.requireReasons);
                     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
                         this.ws.send(JSON.stringify({
                             type: 'settings_update',
                             showExplanations: this.showExplanations,
-                            liftType: this.liftType
+                            liftType: this.liftType,
+                            requireReasons: this.requireReasons
                         }));
                     }
                 },
@@ -1250,6 +1268,7 @@
                 init() {
                     this.showExplanations = localStorage.getItem('showExplanations') === 'true';
                     this.liftType = localStorage.getItem('liftType') || 'squat';
+                    this.requireReasons = localStorage.getItem('requireReasons') === 'true';
 
                     // Check for demo join params set by the inline script (see <head>).
                     const params = window._demoParams;
