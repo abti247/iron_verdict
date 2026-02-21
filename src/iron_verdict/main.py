@@ -395,7 +395,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 result = session_manager.update_settings(
                     session_code,
                     message.get("showExplanations", False),
-                    message.get("liftType", "squat")
+                    message.get("liftType", "squat"),
+                    require_reasons=message.get("requireReasons", False),
                 )
                 if not result["success"]:
                     await websocket.send_json({
