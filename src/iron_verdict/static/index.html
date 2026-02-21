@@ -460,6 +460,20 @@
         background: rgba(34,197,94,0.05);
     }
 
+    .reason-step { display: flex; flex-direction: column; gap: 0.5rem; width: 100%; }
+    .reason-step-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.25rem; }
+    .back-btn { background: transparent; border: 1px solid rgba(255,255,255,0.3); color: white; padding: 0.4rem 0.9rem; border-radius: 6px; cursor: pointer; font-size: 0.9rem; }
+    .back-btn:active { background: rgba(255,255,255,0.1); }
+    .reason-step-color { font-weight: 700; font-size: 1.1rem; letter-spacing: 0.05em; }
+    .reason-step-color.yellow { color: #fbbf24; }
+    .reason-step-color.red { color: #ef4444; }
+    .reason-step-color.blue { color: #60a5fa; }
+    .reason-list { display: flex; flex-direction: column; overflow-y: auto; max-height: 55vh; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); }
+    .reason-item { padding: 1rem 1.2rem; background: rgba(255,255,255,0.07); border-bottom: 1px solid rgba(255,255,255,0.08); cursor: pointer; font-size: 1rem; color: white; transition: background 0.15s; }
+    .reason-item:last-child { border-bottom: none; }
+    .reason-item:active, .reason-item:hover { background: rgba(255,255,255,0.15); }
+    .reason-item.selected { background: rgba(255,255,255,0.18); border-left: 3px solid white; padding-left: calc(1.2rem - 3px); }
+
     .head-section {
         border-top: 2px solid var(--chrome-dark);
         padding-top: 14px;
@@ -565,7 +579,24 @@
 
     .display-lights {
         display: flex;
-        gap: 40px;
+        gap: 5rem;
+    }
+    .display-orb-wrap {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+    }
+    .display-orb-reason {
+        font-size: 1.2rem;
+        color: rgba(255, 255, 255, 0.85);
+        text-align: center;
+        max-width: 160px;
+        line-height: 1.3;
+        font-weight: 500;
+    }
+    .display-verdict-inline {
+        margin-top: 1.5rem;
     }
 
     .display-orb {
@@ -636,38 +667,6 @@
         box-shadow: 0 0 30px var(--blood-glow);
     }
 
-    .reason-card {
-        width: 100%;
-        overflow: hidden;
-        border: 1px solid var(--chrome-dark);
-    }
-
-    .reason-card-header {
-        padding: 8px 20px;
-        font-family: 'Bebas Neue', sans-serif;
-        font-size: min(3.5vw, 28px);
-        letter-spacing: 4px;
-        color: #fff;
-    }
-
-    .reason-card-header.red   { background: var(--vote-red); }
-    .reason-card-header.blue  { background: var(--vote-blue); }
-    .reason-card-header.yellow { background: var(--vote-yellow); color: #0A0A0A; }
-
-    .reason-card-body {
-        padding: 12px 20px 12px 44px;
-        background: var(--bg-surface);
-        list-style: disc;
-    }
-
-    .reason-card-body li {
-        padding: 3px 0;
-        font-family: 'Rajdhani', sans-serif;
-        font-size: min(2.8vw, 26px);
-        font-weight: 600;
-        color: var(--text-chrome);
-        line-height: 1.4;
-    }
 
     .hidden { display: none !important; }
 
@@ -748,7 +747,7 @@
             </div>
         </div>
 
-        <div class="vote-grid" :style="voteLocked ? 'opacity:0.35;pointer-events:none' : ''">
+        <div class="vote-grid" x-show="!showingReasonStep" :style="voteLocked ? 'opacity:0.35;pointer-events:none' : ''">
             <button class="vote-btn vote-white cut-corner-sm"
                     :class="selectedVote === 'white' && 'selected'"
                     @click="selectVote('white')" :disabled="voteLocked">
@@ -771,8 +770,24 @@
             </button>
         </div>
 
+        <div class="reason-step" x-show="showingReasonStep && !voteLocked">
+            <div class="reason-step-header">
+                <button class="back-btn" @click="goBackToColorStep()">&#8592; back</button>
+                <span class="reason-step-color" :class="selectedVote" x-text="selectedVote?.toUpperCase()"></span>
+            </div>
+            <div class="reason-list">
+                <template x-for="reason in getJudgeReasons()" :key="reason">
+                    <div class="reason-item"
+                         :class="{ selected: selectedReason === reason }"
+                         @click="selectReason(reason)"
+                         x-text="reason">
+                    </div>
+                </template>
+            </div>
+        </div>
+
         <button class="lock-btn cut-corner-sm"
-                x-show="selectedVote && !voteLocked"
+                x-show="canLockIn() && !voteLocked"
                 @click="lockVote()">
             LOCK IN
         </button>
@@ -798,6 +813,10 @@
                     <input type="checkbox" x-model="showExplanations" @change="saveSettings()">
                     Show rule explanations
                 </label>
+                <label>
+                    <input type="checkbox" x-model="requireReasons" @change="saveSettings()">
+                    Require reasons
+                </label>
                 <select x-model="liftType" @change="saveSettings()">
                     <option value="squat">Squat</option>
                     <option value="bench">Bench Press</option>
@@ -816,29 +835,33 @@
 
         <div class="display-timer-big" :class="timerExpired && 'expired'" x-text="timerDisplay"></div>
 
-        <!-- Phase 1 & idle: Vote orbs -->
+        <!-- Vote orbs with reasons -->
         <div class="display-lights" x-show="displayPhase === 'votes' || displayPhase === 'idle'">
-            <div class="display-orb" :class="displayVotes.left"></div>
-            <div class="display-orb" :class="displayVotes.center"></div>
-            <div class="display-orb" :class="displayVotes.right"></div>
+            <div class="display-orb-wrap">
+                <div class="display-orb" :class="displayVotes.left"></div>
+                <div class="display-orb-reason"
+                     x-show="displayShowExplanations && displayVotes.left && displayVotes.left !== 'white' && displayReasons.left"
+                     x-text="displayReasons.left"></div>
+            </div>
+            <div class="display-orb-wrap">
+                <div class="display-orb" :class="displayVotes.center"></div>
+                <div class="display-orb-reason"
+                     x-show="displayShowExplanations && displayVotes.center && displayVotes.center !== 'white' && displayReasons.center"
+                     x-text="displayReasons.center"></div>
+            </div>
+            <div class="display-orb-wrap">
+                <div class="display-orb" :class="displayVotes.right"></div>
+                <div class="display-orb-reason"
+                     x-show="displayShowExplanations && displayVotes.right && displayVotes.right !== 'white' && displayReasons.right"
+                     x-text="displayReasons.right"></div>
+            </div>
         </div>
 
-        <!-- Phase 2: Explanation panel -->
-        <div class="display-verdict" x-show="displayPhase === 'explanation'">
+        <!-- Verdict shown alongside orbs; always in layout to prevent orbs from shifting -->
+        <div class="display-verdict-inline" :style="displayPhase !== 'votes' ? 'visibility:hidden' : ''">
             <div class="verdict-stamp"
                  :class="isValidLift() ? 'valid' : 'invalid'"
                  x-text="isValidLift() ? 'Good Lift' : 'No Lift'"></div>
-            <template x-for="color in getInvalidColors()" :key="color">
-                <div class="reason-card">
-                    <div class="reason-card-header" :class="color"
-                         x-text="color.toUpperCase() + ' CARD'"></div>
-                    <ul class="reason-card-body">
-                        <template x-for="reason in getReasons(color)" :key="reason">
-                            <li x-text="reason"></li>
-                        </template>
-                    </ul>
-                </div>
-            </template>
         </div>
 
         <div class="display-status" x-text="displayStatus"></div>
@@ -925,15 +948,18 @@
                 timerExpired: false,
                 timerInterval: null,
                 displayVotes: { left: null, center: null, right: null },
+                displayReasons: { left: null, center: null, right: null },
                 displayStatus: 'Waiting for judges...',
                 intentionalNavigation: false,
                 showExplanations: false,
+                requireReasons: false,
+                selectedReason: null,
+                showingReasonStep: false,
                 liftType: 'squat',
                 displayPhase: 'idle',
                 displayShowExplanations: false,
                 displayLiftType: 'squat',
                 _phaseTimer1: null,
-                _phaseTimer2: null,
 
                 async createSession() {
                     try {
@@ -1008,6 +1034,7 @@
                         this.sessionName = message.session_state?.name || '';
                         this.screen = this.role === 'display' ? 'display' : 'judge';
                         if (this.isHead) {
+                            this.requireReasons = message.session_state?.settings?.require_reasons ?? false;
                             this.saveSettings();  // sync localStorage settings to server
                         }
                         const trms = message.session_state?.time_remaining_ms;
@@ -1025,30 +1052,21 @@
                         clearInterval(this.timerInterval);
                         if (this.role === 'display') {
                             clearTimeout(this._phaseTimer1);
-                            clearTimeout(this._phaseTimer2);
                             this.displayVotes = message.votes;
+                            this.displayReasons = message.reasons || { left: null, center: null, right: null };
                             this.displayShowExplanations = message.showExplanations;
                             this.displayLiftType = message.liftType;
                             this.displayPhase = 'votes';
                             this.displayStatus = '';
 
-                            this._phaseTimer1 = setTimeout(() => {
-                                const nonWhite = Object.values(this.displayVotes).filter(c => c && c !== 'white');
-                                if (this.displayShowExplanations && nonWhite.length > 0) {
-                                    this.displayPhase = 'explanation';
-                                    this._phaseTimer2 = setTimeout(() => { this.displayPhase = 'idle'; }, 6000);
-                                } else {
-                                    this.displayPhase = 'idle';
-                                }
-                            }, 3000);
                         }
                     } else if (message.type === 'reset_for_next_lift') {
                         clearTimeout(this._phaseTimer1);
-                        clearTimeout(this._phaseTimer2);
                         this.resetVoting();
                         this.stopTimer();
                         if (this.role === 'display') {
                             this.displayVotes = { left: null, center: null, right: null };
+                            this.displayReasons = { left: null, center: null, right: null };
                             this.displayPhase = 'idle';
                             this.displayStatus = 'Waiting for judges...';
                         }
@@ -1061,21 +1079,55 @@
                         this.ws.close();
                         this.isDemo = false;
                         this.screen = 'landing';
+                    } else if (message.type === 'settings_update') {
+                        if (message.showExplanations !== undefined) {
+                            this.showExplanations = message.showExplanations;
+                        }
+                        if (message.liftType !== undefined) {
+                            this.liftType = message.liftType;
+                        }
+                        if (message.requireReasons !== undefined) {
+                            this.requireReasons = message.requireReasons;
+                        }
                     }
                 },
 
                 selectVote(color) {
                     if (!this.voteLocked) {
                         this.selectedVote = color;
+                        this.selectedReason = null;
+                        this.showingReasonStep = (color !== 'white');
                     }
                 },
 
+                goBackToColorStep() {
+                    this.showingReasonStep = false;
+                    this.selectedReason = null;
+                },
+
+                selectReason(reason) {
+                    this.selectedReason = reason;
+                },
+
+                getJudgeReasons() {
+                    const liftType = this.liftType || 'squat';
+                    return CARD_REASONS[liftType]?.[this.selectedVote] || [];
+                },
+
+                canLockIn() {
+                    if (!this.selectedVote || this.voteLocked) return false;
+                    if (this.selectedVote === 'white') return true;
+                    if (this.requireReasons) return !!this.selectedReason;
+                    return true;
+                },
+
                 lockVote() {
-                    if (this.selectedVote && !this.voteLocked) {
+                    if (this.canLockIn()) {
                         this.voteLocked = true;
                         this.ws.send(JSON.stringify({
                             type: 'vote_lock',
-                            color: this.selectedVote
+                            color: this.selectedVote,
+                            reason: this.selectedVote !== 'white' ? this.selectedReason : null,
                         }));
                     }
                 },
@@ -1084,11 +1136,13 @@
                     if (!this.isHead) return;
                     localStorage.setItem('showExplanations', this.showExplanations);
                     localStorage.setItem('liftType', this.liftType);
+                    localStorage.setItem('requireReasons', this.requireReasons);
                     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
                         this.ws.send(JSON.stringify({
                             type: 'settings_update',
                             showExplanations: this.showExplanations,
-                            liftType: this.liftType
+                            liftType: this.liftType,
+                            requireReasons: this.requireReasons
                         }));
                     }
                 },
@@ -1097,6 +1151,8 @@
                     this.selectedVote = null;
                     this.voteLocked = false;
                     this.resultsShown = false;
+                    this.selectedReason = null;
+                    this.showingReasonStep = false;
                 },
 
                 startTimer() {
@@ -1156,14 +1212,7 @@
                     return whiteCount >= 2;
                 },
 
-                getInvalidColors() {
-                    return [...new Set(Object.values(this.displayVotes).filter(c => c && c !== 'white'))];
-                },
 
-                getReasons(color) {
-                    const liftData = CARD_REASONS[this.displayLiftType];
-                    return liftData ? (liftData[color] || []) : [];
-                },
 
                 returnToLanding() {
                     this.intentionalNavigation = true;
@@ -1185,6 +1234,8 @@
                     this.selectedVote = null;
                     this.voteLocked = false;
                     this.resultsShown = false;
+                    this.selectedReason = null;
+                    this.showingReasonStep = false;
                     this.timerDisplay = '60';
                     this.timerExpired = false;
                     if (this.timerInterval) {
@@ -1250,6 +1301,7 @@
                 init() {
                     this.showExplanations = localStorage.getItem('showExplanations') === 'true';
                     this.liftType = localStorage.getItem('liftType') || 'squat';
+                    this.requireReasons = localStorage.getItem('requireReasons') === 'true';
 
                     // Check for demo join params set by the inline script (see <head>).
                     const params = window._demoParams;

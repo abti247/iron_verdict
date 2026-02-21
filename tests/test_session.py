@@ -223,3 +223,52 @@ async def test_reset_for_next_lift_clears_timer_started_at():
     manager.sessions[code]["timer_started_at"] = time.time()
     await manager.reset_for_next_lift(code)
     assert manager.sessions[code]["timer_started_at"] is None
+
+
+async def test_lock_vote_stores_reason():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    manager.join_session(code, "left_judge")
+    result = await manager.lock_vote(code, "left", "yellow", reason="Buttocks up")
+    assert result["success"] is True
+    assert manager.sessions[code]["judges"]["left"]["current_reason"] == "Buttocks up"
+
+
+async def test_lock_vote_reason_defaults_to_none():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    manager.join_session(code, "left_judge")
+    await manager.lock_vote(code, "left", "white")
+    assert manager.sessions[code]["judges"]["left"]["current_reason"] is None
+
+
+async def test_session_judges_have_current_reason_field():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    for judge in manager.sessions[code]["judges"].values():
+        assert "current_reason" in judge
+        assert judge["current_reason"] is None
+
+
+async def test_reset_for_next_lift_clears_reason():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    manager.join_session(code, "left_judge")
+    await manager.lock_vote(code, "left", "yellow", reason="Buttocks up")
+    await manager.reset_for_next_lift(code)
+    assert manager.sessions[code]["judges"]["left"]["current_reason"] is None
+
+
+async def test_session_settings_has_require_reasons():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    assert "require_reasons" in manager.sessions[code]["settings"]
+    assert manager.sessions[code]["settings"]["require_reasons"] is False
+
+
+async def test_update_settings_stores_require_reasons():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    result = manager.update_settings(code, True, "bench", require_reasons=True)
+    assert result["success"] is True
+    assert manager.sessions[code]["settings"]["require_reasons"] is True

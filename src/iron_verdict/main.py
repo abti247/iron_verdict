@@ -241,7 +241,24 @@ async def websocket_endpoint(websocket: WebSocket):
                     })
                     continue
 
-                result = await session_manager.lock_vote(session_code, position, color)
+                reason = message.get("reason")
+                if reason is not None and (not isinstance(reason, str) or len(reason) > 200):
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": "Invalid reason"
+                    })
+                    continue
+                session = session_manager.sessions.get(session_code)
+                require_reasons = session["settings"].get("require_reasons", False) if session else False
+
+                if require_reasons and color != "white" and not reason:
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": "Reason required before locking in"
+                    })
+                    continue
+
+                result = await session_manager.lock_vote(session_code, position, color, reason=reason)
 
                 if result["success"]:
                     logger.info("vote_locked", extra={
@@ -258,9 +275,15 @@ async def websocket_endpoint(websocket: WebSocket):
 
                     # If all locked, broadcast results
                     if result.get("all_locked"):
+                        judges = session_manager.sessions[session_code]["judges"]
                         votes = {
                             pos: judge["current_vote"]
-                            for pos, judge in session_manager.sessions[session_code]["judges"].items()
+                            for pos, judge in judges.items()
+                            if judge["connected"]
+                        }
+                        reasons = {
+                            pos: judge["current_reason"]
+                            for pos, judge in judges.items()
                             if judge["connected"]
                         }
                         session_settings = session_manager.sessions[session_code]["settings"]
@@ -269,6 +292,7 @@ async def websocket_endpoint(websocket: WebSocket):
                             {
                                 "type": "show_results",
                                 "votes": votes,
+                                "reasons": reasons,
                                 "showExplanations": session_settings["show_explanations"],
                                 "liftType": session_settings["lift_type"],
                             }
@@ -377,13 +401,26 @@ async def websocket_endpoint(websocket: WebSocket):
                 result = session_manager.update_settings(
                     session_code,
                     message.get("showExplanations", False),
-                    message.get("liftType", "squat")
+                    message.get("liftType", "squat"),
+                    require_reasons=message.get("requireReasons", False),
                 )
                 if not result["success"]:
                     await websocket.send_json({
                         "type": "error",
                         "message": result["error"]
                     })
+                else:
+                    # Broadcast settings update to all connected clients
+                    session_settings = session_manager.sessions[session_code]["settings"]
+                    await connection_manager.broadcast_to_session(
+                        session_code,
+                        {
+                            "type": "settings_update",
+                            "showExplanations": session_settings["show_explanations"],
+                            "liftType": session_settings["lift_type"],
+                            "requireReasons": session_settings["require_reasons"],
+                        }
+                    )
             else:
                 # Issue 4: Handle post-join messages
                 # For now, just ignore unknown message types silently

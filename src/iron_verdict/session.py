@@ -31,18 +31,21 @@ class SessionManager:
                         "is_head": False,
                         "current_vote": None,
                         "locked": False,
+                        "current_reason": None,
                     },
                     "center": {
                         "connected": False,
                         "is_head": True,
                         "current_vote": None,
                         "locked": False,
+                        "current_reason": None,
                     },
                     "right": {
                         "connected": False,
                         "is_head": False,
                         "current_vote": None,
                         "locked": False,
+                        "current_reason": None,
                     },
                 },
                 "state": "waiting",
@@ -51,6 +54,7 @@ class SessionManager:
                 "settings": {
                     "show_explanations": False,
                     "lift_type": "squat",
+                    "require_reasons": False,
                 },
                 "last_activity": datetime.now(),
             }
@@ -94,7 +98,7 @@ class SessionManager:
 
         return {"success": True, "is_head": is_head}
 
-    async def lock_vote(self, code: str, position: str, color: str) -> Dict[str, Any]:
+    async def lock_vote(self, code: str, position: str, color: str, reason: str | None = None) -> Dict[str, Any]:
         """
         Lock in a judge's vote.
 
@@ -102,6 +106,7 @@ class SessionManager:
             code: Session code
             position: Judge position ("left", "center", "right")
             color: Vote color ("white", "red", "blue", "yellow")
+            reason: Optional reason string for a red/yellow card; None if no reason given
 
         Returns:
             Dict with success status and all_locked flag
@@ -114,6 +119,7 @@ class SessionManager:
             judge = session["judges"][position]
 
             judge["current_vote"] = color
+            judge["current_reason"] = reason
             judge["locked"] = True
             session["last_activity"] = datetime.now()
 
@@ -137,6 +143,7 @@ class SessionManager:
 
             for judge in session["judges"].values():
                 judge["current_vote"] = None
+                judge["current_reason"] = None
                 judge["locked"] = False
 
             session["state"] = "waiting"
@@ -145,7 +152,7 @@ class SessionManager:
 
             return {"success": True}
 
-    def update_settings(self, code: str, show_explanations: bool, lift_type: str) -> Dict[str, Any]:
+    def update_settings(self, code: str, show_explanations: bool, lift_type: str, require_reasons: bool = False) -> Dict[str, Any]:
         """Update head judge display settings."""
         if code not in self.sessions:
             return {"success": False, "error": "Session not found"}
@@ -154,6 +161,7 @@ class SessionManager:
         session = self.sessions[code]
         session["settings"]["show_explanations"] = show_explanations
         session["settings"]["lift_type"] = lift_type
+        session["settings"]["require_reasons"] = require_reasons
         session["last_activity"] = datetime.now()
         return {"success": True}
 
