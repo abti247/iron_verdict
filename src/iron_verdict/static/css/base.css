@@ -1,0 +1,18 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: 'Rajdhani', sans-serif;
+    background: var(--bg-void);
+    color: var(--text-chrome);
+    min-height: 100vh;
+}
+
+/* ===== CHROME GRADIENT TEXT ===== */
+.chrome-text {
+    background: linear-gradient(180deg, #FFFFFF 0%, #C0C0C0 40%, #808080 60%, #A0A0A0 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.hidden { display: none !important; }
