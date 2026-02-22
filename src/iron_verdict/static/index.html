@@ -630,6 +630,26 @@
         box-shadow: 0 0 50px rgba(251,191,36,0.4), 0 0 100px rgba(251,191,36,0.15);
     }
 
+    /* ===== JUDGE RESULTS PANEL ===== */
+    .judge-results-orbs {
+        display: flex;
+        gap: 2rem;
+        justify-content: center;
+        padding: 4px 0 8px;
+    }
+
+    .judge-result-orb-wrap {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .display-orb--sm {
+        width: 60px;
+        height: 60px;
+    }
+
     .display-status {
         font-family: 'Rajdhani', sans-serif;
         font-weight: 600;
@@ -824,6 +844,31 @@
                 </select>
             </div>
         </div>
+
+        <!-- Judge Results Panel -->
+        <div class="head-section" x-show="resultsShown">
+            <div class="head-title">Results</div>
+            <div class="judge-results-orbs">
+                <div class="judge-result-orb-wrap">
+                    <div class="display-orb display-orb--sm" :class="judgeResultVotes.left"></div>
+                    <div class="display-orb-reason"
+                         x-show="judgeResultReasons.left"
+                         x-text="judgeResultReasons.left"></div>
+                </div>
+                <div class="judge-result-orb-wrap">
+                    <div class="display-orb display-orb--sm" :class="judgeResultVotes.center"></div>
+                    <div class="display-orb-reason"
+                         x-show="judgeResultReasons.center"
+                         x-text="judgeResultReasons.center"></div>
+                </div>
+                <div class="judge-result-orb-wrap">
+                    <div class="display-orb display-orb--sm" :class="judgeResultVotes.right"></div>
+                    <div class="display-orb-reason"
+                         x-show="judgeResultReasons.right"
+                         x-text="judgeResultReasons.right"></div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Display Screen: shows sessionName only — sessionCode intentionally omitted (C3) -->
@@ -960,6 +1005,8 @@
                 displayShowExplanations: false,
                 displayLiftType: 'squat',
                 _phaseTimer1: null,
+                judgeResultVotes: { left: null, center: null, right: null },
+                judgeResultReasons: { left: null, center: null, right: null },
 
                 async createSession() {
                     try {
@@ -1050,10 +1097,12 @@
                     } else if (message.type === 'show_results') {
                         this.resultsShown = true;
                         clearInterval(this.timerInterval);
+                        this.judgeResultVotes = message.votes;
+                        this.judgeResultReasons = message.reasons || { left: null, center: null, right: null };
                         if (this.role === 'display') {
                             clearTimeout(this._phaseTimer1);
-                            this.displayVotes = message.votes;
-                            this.displayReasons = message.reasons || { left: null, center: null, right: null };
+                            this.displayVotes = this.judgeResultVotes;
+                            this.displayReasons = this.judgeResultReasons;
                             this.displayShowExplanations = message.showExplanations;
                             this.displayLiftType = message.liftType;
                             this.displayPhase = 'votes';
@@ -1153,6 +1202,8 @@
                     this.resultsShown = false;
                     this.selectedReason = null;
                     this.showingReasonStep = false;
+                    this.judgeResultVotes = { left: null, center: null, right: null };
+                    this.judgeResultReasons = { left: null, center: null, right: null };
                 },
 
                 startTimer() {
