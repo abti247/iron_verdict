@@ -1,0 +1,15 @@
+:root {
+    --bg-void: #0A0A0A;
+    --bg-surface: #141414;
+    --bg-raised: #1E1E1E;
+    --chrome-dark: #404040;
+    --blood: #B91C1C;
+    --blood-bright: #EF4444;
+    --blood-glow: rgba(185,28,28,0.3);
+    --text-chrome: #D4D4D4;
+    --text-dim: #6B6B6B;
+    --vote-red: #DC2626;
+    --vote-blue: #2563EB;
+    --vote-yellow: #EAB308;
+    --success: #22C55E;
+}
