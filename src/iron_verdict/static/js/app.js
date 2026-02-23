@@ -9,6 +9,7 @@ export function ironVerdictApp() {
         sessionName: '',
         newSessionName: '',
         isDemo: false,
+        demoRunning: false,
         joinCode: '',
         role: '',
         isHead: false,
@@ -120,8 +121,6 @@ export function ironVerdictApp() {
             } else if (message.type === 'show_results') {
                 this.resultsShown = true;
                 stopTimer();
-                this.timerDisplay = '60';
-                this.timerExpired = false;
                 this.judgeResultVotes = message.votes;
                 this.judgeResultReasons = message.reasons || { left: null, center: null, right: null };
                 if (this.role === 'display') {
@@ -314,7 +313,12 @@ export function ironVerdictApp() {
             };
         },
 
-        async startDemo() {
+        startDemo() {
+            this.demoRunning = false;
+            this.screen = 'demo-intro';
+        },
+
+        async launchDemo() {
             try {
                 const response = await fetch('/api/sessions', {
                     method: 'POST',
@@ -335,12 +339,16 @@ export function ironVerdictApp() {
                 window.open(specs.rightJudge.url,  `rightJudge_${timestamp}`,  specs.rightJudge.params);
                 window.open(specs.display.url,     `display_${timestamp}`,     specs.display.params);
 
-                this.isDemo = false;
-                this.screen = 'landing';
+                this.demoRunning = true;
             } catch (error) {
                 alert('Failed to start demo. Please try again.');
                 console.error('Demo mode error:', error);
             }
+        },
+
+        returnToLandingFromDemo() {
+            this.demoRunning = false;
+            this.screen = 'landing';
         },
 
         goToContact() {
