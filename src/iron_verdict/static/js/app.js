@@ -121,8 +121,6 @@ export function ironVerdictApp() {
             } else if (message.type === 'show_results') {
                 this.resultsShown = true;
                 stopTimer();
-                this.timerDisplay = '60';
-                this.timerExpired = false;
                 this.judgeResultVotes = message.votes;
                 this.judgeResultReasons = message.reasons || { left: null, center: null, right: null };
                 if (this.role === 'display') {
