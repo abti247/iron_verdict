@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="/static/css/components.css">
     <link rel="stylesheet" href="/static/css/layout.css">
     <link rel="stylesheet" href="/static/css/animations.css">
+    <script type="module" src="/static/js/init.js"></script>
     <script
         defer
         src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"
@@ -46,6 +47,61 @@
             <div style="margin-top: 16px;">
                 <button class="btn-blood btn-blood-ghost" @click="startDemo()">
                     Start Demo
+                </button>
+            </div>
+
+            <div style="margin-top: 8px;">
+                <button class="btn-blood btn-blood-ghost" @click="goToContact()">
+                    Contact
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contact Screen -->
+    <div class="landing-wrap" x-show="screen === 'contact'">
+        <div class="landing-panel cut-corner">
+            <div class="brand-iron chrome-text">Contact</div>
+            <div class="brand-verdict-sub">Iron Verdict</div>
+
+            <form class="form-stack" @submit.prevent="submitContact()" action="https://api.web3forms.com/submit" method="POST">
+                <input type="hidden" name="access_key" value="2e92ea27-be19-4996-83c9-0b33fcb63419">
+                <input type="checkbox" name="botcheck" style="display:none" tabindex="-1" autocomplete="off">
+
+                <div x-show="contactStatus !== 'success'">
+                    <div class="form-stack" style="margin-top: 0;">
+                        <input class="chrome-input" type="text" name="name" placeholder="Name"
+                               x-model="contactName" required>
+                        <input class="chrome-input" type="email" name="email" placeholder="Email (optional)"
+                               x-model="contactEmail">
+                        <textarea class="chrome-textarea" name="message" placeholder="Message or bug description"
+                                  x-model="contactMessage" required></textarea>
+
+                        <button class="btn-blood btn-blood-primary cut-corner-sm"
+                                type="submit"
+                                :disabled="contactStatus === 'loading' || !contactName.trim() || !contactMessage.trim()"
+                                x-text="contactStatus === 'loading' ? 'Sending...' : 'Send Message'">
+                        </button>
+
+                        <div x-show="contactStatus === 'error'"
+                             style="text-align:center; color: var(--blood-bright); font-family: 'Rajdhani', sans-serif; font-size: 15px; letter-spacing: 1px;">
+                            Something went wrong. Please try again.
+                        </div>
+                    </div>
+                </div>
+
+                <div x-show="contactStatus === 'success'"
+                     style="text-align:center; padding: 24px 0; color: var(--success); font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 4px; border: 1px solid var(--success); background: rgba(34,197,94,0.05);">
+                    Message Sent
+                    <div style="font-family: 'Rajdhani', sans-serif; font-size: 15px; letter-spacing: 1px; margin-top: 6px; color: var(--text-dim);">
+                        We'll get back to you if you left an email.
+                    </div>
+                </div>
+            </form>
+
+            <div style="margin-top: 16px;">
+                <button class="btn-blood btn-blood-ghost" @click="screen = 'landing'">
+                    &larr; Back
                 </button>
             </div>
         </div>
@@ -231,6 +287,5 @@
         <div class="display-status" x-text="displayStatus"></div>
     </div>
 
-<script type="module" src="/static/js/init.js"></script>
 </body>
 </html>

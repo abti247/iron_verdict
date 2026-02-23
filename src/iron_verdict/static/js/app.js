@@ -34,6 +34,10 @@ export function ironVerdictApp() {
         _phaseTimer1: null,
         judgeResultVotes: { left: null, center: null, right: null },
         judgeResultReasons: { left: null, center: null, right: null },
+        contactName: '',
+        contactEmail: '',
+        contactMessage: '',
+        contactStatus: 'idle',
 
         async createSession() {
             try {
@@ -336,6 +340,34 @@ export function ironVerdictApp() {
             } catch (error) {
                 alert('Failed to start demo. Please try again.');
                 console.error('Demo mode error:', error);
+            }
+        },
+
+        goToContact() {
+            this.contactName = '';
+            this.contactEmail = '';
+            this.contactMessage = '';
+            this.contactStatus = 'idle';
+            this.screen = 'contact';
+        },
+
+        async submitContact() {
+            this.contactStatus = 'loading';
+            try {
+                const res = await fetch('https://api.web3forms.com/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify({
+                        access_key: '2e92ea27-be19-4996-83c9-0b33fcb63419',
+                        name: this.contactName,
+                        email: this.contactEmail,
+                        message: this.contactMessage,
+                    })
+                });
+                const data = await res.json();
+                this.contactStatus = data.success ? 'success' : 'error';
+            } catch (_e) {
+                this.contactStatus = 'error';
             }
         },
 

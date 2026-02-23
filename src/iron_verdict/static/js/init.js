@@ -11,6 +11,10 @@ import { ironVerdictApp } from './app.js';
     window._demoParams = (code && demo) ? { code: code, demo: demo } : null;
 })();
 
+// Expose as global so Alpine can call ironVerdictApp() when it evaluates
+// x-data="ironVerdictApp()" — this fires before alpine:init in some browsers.
+window.ironVerdictApp = ironVerdictApp;
+
 document.addEventListener('alpine:init', () => {
     Alpine.data('ironVerdictApp', ironVerdictApp);
 });

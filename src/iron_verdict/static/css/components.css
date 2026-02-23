@@ -112,6 +112,30 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     box-shadow: 0 0 0 1px var(--blood-glow);
 }
 
+/* ===== TEXTAREA ===== */
+.chrome-textarea {
+    width: 100%;
+    padding: 14px 16px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    background: var(--bg-void);
+    border: 1px solid var(--chrome-dark);
+    border-left: 3px solid var(--blood);
+    color: var(--text-chrome);
+    transition: all 0.2s;
+    resize: vertical;
+    min-height: 120px;
+}
+
+.chrome-textarea::placeholder { color: var(--text-dim); }
+.chrome-textarea:focus {
+    outline: none;
+    border-color: var(--blood);
+    box-shadow: 0 0 0 1px var(--blood-glow);
+}
+
 /* ===== VOTE BUTTONS ===== */
 .vote-btn {
     font-family: 'Bebas Neue', sans-serif;
