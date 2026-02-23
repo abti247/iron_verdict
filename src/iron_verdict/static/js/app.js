@@ -9,6 +9,7 @@ export function ironVerdictApp() {
         sessionName: '',
         newSessionName: '',
         isDemo: false,
+        demoRunning: false,
         joinCode: '',
         role: '',
         isHead: false,
@@ -314,7 +315,12 @@ export function ironVerdictApp() {
             };
         },
 
-        async startDemo() {
+        startDemo() {
+            this.demoRunning = false;
+            this.screen = 'demo-intro';
+        },
+
+        async launchDemo() {
             try {
                 const response = await fetch('/api/sessions', {
                     method: 'POST',
@@ -335,12 +341,16 @@ export function ironVerdictApp() {
                 window.open(specs.rightJudge.url,  `rightJudge_${timestamp}`,  specs.rightJudge.params);
                 window.open(specs.display.url,     `display_${timestamp}`,     specs.display.params);
 
-                this.isDemo = false;
-                this.screen = 'landing';
+                this.demoRunning = true;
             } catch (error) {
                 alert('Failed to start demo. Please try again.');
                 console.error('Demo mode error:', error);
             }
+        },
+
+        returnToLandingFromDemo() {
+            this.demoRunning = false;
+            this.screen = 'landing';
         },
 
         goToContact() {
