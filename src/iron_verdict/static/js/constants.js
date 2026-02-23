@@ -13,7 +13,8 @@ export const CARD_REASONS = {
             "Foot movement",
             "Dropped bar",
             "Supporting contact on legs",
-            "Spotter contact"
+            "Spotter contact",
+            "Technical Non-compliance"
         ]
     },
     bench: {
@@ -35,7 +36,8 @@ export const CARD_REASONS = {
             "Shoulder / Hand movement",
             "Heaving / Body thrust",
             "Feet touched bench or supports",
-            "Deliberate bar contact with rack supports"
+            "Deliberate bar contact with rack supports",
+            "Technical Non-compliance"
         ]
     },
     deadlift: {
@@ -52,7 +54,8 @@ export const CARD_REASONS = {
             "Dropped bar",
             "Skipped signal",
             "Foot movement",
-            "Spotter contact"
+            "Spotter contact",
+            "Technical Non-compliance"
         ]
     }
 };
