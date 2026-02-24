@@ -15,6 +15,7 @@ export function ironVerdictApp() {
         isHead: false,
         ws: null,
         wsSend: null,
+        connectionStatus: 'disconnected',
         selectedVote: null,
         voteLocked: false,
         resultsShown: false,
@@ -72,31 +73,25 @@ export function ironVerdictApp() {
             this.role = role;
             const code = this.sessionCode || this.joinCode;
             this.sessionCode = code;
+            this.connectionStatus = 'reconnecting';
 
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const url = `${protocol}//${window.location.host}/ws`;
 
-            const { ws, send } = createWebSocket(
+            const wsWrapper = createWebSocket(
                 url,
                 (message) => this.handleMessage(message),
-                (error) => {
-                    console.error('WebSocket error:', error);
-                    alert('Connection error. Please check your network and try again.');
+                (error) => console.error('WebSocket error:', error),
+                () => {},
+                () => {
+                    this.connectionStatus = 'connected';
+                    this.wsSend({ type: 'join', session_code: code, role: role });
                 },
-                (event) => {
-                    if (!event.wasClean && !this.intentionalNavigation) {
-                        console.error('WebSocket closed unexpectedly:', event);
-                        alert('Connection lost. Please refresh and try again.');
-                    }
-                }
+                () => { this.connectionStatus = 'reconnecting'; }
             );
 
-            this.ws = ws;
-            this.wsSend = send;
-
-            ws.onopen = () => {
-                send({ type: 'join', session_code: code, role: role });
-            };
+            this.ws = wsWrapper;
+            this.wsSend = (data) => wsWrapper.send(data);
         },
 
         handleMessage(message) {
