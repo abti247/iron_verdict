@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 _EXTRA_FIELDS = (
     "session_code", "role", "client_ip", "color",
-    "position", "all_locked", "reason", "origin",
+    "position", "all_locked", "reason", "origin", "conn_id",
 )
 
 class JsonFormatter(logging.Formatter):
