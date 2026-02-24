@@ -687,7 +687,6 @@ async def test_vote_lock_white_no_reason_ok_when_mandatory():
 @pytest.mark.asyncio
 async def test_ws_logs_include_conn_id(session_code, caplog):
     """All log records from one WS connection share a conn_id."""
-    import logging
     with caplog.at_level(logging.INFO, logger="iron_verdict"):
         async with httpx.AsyncClient(
             transport=ASGIWebSocketTransport(app=app), base_url="http://test"
