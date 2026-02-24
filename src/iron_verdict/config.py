@@ -10,6 +10,7 @@ class Settings:
     SESSION_TIMEOUT_HOURS: int = int(os.getenv("SESSION_TIMEOUT_HOURS", "4"))
     DISPLAY_CAP: int = int(os.getenv("DISPLAY_CAP", "20"))
     ALLOWED_ORIGIN: str = os.getenv("ALLOWED_ORIGIN", "*")
+    APP_VERSION: str = os.getenv("APP_VERSION", "dev")
 
 
 settings = Settings()

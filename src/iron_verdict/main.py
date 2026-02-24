@@ -101,7 +101,7 @@ app.mount("/static", StaticFiles(directory=static_dir), name="static")
 async def root():
     """Serve the main HTML page."""
     with open(os.path.join(static_dir, "index.html"), encoding="utf-8") as f:
-        content = f.read()
+        content = f.read().replace("__APP_VERSION__", settings.APP_VERSION)
     return Response(
         content=content,
         media_type="text/html",
