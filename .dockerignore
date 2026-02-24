@@ -1,0 +1,16 @@
+**/__pycache__/
+**/*.egg-info
+
+.venv/
+.env
+.env.example
+
+.git/
+.claude/
+docs/
+tests/
+.pytest_cache/
+
+.gitignore
+Dockerfile
+compose.yaml
