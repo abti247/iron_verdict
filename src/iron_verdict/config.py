@@ -11,6 +11,8 @@ class Settings:
     DISPLAY_CAP: int = int(os.getenv("DISPLAY_CAP", "20"))
     ALLOWED_ORIGIN: str = os.getenv("ALLOWED_ORIGIN", "*")
     APP_VERSION: str = os.getenv("APP_VERSION", "dev")
+    LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
+    SNAPSHOT_PATH: str = os.getenv("SNAPSHOT_PATH", "/data/sessions.json")
 
 
 settings = Settings()

@@ -30,6 +30,9 @@ COPY src/ src/
 RUN --mount=type=cache,target=/root/.cache/pip \
     python -m pip install .
 
+# Create persistent data directory for session snapshots.
+RUN mkdir -p /data && chown ${UID}:${UID} /data
+
 # Copy the remaining files into the container.
 COPY . .
 

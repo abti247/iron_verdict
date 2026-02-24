@@ -1,8 +1,13 @@
 import asyncio
+import json
+import logging
+import os
 import secrets
 import string
 from datetime import datetime, timedelta
 from typing import Dict, Any, List
+
+logger = logging.getLogger("iron_verdict")
 
 VALID_LIFT_TYPES = {"squat", "bench", "deadlift"}
 
@@ -186,3 +191,35 @@ class SessionManager:
         expired = self.get_expired_sessions(hours)
         for code in expired:
             self.delete_session(code)
+
+    def save_snapshot(self, path: str) -> None:
+        """Serialize all sessions to a JSON file."""
+        data = {}
+        for code, session in self.sessions.items():
+            s = dict(session)
+            s["last_activity"] = session["last_activity"].isoformat()
+            s["judges"] = {pos: dict(j) for pos, j in session["judges"].items()}
+            data[code] = s
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        tmp = path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(data, f)
+        os.replace(tmp, path)
+        logger.info("snapshot_saved", extra={"session_count": len(data)})
+
+    def load_snapshot(self, path: str) -> None:
+        """Load sessions from a JSON snapshot file."""
+        if not os.path.exists(path):
+            return
+        try:
+            with open(path, encoding="utf-8") as f:
+                data = json.load(f)
+            for code, s in data.items():
+                s["last_activity"] = datetime.fromisoformat(s["last_activity"])
+                # Reset connected state — WebSocket connections are gone after restart
+                for judge in s["judges"].values():
+                    judge["connected"] = False
+                self.sessions[code] = s
+            logger.info("snapshot_loaded", extra={"session_count": len(self.sessions)})
+        except Exception:
+            logger.exception("snapshot_load_failed")
