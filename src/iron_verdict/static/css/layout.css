@@ -183,7 +183,10 @@
 }
 
 .judge-code {
-    text-align: right;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
     font-size: 14px;
     color: var(--text-dim);
     letter-spacing: 1px;

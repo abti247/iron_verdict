@@ -211,6 +211,7 @@
             <div class="judge-role-label" x-text="getRoleDisplayName()"></div>
             <div class="judge-timer" :class="timerExpired && 'expired'" x-text="timerDisplay"></div>
             <div class="judge-code">
+                <span class="conn-dot" :class="connectionStatus"></span>
                 <span class="code-link" @click="returnToRoleSelection()" x-text="sessionCode"></span>
             </div>
         </div>
