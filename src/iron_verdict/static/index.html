@@ -108,7 +108,7 @@
                 <input class="chrome-input" placeholder="Enter 8-character session code"
                        x-model="joinCode" @keyup.enter="joinExistingSession()">
                 <button class="btn-blood btn-blood-secondary cut-corner-sm"
-                        @click="joinExistingSession()">
+                        @click="joinExistingSession()" :disabled="!joinCode.trim()">
                     Join Session
                 </button>
             </div>
