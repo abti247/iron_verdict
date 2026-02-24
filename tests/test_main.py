@@ -685,6 +685,33 @@ async def test_vote_lock_white_no_reason_ok_when_mandatory():
 
 
 @pytest.mark.asyncio
+async def test_ws_logs_include_conn_id(session_code, caplog):
+    """All log records from one WS connection share a conn_id."""
+    import logging
+    with caplog.at_level(logging.INFO, logger="iron_verdict"):
+        async with httpx.AsyncClient(
+            transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+        ) as ac:
+            async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+                await ws.send_json({
+                    "type": "join",
+                    "session_code": session_code,
+                    "role": "center_judge",
+                })
+                await ws.receive_json()  # join_success
+
+    # Find records emitted during this connection
+    ws_records = [r for r in caplog.records if hasattr(r, "conn_id")]
+    assert len(ws_records) >= 1, "Expected at least one log record with conn_id"
+
+    conn_ids = {r.conn_id for r in ws_records}
+    assert len(conn_ids) == 1, f"Expected one conn_id, got: {conn_ids}"
+
+    conn_id = conn_ids.pop()
+    assert len(conn_id) == 16, "conn_id should be 16 hex chars"
+
+
+@pytest.mark.asyncio
 async def test_show_results_includes_reasons():
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as ac:
         resp = await ac.post("/api/sessions", json={"name": "Test"})

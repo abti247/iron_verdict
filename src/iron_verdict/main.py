@@ -147,9 +147,11 @@ async def create_session(request: Request, body: CreateSessionRequest):
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     """WebSocket endpoint for real-time communication."""
+    conn_id = secrets.token_hex(8)
     origin = websocket.headers.get("origin", "")
     if settings.ALLOWED_ORIGIN != "*" and origin != settings.ALLOWED_ORIGIN:
         logger.warning("origin_rejected", extra={
+            "conn_id": conn_id,
             "origin": origin,
             "client_ip": _get_ws_client_ip(websocket),
         })
@@ -174,7 +176,7 @@ async def websocket_endpoint(websocket: WebSocket):
             else:
                 msg_count += 1
             if msg_count > 20:
-                logger.warning("message_flood_disconnect", extra={"client_ip": _get_ws_client_ip(websocket)})
+                logger.warning("message_flood_disconnect", extra={"conn_id": conn_id, "client_ip": _get_ws_client_ip(websocket)})
                 await websocket.close(code=1008)
                 return
 
@@ -206,6 +208,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
                 if not result["success"]:
                     logger.warning("role_join_failed", extra={
+                        "conn_id": conn_id,
                         "session_code": session_code,
                         "role": message.get("role"),
                         "reason": result["error"],
@@ -231,6 +234,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 # Add connection
                 await connection_manager.add_connection(session_code, role, websocket)
                 logger.info("role_joined", extra={
+                    "conn_id": conn_id,
                     "session_code": session_code,
                     "role": "display" if role.startswith("display_") else role,
                     "client_ip": _get_ws_client_ip(websocket),
@@ -288,6 +292,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
                 if result["success"]:
                     logger.info("vote_locked", extra={
+                        "conn_id": conn_id,
                         "session_code": session_code,
                         "position": position,
                         "color": color,
@@ -335,7 +340,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     })
                     continue
 
-                logger.info("timer_start", extra={"session_code": session_code})
+                logger.info("timer_start", extra={"conn_id": conn_id, "session_code": session_code})
                 session_manager.sessions[session_code]["timer_started_at"] = time.time()
                 await connection_manager.broadcast_to_session(
                     session_code,
@@ -357,7 +362,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     })
                     continue
 
-                logger.info("timer_reset", extra={"session_code": session_code})
+                logger.info("timer_reset", extra={"conn_id": conn_id, "session_code": session_code})
                 session_manager.sessions[session_code]["timer_started_at"] = None
                 await connection_manager.broadcast_to_session(
                     session_code,
@@ -376,7 +381,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     })
                     continue
 
-                logger.info("next_lift", extra={"session_code": session_code})
+                logger.info("next_lift", extra={"conn_id": conn_id, "session_code": session_code})
                 await session_manager.reset_for_next_lift(session_code)
                 await connection_manager.broadcast_to_session(
                     session_code,
@@ -395,7 +400,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     })
                     continue
 
-                logger.info("session_ended", extra={"session_code": session_code})
+                logger.info("session_ended", extra={"conn_id": conn_id, "session_code": session_code})
                 await connection_manager.broadcast_to_session(
                     session_code,
                     {"type": "session_ended", "reason": "head_judge"}
@@ -409,7 +414,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         try:
                             await ws.close()
                         except Exception:
-                            logger.warning("ws_close_failed", exc_info=True)
+                            logger.warning("ws_close_failed", exc_info=True, extra={"conn_id": conn_id})
                         # Remove from connection manager
                         await connection_manager.remove_connection(session_code, conn_role)
 
@@ -456,6 +461,7 @@ async def websocket_endpoint(websocket: WebSocket):
         if session_code and role:
             await connection_manager.remove_connection(session_code, role)
             logger.info("role_disconnected", extra={
+                "conn_id": conn_id,
                 "session_code": session_code,
                 "role": "display" if role.startswith("display_") else role,
             })
