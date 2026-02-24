@@ -409,7 +409,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         try:
                             await ws.close()
                         except Exception:
-                            pass  # Connection already closed
+                            logger.warning("ws_close_failed", exc_info=True)
                         # Remove from connection manager
                         await connection_manager.remove_connection(session_code, conn_role)
 
