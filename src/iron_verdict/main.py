@@ -1,6 +1,6 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from pydantic import BaseModel, field_validator
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from iron_verdict.config import settings
 from iron_verdict.session import SessionManager
@@ -72,12 +72,18 @@ connection_manager = ConnectionManager()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    setup_logging()
+    setup_logging(settings.LOG_LEVEL)
+    session_manager.load_snapshot(settings.SNAPSHOT_PATH)
 
     async def _cleanup_loop():
+        elapsed = 0
         while True:
-            await asyncio.sleep(30 * 60)
-            session_manager.cleanup_expired(settings.SESSION_TIMEOUT_HOURS)
+            await asyncio.sleep(60)
+            elapsed += 60
+            session_manager.save_snapshot(settings.SNAPSHOT_PATH)
+            if elapsed >= 30 * 60:
+                elapsed = 0
+                session_manager.cleanup_expired(settings.SESSION_TIMEOUT_HOURS)
 
     task = asyncio.create_task(_cleanup_loop())
     yield
@@ -87,14 +93,34 @@ async def lifespan(app: FastAPI):
     except asyncio.CancelledError:
         pass
 
+    # Graceful shutdown: notify all clients then save state
+    logger.info("server_shutdown_started")
+    for session_code in list(connection_manager.active_connections.keys()):
+        await connection_manager.broadcast_to_session(
+            session_code,
+            {"type": "server_restarting"}
+        )
+    session_manager.save_snapshot(settings.SNAPSHOT_PATH)
+
 app = FastAPI(title="Iron Verdict", lifespan=lifespan)
 app.add_middleware(SecurityHeadersMiddleware)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.exception("unhandled_exception", extra={"client_ip": _get_http_client_ip(request)})
+    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
+
 # Serve static files
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
+
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
 
 
 @app.get("/", response_class=HTMLResponse)

@@ -21,11 +21,11 @@ class JsonFormatter(logging.Formatter):
         return json.dumps(log_obj)
 
 
-def setup_logging() -> None:
+def setup_logging(log_level: str = "INFO") -> None:
     """Configure root 'iron_verdict' logger with JSON output to stdout."""
     logger = logging.getLogger("iron_verdict")
     if not logger.handlers:
         handler = logging.StreamHandler(sys.stdout)
         handler.setFormatter(JsonFormatter())
-        logger.setLevel(logging.INFO)
+        logger.setLevel(getattr(logging, log_level.upper(), logging.INFO))
         logger.addHandler(handler)
