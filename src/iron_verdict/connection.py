@@ -41,7 +41,7 @@ class ConnectionManager:
             try:
                 await websocket.send_json(message)
             except Exception as exc:
-                logger.warning("broadcast_send_failed", extra={"reason": str(exc)})
+                logger.warning("broadcast_send_failed", extra={"reason": str(exc)}, exc_info=True)
 
     async def send_to_role(self, session_code: str, role: str, message: Dict[str, Any]):
         """Send a message to a specific role in a session."""
@@ -56,7 +56,7 @@ class ConnectionManager:
             try:
                 await websocket.send_json(message)
             except Exception as exc:
-                logger.warning("send_to_role_failed", extra={"role": role, "reason": str(exc)})
+                logger.warning("send_to_role_failed", extra={"role": role, "reason": str(exc)}, exc_info=True)
 
     async def count_displays(self, session_code: str) -> int:
         """Count active display connections in a session."""
@@ -82,4 +82,4 @@ class ConnectionManager:
             try:
                 await websocket.send_json(message)
             except Exception as exc:
-                logger.warning("send_to_display_failed", extra={"reason": str(exc)})
+                logger.warning("send_to_display_failed", extra={"reason": str(exc)}, exc_info=True)
