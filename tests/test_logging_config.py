@@ -28,3 +28,15 @@ def test_json_formatter_includes_extra_fields():
     parsed = json.loads(output)
     assert parsed["session_code"] == "ABC12345"
     assert parsed["client_ip"] == "1.2.3.4"
+
+
+def test_json_formatter_includes_conn_id():
+    formatter = JsonFormatter()
+    record = logging.LogRecord(
+        name="iron_verdict", level=logging.INFO, pathname="", lineno=0,
+        msg="role_joined", args=(), exc_info=None
+    )
+    record.conn_id = "abc12345def67890"
+    output = formatter.format(record)
+    parsed = json.loads(output)
+    assert parsed["conn_id"] == "abc12345def67890"
