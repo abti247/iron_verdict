@@ -254,8 +254,10 @@
 }
 
 .display-lights {
-    display: flex;
-    gap: 8rem;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    justify-items: center;
+    column-gap: 8rem;
 }
 
 /* ===== RESPONSIVE ===== */
