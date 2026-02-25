@@ -22,65 +22,63 @@
 
     <!-- Demo Intro Screen -->
     <div class="landing-wrap" x-show="screen === 'demo-intro'">
-        <div class="landing-panel cut-corner" style="max-width: 600px; max-height: 90vh; overflow-y: auto;">
+        <div class="landing-panel cut-corner landing-panel--demo">
 
             <div class="brand-iron chrome-text">Iron Verdict</div>
             <div class="brand-verdict-sub">Demo Guide</div>
 
-            <p style="font-family: 'Rajdhani', sans-serif; font-size: 15px; font-weight: 600; color: var(--text-dim); margin: 20px 0 0; line-height: 1.6;">
+            <p class="demo-guide-text">
                 Iron Verdict allows judges to pick the reason for an invalid lift,
                 shared instantly with athletes, audience, jury, and fellow judges.
             </p>
 
-            <div style="font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 3px; color: var(--blood-bright); margin: 24px 0 8px;">Why Iron Verdict?</div>
-            <ul style="font-family: 'Rajdhani', sans-serif; font-size: 15px; font-weight: 600; color: var(--text-dim); line-height: 1.8; padding-left: 18px; margin: 0;">
-                <li><span style="color: var(--text-main); font-weight: 700;">Athletes</span> — Know your mistake immediately, no time wasted.</li>
-                <li><span style="color: var(--text-main); font-weight: 700;">Audience</span> — No more guessing why a lift was ruled invalid.</li>
-                <li><span style="color: var(--text-main); font-weight: 700;">Judges</span> — Understand your colleagues' calls and know what to focus on next attempt.</li>
-                <li><span style="color: var(--text-main); font-weight: 700;">Jury</span> — Know exactly which part of the lift to review before overruling.</li>
+            <div class="demo-guide-heading">Why Iron Verdict?</div>
+            <ul class="demo-guide-list">
+                <li><span class="text-em">Athletes</span> — Know your mistake immediately, no time wasted.</li>
+                <li><span class="text-em">Audience</span> — No more guessing why a lift was ruled invalid.</li>
+                <li><span class="text-em">Judges</span> — Understand your colleagues' calls and know what to focus on next attempt.</li>
+                <li><span class="text-em">Jury</span> — Know exactly which part of the lift to review before overruling.</li>
             </ul>
 
-            <div style="font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 3px; color: var(--blood-bright); margin: 24px 0 8px;">Setup</div>
-            <ol style="font-family: 'Rajdhani', sans-serif; font-size: 15px; font-weight: 600; color: var(--text-dim); line-height: 1.8; padding-left: 18px; margin: 0;">
-                <li>Enter a session name → click <span style="color: var(--text-main); font-weight: 700;">Create New Session</span></li>
+            <div class="demo-guide-heading">Setup</div>
+            <ol class="demo-guide-list">
+                <li>Enter a session name → click <span class="text-em">Create New Session</span></li>
                 <li>Send the session code to other judges</li>
-                <li>Use the session code to set up a <span style="color: var(--text-main); font-weight: 700;">Display Screen</span></li>
+                <li>Use the session code to set up a <span class="text-em">Display Screen</span></li>
             </ol>
 
-            <div style="font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 3px; color: var(--blood-bright); margin: 24px 0 8px;">Head Judge Controls</div>
-            <ul style="font-family: 'Rajdhani', sans-serif; font-size: 15px; font-weight: 600; color: var(--text-dim); line-height: 1.8; padding-left: 18px; margin: 0;">
-                <li><span style="color: var(--text-main); font-weight: 700;">Show reasons on display</span> — ruling reasons appear on the display screen</li>
-                <li><span style="color: var(--text-main); font-weight: 700;">Require reasons</span> — judges must choose a reason before locking in (optional by default)</li>
-                <li><span style="color: var(--text-main); font-weight: 700;">Lift category dropdown</span> — changes the reason catalogue (Squat / Bench / Deadlift)</li>
+            <div class="demo-guide-heading">Head Judge Controls</div>
+            <ul class="demo-guide-list">
+                <li><span class="text-em">Show reasons on display</span> — ruling reasons appear on the display screen</li>
+                <li><span class="text-em">Require reasons</span> — judges must choose a reason before locking in (optional by default)</li>
+                <li><span class="text-em">Lift category dropdown</span> — changes the reason catalogue (Squat / Bench / Deadlift)</li>
             </ul>
 
-            <div style="font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 3px; color: var(--blood-bright); margin: 24px 0 8px;">During Competition</div>
-            <ol style="font-family: 'Rajdhani', sans-serif; font-size: 15px; font-weight: 600; color: var(--text-dim); line-height: 1.8; padding-left: 18px; margin: 0;">
-                <li>Head judge announces "The bar is loaded" and presses <span style="color: var(--text-main); font-weight: 700;">Start Timer</span></li>
-                <li>After the lift, judges press their color, optionally pick a reason, then press <span style="color: var(--text-main); font-weight: 700;">Lock In</span></li>
-                <li>When all 3 judges lock in, the result appears on the <span style="color: var(--text-main); font-weight: 700;">Display Screen</span></li>
-                <li>Head judge presses <span style="color: var(--text-main); font-weight: 700;">Next Lift</span> to reset for the next lifter</li>
-                <li>If needed, head judge presses <span style="color: var(--text-main); font-weight: 700;">Reset Timer</span></li>
-                <li>After the event: <span style="color: var(--text-main); font-weight: 700;">End Session</span> → confirm with <span style="color: var(--text-main); font-weight: 700;">OK</span></li>
+            <div class="demo-guide-heading">During Competition</div>
+            <ol class="demo-guide-list">
+                <li>Head judge announces "The bar is loaded" and presses <span class="text-em">Start Timer</span></li>
+                <li>After the lift, judges press their color, optionally pick a reason, then press <span class="text-em">Lock In</span></li>
+                <li>When all 3 judges lock in, the result appears on the <span class="text-em">Display Screen</span></li>
+                <li>Head judge presses <span class="text-em">Next Lift</span> to reset for the next lifter</li>
+                <li>If needed, head judge presses <span class="text-em">Reset Timer</span></li>
+                <li>After the event: <span class="text-em">End Session</span> → confirm with <span class="text-em">OK</span></li>
             </ol>
 
-            <div x-show="!demoRunning"
-                 style="margin-top: 24px; border-left: 2px solid var(--blood); padding: 8px 12px; font-family: 'Rajdhani', sans-serif; font-size: 14px; color: var(--text-dim); letter-spacing: 0.5px;">
+            <div x-show="!demoRunning" class="demo-popup-note">
                 This demo opens 4 pop-up windows — please allow pop-ups if prompted.
             </div>
 
-            <div x-show="!demoRunning" style="margin-top: 20px;">
+            <div x-show="!demoRunning" class="demo-launch-wrap">
                 <button class="btn-blood btn-blood-primary cut-corner-sm" @click="launchDemo()">
                     Launch Demo
                 </button>
             </div>
 
-            <div x-show="demoRunning"
-                 style="margin-top: 24px; text-align: center; font-family: 'Bebas Neue', sans-serif; font-size: 16px; letter-spacing: 3px; color: var(--blood-bright);">
+            <div x-show="demoRunning" class="demo-running-msg">
                 Demo running — interact with the 4 open windows
             </div>
 
-            <div style="margin-top: 16px;">
+            <div class="btn-row">
                 <button class="btn-blood btn-blood-ghost" @click="returnToLandingFromDemo()">
                     &larr; Back to Start
                 </button>
