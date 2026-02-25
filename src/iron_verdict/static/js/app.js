@@ -64,7 +64,7 @@ export function ironVerdictApp() {
 
         joinExistingSession() {
             if (this.joinCode) {
-                this.sessionCode = this.joinCode;
+                this.sessionCode = this.joinCode.trim().toUpperCase();
                 this.screen = 'role-select';
             }
         },

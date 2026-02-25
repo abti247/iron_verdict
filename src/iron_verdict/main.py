@@ -193,7 +193,7 @@ async def websocket_endpoint(websocket: WebSocket):
             # Issue 2: Use .get() method with validation
             message_type = message.get("type")
             if message_type == "join":
-                session_code = message.get("session_code")
+                session_code = (message.get("session_code") or "").upper()
                 role = message.get("role")
 
                 if not session_code or not role:
