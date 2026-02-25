@@ -1,6 +1,18 @@
 import { CARD_REASONS, ROLE_DISPLAY_NAMES } from './constants.js';
-import { startTimerCountdown, stopTimer } from './timer.js';
+import { startTimerCountdown } from './timer.js';
 import { createWebSocket } from './websocket.js';
+import { demoMethods } from './demo.js';
+import {
+    handleJoinSuccess,
+    handleJoinError,
+    handleError,
+    handleShowResults,
+    handleResetForNextLift,
+    handleTimerStart,
+    handleTimerReset,
+    handleSessionEnded,
+    handleSettingsUpdate,
+} from './handlers.js';
 
 export function ironVerdictApp() {
     return {
@@ -40,6 +52,8 @@ export function ironVerdictApp() {
         contactEmail: '',
         contactMessage: '',
         contactStatus: 'idle',
+
+        ...demoMethods,
 
         async createSession() {
             try {
@@ -95,73 +109,18 @@ export function ironVerdictApp() {
         },
 
         handleMessage(message) {
-            if (message.type === 'join_success') {
-                this.isHead = message.is_head;
-                this.sessionName = message.session_state?.name || '';
-                this.screen = this.role === 'display' ? 'display' : 'judge';
-                if (this.isHead) {
-                    this.requireReasons = message.session_state?.settings?.require_reasons ?? false;
-                    this.saveSettings();  // sync localStorage settings to server
-                }
-                const trms = message.session_state?.time_remaining_ms;
-                if (trms > 0) {
-                    this.startTimerCountdown(trms);
-                }
-            } else if (message.type === 'join_error') {
-                this.ws.close();
-                const sanitizedMessage = document.createTextNode(message.message).textContent;
-                alert(`Failed to join session: ${sanitizedMessage}`);
-            } else if (message.type === 'error') {
-                const sanitizedMessage = document.createTextNode(message.message).textContent;
-                alert(`Error: ${sanitizedMessage}`);
-            } else if (message.type === 'show_results') {
-                this.resultsShown = true;
-                stopTimer();
-                this.judgeResultVotes = message.votes;
-                this.judgeResultReasons = message.reasons || { left: null, center: null, right: null };
-                if (this.role === 'display') {
-                    clearTimeout(this._phaseTimer1);
-                    this.displayVotes = this.judgeResultVotes;
-                    this.displayReasons = this.judgeResultReasons;
-                    this.displayShowExplanations = message.showExplanations;
-                    this.displayLiftType = message.liftType;
-                    this.displayPhase = 'votes';
-                    this.displayStatus = '';
-                }
-            } else if (message.type === 'reset_for_next_lift') {
-                clearTimeout(this._phaseTimer1);
-                this.resetVoting();
-                stopTimer();
-                this.timerDisplay = '60';
-                this.timerExpired = false;
-                if (this.role === 'display') {
-                    this.displayVotes = { left: null, center: null, right: null };
-                    this.displayReasons = { left: null, center: null, right: null };
-                    this.displayPhase = 'idle';
-                    this.displayStatus = 'Waiting for judges...';
-                }
-            } else if (message.type === 'timer_start') {
-                this.startTimerCountdown(message.time_remaining_ms);
-            } else if (message.type === 'timer_reset') {
-                stopTimer();
-                this.timerDisplay = '60';
-                this.timerExpired = false;
-            } else if (message.type === 'session_ended') {
-                alert('Session ended');
-                this.ws.close();
-                this.isDemo = false;
-                this.screen = 'landing';
-            } else if (message.type === 'settings_update') {
-                if (message.showExplanations !== undefined) {
-                    this.showExplanations = message.showExplanations;
-                }
-                if (message.liftType !== undefined) {
-                    this.liftType = message.liftType;
-                }
-                if (message.requireReasons !== undefined) {
-                    this.requireReasons = message.requireReasons;
-                }
-            }
+            const dispatch = {
+                join_success:        handleJoinSuccess,
+                join_error:          handleJoinError,
+                error:               handleError,
+                show_results:        handleShowResults,
+                reset_for_next_lift: handleResetForNextLift,
+                timer_start:         handleTimerStart,
+                timer_reset:         handleTimerReset,
+                session_ended:       handleSessionEnded,
+                settings_update:     handleSettingsUpdate,
+            };
+            dispatch[message.type]?.(this, message);
         },
 
         selectVote(color) {
@@ -284,67 +243,9 @@ export function ironVerdictApp() {
             this.resultsShown = false;
             this.selectedReason = null;
             this.showingReasonStep = false;
-            stopTimer();
+            startTimerCountdown(0, () => {});
             this.timerDisplay = '60';
             this.timerExpired = false;
-        },
-
-        getWindowSpecs(sessionCode) {
-            const sw = window.screen.width;
-            const sh = window.screen.height;
-            const jw = Math.floor(sw / 3);
-            const jh = Math.floor(sh / 2);
-            const dw = sw;
-            const dh = Math.floor(sh / 2);
-            const sl = window.screen.availLeft ?? 0;
-            const st = window.screen.availTop ?? 0;
-
-            const baseUrl = `${window.location.origin}/?code=${sessionCode}`;
-
-            return {
-                leftJudge:   { url: `${baseUrl}&demo=left_judge`,   params: `width=${jw},height=${jh},left=${sl},top=${st}` },
-                centerJudge: { url: `${baseUrl}&demo=center_judge`, params: `width=${jw},height=${jh},left=${sl+jw},top=${st}` },
-                rightJudge:  { url: `${baseUrl}&demo=right_judge`,  params: `width=${jw},height=${jh},left=${sl+2*jw},top=${st}` },
-                display:     { url: `${baseUrl}&demo=display`,      params: `width=${dw},height=${dh},left=${sl},top=${st+jh}` }
-            };
-        },
-
-        startDemo() {
-            this.demoRunning = false;
-            this.screen = 'demo-intro';
-        },
-
-        async launchDemo() {
-            try {
-                const response = await fetch('/api/sessions', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: 'Demo' })
-                });
-                if (!response.ok) {
-                    alert('Failed to create session. Please try again.');
-                    return;
-                }
-                const data = await response.json();
-                const sessionCode = data.session_code;
-
-                const specs = this.getWindowSpecs(sessionCode);
-                const timestamp = Date.now();
-                window.open(specs.leftJudge.url,   `leftJudge_${timestamp}`,   specs.leftJudge.params);
-                window.open(specs.centerJudge.url, `centerJudge_${timestamp}`, specs.centerJudge.params);
-                window.open(specs.rightJudge.url,  `rightJudge_${timestamp}`,  specs.rightJudge.params);
-                window.open(specs.display.url,     `display_${timestamp}`,     specs.display.params);
-
-                this.demoRunning = true;
-            } catch (error) {
-                alert('Failed to start demo. Please try again.');
-                console.error('Demo mode error:', error);
-            }
-        },
-
-        returnToLandingFromDemo() {
-            this.demoRunning = false;
-            this.screen = 'landing';
         },
 
         goToContact() {
