@@ -108,6 +108,7 @@ export function ironVerdictApp() {
                     this.startTimerCountdown(trms);
                 }
             } else if (message.type === 'join_error') {
+                this.ws.close();
                 const sanitizedMessage = document.createTextNode(message.message).textContent;
                 alert(`Failed to join session: ${sanitizedMessage}`);
             } else if (message.type === 'error') {
