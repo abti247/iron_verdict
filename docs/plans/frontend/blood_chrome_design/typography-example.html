@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Typography Examples — Iron Verdict</title>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-void: #0A0A0A;
+            --bg-surface: #141414;
+            --blood-bright: #EF4444;
+            --text-chrome: #D4D4D4;
+            --text-dim: #6B6B6B;
+            /* Option B / D additions */
+            --text-body-b: #A8A8A8;
+            --text-body-d: #999999;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: var(--bg-void);
+            font-family: 'Rajdhani', sans-serif;
+            color: var(--text-chrome);
+            padding: 32px 24px;
+        }
+
+        h1 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 22px;
+            letter-spacing: 4px;
+            color: var(--text-chrome);
+            margin-bottom: 32px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            align-items: start;
+        }
+
+        .col-label {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 13px;
+            letter-spacing: 3px;
+            color: var(--blood-bright);
+            margin-bottom: 12px;
+            border-bottom: 1px solid #2a2a2a;
+            padding-bottom: 8px;
+        }
+
+        .panel {
+            background: var(--bg-surface);
+            border: 1px solid #222;
+            padding: 20px;
+        }
+
+        /* ---- section heading (same across all) ---- */
+        .section-head {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 16px;
+            letter-spacing: 3px;
+            color: var(--blood-bright);
+            margin: 20px 0 8px;
+        }
+        .section-head:first-of-type { margin-top: 0; }
+
+        ul, ol {
+            padding-left: 18px;
+            line-height: 1.8;
+        }
+
+        /* ===== CURRENT ===== */
+        .current p,
+        .current li {
+            font-size: 15px;
+            color: var(--text-dim);          /* #6B6B6B, weight 400 */
+            font-weight: 400;
+        }
+        .current .hl {
+            color: var(--text-chrome);       /* #D4D4D4 */
+            font-weight: 600;
+        }
+
+        /* ===== OPTION B — new --text-body color token ===== */
+        .opt-b p,
+        .opt-b li {
+            font-size: 15px;
+            color: var(--text-body-b);       /* #A8A8A8, weight 400 */
+            font-weight: 400;
+        }
+        .opt-b .hl {
+            color: var(--text-chrome);       /* #D4D4D4 */
+            font-weight: 600;
+        }
+
+        /* ===== OPTION C — weight bump only ===== */
+        .opt-c p,
+        .opt-c li {
+            font-size: 15px;
+            color: var(--text-dim);          /* #6B6B6B, bumped to weight 600 */
+            font-weight: 600;
+        }
+        .opt-c .hl {
+            color: var(--text-chrome);       /* #D4D4D4 */
+            font-weight: 700;
+        }
+
+        /* ===== OPTION D — color + weight combined ===== */
+        .opt-d p,
+        .opt-d li {
+            font-size: 15px;
+            color: var(--text-body-d);       /* #999999, weight 500 */
+            font-weight: 500;
+        }
+        .opt-d .hl {
+            color: var(--text-chrome);       /* #D4D4D4 */
+            font-weight: 700;
+        }
+
+        .note {
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 12px;
+            color: #444;
+            margin-top: 12px;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Typography Comparison — Demo Intro Screen</h1>
+
+    <div class="grid">
+
+        <!-- CURRENT -->
+        <div>
+            <div class="col-label">Current</div>
+            <div class="panel current">
+                <p>Iron Verdict allows judges to pick the reason for an invalid lift,
+                    shared instantly with athletes, audience, jury, and fellow judges.</p>
+
+                <div class="section-head">Why Iron Verdict?</div>
+                <ul>
+                    <li><span class="hl">Athletes</span> — Know your mistake immediately.</li>
+                    <li><span class="hl">Audience</span> — No more guessing why a lift was ruled invalid.</li>
+                    <li><span class="hl">Judges</span> — Understand your colleagues' calls.</li>
+                </ul>
+
+                <div class="section-head">During Competition</div>
+                <ol>
+                    <li>Press <span class="hl">Start Timer</span> when the bar is loaded</li>
+                    <li>Judges press their color, pick a reason, then press <span class="hl">Lock In</span></li>
+                    <li>Head judge presses <span class="hl">Next Lift</span> to reset</li>
+                </ol>
+            </div>
+            <div class="note">
+                Body: Rajdhani 400, #6B6B6B<br>
+                Highlights: Rajdhani 600, #D4D4D4
+            </div>
+        </div>
+
+        <!-- OPTION B -->
+        <div>
+            <div class="col-label">Option B — New color token</div>
+            <div class="panel opt-b">
+                <p>Iron Verdict allows judges to pick the reason for an invalid lift,
+                    shared instantly with athletes, audience, jury, and fellow judges.</p>
+
+                <div class="section-head">Why Iron Verdict?</div>
+                <ul>
+                    <li><span class="hl">Athletes</span> — Know your mistake immediately.</li>
+                    <li><span class="hl">Audience</span> — No more guessing why a lift was ruled invalid.</li>
+                    <li><span class="hl">Judges</span> — Understand your colleagues' calls.</li>
+                </ul>
+
+                <div class="section-head">During Competition</div>
+                <ol>
+                    <li>Press <span class="hl">Start Timer</span> when the bar is loaded</li>
+                    <li>Judges press their color, pick a reason, then press <span class="hl">Lock In</span></li>
+                    <li>Head judge presses <span class="hl">Next Lift</span> to reset</li>
+                </ol>
+            </div>
+            <div class="note">
+                Body: Rajdhani 400, #A8A8A8 (--text-body)<br>
+                Highlights: Rajdhani 600, #D4D4D4
+            </div>
+        </div>
+
+        <!-- OPTION C -->
+        <div>
+            <div class="col-label">Option C — Weight bump only</div>
+            <div class="panel opt-c">
+                <p>Iron Verdict allows judges to pick the reason for an invalid lift,
+                    shared instantly with athletes, audience, jury, and fellow judges.</p>
+
+                <div class="section-head">Why Iron Verdict?</div>
+                <ul>
+                    <li><span class="hl">Athletes</span> — Know your mistake immediately.</li>
+                    <li><span class="hl">Audience</span> — No more guessing why a lift was ruled invalid.</li>
+                    <li><span class="hl">Judges</span> — Understand your colleagues' calls.</li>
+                </ul>
+
+                <div class="section-head">During Competition</div>
+                <ol>
+                    <li>Press <span class="hl">Start Timer</span> when the bar is loaded</li>
+                    <li>Judges press their color, pick a reason, then press <span class="hl">Lock In</span></li>
+                    <li>Head judge presses <span class="hl">Next Lift</span> to reset</li>
+                </ol>
+            </div>
+            <div class="note">
+                Body: Rajdhani 600, #6B6B6B<br>
+                Highlights: Rajdhani 700, #D4D4D4
+            </div>
+        </div>
+
+        <!-- OPTION D -->
+        <div>
+            <div class="col-label">Option D — Color + weight</div>
+            <div class="panel opt-d">
+                <p>Iron Verdict allows judges to pick the reason for an invalid lift,
+                    shared instantly with athletes, audience, jury, and fellow judges.</p>
+
+                <div class="section-head">Why Iron Verdict?</div>
+                <ul>
+                    <li><span class="hl">Athletes</span> — Know your mistake immediately.</li>
+                    <li><span class="hl">Audience</span> — No more guessing why a lift was ruled invalid.</li>
+                    <li><span class="hl">Judges</span> — Understand your colleagues' calls.</li>
+                </ul>
+
+                <div class="section-head">During Competition</div>
+                <ol>
+                    <li>Press <span class="hl">Start Timer</span> when the bar is loaded</li>
+                    <li>Judges press their color, pick a reason, then press <span class="hl">Lock In</span></li>
+                    <li>Head judge presses <span class="hl">Next Lift</span> to reset</li>
+                </ol>
+            </div>
+            <div class="note">
+                Body: Rajdhani 500, #999999 (--text-body)<br>
+                Highlights: Rajdhani 700, #D4D4D4
+            </div>
+        </div>
+
+    </div>
+
+</body>
+</html>
