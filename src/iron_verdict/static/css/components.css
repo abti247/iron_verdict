@@ -351,9 +351,10 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* ===== JUDGE RESULTS PANEL ===== */
 .judge-results-orbs {
-    display: flex;
-    gap: 2rem;
-    justify-content: center;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    justify-items: center;
+    column-gap: 2rem;
     padding: 4px 0 8px;
 }
 
