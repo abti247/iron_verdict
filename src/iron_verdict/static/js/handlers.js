@@ -16,6 +16,7 @@ export function handleJoinSuccess(app, message) {
 
 export function handleJoinError(app, message) {
     app.ws.close();
+    sessionStorage.removeItem('iv_session');
     const sanitizedMessage = document.createTextNode(message.message).textContent;
     alert(`Failed to join session: ${sanitizedMessage}`);
 }

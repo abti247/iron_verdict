@@ -239,6 +239,7 @@ export function ironVerdictApp() {
         },
 
         returnToRoleSelection() {
+            sessionStorage.removeItem('iv_session');
             this.intentionalNavigation = true;
             if (this.ws) {
                 this.ws.close();
@@ -323,10 +324,14 @@ export function ironVerdictApp() {
             if (stored) {
                 try {
                     const { code, role } = JSON.parse(stored);
-                    this.sessionCode = code;
-                    this.joinCode = code;
-                    setTimeout(() => this.joinSession(role), 100);
-                    return;
+                    if (!code || !role) {
+                        sessionStorage.removeItem('iv_session');
+                    } else {
+                        this.sessionCode = code;
+                        this.joinCode = code;
+                        setTimeout(() => this.joinSession(role), 100);
+                        return;
+                    }
                 } catch (_e) {
                     sessionStorage.removeItem('iv_session');
                 }
