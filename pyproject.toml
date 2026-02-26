@@ -4,8 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "iron-verdict"
-version = "0.0.0"
+version = "0.1.0-beta"
 description = "Powerlifting competition judging application"
+authors = [{name = "Alex", email = "iron.verdict.judging@gmail.com"}]
+license = {text = "MIT"}
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115.0",
@@ -13,6 +15,9 @@ dependencies = [
     "python-dotenv>=1.0.1",
     "slowapi==0.1.9",
 ]
+
+[project.urls]
+Repository = "https://github.com/abti247/iron_verdict"
 
 [project.optional-dependencies]
 dev = [

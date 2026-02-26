@@ -4,17 +4,17 @@ A real-time powerlifting competition judging application.
 
 ## Features
 
-- **Real-time Judging:** 3 judges make independent decisions (White/Red/Blue/Yellow lights)
-- **Live Display:** Synchronized display screen shows all judge lights to audience
+- **Real-time Judging:** 3 judges make independent decisions (White/Red/Blue/Yellow lights) and are able to pick a specified reason
+- **Live Display:** Synchronized display screen shows all judge lights and reason to audience
 - **Timer System:** 60-second countdown controlled by head judge
 - **Session-based:** Simple 8-character codes, no accounts needed
-- **Ephemeral:** No database, sessions expire after 4 hours of inactivity
+- **Lightweight:** No database — sessions live in memory and expire after 4 hours of inactivity, with optional JSON snapshot persistence across restarts
 
 ## Tech Stack
 
 - **Backend:** FastAPI with WebSockets
 - **Frontend:** HTML + Alpine.js
-- **Session Storage:** In-memory (ephemeral)
+- **Session Storage:** In-memory with optional JSON snapshot persistence
 - **Real-time Communication:** WebSockets
 
 ## Running a Competition
@@ -52,10 +52,26 @@ Requirements: Docker
 docker build -t iron_verdict .
 docker run -p 8000:8000 \
   -e ALLOWED_ORIGIN=https://your-domain.com \
+  -v ./data:/data \
   iron_verdict
 ```
 
+The `-v` flag mounts a persistent directory for session snapshots (`/data/sessions.json`). Without it, active sessions are lost on container restart. The `/data` directory is created inside the container automatically.
+
+For local development without persistence:
+```bash
+docker run -p 8000:8000 iron_verdict
+```
+
 For all available environment variables see [Configuration](#configuration).
+
+### Railway
+
+1. Deploy from your GitHub repository.
+2. Add a **Volume** mounted at `/data` (Railway dashboard → Storage).
+3. Set the `ALLOWED_ORIGIN` environment variable to your Railway-assigned domain.
+
+All other settings default to sensible production values.
 
 ## Development
 
@@ -107,10 +123,6 @@ The application will be available at http://localhost:8000
 pytest
 ```
 
-### Manual Testing
-
-See [docs/TESTING.md](docs/TESTING.md) for detailed multi-tab testing procedures.
-
 ## Configuration
 
 All settings are optional and have defaults suitable for local development.
@@ -119,34 +131,51 @@ All settings are optional and have defaults suitable for local development.
 |---|---|---|
 | `HOST` | `0.0.0.0` | Host to bind to |
 | `PORT` | `8000` | Port to listen on |
-| `ALLOWED_ORIGIN` | `*` | CORS allowed origin — set to your domain in production |
+| `ALLOWED_ORIGIN` | `*` | CORS/WebSocket allowed origin — set to your domain in production |
 | `SESSION_TIMEOUT_HOURS` | `4` | Hours of inactivity before a session expires |
 | `DISPLAY_CAP` | `20` | Maximum number of display connections per session |
+| `SNAPSHOT_PATH` | `/data/sessions.json` | Path for session persistence snapshot — mount `/data` as a volume to survive restarts |
+| `LOG_LEVEL` | `INFO` | Logging verbosity (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
 
 ## Project Structure
 
 ```
 iron-verdict/
 ├── src/iron_verdict/
-│   ├── __init__.py
-│   ├── main.py              # FastAPI application
-│   ├── session.py           # Session management logic
+│   ├── main.py              # FastAPI application, routes, WebSocket handlers
+│   ├── session.py           # Session management and persistence
 │   ├── connection.py        # WebSocket connection manager
-│   ├── config.py            # Configuration settings
+│   ├── config.py            # Configuration from environment variables
+│   ├── logging_config.py    # Structured JSON logging
 │   └── static/
-│       └── index.html       # Frontend UI
+│       ├── index.html       # Frontend UI
+│       ├── css/
+│       │   ├── variables.css
+│       │   ├── base.css
+│       │   ├── layout.css
+│       │   ├── components.css
+│       │   └── animations.css
+│       └── js/
+│           ├── app.js       # Alpine.js application state
+│           ├── websocket.js # WebSocket client with reconnection
+│           ├── handlers.js  # Server message handlers
+│           ├── timer.js     # Countdown timer logic
+│           ├── demo.js      # Demo mode
+│           ├── init.js      # Page initialization
+│           └── constants.js # Shared constants
 ├── tests/
 │   ├── test_session.py
 │   ├── test_connection.py
-│   └── test_main.py
+│   ├── test_main.py
+│   └── test_logging_config.py
 ├── docs/
-│   ├── plans/
-│   └── TESTING.md
+│   └── plans/               # Design and implementation plans
 ├── pyproject.toml
 ├── Dockerfile
+├── docker-compose.yml
 └── run.py
 ```
 
 ## License
 
-[Add your license here]
+[MIT](LICENSE)
