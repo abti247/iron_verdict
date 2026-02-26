@@ -313,7 +313,6 @@ export function ironVerdictApp() {
                 this.sessionCode = urlSession.trim().toUpperCase();
                 this.joinCode = this.sessionCode;
                 this.screen = 'role-select';
-                setTimeout(() => this.generateQrCode(), 50);
                 return;
             }
 
