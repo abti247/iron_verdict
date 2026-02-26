@@ -12,6 +12,7 @@ import {
     handleTimerReset,
     handleSessionEnded,
     handleSettingsUpdate,
+    handleServerRestarting,
 } from './handlers.js';
 
 export function ironVerdictApp() {
@@ -28,6 +29,7 @@ export function ironVerdictApp() {
         ws: null,
         wsSend: null,
         connectionStatus: 'disconnected',
+        serverRestarting: false,
         selectedVote: null,
         voteLocked: false,
         resultsShown: false,
@@ -99,6 +101,7 @@ export function ironVerdictApp() {
                 () => {},
                 () => {
                     this.connectionStatus = 'connected';
+                    this.serverRestarting = false;
                     this.wsSend({ type: 'join', session_code: code, role: role });
                 },
                 () => { this.connectionStatus = 'reconnecting'; }
@@ -119,6 +122,7 @@ export function ironVerdictApp() {
                 timer_reset:         handleTimerReset,
                 session_ended:       handleSessionEnded,
                 settings_update:     handleSettingsUpdate,
+                server_restarting:   handleServerRestarting,
             };
             dispatch[message.type]?.(this, message);
         },
