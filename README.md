@@ -178,6 +178,7 @@ iron-verdict/
 
 ## Roadmap
 
+- [ ] Update for IPF Technical Rule Book (effective date 01 March 2026)
 - [ ] Multi-language support
 - [ ] CI/CD pipeline (GitHub Actions)
 - [ ] Frontend testing
