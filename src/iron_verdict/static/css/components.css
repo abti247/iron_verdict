@@ -316,7 +316,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 
 .display-orb-reason {
-    font-size: 2.16rem;
+    font-size: 2.38rem;
     color: rgba(255, 255, 255, 0.85);
     text-align: center;
     max-width: 240px;
