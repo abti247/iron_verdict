@@ -372,8 +372,8 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 
 .display-orb--sm {
-    width: 60px;
-    height: 60px;
+    width: 44px;
+    height: 44px;
 }
 
 /* ===== VERDICT ===== */
