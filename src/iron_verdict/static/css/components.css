@@ -316,12 +316,17 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 
 .display-orb-reason {
-    font-size: 2.16rem;
+    font-size: 2.38rem;
     color: rgba(255, 255, 255, 0.85);
     text-align: center;
     max-width: 240px;
     line-height: 1.3;
     font-weight: 500;
+}
+
+.judge-results-orbs .display-orb-reason {
+    font-size: 1.29rem;
+    max-width: 144px;
 }
 
 .display-orb {
@@ -372,8 +377,8 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 
 .display-orb--sm {
-    width: 60px;
-    height: 60px;
+    width: 54px;
+    height: 54px;
 }
 
 /* ===== VERDICT ===== */
