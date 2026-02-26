@@ -319,6 +319,7 @@
     <!-- Display Screen: shows sessionName only — sessionCode intentionally omitted (C3) -->
     <div class="display-full" x-show="screen === 'display'">
         <div class="display-tag">
+            <span class="conn-dot" :class="connectionStatus"></span>
             <span x-show="!isDemo" x-text="sessionName"></span>
             <span x-show="isDemo">DEMO</span>
         </div>

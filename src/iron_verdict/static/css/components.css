@@ -310,7 +310,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 
 .display-orb-reason {
-    font-size: 1.8rem;
+    font-size: 2.16rem;
     color: rgba(255, 255, 255, 0.85);
     text-align: center;
     max-width: 240px;
@@ -319,8 +319,8 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 
 .display-orb {
-    width: min(20vw, 200px);
-    height: min(20vw, 200px);
+    width: min(24vw, 240px);
+    height: min(24vw, 240px);
     border-radius: 50%;
     background: radial-gradient(circle at 40% 40%, #2a2a2a, #141414);
     border: 3px solid var(--chrome-dark);
@@ -391,7 +391,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .verdict-stamp {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: min(7vw, 60px);
+    font-size: min(8.4vw, 72px);
     letter-spacing: 8px;
     padding: 10px 48px;
 }
