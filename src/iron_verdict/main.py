@@ -6,6 +6,7 @@ from iron_verdict.config import settings
 from iron_verdict.session import SessionManager
 from iron_verdict.connection import ConnectionManager
 import asyncio
+import signal
 from contextlib import asynccontextmanager
 import json
 import copy
@@ -75,6 +76,29 @@ async def lifespan(app: FastAPI):
     setup_logging(settings.LOG_LEVEL)
     session_manager.load_snapshot(settings.SNAPSHOT_PATH)
 
+    loop = asyncio.get_running_loop()
+    uvicorn_server = getattr(app.state, "uvicorn_server", None)
+
+    if uvicorn_server:
+        async def _handle_shutdown():
+            logger.info("server_shutdown_started")
+            session_manager.save_snapshot(settings.SNAPSHOT_PATH)
+            for session_code in list(connection_manager.active_connections.keys()):
+                await connection_manager.broadcast_to_session(
+                    session_code,
+                    {"type": "server_restarting"}
+                )
+            uvicorn_server.should_exit = True
+
+        def _signal_handler():
+            asyncio.create_task(_handle_shutdown())
+
+        try:
+            loop.add_signal_handler(signal.SIGTERM, _signal_handler)
+            loop.add_signal_handler(signal.SIGINT, _signal_handler)
+        except (NotImplementedError, OSError):
+            pass  # Windows or non-main thread
+
     async def _cleanup_loop():
         elapsed = 0
         while True:
@@ -93,14 +117,8 @@ async def lifespan(app: FastAPI):
     except asyncio.CancelledError:
         pass
 
-    # Graceful shutdown: save state first, then notify all clients
-    logger.info("server_shutdown_started")
+    # Fallback snapshot save for shutdowns not triggered via signal handler
     session_manager.save_snapshot(settings.SNAPSHOT_PATH)
-    for session_code in list(connection_manager.active_connections.keys()):
-        await connection_manager.broadcast_to_session(
-            session_code,
-            {"type": "server_restarting"}
-        )
 
 app = FastAPI(title="Iron Verdict", lifespan=lifespan)
 app.add_middleware(SecurityHeadersMiddleware)
