@@ -12,8 +12,11 @@ The goal of the app is to provide an easy access to a tool for powerlifting judg
 ## GitHub
 - Before committing any files, ask the user for confirmation if you're uncertain whether they should be committed, especially for generated files, logs, cache files, or system files.
 - Never commit dependency directories, build artifacts, .env files, IDE configs, logs, or cache files; when in doubt about any file, ask before committing.
-- Use worktrees for the implementation of feature plans
+
+## Implementation
+- Use worktrees to implement new features or fixes
 - Create worktrees in the project folder under .worktrees
+- If you created a plan (general or implementation plan) for the feature/fix add this to the /docs directory on the worktree so it can later be merged with the PR.
 
 ## Plan Mode
 - Make the plan extremely concise. Sacrifice grammar for the sake of concision.
