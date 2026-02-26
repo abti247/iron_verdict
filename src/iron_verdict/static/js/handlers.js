@@ -83,3 +83,7 @@ export function handleSettingsUpdate(app, message) {
         app.requireReasons = message.requireReasons;
     }
 }
+
+export function handleServerRestarting(app, _message) {
+    app.serverRestarting = true;
+}

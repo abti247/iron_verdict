@@ -249,6 +249,12 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     animation: pulse-dot 1s ease-in-out infinite;
 }
 
+.conn-label {
+    font-size: 0.7rem;
+    color: var(--color-text-muted, #aaa);
+    letter-spacing: 0.04em;
+}
+
 /* ===== HEAD JUDGE CONTROLS ===== */
 .head-section {
     border-top: 2px solid var(--chrome-dark);
