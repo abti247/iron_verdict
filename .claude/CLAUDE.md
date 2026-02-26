@@ -18,6 +18,10 @@ The goal of the app is to provide an easy access to a tool for powerlifting judg
 - Create worktrees in the project folder under .worktrees
 - If you created a plan (general or implementation plan) for the feature/fix add this to the /docs directory on the worktree so it can later be merged with the PR.
 
+## Security
+- When adding or modifying features, always evaluate whether the change could introduce XSS, injection, or other OWASP Top 10 vulnerabilities.
+- Flag any change that would render unsanitized user input as HTML.
+
 ## Plan Mode
 - Make the plan extremely concise. Sacrifice grammar for the sake of concision.
 - At the end of each plan, give me a list of unresolved questions to answer, if any.

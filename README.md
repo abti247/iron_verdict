@@ -176,6 +176,12 @@ iron-verdict/
 └── run.py
 ```
 
+## Roadmap
+
+- [ ] Multi-language support
+- [ ] CI/CD pipeline (GitHub Actions)
+- [ ] Frontend testing
+
 ## License
 
 [MIT](LICENSE)
