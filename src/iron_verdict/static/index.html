@@ -181,7 +181,7 @@
         <div class="role-panel cut-corner">
             <div class="role-heading chrome-text">Select Role</div>
             <div class="session-tag">
-                Session: <span class="code" @click="returnToLanding()" x-text="sessionCode"></span>
+                Session: <span class="code" x-text="sessionCode"></span>
             </div>
 
             <div class="role-grid">
@@ -198,6 +198,11 @@
                     Display Screen
                 </button>
             </div>
+        <div class="btn-row">
+            <button class="btn-blood btn-blood-ghost" @click="returnToLanding()">
+                &larr; Back to Start
+            </button>
+        </div>
         </div>
     </div>
 
