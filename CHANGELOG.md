@@ -22,10 +22,6 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ### Fixed
 - Scaling of font and orb sizes on the decision/reasons depiction on judge screens 
 
-### Changed
-
-### Removed
-
 [0.1.1-beta]: https://github.com/abti247/iron_verdict/compare/v0.1.0-beta...v0.1.1-beta
 
 ## [0.1.0-beta] - 2026-02-26
