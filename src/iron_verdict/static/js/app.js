@@ -312,11 +312,14 @@ export function ironVerdictApp() {
             const urlParams = new URLSearchParams(window.location.search);
             const urlSession = urlParams.get('session');
             if (urlSession) {
-                history.replaceState({}, '', '/');
-                this.sessionCode = urlSession.trim().toUpperCase();
-                this.joinCode = this.sessionCode;
-                this.screen = 'role-select';
-                return;
+                const trimmed = urlSession.trim().toUpperCase();
+                if (trimmed) {
+                    history.replaceState({}, '', '/');
+                    this.sessionCode = trimmed;
+                    this.joinCode = trimmed;
+                    this.screen = 'role-select';
+                    return;
+                }
             }
 
             // Reload recovery: auto-rejoin previous session
