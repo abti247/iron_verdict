@@ -208,6 +208,7 @@
             <div class="judge-timer" :class="timerExpired && 'expired'" x-text="timerDisplay"></div>
             <div class="judge-code">
                 <span class="conn-dot" :class="connectionStatus"></span>
+                <span class="conn-label" x-show="serverRestarting">Server restarting</span>
                 <span class="code-link" @click="returnToRoleSelection()" x-text="sessionCode"></span>
             </div>
         </div>
@@ -320,6 +321,7 @@
     <div class="display-full" x-show="screen === 'display'">
         <div class="display-tag">
             <span class="conn-dot" :class="connectionStatus"></span>
+            <span class="conn-label" x-show="serverRestarting">Server restarting</span>
             <span x-show="!isDemo" x-text="sessionName"></span>
             <span x-show="isDemo">DEMO</span>
         </div>
