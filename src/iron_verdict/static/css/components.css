@@ -319,8 +319,8 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 
 .display-orb {
-    width: min(20vw, 200px);
-    height: min(20vw, 200px);
+    width: min(24vw, 240px);
+    height: min(24vw, 240px);
     border-radius: 50%;
     background: radial-gradient(circle at 40% 40%, #2a2a2a, #141414);
     border: 3px solid var(--chrome-dark);
