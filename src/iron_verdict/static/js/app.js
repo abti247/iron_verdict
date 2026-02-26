@@ -89,6 +89,7 @@ export function ironVerdictApp() {
             this.role = role;
             const code = this.sessionCode || this.joinCode;
             this.sessionCode = code;
+            sessionStorage.setItem('iv_session', JSON.stringify({ code, role }));
             this.connectionStatus = 'reconnecting';
 
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -227,6 +228,7 @@ export function ironVerdictApp() {
         },
 
         returnToLanding() {
+            sessionStorage.removeItem('iv_session');
             this.intentionalNavigation = true;
             this.screen = 'landing';
             this.sessionCode = '';
@@ -237,6 +239,7 @@ export function ironVerdictApp() {
         },
 
         returnToRoleSelection() {
+            sessionStorage.removeItem('iv_session');
             this.intentionalNavigation = true;
             if (this.ws) {
                 this.ws.close();
@@ -250,6 +253,20 @@ export function ironVerdictApp() {
             startTimerCountdown(0, () => {});
             this.timerDisplay = '60';
             this.timerExpired = false;
+        },
+
+        generateQrCode() {
+            const el = document.getElementById('qrcode');
+            if (!el || !this.sessionCode) return;
+            while (el.firstChild) el.removeChild(el.firstChild);
+            const url = window.location.origin + '/?session=' + this.sessionCode;
+            new QRCode(el, {
+                text: url,
+                width: 200,
+                height: 200,
+                colorDark: '#000000',
+                colorLight: '#ffffff',
+            });
         },
 
         goToContact() {
@@ -284,6 +301,44 @@ export function ironVerdictApp() {
             this.showExplanations = localStorage.getItem('showExplanations') === 'true';
             this.liftType = localStorage.getItem('liftType') || 'squat';
             this.requireReasons = localStorage.getItem('requireReasons') === 'true';
+
+            this.$watch('screen', (value) => {
+                if (value === 'role-select' && this.sessionCode) {
+                    setTimeout(() => this.generateQrCode(), 50);
+                }
+            });
+
+            // QR code entry point: ?session=XXXX navigates to role-select
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlSession = urlParams.get('session');
+            if (urlSession) {
+                const trimmed = urlSession.trim().toUpperCase();
+                if (trimmed) {
+                    history.replaceState({}, '', '/');
+                    this.sessionCode = trimmed;
+                    this.joinCode = trimmed;
+                    this.screen = 'role-select';
+                    return;
+                }
+            }
+
+            // Reload recovery: auto-rejoin previous session
+            const stored = sessionStorage.getItem('iv_session');
+            if (stored) {
+                try {
+                    const { code, role } = JSON.parse(stored);
+                    if (!code || !role) {
+                        sessionStorage.removeItem('iv_session');
+                    } else {
+                        this.sessionCode = code;
+                        this.joinCode = code;
+                        setTimeout(() => this.joinSession(role), 100);
+                        return;
+                    }
+                } catch (_e) {
+                    sessionStorage.removeItem('iv_session');
+                }
+            }
 
             const params = window._demoParams;
             if (params) {

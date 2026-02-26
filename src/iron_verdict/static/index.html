@@ -17,6 +17,11 @@
         integrity="sha384-l8f0VcPi/M1iHPv8egOnY/15TDwqgbOR1anMIJWvU6nLRgZVLTLSaNqi/TOoT5Fh"
         crossorigin="anonymous">
     </script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"
+        integrity="sha384-3zSEDfvllQohrq0PHL1fOXJuC/jSOO34H46t6UQfobFOmxE5BpjjaIJY5F2/bMnU"
+        crossorigin="anonymous">
+    </script>
 </head>
 <body x-data="ironVerdictApp()" :class="{ 'display-mode': role === 'display' && screen === 'display' }">
 
@@ -181,7 +186,11 @@
         <div class="role-panel cut-corner">
             <div class="role-heading chrome-text">Select Role</div>
             <div class="session-tag">
-                Session: <span class="code" @click="returnToLanding()" x-text="sessionCode"></span>
+                Session: <span class="code" x-text="sessionCode"></span>
+            </div>
+
+            <div class="role-qr-wrap">
+                <div id="qrcode"></div>
             </div>
 
             <div class="role-grid">
@@ -196,6 +205,11 @@
                 </button>
                 <button class="role-btn role-display-btn cut-corner-sm" @click="joinSession('display')">
                     Display Screen
+                </button>
+            </div>
+            <div class="btn-row">
+                <button class="btn-blood btn-blood-ghost" @click="returnToLanding()">
+                    &larr; Back to Start
                 </button>
             </div>
         </div>

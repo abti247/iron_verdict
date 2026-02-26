@@ -442,8 +442,11 @@ async def websocket_endpoint(websocket: WebSocket):
                         # Remove from connection manager
                         await connection_manager.remove_connection(session_code, conn_role)
 
-                # Finally, delete session data
+                # Finally, delete session data and exit — the websocket was
+                # closed above; returning prevents receive_text() from being
+                # called on a dead connection, which would raise RuntimeError.
                 session_manager.delete_session(session_code)
+                return
             elif message_type == "settings_update":
                 if not session_code or not role:
                     continue

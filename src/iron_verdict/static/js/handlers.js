@@ -16,6 +16,7 @@ export function handleJoinSuccess(app, message) {
 
 export function handleJoinError(app, message) {
     app.ws.close();
+    sessionStorage.removeItem('iv_session');
     const sanitizedMessage = document.createTextNode(message.message).textContent;
     alert(`Failed to join session: ${sanitizedMessage}`);
 }
@@ -69,6 +70,7 @@ export function handleSessionEnded(app, message) {
     alert('Session ended');
     app.ws.close();
     app.isDemo = false;
+    sessionStorage.removeItem('iv_session');
     app.screen = 'landing';
 }
 
