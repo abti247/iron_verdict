@@ -93,14 +93,14 @@ async def lifespan(app: FastAPI):
     except asyncio.CancelledError:
         pass
 
-    # Graceful shutdown: notify all clients then save state
+    # Graceful shutdown: save state first, then notify all clients
     logger.info("server_shutdown_started")
+    session_manager.save_snapshot(settings.SNAPSHOT_PATH)
     for session_code in list(connection_manager.active_connections.keys()):
         await connection_manager.broadcast_to_session(
             session_code,
             {"type": "server_restarting"}
         )
-    session_manager.save_snapshot(settings.SNAPSHOT_PATH)
 
 app = FastAPI(title="Iron Verdict", lifespan=lifespan)
 app.add_middleware(SecurityHeadersMiddleware)
