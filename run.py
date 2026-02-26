@@ -20,7 +20,7 @@ if __name__ == "__main__":
         import asyncio
         from iron_verdict.main import app
         config = uvicorn.Config(
-            "iron_verdict.main:app",
+            app,
             host=settings.HOST,
             port=settings.PORT,
         )

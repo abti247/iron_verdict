@@ -90,7 +90,13 @@ async def lifespan(app: FastAPI):
                 )
             uvicorn_server.should_exit = True
 
+        _shutdown_triggered = False
+
         def _signal_handler():
+            nonlocal _shutdown_triggered
+            if _shutdown_triggered:
+                return
+            _shutdown_triggered = True
             asyncio.create_task(_handle_shutdown())
 
         try:
