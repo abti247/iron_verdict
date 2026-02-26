@@ -15,6 +15,9 @@ build/
 .coverage
 htmlcov/
 
+# Runtime data
+data/
+
 # Environment
 .env
 
