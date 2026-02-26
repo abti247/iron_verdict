@@ -324,6 +324,11 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     font-weight: 500;
 }
 
+.judge-results-orbs .display-orb-reason {
+    font-size: 0.7rem;
+    max-width: 80px;
+}
+
 .display-orb {
     width: min(24vw, 240px);
     height: min(24vw, 240px);
