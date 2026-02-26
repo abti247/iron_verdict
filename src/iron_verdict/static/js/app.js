@@ -305,6 +305,18 @@ export function ironVerdictApp() {
                 }
             });
 
+            // QR code entry point: ?session=XXXX navigates to role-select
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlSession = urlParams.get('session');
+            if (urlSession) {
+                history.replaceState({}, '', '/');
+                this.sessionCode = urlSession.trim().toUpperCase();
+                this.joinCode = this.sessionCode;
+                this.screen = 'role-select';
+                setTimeout(() => this.generateQrCode(), 50);
+                return;
+            }
+
             const params = window._demoParams;
             if (params) {
                 window._demoParams = null;
