@@ -391,7 +391,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .verdict-stamp {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: min(7vw, 60px);
+    font-size: min(8.4vw, 72px);
     letter-spacing: 8px;
     padding: 10px 48px;
 }
