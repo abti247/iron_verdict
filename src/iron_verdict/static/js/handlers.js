@@ -69,6 +69,7 @@ export function handleSessionEnded(app, message) {
     alert('Session ended');
     app.ws.close();
     app.isDemo = false;
+    sessionStorage.removeItem('iv_session');
     app.screen = 'landing';
 }
 

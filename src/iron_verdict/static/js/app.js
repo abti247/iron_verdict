@@ -89,6 +89,7 @@ export function ironVerdictApp() {
             this.role = role;
             const code = this.sessionCode || this.joinCode;
             this.sessionCode = code;
+            sessionStorage.setItem('iv_session', JSON.stringify({ code, role }));
             this.connectionStatus = 'reconnecting';
 
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -227,6 +228,7 @@ export function ironVerdictApp() {
         },
 
         returnToLanding() {
+            sessionStorage.removeItem('iv_session');
             this.intentionalNavigation = true;
             this.screen = 'landing';
             this.sessionCode = '';
@@ -314,6 +316,20 @@ export function ironVerdictApp() {
                 this.joinCode = this.sessionCode;
                 this.screen = 'role-select';
                 return;
+            }
+
+            // Reload recovery: auto-rejoin previous session
+            const stored = sessionStorage.getItem('iv_session');
+            if (stored) {
+                try {
+                    const { code, role } = JSON.parse(stored);
+                    this.sessionCode = code;
+                    this.joinCode = code;
+                    setTimeout(() => this.joinSession(role), 100);
+                    return;
+                } catch (_e) {
+                    sessionStorage.removeItem('iv_session');
+                }
             }
 
             const params = window._demoParams;
