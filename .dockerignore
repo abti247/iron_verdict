@@ -14,3 +14,6 @@ tests/
 .gitignore
 Dockerfile
 compose.yaml
+docker-compose.yml
+
+src/iron_verdict/static/AGENTS.md

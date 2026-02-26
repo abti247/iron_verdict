@@ -1,4 +1,4 @@
-ARG PYTHON_VERSION=3.14.3
+ARG PYTHON_VERSION=3.13
 FROM python:${PYTHON_VERSION}-slim AS base
 
 # Prevents Python from writing pyc files.
