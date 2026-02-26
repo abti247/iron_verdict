@@ -252,6 +252,20 @@ export function ironVerdictApp() {
             this.timerExpired = false;
         },
 
+        generateQrCode() {
+            const el = document.getElementById('qrcode');
+            if (!el || !this.sessionCode) return;
+            while (el.firstChild) el.removeChild(el.firstChild);
+            const url = window.location.origin + '/?session=' + this.sessionCode;
+            new QRCode(el, {
+                text: url,
+                width: 200,
+                height: 200,
+                colorDark: '#000000',
+                colorLight: '#ffffff',
+            });
+        },
+
         goToContact() {
             this.contactName = '';
             this.contactEmail = '';
@@ -284,6 +298,12 @@ export function ironVerdictApp() {
             this.showExplanations = localStorage.getItem('showExplanations') === 'true';
             this.liftType = localStorage.getItem('liftType') || 'squat';
             this.requireReasons = localStorage.getItem('requireReasons') === 'true';
+
+            this.$watch('screen', (value) => {
+                if (value === 'role-select' && this.sessionCode) {
+                    setTimeout(() => this.generateQrCode(), 50);
+                }
+            });
 
             const params = window._demoParams;
             if (params) {
