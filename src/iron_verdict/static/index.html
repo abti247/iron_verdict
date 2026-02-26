@@ -17,6 +17,10 @@
         integrity="sha384-l8f0VcPi/M1iHPv8egOnY/15TDwqgbOR1anMIJWvU6nLRgZVLTLSaNqi/TOoT5Fh"
         crossorigin="anonymous">
     </script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"
+        crossorigin="anonymous">
+    </script>
 </head>
 <body x-data="ironVerdictApp()" :class="{ 'display-mode': role === 'display' && screen === 'display' }">
 
@@ -182,6 +186,10 @@
             <div class="role-heading chrome-text">Select Role</div>
             <div class="session-tag">
                 Session: <span class="code" x-text="sessionCode"></span>
+            </div>
+
+            <div class="role-qr-wrap">
+                <div id="qrcode"></div>
             </div>
 
             <div class="role-grid">

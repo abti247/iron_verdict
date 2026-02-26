@@ -430,3 +430,16 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* ===== FORM STACK MODIFIER ===== */
 .form-stack--no-top { margin-top: 0; }
+
+/* ===== QR CODE ===== */
+.role-qr-wrap {
+    display: flex;
+    justify-content: center;
+    margin: 1rem 0;
+}
+
+.role-qr-wrap #qrcode {
+    background: #fff;
+    padding: 8px;
+    line-height: 0;
+}
