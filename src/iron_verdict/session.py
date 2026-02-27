@@ -37,6 +37,7 @@ class SessionManager:
                         "current_vote": None,
                         "locked": False,
                         "current_reason": None,
+                        "reconnect_token": None,
                     },
                     "center": {
                         "connected": False,
@@ -44,6 +45,7 @@ class SessionManager:
                         "current_vote": None,
                         "locked": False,
                         "current_reason": None,
+                        "reconnect_token": None,
                     },
                     "right": {
                         "connected": False,
@@ -51,6 +53,7 @@ class SessionManager:
                         "current_vote": None,
                         "locked": False,
                         "current_reason": None,
+                        "reconnect_token": None,
                     },
                 },
                 "state": "waiting",
@@ -100,8 +103,9 @@ class SessionManager:
 
         judge["connected"] = True
         is_head = judge["is_head"]
-
-        return {"success": True, "is_head": is_head}
+        token = secrets.token_hex(16)
+        judge["reconnect_token"] = token
+        return {"success": True, "is_head": is_head, "reconnect_token": token}
 
     async def lock_vote(self, code: str, position: str, color: str, reason: str | None = None) -> Dict[str, Any]:
         """
@@ -198,7 +202,10 @@ class SessionManager:
         for code, session in self.sessions.items():
             s = dict(session)
             s["last_activity"] = session["last_activity"].isoformat()
-            s["judges"] = {pos: dict(j) for pos, j in session["judges"].items()}
+            s["judges"] = {
+                pos: {k: v for k, v in j.items() if k != "reconnect_token"}
+                for pos, j in session["judges"].items()
+            }
             data[code] = s
         os.makedirs(os.path.dirname(path), exist_ok=True)
         tmp = path + ".tmp"

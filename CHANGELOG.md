@@ -8,6 +8,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 - `ConnectionManager.get_connection()` to look up a registered WebSocket by session code and role
+- `reconnect_token` (16-byte hex) generated on judge join, stored in session state, excluded from snapshots, and survives `reset_for_next_lift`
 
 ### Fixed
 - Permission denied error when saving session snapshots to Railway volume on shutdown
