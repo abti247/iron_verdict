@@ -194,3 +194,21 @@ async def test_get_connection_returns_none_when_not_found():
     manager = ConnectionManager()
     result = await manager.get_connection("ABC123", "left_judge")
     assert result is None
+
+
+@pytest.mark.asyncio
+async def test_broadcast_to_others_skips_excluded_websocket():
+    manager = ConnectionManager()
+    mock_ws1 = AsyncMock()
+    mock_ws2 = AsyncMock()
+    mock_ws3 = AsyncMock()
+
+    await manager.add_connection("ABC123", "left_judge", mock_ws1)
+    await manager.add_connection("ABC123", "center_judge", mock_ws2)
+    await manager.add_connection("ABC123", "right_judge", mock_ws3)
+
+    await manager.broadcast_to_others("ABC123", mock_ws1, {"type": "test"})
+
+    mock_ws1.send_json.assert_not_called()
+    mock_ws2.send_json.assert_called_once_with({"type": "test"})
+    mock_ws3.send_json.assert_called_once_with({"type": "test"})

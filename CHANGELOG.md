@@ -18,6 +18,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Permission denied error when saving session snapshots to Railway volume on shutdown
 
 ### Changed
+- Extracted `ConnectionManager.broadcast_to_others()` to encapsulate targeted broadcast logic, removing direct `_lock` access from `main.py`
 
 ### Removed
 

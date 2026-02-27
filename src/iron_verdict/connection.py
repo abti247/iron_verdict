@@ -88,3 +88,23 @@ class ConnectionManager:
                 await websocket.send_json(message)
             except Exception as exc:
                 logger.warning("send_to_display_failed", extra={"reason": str(exc)}, exc_info=True)
+
+    async def broadcast_to_others(
+        self,
+        session_code: str,
+        exclude_ws,
+        message: Dict[str, Any],
+    ):
+        """Broadcast to all connections in a session except exclude_ws."""
+        async with self._lock:
+            if session_code not in self.active_connections:
+                return
+            targets = [
+                ws for ws in self.active_connections[session_code].values()
+                if ws is not exclude_ws
+            ]
+        for ws in targets:
+            try:
+                await ws.send_json(message)
+            except Exception as exc:
+                logger.warning("broadcast_send_failed", extra={"reason": str(exc)}, exc_info=True)

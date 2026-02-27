@@ -304,17 +304,11 @@ async def websocket_endpoint(websocket: WebSocket):
                 })
                 if role.endswith("_judge"):
                     position = role.replace("_judge", "")
-                    status_msg = {"type": "judge_status_update", "position": position, "connected": True}
-                    async with connection_manager._lock:
-                        others = [
-                            ws for r, ws in connection_manager.active_connections.get(session_code, {}).items()
-                            if ws is not websocket
-                        ]
-                    for ws in others:
-                        try:
-                            await ws.send_json(status_msg)
-                        except Exception:
-                            pass
+                    await connection_manager.broadcast_to_others(
+                        session_code,
+                        websocket,
+                        {"type": "judge_status_update", "position": position, "connected": True},
+                    )
             elif message_type == "vote_lock":
                 if not session_code or not role:
                     continue
