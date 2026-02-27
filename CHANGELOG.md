@@ -15,8 +15,12 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - `reconnect_token` included in `join_success` response; excluded from `session_state` before sending to clients
 - Judge connectivity status bar (L/C/R dots) in head judge controls, showing live connected/disconnected state
 - Next Lift button is now always enabled; shows a confirmation prompt if results haven't been shown yet
+- `reconnect_token` persisted in `sessionStorage` on join and sent with every auto-reconnect to reclaim role
+- `pageshow` listener recovers WebSocket connection after bfcache page restore on mobile browsers
 
 ### Fixed
+- `handleJoinError` no longer kills auto-reconnect when server returns "Role already taken" for a transient race condition
+- bfcache page restoration now re-establishes the WebSocket connection if the socket was closed while frozen
 - Permission denied error when saving session snapshots to Railway volume on shutdown
 
 ### Changed
