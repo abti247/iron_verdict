@@ -13,6 +13,8 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Identity guard in disconnect handler: stale disconnects from replaced connections are ignored, preventing false `connected=false` state
 - `judge_status_update` broadcasts to other session clients when a judge joins or disconnects
 - `reconnect_token` included in `join_success` response; excluded from `session_state` before sending to clients
+- Judge connectivity status bar (L/C/R dots) in head judge controls, showing live connected/disconnected state
+- Next Lift button is now always enabled; shows a confirmation prompt if results haven't been shown yet
 
 ### Fixed
 - Permission denied error when saving session snapshots to Railway volume on shutdown

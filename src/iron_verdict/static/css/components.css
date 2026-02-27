@@ -307,6 +307,31 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     font-weight: 600;
 }
 
+.judge-connectivity-bar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.connectivity-dot {
+    font-size: 12px;
+    letter-spacing: 1px;
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+}
+
+.connectivity-dot.status-connected {
+    color: #4ade80;
+    border: 1px solid #4ade80;
+}
+
+.connectivity-dot.status-disconnected {
+    color: var(--text-dim);
+    border: 1px solid var(--chrome-dark);
+}
+
 /* ===== DISPLAY ORBS ===== */
 .display-orb-wrap {
     display: flex;
