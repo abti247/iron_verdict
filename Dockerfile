@@ -41,9 +41,10 @@ RUN mkdir -p /data
 COPY . .
 
 # Entrypoint fixes volume ownership (mounted as root by Railway) then
-# drops to appuser. Must run as root, so USER is not set here.
-COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+# drops to appuser. Written inline to avoid CRLF issues on Windows hosts.
+RUN printf '#!/bin/sh\nset -e\nchown -R appuser:appuser /data\nexec gosu appuser "$@"\n' \
+    > /usr/local/bin/docker-entrypoint.sh \
+    && chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Expose the port that the application listens on.
 EXPOSE 8000
