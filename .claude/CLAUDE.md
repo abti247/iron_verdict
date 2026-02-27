@@ -18,6 +18,10 @@ The goal of the app is to provide an easy access to a tool for powerlifting judg
 - Create worktrees in the project folder under .worktrees
 - If you created a plan (general or implementation plan) for the feature/fix add this to the /docs directory on the worktree so it can later be merged with the PR.
 
+## Changelog
+- After any implementation that introduces, fixes, changes, or removes behavior, add a precise one-liner to the `[Unreleased]` section of `CHANGELOG.md` under the appropriate subsection (`Added`, `Fixed`, `Changed`, or `Removed`).
+- One-liner style: short, specific, no trailing period — match the tone of existing entries.
+
 ## Security
 - When adding or modifying features, always evaluate whether the change could introduce XSS, injection, or other OWASP Top 10 vulnerabilities.
 - Flag any change that would render unsanitized user input as HTML.
