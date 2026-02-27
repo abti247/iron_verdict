@@ -43,7 +43,8 @@ COPY . .
 # Entrypoint fixes volume ownership (mounted as root by Railway) then
 # drops to appuser. Must run as root, so USER is not set here.
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+RUN sed -i 's/\r$//' /usr/local/bin/docker-entrypoint.sh \
+    && chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Expose the port that the application listens on.
 EXPOSE 8000
