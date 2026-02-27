@@ -7,24 +7,13 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
-- `ConnectionManager.get_connection()` to look up a registered WebSocket by session code and role
-- `reconnect_token` (16-byte hex) generated on judge join, stored in session state, excluded from snapshots, and survives `reset_for_next_lift`
-- Connection replacement: judge with a valid `reconnect_token` can evict a stale connection and re-join the same role
-- Identity guard in disconnect handler: stale disconnects from replaced connections are ignored, preventing false `connected=false` state
-- `judge_status_update` broadcasts to other session clients when a judge joins or disconnects
-- `reconnect_token` included in `join_success` response; excluded from `session_state` before sending to clients
-- Judge connectivity status bar (L/C/R dots) in head judge controls, showing live connected/disconnected state
-- Next Lift button is now always enabled; shows a confirmation prompt if results haven't been shown yet
-- `reconnect_token` persisted in `sessionStorage` on join and sent with every auto-reconnect to reclaim role
-- `pageshow` listener recovers WebSocket connection after bfcache page restore on mobile browsers
+- Head judge screen shows live connectivity status (L/C/R) for all three judges
+- Head judge Next Lift button is always active; shows a confirmation prompt if results haven't been shown yet
 
 ### Fixed
-- `handleJoinError` no longer kills auto-reconnect when server returns "Role already taken" for a transient race condition
-- bfcache page restoration now re-establishes the WebSocket connection if the socket was closed while frozen
+- Judges can seamlessly rejoin their role after accidental disconnect (e.g. mobile back-swipe) without getting a "Role already taken" error or the session getting stuck
+- Session no longer gets stuck when a judge disconnects mid-round
 - Permission denied error when saving session snapshots to Railway volume on shutdown
-
-### Changed
-- Extracted `ConnectionManager.broadcast_to_others()` to encapsulate targeted broadcast logic, removing direct `_lock` access from `main.py`
 
 ### Removed
 
