@@ -22,6 +22,10 @@ RUN adduser \
     --uid "${UID}" \
     appuser
 
+# Install gosu for clean privilege dropping in the entrypoint.
+RUN apt-get update && apt-get install -y --no-install-recommends gosu \
+    && rm -rf /var/lib/apt/lists/*
+
 # Copy package metadata and source so pip can install the package and its
 # dependencies. This layer is cached until pyproject.toml or src/ changes.
 COPY pyproject.toml .
@@ -31,16 +35,19 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     python -m pip install .
 
 # Create persistent data directory for session snapshots.
-RUN mkdir -p /data && chown ${UID}:${UID} /data
+RUN mkdir -p /data
 
 # Copy the remaining files into the container.
 COPY . .
 
-# Switch to the non-privileged user to run the application.
-USER appuser
+# Entrypoint fixes volume ownership (mounted as root by Railway) then
+# drops to appuser. Written inline to avoid CRLF issues on Windows hosts.
+RUN printf '#!/bin/sh\nset -e\nchown -R appuser:appuser /data\nexec gosu appuser "$@"\n' \
+    > /usr/local/bin/docker-entrypoint.sh \
+    && chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Expose the port that the application listens on.
 EXPOSE 8000
 
-# Run the application.
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["python", "run.py"]

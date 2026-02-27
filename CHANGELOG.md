@@ -9,6 +9,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ### Added
 
 ### Fixed
+- Permission denied error when saving session snapshots to Railway volume on shutdown
 
 ### Changed
 
