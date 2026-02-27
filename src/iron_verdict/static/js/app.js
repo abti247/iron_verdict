@@ -222,6 +222,12 @@ export function ironVerdictApp() {
             this.wsSend({ type: 'next_lift' });
         },
 
+        nextLiftGuarded() {
+            if (this.resultsShown || confirm('Results haven\'t been shown yet — advance anyway?')) {
+                this.nextLift();
+            }
+        },
+
         confirmEndSession() {
             if (confirm('Are you sure? This will disconnect all judges and the display')) {
                 this.wsSend({ type: 'end_session_confirmed' });

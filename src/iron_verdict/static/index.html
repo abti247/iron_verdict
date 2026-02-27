@@ -297,7 +297,7 @@
                 <button class="btn-blood btn-blood-secondary cut-corner-sm"
                         @click="resetTimer()">Reset Timer</button>
                 <button class="btn-blood btn-blood-primary cut-corner-sm"
-                        @click="resultsShown ? nextLift() : confirm('Results haven\'t been shown yet — advance anyway?') && nextLift()">Next Lift</button>
+                        @click="nextLiftGuarded()">Next Lift</button>
                 <button class="btn-blood btn-blood-ghost"
                         @click="confirmEndSession()">End Session</button>
             </div>

@@ -307,6 +307,8 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     font-weight: 600;
 }
 
+/* Per-judge connectivity indicators (head judge panel). Distinct from .conn-dot
+   in the top bar which shows the current user's own connection status. */
 .judge-connectivity-bar {
     display: flex;
     gap: 10px;
@@ -323,12 +325,12 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 
 .connectivity-dot.status-connected {
-    color: #4ade80;
-    border: 1px solid #4ade80;
+    color: var(--success);
+    border: 1px solid var(--success);
 }
 
 .connectivity-dot.status-disconnected {
-    color: var(--text-dim);
+    color: var(--text-chrome);
     border: 1px solid var(--chrome-dark);
 }
 
