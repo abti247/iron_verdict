@@ -1,3 +1,7 @@
+import json
+import os
+import tempfile
+
 import pytest
 from iron_verdict.session import SessionManager
 from datetime import datetime, timedelta
@@ -272,11 +276,6 @@ async def test_update_settings_stores_require_reasons():
     result = manager.update_settings(code, True, "bench", require_reasons=True)
     assert result["success"] is True
     assert manager.sessions[code]["settings"]["require_reasons"] is True
-
-
-import json
-import tempfile
-import os
 
 
 async def test_join_session_returns_reconnect_token():

@@ -226,6 +226,7 @@ class SessionManager:
                 # Reset connected state — WebSocket connections are gone after restart
                 for judge in s["judges"].values():
                     judge["connected"] = False
+                    judge.setdefault("reconnect_token", None)
                 self.sessions[code] = s
             logger.info("snapshot_loaded", extra={"session_count": len(self.sessions)})
         except Exception:
