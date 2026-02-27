@@ -7,6 +7,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- `ConnectionManager.get_connection()` to look up a registered WebSocket by session code and role
 
 ### Fixed
 - Permission denied error when saving session snapshots to Railway volume on shutdown

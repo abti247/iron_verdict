@@ -27,6 +27,11 @@ class ConnectionManager:
                 if not self.active_connections[session_code]:
                     del self.active_connections[session_code]
 
+    async def get_connection(self, session_code: str, role: str):
+        """Return the registered WebSocket for a role, or None."""
+        async with self._lock:
+            return self.active_connections.get(session_code, {}).get(role)
+
     async def broadcast_to_session(self, session_code: str, message: Dict[str, Any]):
         """Broadcast a message to all connections in a session."""
         # Get connections under lock to avoid race conditions

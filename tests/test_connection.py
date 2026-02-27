@@ -178,3 +178,19 @@ async def test_send_to_displays_failure_logs_warning(caplog):
 
     records = [r for r in caplog.records if r.getMessage() == "send_to_display_failed"]
     assert len(records) == 1
+
+
+@pytest.mark.asyncio
+async def test_get_connection_returns_registered_websocket():
+    manager = ConnectionManager()
+    mock_ws = AsyncMock()
+    await manager.add_connection("ABC123", "left_judge", mock_ws)
+    result = await manager.get_connection("ABC123", "left_judge")
+    assert result is mock_ws
+
+
+@pytest.mark.asyncio
+async def test_get_connection_returns_none_when_not_found():
+    manager = ConnectionManager()
+    result = await manager.get_connection("ABC123", "left_judge")
+    assert result is None
