@@ -107,4 +107,4 @@ class ConnectionManager:
             try:
                 await ws.send_json(message)
             except Exception as exc:
-                logger.warning("broadcast_send_failed", extra={"reason": str(exc)}, exc_info=True)
+                logger.warning("broadcast_to_others_send_failed", extra={"reason": str(exc)}, exc_info=True)

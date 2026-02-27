@@ -212,3 +212,26 @@ async def test_broadcast_to_others_skips_excluded_websocket():
     mock_ws1.send_json.assert_not_called()
     mock_ws2.send_json.assert_called_once_with({"type": "test"})
     mock_ws3.send_json.assert_called_once_with({"type": "test"})
+
+
+@pytest.mark.asyncio
+async def test_broadcast_to_others_no_op_for_nonexistent_session():
+    manager = ConnectionManager()
+    # Should not raise
+    await manager.broadcast_to_others("INVALID", AsyncMock(), {"type": "test"})
+
+
+@pytest.mark.asyncio
+async def test_broadcast_to_others_failure_logs_warning(caplog):
+    manager = ConnectionManager()
+    broken_ws = AsyncMock()
+    broken_ws.send_json.side_effect = Exception("connection lost")
+    other_ws = AsyncMock()
+    await manager.add_connection("SESS", "left_judge", broken_ws)
+    await manager.add_connection("SESS", "center_judge", other_ws)
+
+    with caplog.at_level(logging.WARNING, logger="iron_verdict"):
+        await manager.broadcast_to_others("SESS", other_ws, {"type": "test"})
+
+    records = [r for r in caplog.records if r.getMessage() == "broadcast_to_others_send_failed"]
+    assert len(records) == 1
