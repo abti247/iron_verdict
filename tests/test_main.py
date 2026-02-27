@@ -183,9 +183,15 @@ async def test_settings_update_broadcasts_to_all_clients(session_code):
                 "requireReasons": True
             })
 
-            # All other clients should receive the broadcast
-            msg_left = await asyncio.wait_for(left_ws.receive_json(), timeout=1.0)
-            msg_right = await asyncio.wait_for(right_ws.receive_json(), timeout=1.0)
+            async def collect_until_settings_update(ws):
+                for _ in range(5):
+                    msg = await asyncio.wait_for(ws.receive_json(), timeout=1.0)
+                    if msg.get("type") == "settings_update":
+                        return msg
+                raise AssertionError("settings_update not received")
+
+            msg_left = await collect_until_settings_update(left_ws)
+            msg_right = await collect_until_settings_update(right_ws)
 
             assert msg_left["type"] == "settings_update"
             assert msg_left["showExplanations"] is True
@@ -196,6 +202,15 @@ async def test_settings_update_broadcasts_to_all_clients(session_code):
             assert msg_right["showExplanations"] is True
             assert msg_right["liftType"] == "bench"
             assert msg_right["requireReasons"] is True
+
+            # Drain remaining queued messages before context teardown to avoid
+            # race between disconnect broadcasts and connection close
+            for ws in (center_ws, left_ws, right_ws):
+                try:
+                    while True:
+                        await asyncio.wait_for(ws.receive_json(), timeout=0.05)
+                except (asyncio.TimeoutError, Exception):
+                    pass
 
 
 @pytest.mark.asyncio
@@ -757,3 +772,152 @@ async def test_show_results_includes_reasons():
             assert show_results_msg["reasons"]["left"] == "Buttocks up"
             assert show_results_msg["reasons"]["center"] is None
             assert show_results_msg["reasons"]["right"] == "Incomplete lift"
+
+
+@pytest.mark.asyncio
+async def test_join_success_includes_reconnect_token(session_code):
+    async with httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+            await ws.send_json({"type": "join", "session_code": session_code, "role": "left_judge"})
+            msg = await ws.receive_json()
+    assert msg["type"] == "join_success"
+    assert "reconnect_token" in msg
+    assert isinstance(msg["reconnect_token"], str)
+    assert len(msg["reconnect_token"]) == 32
+
+
+@pytest.mark.asyncio
+async def test_join_success_session_state_excludes_reconnect_tokens(session_code):
+    async with httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+            await ws.send_json({"type": "join", "session_code": session_code, "role": "left_judge"})
+            msg = await ws.receive_json()
+    assert msg["type"] == "join_success"
+    for judge in msg["session_state"]["judges"].values():
+        assert "reconnect_token" not in judge
+
+
+@pytest.mark.asyncio
+async def test_reconnect_with_valid_token_replaces_stale_connection(session_code):
+    """New connection with correct token should succeed even while old connection is open."""
+    async with httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as ac1, httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as ac2:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac1) as old_ws:
+            await old_ws.send_json({"type": "join", "session_code": session_code, "role": "left_judge"})
+            join_msg = await old_ws.receive_json()
+            assert join_msg["type"] == "join_success"
+            token = join_msg["reconnect_token"]
+
+            # New connection joins with matching token while old is still open
+            async with httpx_ws.aconnect_ws("ws://test/ws", ac2) as new_ws:
+                await new_ws.send_json({
+                    "type": "join",
+                    "session_code": session_code,
+                    "role": "left_judge",
+                    "reconnect_token": token,
+                })
+                new_join_msg = await asyncio.wait_for(new_ws.receive_json(), timeout=1.0)
+                assert new_join_msg["type"] == "join_success"
+
+                # Give old ws disconnect handler time to run
+                await asyncio.sleep(0.2)
+
+                # Session must still show left as connected (identity guard worked)
+                assert session_manager.sessions[session_code]["judges"]["left"]["connected"] is True
+
+
+@pytest.mark.asyncio
+async def test_reconnect_with_wrong_token_rejected(session_code):
+    async with httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as ac1, httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as ac2:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac1) as old_ws:
+            await old_ws.send_json({"type": "join", "session_code": session_code, "role": "left_judge"})
+            await old_ws.receive_json()  # join_success
+
+            async with httpx_ws.aconnect_ws("ws://test/ws", ac2) as new_ws:
+                await new_ws.send_json({
+                    "type": "join",
+                    "session_code": session_code,
+                    "role": "left_judge",
+                    "reconnect_token": "0" * 32,
+                })
+                msg = await asyncio.wait_for(new_ws.receive_json(), timeout=1.0)
+                assert msg["type"] == "join_error"
+                assert "already taken" in msg["message"].lower()
+
+
+@pytest.mark.asyncio
+async def test_judge_disconnect_broadcasts_status_update(session_code):
+    async with httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as center_client, httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as left_client:
+        async with httpx_ws.aconnect_ws("ws://test/ws", center_client) as center_ws:
+            await center_ws.send_json({"type": "join", "session_code": session_code, "role": "center_judge"})
+            await center_ws.receive_json()  # center's join_success
+
+            async with httpx_ws.aconnect_ws("ws://test/ws", left_client) as left_ws:
+                await left_ws.send_json({"type": "join", "session_code": session_code, "role": "left_judge"})
+                await left_ws.receive_json()  # left's join_success
+                # Drain judge_status_update that center received when left joined
+                try:
+                    await asyncio.wait_for(center_ws.receive_json(), timeout=0.3)
+                except asyncio.TimeoutError:
+                    pass
+            # left_ws context exits → triggers disconnect
+
+            await asyncio.sleep(0.1)
+
+            msg = await asyncio.wait_for(center_ws.receive_json(), timeout=1.0)
+            assert msg["type"] == "judge_status_update"
+            assert msg["position"] == "left"
+            assert msg["connected"] is False
+
+
+@pytest.mark.asyncio
+async def test_judge_join_broadcasts_status_update(session_code):
+    async with httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as center_client, httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as left_client:
+        async with httpx_ws.aconnect_ws("ws://test/ws", center_client) as center_ws, \
+                   httpx_ws.aconnect_ws("ws://test/ws", left_client) as left_ws:
+            await center_ws.send_json({"type": "join", "session_code": session_code, "role": "center_judge"})
+            await center_ws.receive_json()  # center's join_success
+
+            await left_ws.send_json({"type": "join", "session_code": session_code, "role": "left_judge"})
+            await left_ws.receive_json()  # left's join_success
+
+            # Center should receive judge_status_update for left joining
+            msg = await asyncio.wait_for(center_ws.receive_json(), timeout=1.0)
+            assert msg["type"] == "judge_status_update"
+            assert msg["position"] == "left"
+            assert msg["connected"] is True
+
+
+@pytest.mark.asyncio
+async def test_head_judge_can_next_lift_in_waiting_state(session_code):
+    """next_lift must work even when session state is 'waiting'."""
+    async with httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+            await ws.send_json({"type": "join", "session_code": session_code, "role": "center_judge"})
+            await ws.receive_json()
+            assert session_manager.sessions[session_code]["state"] == "waiting"
+
+            await ws.send_json({"type": "next_lift"})
+            msg = await asyncio.wait_for(ws.receive_json(), timeout=1.0)
+            assert msg["type"] == "reset_for_next_lift"

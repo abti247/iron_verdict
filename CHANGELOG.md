@@ -9,6 +9,10 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ### Added
 - `ConnectionManager.get_connection()` to look up a registered WebSocket by session code and role
 - `reconnect_token` (16-byte hex) generated on judge join, stored in session state, excluded from snapshots, and survives `reset_for_next_lift`
+- Connection replacement: judge with a valid `reconnect_token` can evict a stale connection and re-join the same role
+- Identity guard in disconnect handler: stale disconnects from replaced connections are ignored, preventing false `connected=false` state
+- `judge_status_update` broadcasts to other session clients when a judge joins or disconnects
+- `reconnect_token` included in `join_success` response; excluded from `session_state` before sending to clients
 
 ### Fixed
 - Permission denied error when saving session snapshots to Railway volume on shutdown
