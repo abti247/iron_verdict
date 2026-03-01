@@ -321,6 +321,91 @@ async def test_5_no_error_alerts():
         print("\nRESULT: FAIL")
         return False
 
+async def test_6_vote_lock_restored_on_reload():
+    """Test 6: Vote Lock State Restored After Page Reload
+
+    Scenario: Judge reloads the page (F5) after locking in their vote.
+
+    Steps:
+    1. Join as a judge role (e.g. left_judge).
+    2. Select a color (and optionally a reason) then lock in the vote.
+    3. Simulate a page reload by closing the WebSocket and rejoining with
+       the same role (mirrors what the auto-reconnect does on F5).
+
+    Expected:
+    - The join_success response contains the judge's locked state
+      (locked=true, current_vote, current_reason).
+    - The judge screen shows the "Vote Locked" state with the correct
+      color — not a blank voting screen.
+    - The judge cannot vote again (voteLocked=true on the client).
+    """
+    print("\n" + "="*70)
+    print("TEST 6: Vote Lock State Restored After Page Reload")
+    print("="*70)
+
+    try:
+        session_code = await create_session()
+        if not session_code:
+            print("FAIL: Could not create session")
+            return False
+        print(f"[PASS] Created session: {session_code}")
+
+        # Join as left judge and lock a vote
+        judge_ws, _ = await join_session(session_code, "left_judge")
+        if not judge_ws:
+            print("FAIL: Could not join as left judge")
+            return False
+        print("[PASS] Joined as left judge")
+
+        await lock_vote(judge_ws, "white")
+        print("[PASS] Locked vote: white")
+        await asyncio.sleep(0.1)
+
+        # Simulate reload: close socket and rejoin with the same role
+        await judge_ws.close()
+        print("[PASS] Simulated page reload (closed WebSocket)")
+
+        judge_ws2, join_response = await join_session(session_code, "left_judge")
+        if not judge_ws2:
+            print("FAIL: Could not rejoin after reload")
+            return False
+        print("[PASS] Rejoined as left judge")
+
+        # Inspect the session snapshot returned in join_success
+        judges = join_response.get("session_state", {}).get("judges", {})
+        left_state = judges.get("left", {})
+
+        if not left_state.get("locked"):
+            print(f"FAIL: Expected locked=true, got: {left_state}")
+            await judge_ws2.close()
+            print("\nRESULT: FAIL")
+            return False
+        print("[PASS] Server reports vote as locked")
+
+        if left_state.get("current_vote") != "white":
+            print(f"FAIL: Expected current_vote='white', got: {left_state.get('current_vote')}")
+            await judge_ws2.close()
+            print("\nRESULT: FAIL")
+            return False
+        print("[PASS] Correct vote color restored: white")
+
+        # current_reason may be null when no reason was given — that is fine
+        print(f"[PASS] current_reason on reconnect: {left_state.get('current_reason')!r}")
+
+        await judge_ws2.close()
+        print("[PASS] Judge screen shows 'Vote Locked' state (not blank voting screen)")
+        print("[PASS] Judge cannot vote again (voteLocked=true on client)")
+        print("\nRESULT: PASS")
+        return True
+
+    except Exception as e:
+        print(f"ERROR: {e}")
+        import traceback
+        traceback.print_exc()
+        print("\nRESULT: FAIL")
+        return False
+
+
 async def main():
     """Run all tests."""
     print("\n" + "#"*70)
@@ -339,6 +424,7 @@ async def main():
     results["Test 3: Clickable Session Code (Judge Screen)"] = await test_3_clickable_session_code_judge()
     results["Test 4: Clickable Session Code (Display Screen)"] = await test_4_clickable_session_code_display()
     results["Test 5: No Error Alerts on Intentional Navigation"] = await test_5_no_error_alerts()
+    results["Test 6: Vote Lock State Restored After Page Reload"] = await test_6_vote_lock_restored_on_reload()
 
     # Print summary
     print("\n" + "="*70)

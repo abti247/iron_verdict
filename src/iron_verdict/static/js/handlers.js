@@ -22,6 +22,7 @@ export function handleJoinSuccess(app, message) {
         if (myState?.locked) {
             app.voteLocked = true;
             app.selectedVote = myState.current_vote;
+            app.selectedReason = myState.current_reason ?? null;
         }
     }
 
