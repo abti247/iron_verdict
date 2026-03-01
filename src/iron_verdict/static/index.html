@@ -278,18 +278,12 @@
         </div>
 
         <div class="head-section" x-show="isHead">
-            <div class="head-title">Head Judge Controls</div>
-            <!-- Judge connectivity status -->
-            <div class="judge-connectivity-bar">
-                <span class="connectivity-dot" :class="judgeConnected.left ? 'status-connected' : 'status-disconnected'">
-                    L
-                </span>
-                <span class="connectivity-dot" :class="judgeConnected.center ? 'status-connected' : 'status-disconnected'">
-                    C
-                </span>
-                <span class="connectivity-dot" :class="judgeConnected.right ? 'status-connected' : 'status-disconnected'">
-                    R
-                </span>
+            <div class="head-title-row">
+                <div class="head-title">Head Judge Controls</div>
+                <div class="judge-connectivity-bar">
+                    <span class="connectivity-dot" :class="judgeConnected.left ? 'status-connected' : 'status-disconnected'">L</span>
+                    <span class="connectivity-dot" :class="judgeConnected.right ? 'status-connected' : 'status-disconnected'">R</span>
+                </div>
             </div>
             <div class="head-grid">
                 <button class="btn-blood btn-blood-primary cut-corner-sm"
