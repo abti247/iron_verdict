@@ -15,6 +15,16 @@ export function handleJoinSuccess(app, message) {
         };
     }
 
+    // Restore this judge's vote state if they were already locked before reconnecting
+    if (app.role && app.role.endsWith('_judge')) {
+        const position = app.role.replace('_judge', '');
+        const myState = judges?.[position];
+        if (myState?.locked) {
+            app.voteLocked = true;
+            app.selectedVote = myState.current_vote;
+        }
+    }
+
     // Persist reconnect token for future reconnections
     if (message.reconnect_token) {
         const stored = sessionStorage.getItem('iv_session');
