@@ -125,6 +125,10 @@ class SessionManager:
                 return {"success": False, "error": "Session not found"}
 
             session = self.sessions[code]
+
+            if position not in session["judges"]:
+                return {"success": False, "error": "Invalid position"}
+
             judge = session["judges"][position]
 
             if judge["locked"]:

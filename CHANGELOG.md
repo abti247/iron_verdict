@@ -15,6 +15,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Judges can seamlessly rejoin their role after accidental disconnect (e.g. mobile back-swipe) without getting a "Role already taken" error or the session getting stuck
 - Session no longer gets stuck when a judge disconnects mid-round
 - Permission denied error when saving session snapshots to Railway volume on shutdown
+- Submitting a vote with an unrecognised judge position now returns a clear error instead of crashing
 
 ### Removed
 

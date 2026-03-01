@@ -338,3 +338,11 @@ async def test_lock_vote_rejects_already_locked_judge():
     assert "already locked" in result["error"].lower()
     # original vote must not be overwritten
     assert manager.sessions[code]["judges"]["left"]["current_vote"] == "blue"
+
+
+async def test_lock_vote_invalid_position_fails():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    result = await manager.lock_vote(code, "invalid", "white")
+    assert result["success"] is False
+    assert "invalid position" in result["error"].lower()
