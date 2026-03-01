@@ -7,7 +7,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
-- Head judge screen shows live connectivity status (L/C/R) for all three judges
+- Head judge screen shows live connectivity status (L/R) for the other two judges, displayed inline with the Head Judge Controls title
 - Head judge Next Lift button is always active; shows a confirmation prompt if results haven't been shown yet
 
 ### Fixed
