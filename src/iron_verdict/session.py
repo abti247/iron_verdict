@@ -127,6 +127,9 @@ class SessionManager:
             session = self.sessions[code]
             judge = session["judges"][position]
 
+            if judge["locked"]:
+                return {"success": False, "error": "Vote already locked"}
+
             judge["current_vote"] = color
             judge["current_reason"] = reason
             judge["locked"] = True

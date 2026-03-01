@@ -324,3 +324,17 @@ async def test_display_join_returns_no_reconnect_token():
     result = manager.join_session(code, "display")
     assert result["success"] is True
     assert result.get("reconnect_token") is None
+
+
+async def test_lock_vote_rejects_already_locked_judge():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    manager.join_session(code, "left_judge")
+
+    await manager.lock_vote(code, "left", "blue")
+    result = await manager.lock_vote(code, "left", "red")  # second attempt
+
+    assert result["success"] is False
+    assert "already locked" in result["error"].lower()
+    # original vote must not be overwritten
+    assert manager.sessions[code]["judges"]["left"]["current_vote"] == "blue"
