@@ -1,3 +1,7 @@
+import json
+import os
+import tempfile
+
 import pytest
 from iron_verdict.session import SessionManager
 from datetime import datetime, timedelta
@@ -272,3 +276,73 @@ async def test_update_settings_stores_require_reasons():
     result = manager.update_settings(code, True, "bench", require_reasons=True)
     assert result["success"] is True
     assert manager.sessions[code]["settings"]["require_reasons"] is True
+
+
+async def test_join_session_returns_reconnect_token():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    result = manager.join_session(code, "left_judge")
+    assert result["success"] is True
+    assert "reconnect_token" in result
+    assert isinstance(result["reconnect_token"], str)
+    assert len(result["reconnect_token"]) == 32  # 16 hex bytes
+
+
+async def test_reconnect_token_stored_in_judge_state():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    result = manager.join_session(code, "left_judge")
+    stored = manager.sessions[code]["judges"]["left"]["reconnect_token"]
+    assert stored == result["reconnect_token"]
+
+
+async def test_reconnect_token_survives_reset_for_next_lift():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    result = manager.join_session(code, "left_judge")
+    token = result["reconnect_token"]
+    await manager.reset_for_next_lift(code)
+    assert manager.sessions[code]["judges"]["left"]["reconnect_token"] == token
+
+
+async def test_snapshot_excludes_reconnect_token():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    manager.join_session(code, "left_judge")
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "sessions.json")
+        manager.save_snapshot(path)
+        with open(path) as f:
+            data = json.load(f)
+    for judge in data[code]["judges"].values():
+        assert "reconnect_token" not in judge
+
+
+async def test_display_join_returns_no_reconnect_token():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    result = manager.join_session(code, "display")
+    assert result["success"] is True
+    assert result.get("reconnect_token") is None
+
+
+async def test_lock_vote_rejects_already_locked_judge():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    manager.join_session(code, "left_judge")
+
+    await manager.lock_vote(code, "left", "blue")
+    result = await manager.lock_vote(code, "left", "red")  # second attempt
+
+    assert result["success"] is False
+    assert "already locked" in result["error"].lower()
+    # original vote must not be overwritten
+    assert manager.sessions[code]["judges"]["left"]["current_vote"] == "blue"
+
+
+async def test_lock_vote_invalid_position_fails():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    result = await manager.lock_vote(code, "invalid", "white")
+    assert result["success"] is False
+    assert "invalid position" in result["error"].lower()

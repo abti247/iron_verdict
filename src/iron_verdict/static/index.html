@@ -278,14 +278,20 @@
         </div>
 
         <div class="head-section" x-show="isHead">
-            <div class="head-title">Head Judge Controls</div>
+            <div class="head-title-row">
+                <div class="head-title">Head Judge Controls</div>
+                <div class="judge-connectivity-bar">
+                    <span class="connectivity-dot" :class="judgeConnected.left ? 'status-connected' : 'status-disconnected'">L</span>
+                    <span class="connectivity-dot" :class="judgeConnected.right ? 'status-connected' : 'status-disconnected'">R</span>
+                </div>
+            </div>
             <div class="head-grid">
                 <button class="btn-blood btn-blood-primary cut-corner-sm"
                         @click="startTimer()">Start Timer</button>
                 <button class="btn-blood btn-blood-secondary cut-corner-sm"
                         @click="resetTimer()">Reset Timer</button>
                 <button class="btn-blood btn-blood-primary cut-corner-sm"
-                        @click="nextLift()" :disabled="!resultsShown">Next Lift</button>
+                        @click="nextLiftGuarded()">Next Lift</button>
                 <button class="btn-blood btn-blood-ghost"
                         @click="confirmEndSession()">End Session</button>
             </div>

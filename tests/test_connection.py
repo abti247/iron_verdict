@@ -178,3 +178,60 @@ async def test_send_to_displays_failure_logs_warning(caplog):
 
     records = [r for r in caplog.records if r.getMessage() == "send_to_display_failed"]
     assert len(records) == 1
+
+
+@pytest.mark.asyncio
+async def test_get_connection_returns_registered_websocket():
+    manager = ConnectionManager()
+    mock_ws = AsyncMock()
+    await manager.add_connection("ABC123", "left_judge", mock_ws)
+    result = await manager.get_connection("ABC123", "left_judge")
+    assert result is mock_ws
+
+
+@pytest.mark.asyncio
+async def test_get_connection_returns_none_when_not_found():
+    manager = ConnectionManager()
+    result = await manager.get_connection("ABC123", "left_judge")
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_broadcast_to_others_skips_excluded_websocket():
+    manager = ConnectionManager()
+    mock_ws1 = AsyncMock()
+    mock_ws2 = AsyncMock()
+    mock_ws3 = AsyncMock()
+
+    await manager.add_connection("ABC123", "left_judge", mock_ws1)
+    await manager.add_connection("ABC123", "center_judge", mock_ws2)
+    await manager.add_connection("ABC123", "right_judge", mock_ws3)
+
+    await manager.broadcast_to_others("ABC123", mock_ws1, {"type": "test"})
+
+    mock_ws1.send_json.assert_not_called()
+    mock_ws2.send_json.assert_called_once_with({"type": "test"})
+    mock_ws3.send_json.assert_called_once_with({"type": "test"})
+
+
+@pytest.mark.asyncio
+async def test_broadcast_to_others_no_op_for_nonexistent_session():
+    manager = ConnectionManager()
+    # Should not raise
+    await manager.broadcast_to_others("INVALID", AsyncMock(), {"type": "test"})
+
+
+@pytest.mark.asyncio
+async def test_broadcast_to_others_failure_logs_warning(caplog):
+    manager = ConnectionManager()
+    broken_ws = AsyncMock()
+    broken_ws.send_json.side_effect = Exception("connection lost")
+    other_ws = AsyncMock()
+    await manager.add_connection("SESS", "left_judge", broken_ws)
+    await manager.add_connection("SESS", "center_judge", other_ws)
+
+    with caplog.at_level(logging.WARNING, logger="iron_verdict"):
+        await manager.broadcast_to_others("SESS", other_ws, {"type": "test"})
+
+    records = [r for r in caplog.records if r.getMessage() == "broadcast_to_others_send_failed"]
+    assert len(records) == 1

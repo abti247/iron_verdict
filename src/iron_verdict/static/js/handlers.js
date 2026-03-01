@@ -4,6 +4,40 @@ export function handleJoinSuccess(app, message) {
     app.isHead = message.is_head;
     app.sessionName = message.session_state?.name || '';
     app.screen = app.role === 'display' ? 'display' : 'judge';
+
+    // Initialize live connectivity state from session snapshot
+    const judges = message.session_state?.judges;
+    if (judges) {
+        app.judgeConnected = {
+            left: judges.left?.connected ?? false,
+            center: judges.center?.connected ?? false,
+            right: judges.right?.connected ?? false,
+        };
+    }
+
+    // Restore this judge's vote state if they were already locked before reconnecting
+    if (app.role && app.role.endsWith('_judge')) {
+        const position = app.role.replace('_judge', '');
+        const myState = judges?.[position];
+        if (myState?.locked) {
+            app.voteLocked = true;
+            app.selectedVote = myState.current_vote;
+            app.selectedReason = myState.current_reason ?? null;
+        }
+    }
+
+    // Persist reconnect token for future reconnections
+    if (message.reconnect_token) {
+        const stored = sessionStorage.getItem('iv_session');
+        if (stored) {
+            try {
+                const parsed = JSON.parse(stored);
+                parsed.reconnect_token = message.reconnect_token;
+                sessionStorage.setItem('iv_session', JSON.stringify(parsed));
+            } catch (_e) {}
+        }
+    }
+
     if (app.isHead) {
         app.requireReasons = message.session_state?.settings?.require_reasons ?? false;
         app.saveSettings();
@@ -15,6 +49,10 @@ export function handleJoinSuccess(app, message) {
 }
 
 export function handleJoinError(app, message) {
+    if (message.message === 'Role already taken') {
+        // Transient race condition — server closes socket, auto-reconnect retries
+        return;
+    }
     app.ws.close();
     sessionStorage.removeItem('iv_session');
     const sanitizedMessage = document.createTextNode(message.message).textContent;
@@ -88,4 +126,8 @@ export function handleSettingsUpdate(app, message) {
 
 export function handleServerRestarting(app, _message) {
     app.serverRestarting = true;
+}
+
+export function handleJudgeStatusUpdate(app, message) {
+    app.judgeConnected[message.position] = message.connected;
 }

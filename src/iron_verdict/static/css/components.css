@@ -261,12 +261,18 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     padding-top: 14px;
 }
 
+.head-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
 .head-title {
     font-family: 'Bebas Neue', sans-serif;
     font-size: 16px;
     letter-spacing: 4px;
     color: var(--text-dim);
-    margin-bottom: 10px;
 }
 
 .head-grid {
@@ -305,6 +311,32 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     font-family: 'Rajdhani', sans-serif;
     font-size: 14px;
     font-weight: 600;
+}
+
+/* Per-judge connectivity indicators (head judge panel). Distinct from .conn-dot
+   in the top bar which shows the current user's own connection status. */
+.judge-connectivity-bar {
+    display: flex;
+    gap: 10px;
+}
+
+.connectivity-dot {
+    font-size: 12px;
+    letter-spacing: 1px;
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+}
+
+.connectivity-dot.status-connected {
+    color: var(--success);
+    border: 1px solid var(--success);
+}
+
+.connectivity-dot.status-disconnected {
+    color: var(--text-chrome);
+    border: 1px solid var(--chrome-dark);
 }
 
 /* ===== DISPLAY ORBS ===== */

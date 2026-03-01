@@ -27,6 +27,11 @@ class ConnectionManager:
                 if not self.active_connections[session_code]:
                     del self.active_connections[session_code]
 
+    async def get_connection(self, session_code: str, role: str):
+        """Return the registered WebSocket for a role, or None."""
+        async with self._lock:
+            return self.active_connections.get(session_code, {}).get(role)
+
     async def broadcast_to_session(self, session_code: str, message: Dict[str, Any]):
         """Broadcast a message to all connections in a session."""
         # Get connections under lock to avoid race conditions
@@ -83,3 +88,23 @@ class ConnectionManager:
                 await websocket.send_json(message)
             except Exception as exc:
                 logger.warning("send_to_display_failed", extra={"reason": str(exc)}, exc_info=True)
+
+    async def broadcast_to_others(
+        self,
+        session_code: str,
+        exclude_ws,
+        message: Dict[str, Any],
+    ):
+        """Broadcast to all connections in a session except exclude_ws."""
+        async with self._lock:
+            if session_code not in self.active_connections:
+                return
+            targets = [
+                ws for ws in self.active_connections[session_code].values()
+                if ws is not exclude_ws
+            ]
+        for ws in targets:
+            try:
+                await ws.send_json(message)
+            except Exception as exc:
+                logger.warning("broadcast_to_others_send_failed", extra={"reason": str(exc)}, exc_info=True)

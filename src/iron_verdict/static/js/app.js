@@ -13,6 +13,7 @@ import {
     handleSessionEnded,
     handleSettingsUpdate,
     handleServerRestarting,
+    handleJudgeStatusUpdate,
 } from './handlers.js';
 
 export function ironVerdictApp() {
@@ -50,6 +51,7 @@ export function ironVerdictApp() {
         _phaseTimer1: null,
         judgeResultVotes: { left: null, center: null, right: null },
         judgeResultReasons: { left: null, center: null, right: null },
+        judgeConnected: { left: false, center: false, right: false },
         contactName: '',
         contactEmail: '',
         contactMessage: '',
@@ -103,7 +105,14 @@ export function ironVerdictApp() {
                 () => {
                     this.connectionStatus = 'connected';
                     this.serverRestarting = false;
-                    this.wsSend({ type: 'join', session_code: code, role: role });
+                    let reconnectToken = null;
+                    const stored = sessionStorage.getItem('iv_session');
+                    if (stored) {
+                        try { reconnectToken = JSON.parse(stored).reconnect_token || null; } catch (_e) {}
+                    }
+                    const joinMsg = { type: 'join', session_code: code, role: role };
+                    if (reconnectToken) joinMsg.reconnect_token = reconnectToken;
+                    this.wsSend(joinMsg);
                 },
                 () => { this.connectionStatus = 'reconnecting'; }
             );
@@ -124,6 +133,7 @@ export function ironVerdictApp() {
                 session_ended:       handleSessionEnded,
                 settings_update:     handleSettingsUpdate,
                 server_restarting:   handleServerRestarting,
+                judge_status_update: handleJudgeStatusUpdate,
             };
             dispatch[message.type]?.(this, message);
         },
@@ -210,6 +220,12 @@ export function ironVerdictApp() {
 
         nextLift() {
             this.wsSend({ type: 'next_lift' });
+        },
+
+        nextLiftGuarded() {
+            if (this.resultsShown || confirm('Results haven\'t been shown yet — advance anyway?')) {
+                this.nextLift();
+            }
         },
 
         confirmEndSession() {
@@ -350,6 +366,18 @@ export function ironVerdictApp() {
             } else {
                 this.screen = 'landing';
             }
+
+            window.addEventListener('pageshow', (event) => {
+                if (!event.persisted) return;
+                const stored = sessionStorage.getItem('iv_session');
+                if (!stored) return;
+                try {
+                    const { code, role } = JSON.parse(stored);
+                    if (code && role && this.ws && this.ws.readyState === 3) {
+                        this.joinSession(role);
+                    }
+                } catch (_e) {}
+            });
         }
     };
 }
