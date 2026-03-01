@@ -231,19 +231,36 @@ async def websocket_endpoint(websocket: WebSocket):
                 result = session_manager.join_session(session_code, role)
 
                 if not result["success"]:
-                    logger.warning("role_join_failed", extra={
-                        "conn_id": conn_id,
-                        "session_code": session_code,
-                        "role": message.get("role"),
-                        "reason": result["error"],
-                        "client_ip": _get_ws_client_ip(websocket),
-                    })
-                    await websocket.send_json({
-                        "type": "join_error",
-                        "message": result["error"]
-                    })
-                    await websocket.close()
-                    return
+                    if result["error"] == "Role already taken" and role.endswith("_judge"):
+                        position = role.replace("_judge", "")
+                        stored_token = message.get("reconnect_token")
+                        judge = session_manager.sessions.get(session_code, {}).get("judges", {}).get(position, {})
+                        judge_token = judge.get("reconnect_token")
+                        if stored_token and judge_token and stored_token == judge_token:
+                            # Valid reconnect token — close old connection and take the slot
+                            old_ws = await connection_manager.get_connection(session_code, role)
+                            if old_ws:
+                                await connection_manager.remove_connection(session_code, role)
+                                try:
+                                    await old_ws.close()
+                                except Exception:
+                                    pass
+                            session_manager.sessions[session_code]["judges"][position]["connected"] = False
+                            result = session_manager.join_session(session_code, role)
+                    if not result["success"]:
+                        logger.warning("role_join_failed", extra={
+                            "conn_id": conn_id,
+                            "session_code": session_code,
+                            "role": message.get("role"),
+                            "reason": result["error"],
+                            "client_ip": _get_ws_client_ip(websocket),
+                        })
+                        await websocket.send_json({
+                            "type": "join_error",
+                            "message": result["error"]
+                        })
+                        await websocket.close()
+                        return
 
                 if role == "display":
                     if await connection_manager.count_displays(session_code) >= settings.DISPLAY_CAP:
@@ -267,6 +284,9 @@ async def websocket_endpoint(websocket: WebSocket):
                 # Issue 3: Use deep copy for nested dicts
                 session_state = copy.deepcopy(session_manager.sessions[session_code])
                 session_state["last_activity"] = session_state["last_activity"].isoformat()
+                # Do not expose other judges' reconnect tokens to clients
+                for judge in session_state["judges"].values():
+                    judge.pop("reconnect_token", None)
 
                 # Compute time_remaining_ms for late-joining clients
                 if session_state.get("timer_started_at"):
@@ -279,8 +299,16 @@ async def websocket_endpoint(websocket: WebSocket):
                     "type": "join_success",
                     "role": "display" if role.startswith("display_") else role,
                     "is_head": result["is_head"],
-                    "session_state": session_state
+                    "session_state": session_state,
+                    "reconnect_token": result.get("reconnect_token"),
                 })
+                if role.endswith("_judge"):
+                    position = role.replace("_judge", "")
+                    await connection_manager.broadcast_to_others(
+                        session_code,
+                        websocket,
+                        {"type": "judge_status_update", "position": position, "connected": True},
+                    )
             elif message_type == "vote_lock":
                 if not session_code or not role:
                     continue
@@ -486,14 +514,27 @@ async def websocket_endpoint(websocket: WebSocket):
 
     except WebSocketDisconnect:
         if session_code and role:
-            await connection_manager.remove_connection(session_code, role)
-            logger.info("role_disconnected", extra={
-                "conn_id": conn_id,
-                "session_code": session_code,
-                "role": "display" if role.startswith("display_") else role,
-            })
-            # Update session state if judge disconnected
-            if role.endswith("_judge"):
-                position = role.replace("_judge", "")
-                if session_code in session_manager.sessions:
-                    session_manager.sessions[session_code]["judges"][position]["connected"] = False
+            current_ws = await connection_manager.get_connection(session_code, role)
+            if current_ws is websocket:
+                # This is still the active connection — clean up normally
+                await connection_manager.remove_connection(session_code, role)
+                logger.info("role_disconnected", extra={
+                    "conn_id": conn_id,
+                    "session_code": session_code,
+                    "role": "display" if role.startswith("display_") else role,
+                })
+                if role.endswith("_judge"):
+                    position = role.replace("_judge", "")
+                    if session_code in session_manager.sessions:
+                        session_manager.sessions[session_code]["judges"][position]["connected"] = False
+                        await connection_manager.broadcast_to_session(
+                            session_code,
+                            {"type": "judge_status_update", "position": position, "connected": False},
+                        )
+            else:
+                # Connection was replaced by a reconnect — ignore stale disconnect
+                logger.info("stale_disconnect_ignored", extra={
+                    "conn_id": conn_id,
+                    "session_code": session_code,
+                    "role": "display" if role.startswith("display_") else role,
+                })
