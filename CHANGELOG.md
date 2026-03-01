@@ -12,6 +12,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 - A judge who reloads the page after voting can no longer submit a second vote that overwrites their original decision
+- Judges who reload or navigate back after voting now see their vote correctly locked in on the judge screen
 - Judges can seamlessly rejoin their role after accidental disconnect (e.g. mobile back-swipe) without getting a "Role already taken" error or the session getting stuck
 - Session no longer gets stuck when a judge disconnects mid-round
 - Permission denied error when saving session snapshots to Railway volume on shutdown
