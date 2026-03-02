@@ -1,24 +1,28 @@
 # E2E Test Suite — Known Risks
 
-Three tests rely on timing or implicit server behavior that could cause intermittent failures (flakes) under load or on slow machines. None are blocking today, but this doc tracks them so they can be diagnosed quickly if they start failing.
+Three tests have latent timing/race risks that could surface as intermittent failures (flakes). They all pass reliably today. This doc exists so that **when a test starts failing after a code change**, you can quickly check whether it's a known risk with a ready-to-apply fix.
 
-## How to check for flakiness
+## When to consult this doc
 
-Install `pytest-repeat` and run a suspect test multiple times:
+- An E2E test fails intermittently (passes on retry or passes locally but fails elsewhere)
+- You just changed code in one of the trigger areas listed below
 
-```bash
-pip install pytest-repeat
-pytest tests/e2e/test_competition_flow.py::test_timer_flow --count=10 -v
-```
+## When to verify stability after a code change
 
-If any run fails out of 10, the test is flaky. To stress-test all three risky tests at once:
+If you changed code in a trigger area, run the affected test 10 times to confirm it's still stable:
 
 ```bash
-pytest --count=10 -v \
-  tests/e2e/test_competition_flow.py::test_timer_flow \
-  tests/e2e/test_role_protection.py::test_cannot_join_taken_role \
-  tests/e2e/test_connectivity_indicators.py::test_own_dot_orange_on_reconnecting
+pip install pytest-repeat  # one-time
+pytest tests/e2e/path/to/test.py::test_name --count=10 -v
 ```
+
+Any failure out of 10 = flaky. Apply the fix documented below.
+
+| Risk | Test | Code changes that warrant re-check |
+|------|------|------------------------------------|
+| Timer race | `test_timer_flow` | Timer logic, tick interval, `.judge-timer` rendering |
+| Role rejection race | `test_cannot_join_taken_role` | Role locking, WebSocket reconnect, `handleJoinError` |
+| Display orphan | `test_display_reconnects_after_refresh` | Display WS handling, connection cleanup, `display_XXXX` IDs |
 
 ---
 
