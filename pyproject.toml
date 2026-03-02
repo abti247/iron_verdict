@@ -23,6 +23,7 @@ Repository = "https://github.com/abti247/iron_verdict"
 dev = [
     "pytest==9.0.2",
     "pytest-asyncio==1.3.0",
+    "pytest-playwright>=0.6.2",
     "httpx==0.28.1",
     "httpx-ws==0.8.2",
 ]

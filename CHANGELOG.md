@@ -9,6 +9,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ### Added
 - Head judge screen shows live connectivity status (L/R) for the other two judges, displayed inline with the Head Judge Controls title
 - Head judge Next Lift button is always active; shows a confirmation prompt if results haven't been shown yet
+- Playwright E2E test suite (31 tests) covering competition flow, judge reconnection, double-vote prevention, role protection, connectivity indicators, stuck states, display resilience, and session end
 
 ### Fixed
 - A judge who reloads the page after voting can no longer submit a second vote that overwrites their original decision
