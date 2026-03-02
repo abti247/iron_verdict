@@ -93,6 +93,7 @@ class CompetitionHelper:
         page.locator(".role-wrap").wait_for(state="visible")
 
         self.session_code = page.locator(".session-tag .code").text_content()
+        assert self.session_code, "Failed to extract session code"
 
         page.locator(".role-btn", has_text="Center").click()
         page.locator(".judge-wrap").wait_for(state="visible")
