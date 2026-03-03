@@ -440,6 +440,8 @@ async def websocket_endpoint(websocket: WebSocket):
 
                 logger.info("timer_reset", extra={"conn_id": conn_id, "session_code": session_code})
                 session_manager.sessions[session_code]["timer_started_at"] = None
+                session_manager.sessions[session_code]["phase"] = "voting"
+                session_manager.sessions[session_code]["timer_frozen_ms"] = None
                 await connection_manager.broadcast_to_session(
                     session_code,
                     {"type": "timer_reset"}

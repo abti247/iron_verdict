@@ -244,6 +244,8 @@ class SessionManager:
                 for judge in s["judges"].values():
                     judge["connected"] = False
                     judge.setdefault("reconnect_token", None)
+                s.setdefault("phase", "voting")
+                s.setdefault("timer_frozen_ms", None)
                 self.sessions[code] = s
             logger.info("snapshot_loaded", extra={"session_count": len(self.sessions)})
         except Exception:

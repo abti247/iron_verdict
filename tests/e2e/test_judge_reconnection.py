@@ -63,7 +63,6 @@ def test_all_judges_reconnect_simultaneously(competition):
 def test_timer_frozen_after_all_votes_locked_and_rejoin(competition):
     """After all votes lock (timer running), a judge who leaves and rejoins sees
     the frozen timer, their locked vote, and the results — no countdown resumes."""
-    from playwright.sync_api import expect
     import time as _time
 
     head, left, right = competition.join_all_judges()
