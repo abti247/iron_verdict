@@ -67,6 +67,9 @@ export function handleError(app, message) {
 export function handleShowResults(app, message) {
     app.resultsShown = true;
     stopTimer();
+    if (message.timer_frozen_ms != null) {
+        app.timerDisplay = String(Math.ceil(message.timer_frozen_ms / 1000));
+    }
     app.judgeResultVotes = message.votes;
     app.judgeResultReasons = message.reasons || { left: null, center: null, right: null };
     if (app.role === 'display') {

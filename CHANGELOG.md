@@ -12,6 +12,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Playwright E2E test suite (31 tests) covering competition flow, judge reconnection, double-vote prevention, role protection, connectivity indicators, stuck states, display resilience, and session end
 
 ### Fixed
+- Timer no longer resets to 60 when a judge rejoins after all votes are locked — the frozen time at the moment of the last vote is preserved
 - A judge who reloads the page after voting can no longer submit a second vote that overwrites their original decision
 - Judges who reload or navigate back after voting now see their vote correctly locked in on the judge screen
 - Judges can seamlessly rejoin their role after accidental disconnect (e.g. mobile back-swipe) without getting a "Role already taken" error or the session getting stuck

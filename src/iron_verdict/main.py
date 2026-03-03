@@ -302,6 +302,29 @@ async def websocket_endpoint(websocket: WebSocket):
                     "session_state": session_state,
                     "reconnect_token": result.get("reconnect_token"),
                 })
+                # If session is in results phase, replay show_results to the rejoining client
+                rejoined_session = session_manager.sessions.get(session_code)
+                if rejoined_session and rejoined_session.get("phase") == "results":
+                    r_judges = rejoined_session["judges"]
+                    r_votes = {
+                        pos: j["current_vote"]
+                        for pos, j in r_judges.items()
+                        if j["locked"]
+                    }
+                    r_reasons = {
+                        pos: j["current_reason"]
+                        for pos, j in r_judges.items()
+                        if j["locked"]
+                    }
+                    r_settings = rejoined_session["settings"]
+                    await websocket.send_json({
+                        "type": "show_results",
+                        "votes": r_votes,
+                        "reasons": r_reasons,
+                        "showExplanations": r_settings["show_explanations"],
+                        "liftType": r_settings["lift_type"],
+                        "timer_frozen_ms": rejoined_session.get("timer_frozen_ms"),
+                    })
                 if role.endswith("_judge"):
                     position = role.replace("_judge", "")
                     await connection_manager.broadcast_to_others(
@@ -378,6 +401,7 @@ async def websocket_endpoint(websocket: WebSocket):
                                 "reasons": reasons,
                                 "showExplanations": session_settings["show_explanations"],
                                 "liftType": session_settings["lift_type"],
+                                "timer_frozen_ms": session_manager.sessions[session_code].get("timer_frozen_ms"),
                             }
                         )
             elif message_type == "timer_start":
@@ -416,6 +440,8 @@ async def websocket_endpoint(websocket: WebSocket):
 
                 logger.info("timer_reset", extra={"conn_id": conn_id, "session_code": session_code})
                 session_manager.sessions[session_code]["timer_started_at"] = None
+                session_manager.sessions[session_code]["phase"] = "voting"
+                session_manager.sessions[session_code]["timer_frozen_ms"] = None
                 await connection_manager.broadcast_to_session(
                     session_code,
                     {"type": "timer_reset"}

@@ -4,6 +4,7 @@ import logging
 import os
 import secrets
 import string
+import time
 from datetime import datetime, timedelta
 from typing import Dict, Any, List
 
@@ -59,6 +60,8 @@ class SessionManager:
                 "state": "waiting",
                 "timer_state": "idle",
                 "timer_started_at": None,
+                "phase": "voting",
+                "timer_frozen_ms": None,
                 "settings": {
                     "show_explanations": False,
                     "lift_type": "squat",
@@ -146,6 +149,11 @@ class SessionManager:
 
             if all_locked:
                 session["state"] = "showing_results"
+                session["phase"] = "results"
+                if session["timer_started_at"] is not None:
+                    elapsed_ms = (time.time() - session["timer_started_at"]) * 1000
+                    session["timer_frozen_ms"] = max(0, 60000 - elapsed_ms)
+                session["timer_started_at"] = None
 
             return {"success": True, "all_locked": all_locked}
 
@@ -164,6 +172,8 @@ class SessionManager:
 
             session["state"] = "waiting"
             session["timer_started_at"] = None
+            session["phase"] = "voting"
+            session["timer_frozen_ms"] = None
             session["last_activity"] = datetime.now()
 
             return {"success": True}
@@ -234,6 +244,8 @@ class SessionManager:
                 for judge in s["judges"].values():
                     judge["connected"] = False
                     judge.setdefault("reconnect_token", None)
+                s.setdefault("phase", "voting")
+                s.setdefault("timer_frozen_ms", None)
                 self.sessions[code] = s
             logger.info("snapshot_loaded", extra={"session_count": len(self.sessions)})
         except Exception:
