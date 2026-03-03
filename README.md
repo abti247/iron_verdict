@@ -5,8 +5,11 @@ A real-time powerlifting competition judging application.
 ## Features
 
 - **Real-time Judging:** 3 judges make independent decisions (White/Red/Blue/Yellow lights) and are able to pick a specified reason
+- **IPF-compliant:** Results are shown only after all three judges lock in, matching the simultaneous-lights rule; reasons follow the IPF Technical Rules (effective 01 March 2026, v3)
 - **Live Display:** Synchronized display screen shows all judge lights and reason to audience
 - **Timer System:** 60-second countdown controlled by head judge
+- **Judge Reconnect:** Judges can rejoin seamlessly after an accidental disconnect without losing their vote or getting a "Role taken" error
+- **Connectivity Indicators:** Head judge screen shows live L/R connection status for the other two judges
 - **Session-based:** Simple 8-character codes, no accounts needed
 - **Lightweight:** No database — sessions live in memory and expire after 4 hours of inactivity, with optional JSON snapshot persistence across restarts
 
@@ -119,8 +122,20 @@ The application will be available at http://localhost:8000
 
 ### Run Tests
 
+Run all tests (unit + E2E):
 ```bash
 pytest
+```
+
+Run only unit tests:
+```bash
+pytest tests/ --ignore=tests/e2e/
+```
+
+Run E2E tests (requires Playwright's Chromium browser):
+```bash
+playwright install chromium   # first time only
+pytest tests/e2e/
 ```
 
 ## Configuration
@@ -167,7 +182,17 @@ iron-verdict/
 │   ├── test_session.py
 │   ├── test_connection.py
 │   ├── test_main.py
-│   └── test_logging_config.py
+│   ├── test_logging_config.py
+│   └── e2e/
+│       ├── conftest.py          # Server fixture and CompetitionHelper
+│       ├── test_competition_flow.py
+│       ├── test_judge_reconnection.py
+│       ├── test_double_vote_prevention.py
+│       ├── test_role_protection.py
+│       ├── test_connectivity_indicators.py
+│       ├── test_session_stuck_states.py
+│       ├── test_display_resilience.py
+│       └── test_end_session.py
 ├── docs/
 │   └── plans/               # Design and implementation plans
 ├── pyproject.toml
