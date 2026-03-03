@@ -346,3 +346,76 @@ async def test_lock_vote_invalid_position_fails():
     result = await manager.lock_vote(code, "invalid", "white")
     assert result["success"] is False
     assert "invalid position" in result["error"].lower()
+
+
+async def test_lock_vote_sets_phase_results_when_all_locked():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    manager.join_session(code, "left_judge")
+    manager.join_session(code, "center_judge")
+    manager.join_session(code, "right_judge")
+
+    await manager.lock_vote(code, "left", "white")
+    await manager.lock_vote(code, "center", "white")
+    result = await manager.lock_vote(code, "right", "white")
+
+    assert result["all_locked"] is True
+    assert manager.sessions[code]["phase"] == "results"
+
+
+async def test_lock_vote_computes_timer_frozen_ms_when_timer_running():
+    import time
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    manager.join_session(code, "left_judge")
+    manager.join_session(code, "center_judge")
+    manager.join_session(code, "right_judge")
+    manager.sessions[code]["timer_started_at"] = time.time() - 10  # 10s elapsed
+
+    await manager.lock_vote(code, "left", "white")
+    await manager.lock_vote(code, "center", "white")
+    await manager.lock_vote(code, "right", "white")
+
+    frozen = manager.sessions[code]["timer_frozen_ms"]
+    assert frozen is not None
+    assert 49000 < frozen < 51000  # ~50s remaining
+    assert manager.sessions[code]["timer_started_at"] is None
+
+
+async def test_lock_vote_timer_frozen_ms_none_when_no_timer():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    manager.join_session(code, "left_judge")
+    manager.join_session(code, "center_judge")
+    manager.join_session(code, "right_judge")
+    # timer_started_at remains None
+
+    await manager.lock_vote(code, "left", "white")
+    await manager.lock_vote(code, "center", "white")
+    await manager.lock_vote(code, "right", "white")
+
+    assert manager.sessions[code]["timer_frozen_ms"] is None
+
+
+async def test_reset_for_next_lift_clears_phase_and_frozen_ms():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    manager.join_session(code, "left_judge")
+    manager.join_session(code, "center_judge")
+    manager.join_session(code, "right_judge")
+
+    await manager.lock_vote(code, "left", "white")
+    await manager.lock_vote(code, "center", "white")
+    await manager.lock_vote(code, "right", "white")
+
+    await manager.reset_for_next_lift(code)
+
+    assert manager.sessions[code]["phase"] == "voting"
+    assert manager.sessions[code]["timer_frozen_ms"] is None
+
+
+async def test_create_session_has_voting_phase():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    assert manager.sessions[code]["phase"] == "voting"
+    assert manager.sessions[code]["timer_frozen_ms"] is None
