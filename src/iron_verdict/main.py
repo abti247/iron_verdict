@@ -309,12 +309,12 @@ async def websocket_endpoint(websocket: WebSocket):
                     r_votes = {
                         pos: j["current_vote"]
                         for pos, j in r_judges.items()
-                        if j["connected"]
+                        if j["locked"]
                     }
                     r_reasons = {
                         pos: j["current_reason"]
                         for pos, j in r_judges.items()
-                        if j["connected"]
+                        if j["locked"]
                     }
                     r_settings = rejoined_session["settings"]
                     await websocket.send_json({
