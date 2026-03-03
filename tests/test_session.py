@@ -1,6 +1,7 @@
 import json
 import os
 import tempfile
+import time
 
 import pytest
 from iron_verdict.session import SessionManager
@@ -223,7 +224,6 @@ async def test_create_session_includes_timer_started_at():
 async def test_reset_for_next_lift_clears_timer_started_at():
     manager = SessionManager()
     code = await manager.create_session("Test")
-    import time
     manager.sessions[code]["timer_started_at"] = time.time()
     await manager.reset_for_next_lift(code)
     assert manager.sessions[code]["timer_started_at"] is None
@@ -364,7 +364,6 @@ async def test_lock_vote_sets_phase_results_when_all_locked():
 
 
 async def test_lock_vote_computes_timer_frozen_ms_when_timer_running():
-    import time
     manager = SessionManager()
     code = await manager.create_session("Test")
     manager.join_session(code, "left_judge")
