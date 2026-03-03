@@ -142,9 +142,9 @@ class SessionManager:
             judge["locked"] = True
             session["last_activity"] = datetime.now()
 
-            # Check if all judges locked
+            # All three panel positions must lock, regardless of connection state (IPF rule).
             all_locked = all(
-                j["locked"] for j in session["judges"].values() if j["connected"]
+                j["locked"] for j in session["judges"].values()
             )
 
             if all_locked:
