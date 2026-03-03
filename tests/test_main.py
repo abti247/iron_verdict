@@ -432,7 +432,7 @@ async def test_vote_lock_logs_info(caplog):
                 await ws.send_json({"type": "join", "session_code": code, "role": "left_judge"})
                 await ws.receive_json()
                 await ws.send_json({"type": "vote_lock", "color": "white"})
-                await ws.receive_json()
+                await asyncio.sleep(0.1)  # log is written during processing; no response expected with <3 judges locked
 
     records = [r for r in caplog.records if r.getMessage() == "vote_locked"]
     assert len(records) == 1
@@ -650,7 +650,7 @@ async def test_vote_lock_reason_stored_in_session():
             await ws.send_json({"type": "join", "session_code": session_code, "role": "left_judge"})
             await ws.receive_json()  # join_success
             await ws.send_json({"type": "vote_lock", "color": "yellow", "reason": "Buttocks up"})
-            await ws.receive_json()  # judge_voted or similar
+            await asyncio.sleep(0.1)  # no response expected with <3 judges locked
 
     assert session_manager.sessions[session_code]["judges"]["left"]["current_reason"] == "Buttocks up"
 
@@ -690,7 +690,7 @@ async def test_vote_lock_white_no_reason_ok_when_mandatory():
             await ws.send_json({"type": "join", "session_code": session_code, "role": "left_judge"})
             await ws.receive_json()  # join_success
             await ws.send_json({"type": "vote_lock", "color": "white"})  # no reason, white is fine
-            # Drain show_results broadcast (left is the only connected judge, so all_locked fires)
+            # No response expected (all_locked requires all 3 judges); tolerate timeout
             try:
                 await asyncio.wait_for(ws.receive_json(), timeout=1.0)
             except asyncio.TimeoutError:
