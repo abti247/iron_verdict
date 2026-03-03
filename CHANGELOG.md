@@ -11,8 +11,11 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Head judge Next Lift button is always active; shows a confirmation prompt if results haven't been shown yet
 - Playwright E2E test suite (31 tests) covering competition flow, judge reconnection, double-vote prevention, role protection, connectivity indicators, stuck states, display resilience, and session end
 
-### Fixed
+### Changed
+- Updated reasons based on IPF technical rule book (effective date 01 March 2026 - version 3)
 - Results are no longer displayed until all three judges have locked in a vote, matching IPF simultaneous-lights rule
+
+### Fixed
 - Timer no longer resets to 60 when a judge rejoins after all votes are locked — the frozen time at the moment of the last vote is preserved
 - A judge who reloads the page after voting can no longer submit a second vote that overwrites their original decision
 - Judges who reload or navigate back after voting now see their vote correctly locked in on the judge screen

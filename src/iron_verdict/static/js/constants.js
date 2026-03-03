@@ -24,7 +24,8 @@ export const CARD_REASONS = {
         ],
         blue: [
             "Downward movement",
-            "Arms not locked"
+            "Arms not locked at completion",
+            "Arms not locked before start"
         ],
         yellow: [
             "Incomplete lift",
@@ -32,9 +33,10 @@ export const CARD_REASONS = {
             "Buttocks up",
             "Head up",
             "Feet up",
+            "Sinking after motionless",
             "Spotter contact",
             "Shoulder / Hand movement",
-            "Heaving / Body thrust",
+            "Upper Body thrust",
             "Feet touched bench or supports",
             "Deliberate bar contact with rack supports",
             "Technical Non-compliance"
@@ -43,7 +45,8 @@ export const CARD_REASONS = {
     deadlift: {
         red: [
             "Soft knees",
-            "Shoulders not back"
+            "Shoulders not back",
+            "Failure to stand erect"
         ],
         blue: [
             "Hitching",
@@ -54,7 +57,6 @@ export const CARD_REASONS = {
             "Dropped bar",
             "Skipped signal",
             "Foot movement",
-            "Spotter contact",
             "Technical Non-compliance"
         ]
     }
