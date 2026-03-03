@@ -418,3 +418,26 @@ async def test_create_session_has_voting_phase():
     code = await manager.create_session("Test")
     assert manager.sessions[code]["phase"] == "voting"
     assert manager.sessions[code]["timer_frozen_ms"] is None
+
+
+async def test_disconnected_judge_without_vote_blocks_results():
+    """Results must not show if a judge disconnected before voting (IPF rule).
+
+    The positive case — all 3 judges lock → results show — is covered by
+    test_all_votes_locked_triggers_results.
+    """
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    manager.join_session(code, "left_judge")
+    manager.join_session(code, "center_judge")
+    manager.join_session(code, "right_judge")
+
+    # Simulate right judge disconnecting without voting
+    manager.sessions[code]["judges"]["right"]["connected"] = False
+
+    first = await manager.lock_vote(code, "left", "white")
+    assert first["success"] is True
+    result = await manager.lock_vote(code, "center", "white")
+
+    assert result["all_locked"] is False
+    assert manager.sessions[code]["state"] != "showing_results"
