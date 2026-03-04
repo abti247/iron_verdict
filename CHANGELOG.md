@@ -7,6 +7,16 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+### Removed
+
+## [0.1.2-beta] - 2026-03-04
+
+### Added
 - Information for demo to be run on desktop
 - Head judge screen shows live connectivity status (L/R) for the other two judges, displayed inline with the Head Judge Controls title
 - Head judge Next Lift button is always active; shows a confirmation prompt if results haven't been shown yet
@@ -25,7 +35,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Permission denied error when saving session snapshots to Railway volume on shutdown
 - Submitting a vote with an unrecognised judge position now returns a clear error instead of crashing
 
-### Removed
+[0.1.1-beta]: https://github.com/abti247/iron_verdict/compare/v0.1.1-beta...v0.1.2-beta
 
 ## [0.1.1-beta] - 2026-02-26
 
