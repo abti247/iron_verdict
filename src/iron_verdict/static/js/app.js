@@ -91,7 +91,17 @@ export function ironVerdictApp() {
             this.role = role;
             const code = this.sessionCode || this.joinCode;
             this.sessionCode = code;
-            sessionStorage.setItem('iv_session', JSON.stringify({ code, role }));
+            const sessionEntry = { code, role };
+            const existingSession = sessionStorage.getItem('iv_session');
+            if (existingSession) {
+                try {
+                    const parsed = JSON.parse(existingSession);
+                    if (parsed.code === code && parsed.role === role && parsed.reconnect_token) {
+                        sessionEntry.reconnect_token = parsed.reconnect_token;
+                    }
+                } catch (_e) {}
+            }
+            sessionStorage.setItem('iv_session', JSON.stringify(sessionEntry));
             this.connectionStatus = 'reconnecting';
 
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';

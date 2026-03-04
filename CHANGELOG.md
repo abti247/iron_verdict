@@ -34,6 +34,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Session no longer gets stuck when a judge disconnects mid-round
 - Permission denied error when saving session snapshots to Railway volume on shutdown
 - Submitting a vote with an unrecognised judge position now returns a clear error instead of crashing
+- Attempting to join a role already occupied by another judge again shows a "Role already taken" error instead of silently doing nothing
 
 [0.1.1-beta]: https://github.com/abti247/iron_verdict/compare/v0.1.1-beta...v0.1.2-beta
 

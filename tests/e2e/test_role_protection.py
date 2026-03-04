@@ -5,7 +5,7 @@ from playwright.sync_api import expect
 
 
 def test_cannot_join_taken_role(competition):
-    """Second user clicking a taken role stays on role-select (silent handling)."""
+    """Second user clicking a taken role sees an error and cannot reach the judge screen."""
     head, left, right = competition.join_all_judges()
 
     # A fourth user tries to join as left_judge (already taken)
@@ -21,7 +21,7 @@ def test_cannot_join_taken_role(competition):
 
     page.locator(".role-btn", has_text="Left").click()
 
-    # Should NOT reach judge screen (role is taken, error silently handled)
+    # Should NOT reach judge screen (role is taken, error alert shown and accepted)
     page.wait_for_timeout(2000)
     expect(page.locator(".judge-wrap")).not_to_be_visible()
 

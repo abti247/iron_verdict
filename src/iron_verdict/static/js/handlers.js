@@ -50,8 +50,15 @@ export function handleJoinSuccess(app, message) {
 
 export function handleJoinError(app, message) {
     if (message.message === 'Role already taken') {
-        // Transient race condition — server closes socket, auto-reconnect retries
-        return;
+        // Only suppress if we have a stored reconnect token — this is a transient race
+        // during reconnection (the server will accept the retry with the matching token).
+        // A new user with no token must see the error.
+        let hasReconnectToken = false;
+        const stored = sessionStorage.getItem('iv_session');
+        if (stored) {
+            try { hasReconnectToken = !!JSON.parse(stored).reconnect_token; } catch (_e) {}
+        }
+        if (hasReconnectToken) return;
     }
     app.ws.close();
     sessionStorage.removeItem('iv_session');
