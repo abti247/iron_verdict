@@ -16,7 +16,6 @@ The goal of the app is to provide an easy access to a tool for powerlifting judg
 ## Implementation
 - Use worktrees to implement new features or fixes
 - Create worktrees in the project folder under .worktrees
-- If you created a plan (general or implementation plan) for the feature/fix add this to the /docs directory on the worktree so it can later be merged with the PR.
 
 ## Changelog
 - After completing a feature or fix, add one to three lines to the `[Unreleased]` section of `CHANGELOG.md` under the appropriate subsection (`Added`, `Fixed`, `Changed`, or `Removed`).
