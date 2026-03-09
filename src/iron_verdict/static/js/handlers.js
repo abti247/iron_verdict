@@ -38,8 +38,16 @@ export function handleJoinSuccess(app, message) {
         }
     }
 
+    // Server state is always authoritative — restoring from localStorage could bleed
+    // settings from a previous session (e.g. deadlift cached into a new squat session).
+    const settings = message.session_state?.settings;
+    if (settings) {
+        if (settings.lift_type !== undefined) app.liftType = settings.lift_type;
+        if (settings.show_explanations !== undefined) app.showExplanations = settings.show_explanations;
+        if (settings.require_reasons !== undefined) app.requireReasons = settings.require_reasons;
+    }
     if (app.isHead) {
-        app.requireReasons = message.session_state?.settings?.require_reasons ?? false;
+        // Broadcast the server-restored settings to all currently connected clients.
         app.saveSettings();
     }
     const trms = message.session_state?.time_remaining_ms;

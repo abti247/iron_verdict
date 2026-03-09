@@ -11,6 +11,8 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ### Changed
 
 ### Fixed
+- Judges now see the correct lift type and reasons immediately on join or reconnect, even if the head judge changed the lift while they were disconnected
+- Starting a new session no longer inherits the lift type from a previous session — new sessions always start with Squat
 
 ### Removed
 

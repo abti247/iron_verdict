@@ -190,9 +190,6 @@ export function ironVerdictApp() {
 
         saveSettings() {
             if (!this.isHead) return;
-            localStorage.setItem('showExplanations', this.showExplanations);
-            localStorage.setItem('liftType', this.liftType);
-            localStorage.setItem('requireReasons', this.requireReasons);
             if (this.ws && this.ws.readyState === WebSocket.OPEN) {
                 this.wsSend({
                     type: 'settings_update',
@@ -324,9 +321,6 @@ export function ironVerdictApp() {
         },
 
         init() {
-            this.showExplanations = localStorage.getItem('showExplanations') === 'true';
-            this.liftType = localStorage.getItem('liftType') || 'squat';
-            this.requireReasons = localStorage.getItem('requireReasons') === 'true';
 
             this.$watch('screen', (value) => {
                 if (value === 'role-select' && this.sessionCode) {
