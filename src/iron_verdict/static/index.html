@@ -31,63 +31,54 @@
         <div class="landing-panel cut-corner landing-panel--demo">
 
             <div class="brand-iron chrome-text">Iron Verdict</div>
-            <div class="brand-verdict-sub">Demo Guide</div>
+            <div class="brand-verdict-sub" x-text="t('demo.guideTitle')"></div>
 
-            <p class="demo-guide-text">
-                Iron Verdict allows judges to pick the reason for an invalid lift,
-                shared instantly with athletes, audience, jury, and fellow judges.
-                Available reasons are based on the IPF technical rulebook (effective date 01 March 2026 - version 3).
-            </p>
+            <p class="demo-guide-text" x-text="t('demo.intro')"></p>
 
-            <div class="demo-guide-heading">Why Iron Verdict?</div>
+            <div class="demo-guide-heading" x-text="t('demo.whyTitle')"></div>
             <ul class="demo-guide-list">
-                <li><span class="text-em">Athletes</span> — Know your mistake immediately, no time wasted.</li>
-                <li><span class="text-em">Audience</span> — No more guessing why a lift was ruled invalid.</li>
-                <li><span class="text-em">Judges</span> — Understand your colleagues' calls and know what to focus on next attempt.</li>
-                <li><span class="text-em">Jury</span> — Know exactly which part of the lift to review before overruling.</li>
+                <li><span class="text-em">Athletes</span> — <span x-text="t('demo.athletes')"></span></li>
+                <li><span class="text-em">Audience</span> — <span x-text="t('demo.audience')"></span></li>
+                <li><span class="text-em">Judges</span> — <span x-text="t('demo.judges')"></span></li>
+                <li><span class="text-em">Jury</span> — <span x-text="t('demo.jury')"></span></li>
             </ul>
 
-            <div class="demo-guide-heading">Setup</div>
+            <div class="demo-guide-heading" x-text="t('demo.setupTitle')"></div>
             <ol class="demo-guide-list">
-                <li>Enter a session name → click <span class="text-em">Create New Session</span></li>
-                <li>Send the session code to other judges</li>
-                <li>Use the session code to set up a <span class="text-em">Display Screen</span></li>
+                <li x-text="t('demo.setupStep1')"></li>
+                <li x-text="t('demo.setupStep2')"></li>
+                <li x-text="t('demo.setupStep3')"></li>
             </ol>
 
-            <div class="demo-guide-heading">Head Judge Controls</div>
+            <div class="demo-guide-heading" x-text="t('demo.headControlsTitle')"></div>
             <ul class="demo-guide-list">
-                <li><span class="text-em">Show reasons on display</span> — ruling reasons appear on the display screen</li>
-                <li><span class="text-em">Require reasons</span> — judges must choose a reason before locking in (optional by default)</li>
-                <li><span class="text-em">Lift category dropdown</span> — changes the reason catalogue (Squat / Bench / Deadlift)</li>
+                <li x-text="t('demo.showReasonsDesc')"></li>
+                <li x-text="t('demo.requireReasonsDesc')"></li>
+                <li x-text="t('demo.liftCategoryDesc')"></li>
             </ul>
 
-            <div class="demo-guide-heading">During Competition</div>
+            <div class="demo-guide-heading" x-text="t('demo.duringTitle')"></div>
             <ol class="demo-guide-list">
-                <li>Head judge announces "The bar is loaded" and presses <span class="text-em">Start Timer</span></li>
-                <li>After the lift, judges press their color, optionally pick a reason, then press <span class="text-em">Lock In</span></li>
-                <li>When all 3 judges lock in, the result appears on the <span class="text-em">Display Screen</span></li>
-                <li>Head judge presses <span class="text-em">Next Lift</span> to reset for the next lifter</li>
-                <li>If needed, head judge presses <span class="text-em">Reset Timer</span></li>
-                <li>After the event: <span class="text-em">End Session</span> → confirm with <span class="text-em">OK</span></li>
+                <li x-text="t('demo.duringStep1')"></li>
+                <li x-text="t('demo.duringStep2')"></li>
+                <li x-text="t('demo.duringStep3')"></li>
+                <li x-text="t('demo.duringStep4')"></li>
+                <li x-text="t('demo.duringStep5')"></li>
+                <li x-text="t('demo.duringStep6')"></li>
             </ol>
 
-            <div x-show="!demoRunning" class="demo-popup-note">
-                This demo is designed for desktop — it opens 4 pop-up windows to simulate 3 judges and a display running in parallel. Please allow pop-ups if prompted.
-            </div>
+            <div x-show="!demoRunning" class="demo-popup-note" x-text="t('demo.popupNote')"></div>
 
             <div x-show="!demoRunning" class="demo-launch-wrap">
-                <button class="btn-blood btn-blood-primary cut-corner-sm" @click="launchDemo()">
-                    Launch Demo
+                <button class="btn-blood btn-blood-primary cut-corner-sm" @click="launchDemo()" x-text="t('demo.launchDemo')">
                 </button>
             </div>
 
-            <div x-show="demoRunning" class="demo-running-msg">
-                Demo running — interact with the 4 open windows
-            </div>
+            <div x-show="demoRunning" class="demo-running-msg" x-text="t('demo.demoRunning')"></div>
 
             <div class="btn-row">
                 <button class="btn-blood btn-blood-ghost" @click="returnToLandingFromDemo()">
-                    &larr; Back to Start
+                    &larr; <span x-text="t('demo.backToStart')"></span>
                 </button>
             </div>
 
@@ -98,40 +89,51 @@
     <div class="landing-wrap" x-show="screen === 'landing'">
         <div class="landing-panel cut-corner">
             <div class="brand-iron chrome-text">Iron Verdict</div>
-            <div class="brand-verdict-sub">Powerlifting Judging</div>
+            <div class="brand-verdict-sub" x-text="t('landing.subtitle')"></div>
 
             <div class="form-stack">
-                <input class="chrome-input" placeholder="Session name (e.g. Platform A)"
+                <input class="chrome-input" :placeholder="t('landing.placeholder.sessionName')"
                        x-model="newSessionName" @keyup.enter="createSession()">
                 <button class="btn-blood btn-blood-primary cut-corner-sm"
-                        @click="createSession()" :disabled="!newSessionName.trim()">
-                    Create New Session
+                        @click="createSession()" :disabled="!newSessionName.trim()"
+                        x-text="t('landing.createSession')">
                 </button>
 
-                <div class="slash-divider">or</div>
+                <div class="slash-divider" x-text="t('landing.or')"></div>
 
-                <input class="chrome-input" placeholder="Enter 8-character session code"
+                <input class="chrome-input" :placeholder="t('landing.placeholder.sessionCode')"
                        x-model="joinCode" @keyup.enter="joinExistingSession()">
                 <button class="btn-blood btn-blood-secondary cut-corner-sm"
-                        @click="joinExistingSession()" :disabled="!joinCode.trim()">
-                    Join Session
+                        @click="joinExistingSession()" :disabled="!joinCode.trim()"
+                        x-text="t('landing.joinSession')">
                 </button>
             </div>
 
             <div class="btn-row">
-                <button class="btn-blood btn-blood-ghost" @click="startDemo()">
-                    Start Demo
+                <button class="btn-blood btn-blood-ghost" @click="startDemo()" x-text="t('landing.startDemo')">
                 </button>
             </div>
 
             <div class="btn-row--sm">
-                <button class="btn-blood btn-blood-ghost" @click="goToContact()">
-                    Contact
+                <button class="btn-blood btn-blood-ghost" @click="goToContact()" x-text="t('landing.contact')">
                 </button>
             </div>
 
             <div class="app-version">
                 __APP_VERSION__
+            </div>
+
+            <div class="lang-footer">
+                <span class="lang-globe">&#127760;</span>
+                <template x-for="(lang, idx) in ['en', 'de']" :key="lang">
+                    <span>
+                        <span x-show="idx > 0" class="lang-sep">|</span>
+                        <span class="lang-option"
+                              :class="{ 'lang-active': getLanguage() === lang }"
+                              @click="setLanguage(lang)"
+                              x-text="t('language.' + lang)"></span>
+                    </span>
+                </template>
             </div>
         </div>
     </div>
@@ -139,7 +141,7 @@
     <!-- Contact Screen -->
     <div class="landing-wrap" x-show="screen === 'contact'">
         <div class="landing-panel cut-corner">
-            <div class="brand-iron chrome-text">Contact</div>
+            <div class="brand-iron chrome-text" x-text="t('contact.title')"></div>
             <div class="brand-verdict-sub">Iron Verdict</div>
 
             <form class="form-stack" @submit.prevent="submitContact()" action="https://api.web3forms.com/submit" method="POST">
@@ -148,36 +150,34 @@
 
                 <div x-show="contactStatus !== 'success'">
                     <div class="form-stack form-stack--no-top">
-                        <input class="chrome-input" type="text" name="name" placeholder="Name"
+                        <input class="chrome-input" type="text" name="name" :placeholder="t('contact.name')"
                                x-model="contactName" required>
-                        <input class="chrome-input" type="email" name="email" placeholder="Email (optional)"
+                        <input class="chrome-input" type="email" name="email" :placeholder="t('contact.email')"
                                x-model="contactEmail">
-                        <textarea class="chrome-textarea" name="message" placeholder="Message or bug description"
+                        <textarea class="chrome-textarea" name="message" :placeholder="t('contact.message')"
                                   x-model="contactMessage" required></textarea>
 
                         <button class="btn-blood btn-blood-primary cut-corner-sm"
                                 type="submit"
                                 :disabled="contactStatus === 'loading' || !contactName.trim() || !contactMessage.trim()"
-                                x-text="contactStatus === 'loading' ? 'Sending...' : 'Send Message'">
+                                x-text="contactStatus === 'loading' ? t('contact.sending') : t('contact.send')">
                         </button>
 
-                        <div x-show="contactStatus === 'error'" class="contact-error">
-                            Something went wrong. Please try again.
+                        <div x-show="contactStatus === 'error'" class="contact-error" x-text="t('contact.error')">
                         </div>
                     </div>
                 </div>
 
                 <div x-show="contactStatus === 'success'" class="contact-success">
-                    Message Sent
-                    <div class="contact-success-sub">
-                        We'll get back to you if you left an email.
+                    <span x-text="t('contact.sent')"></span>
+                    <div class="contact-success-sub" x-text="t('contact.sentSub')">
                     </div>
                 </div>
             </form>
 
             <div class="btn-row">
                 <button class="btn-blood btn-blood-ghost" @click="screen = 'landing'">
-                    &larr; Back
+                    &larr; <span x-text="t('contact.back')"></span>
                 </button>
             </div>
         </div>
@@ -186,32 +186,39 @@
     <!-- Role Selection Screen -->
     <div class="role-wrap" x-show="screen === 'role-select'">
         <div class="role-panel cut-corner">
-            <div class="role-heading chrome-text">Select Role</div>
+            <div class="role-heading chrome-text" x-text="t('roles.heading')"></div>
             <div class="session-tag">
-                Session: <span class="code" x-text="sessionCode"></span>
+                <span x-text="t('roles.session')"></span> <span class="code" x-text="sessionCode"></span>
             </div>
 
             <div class="role-qr-wrap">
                 <div id="qrcode"></div>
             </div>
 
+            <div class="lang-toggle">
+                <template x-for="lang in ['en', 'de']" :key="lang">
+                    <button class="lang-toggle-btn"
+                            :class="{ active: getLanguage() === lang }"
+                            @click="setLanguage(lang)"
+                            x-text="lang.toUpperCase()"></button>
+                </template>
+            </div>
+
             <div class="role-grid">
                 <button class="role-btn cut-corner-sm" @click="joinSession('left_judge')">
-                    Left<br>Judge
+                    <span x-text="t('roles.left')"></span><br><span x-text="t('roles.judge')"></span>
                 </button>
-                <button class="role-btn cut-corner-sm" @click="joinSession('center_judge')">
-                    Center<br>Judge<span class="sub">(Head)</span>
+                <button class="role-btn cut-corner-sm" @click="joinSession('center_judge')" x-text="t('roles.chiefReferee')" style="white-space: pre-line">
                 </button>
                 <button class="role-btn cut-corner-sm" @click="joinSession('right_judge')">
-                    Right<br>Judge
+                    <span x-text="t('roles.right')"></span><br><span x-text="t('roles.judge')"></span>
                 </button>
-                <button class="role-btn role-display-btn cut-corner-sm" @click="joinSession('display')">
-                    Display Screen
+                <button class="role-btn role-display-btn cut-corner-sm" @click="joinSession('display')" x-text="t('roles.display')">
                 </button>
             </div>
             <div class="btn-row">
                 <button class="btn-blood btn-blood-ghost" @click="returnToLanding()">
-                    &larr; Back to Start
+                    &larr; <span x-text="t('roles.backToStart')"></span>
                 </button>
             </div>
         </div>
@@ -224,7 +231,7 @@
             <div class="judge-timer" :class="timerExpired && 'expired'" x-text="timerDisplay"></div>
             <div class="judge-code">
                 <span class="conn-dot" :class="connectionStatus"></span>
-                <span class="conn-label" x-show="serverRestarting">Server restarting</span>
+                <span class="conn-label" x-show="serverRestarting" x-text="t('connection.serverRestarting')"></span>
                 <span class="code-link" @click="returnToRoleSelection()" x-text="sessionCode"></span>
             </div>
         </div>
@@ -232,37 +239,37 @@
         <div class="vote-grid" x-show="!showingReasonStep" :style="voteLocked ? 'opacity:0.35;pointer-events:none' : ''">
             <button class="vote-btn vote-white cut-corner-sm"
                     :class="selectedVote === 'white' && 'selected'"
-                    @click="selectVote('white')" :disabled="voteLocked">
-                WHITE
+                    @click="selectVote('white')" :disabled="voteLocked"
+                    x-text="t('judge.colors.white')">
             </button>
             <button class="vote-btn vote-red cut-corner-sm"
                     :class="selectedVote === 'red' && 'selected'"
-                    @click="selectVote('red')" :disabled="voteLocked">
-                RED
+                    @click="selectVote('red')" :disabled="voteLocked"
+                    x-text="t('judge.colors.red')">
             </button>
             <button class="vote-btn vote-blue cut-corner-sm"
                     :class="selectedVote === 'blue' && 'selected'"
-                    @click="selectVote('blue')" :disabled="voteLocked">
-                BLUE
+                    @click="selectVote('blue')" :disabled="voteLocked"
+                    x-text="t('judge.colors.blue')">
             </button>
             <button class="vote-btn vote-yellow cut-corner-sm"
                     :class="selectedVote === 'yellow' && 'selected'"
-                    @click="selectVote('yellow')" :disabled="voteLocked">
-                YELLOW
+                    @click="selectVote('yellow')" :disabled="voteLocked"
+                    x-text="t('judge.colors.yellow')">
             </button>
         </div>
 
         <div class="reason-step" x-show="showingReasonStep && !voteLocked">
             <div class="reason-step-header">
-                <button class="back-btn" @click="goBackToColorStep()">&#8592; back</button>
-                <span class="reason-step-color" :class="selectedVote" x-text="selectedVote?.toUpperCase()"></span>
+                <button class="back-btn" @click="goBackToColorStep()">&#8592; <span x-text="t('judge.back')"></span></button>
+                <span class="reason-step-color" :class="selectedVote" x-text="selectedVote ? t('judge.colors.' + selectedVote) : ''"></span>
             </div>
             <div class="reason-list">
-                <template x-for="reason in getJudgeReasons()" :key="reason">
+                <template x-for="reason in getJudgeReasons()" :key="reason.id">
                     <div class="reason-item"
-                         :class="{ selected: selectedReason === reason }"
-                         @click="selectReason(reason)"
-                         x-text="reason">
+                         :class="{ selected: selectedReason === reason.id }"
+                         @click="selectReason(reason.id)"
+                         x-text="reason.label">
                     </div>
                 </template>
             </div>
@@ -270,52 +277,52 @@
 
         <button class="lock-btn cut-corner-sm"
                 x-show="canLockIn() && !voteLocked"
-                @click="lockVote()">
-            LOCK IN
+                @click="lockVote()"
+                x-text="t('judge.lockIn')">
         </button>
 
         <div class="locked-status" x-show="voteLocked">
-            &#10003; Vote Locked &#8212; <span x-text="selectedVote?.toUpperCase()"></span>
+            &#10003; <span x-text="t('judge.voteLocked')"></span> &#8212; <span x-text="selectedVote ? t('judge.colors.' + selectedVote) : ''"></span>
         </div>
 
         <div class="head-section" x-show="isHead">
             <div class="head-title-row">
-                <div class="head-title">Head Judge Controls</div>
+                <div class="head-title" x-text="t('judge.headControls')"></div>
                 <div class="judge-connectivity-bar">
-                    <span class="connectivity-dot" :class="judgeConnected.left ? 'status-connected' : 'status-disconnected'">L</span>
-                    <span class="connectivity-dot" :class="judgeConnected.right ? 'status-connected' : 'status-disconnected'">R</span>
+                    <span class="connectivity-dot" :class="judgeConnected.left ? 'status-connected' : 'status-disconnected'" x-text="t('judge.connectivity.L')"></span>
+                    <span class="connectivity-dot" :class="judgeConnected.right ? 'status-connected' : 'status-disconnected'" x-text="t('judge.connectivity.R')"></span>
                 </div>
             </div>
             <div class="head-grid">
                 <button class="btn-blood btn-blood-primary cut-corner-sm"
-                        @click="startTimer()">Start Timer</button>
+                        @click="startTimer()" x-text="t('judge.startTimer')"></button>
                 <button class="btn-blood btn-blood-secondary cut-corner-sm"
-                        @click="resetTimer()">Reset Timer</button>
+                        @click="resetTimer()" x-text="t('judge.resetTimer')"></button>
                 <button class="btn-blood btn-blood-primary cut-corner-sm"
-                        @click="nextLiftGuarded()">Next Lift</button>
+                        @click="nextLiftGuarded()" x-text="t('judge.nextLift')"></button>
                 <button class="btn-blood btn-blood-ghost"
-                        @click="confirmEndSession()">End Session</button>
+                        @click="confirmEndSession()" x-text="t('judge.endSession')"></button>
             </div>
             <div class="settings-bar">
                 <label>
                     <input type="checkbox" x-model="showExplanations" @change="saveSettings()">
-                    Show reasons on display
+                    <span x-text="t('judge.settings.showReasons')"></span>
                 </label>
                 <label>
                     <input type="checkbox" x-model="requireReasons" @change="saveSettings()">
-                    Require reasons
+                    <span x-text="t('judge.settings.requireReasons')"></span>
                 </label>
                 <select x-model="liftType" @change="saveSettings()">
-                    <option value="squat">Squat</option>
-                    <option value="bench">Bench Press</option>
-                    <option value="deadlift">Deadlift</option>
+                    <option value="squat" x-text="t('liftTypes.squat')"></option>
+                    <option value="bench" x-text="t('liftTypes.bench')"></option>
+                    <option value="deadlift" x-text="t('liftTypes.deadlift')"></option>
                 </select>
             </div>
         </div>
 
         <!-- Judge Results Panel -->
         <div class="head-section" x-show="resultsShown">
-            <div class="head-title">Results</div>
+            <div class="head-title" x-text="t('judge.results')"></div>
             <div class="judge-results-orbs">
                 <div class="judge-result-orb-wrap">
                     <div class="display-orb display-orb--sm" :class="judgeResultVotes.left"></div>
@@ -343,7 +350,7 @@
     <div class="display-full" x-show="screen === 'display'">
         <div class="display-tag">
             <span class="conn-dot" :class="connectionStatus"></span>
-            <span class="conn-label" x-show="serverRestarting">Server restarting</span>
+            <span class="conn-label" x-show="serverRestarting" x-text="t('connection.serverRestarting')"></span>
             <span x-show="!isDemo" x-text="sessionName"></span>
             <span x-show="isDemo">DEMO</span>
         </div>
@@ -376,10 +383,10 @@
         <div class="display-verdict-inline" :style="displayPhase !== 'votes' ? 'visibility:hidden' : ''">
             <div class="verdict-stamp"
                  :class="isValidLift() ? 'valid' : 'invalid'"
-                 x-text="isValidLift() ? 'Good Lift' : 'No Lift'"></div>
+                 x-text="isValidLift() ? t('verdict.goodLift') : t('verdict.noLift')"></div>
         </div>
 
-        <div class="display-status" x-text="displayStatus"></div>
+        <div class="display-status" x-text="displayStatus || (displayPhase === 'idle' ? t('display.waiting') : '')"></div>
     </div>
 
 </body>

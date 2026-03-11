@@ -1,69 +1,63 @@
 export const CARD_REASONS = {
     squat: {
         red: [
-            "Depth"
+            "reasons.squat.red.depth"
         ],
         blue: [
-            "Soft knees",
-            "Downward movement"
+            "reasons.squat.blue.softKnees",
+            "reasons.squat.blue.downwardMovement"
         ],
         yellow: [
-            "Incomplete lift",
-            "Skipped signal",
-            "Foot movement",
-            "Dropped bar",
-            "Supporting contact on legs",
-            "Spotter contact",
-            "Technical Non-compliance"
+            "reasons.squat.yellow.incompleteLift",
+            "reasons.squat.yellow.skippedSignal",
+            "reasons.squat.yellow.footMovement",
+            "reasons.squat.yellow.droppedBar",
+            "reasons.squat.yellow.supportingContactOnLegs",
+            "reasons.squat.yellow.spotterContact",
+            "reasons.squat.yellow.technicalNonCompliance"
         ]
     },
     bench: {
         red: [
-            "Elbow depth",
-            "No chest contact"
+            "reasons.bench.red.elbowDepth",
+            "reasons.bench.red.noChestContact"
         ],
         blue: [
-            "Downward movement",
-            "Arms not locked at completion",
-            "Arms not locked before start"
+            "reasons.bench.blue.downwardMovement",
+            "reasons.bench.blue.armsNotLockedAtCompletion",
+            "reasons.bench.blue.armsNotLockedBeforeStart"
         ],
         yellow: [
-            "Incomplete lift",
-            "Skipped signal",
-            "Buttocks up",
-            "Head up",
-            "Feet up",
-            "Sinking after motionless",
-            "Spotter contact",
-            "Shoulder / Hand movement",
-            "Upper Body thrust",
-            "Feet touched bench or supports",
-            "Deliberate bar contact with rack supports",
-            "Technical Non-compliance"
+            "reasons.bench.yellow.incompleteLift",
+            "reasons.bench.yellow.skippedSignal",
+            "reasons.bench.yellow.buttocksUp",
+            "reasons.bench.yellow.headUp",
+            "reasons.bench.yellow.feetUp",
+            "reasons.bench.yellow.sinkingAfterMotionless",
+            "reasons.bench.yellow.spotterContact",
+            "reasons.bench.yellow.shoulderHandMovement",
+            "reasons.bench.yellow.upperBodyThrust",
+            "reasons.bench.yellow.feetTouchedBenchOrSupports",
+            "reasons.bench.yellow.deliberateBarContactWithRackSupports",
+            "reasons.bench.yellow.technicalNonCompliance"
         ]
     },
     deadlift: {
         red: [
-            "Soft knees",
-            "Shoulders not back",
-            "Failure to stand erect"
+            "reasons.deadlift.red.softKnees",
+            "reasons.deadlift.red.shouldersNotBack",
+            "reasons.deadlift.red.failureToStandErect"
         ],
         blue: [
-            "Hitching",
-            "Downward movement"
+            "reasons.deadlift.blue.hitching",
+            "reasons.deadlift.blue.downwardMovement"
         ],
         yellow: [
-            "Incomplete lift",
-            "Dropped bar",
-            "Skipped signal",
-            "Foot movement",
-            "Technical Non-compliance"
+            "reasons.deadlift.yellow.incompleteLift",
+            "reasons.deadlift.yellow.droppedBar",
+            "reasons.deadlift.yellow.skippedSignal",
+            "reasons.deadlift.yellow.footMovement",
+            "reasons.deadlift.yellow.technicalNonCompliance"
         ]
     }
-};
-
-export const ROLE_DISPLAY_NAMES = {
-    'left_judge': 'Left Judge',
-    'center_judge': 'Center Judge (Head)',
-    'right_judge': 'Right Judge'
 };

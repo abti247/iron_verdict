@@ -46,6 +46,11 @@ def server_url():
 # 2. Per-test cleanup (autouse)
 # ---------------------------------------------------------------------------
 
+@pytest.fixture(scope="session")
+def browser_context_args(browser_context_args):
+    return {**browser_context_args, "locale": "en-US"}
+
+
 @pytest.fixture(autouse=True)
 def _reset_server_state():
     limiter.reset()
@@ -61,7 +66,7 @@ def _reset_server_state():
 class CompetitionHelper:
     ROLE_LABELS = {
         "left_judge": "Left",
-        "center_judge": "Center",
+        "center_judge": "Chief Referee",
         "right_judge": "Right",
         "display": "Display Screen",
     }
@@ -82,7 +87,7 @@ class CompetitionHelper:
 
     def create_session_and_join_head(self, name="Test Session"):
         """Create a session and join as head judge (center). Returns page."""
-        ctx = self.browser.new_context()
+        ctx = self.browser.new_context(locale="en-US")
         self.contexts.append(ctx)
         page = ctx.new_page()
         page.on("dialog", lambda d: d.accept())
@@ -95,7 +100,7 @@ class CompetitionHelper:
         self.session_code = page.locator(".session-tag .code").text_content()
         assert self.session_code, "Failed to extract session code"
 
-        page.locator(".role-btn", has_text="Center").click()
+        page.locator(".role-btn", has_text="Chief Referee").click()
         page.locator(".judge-wrap").wait_for(state="visible")
 
         self.pages["center_judge"] = page
@@ -103,7 +108,7 @@ class CompetitionHelper:
 
     def join_as(self, role):
         """Join the session as *role*. Returns page."""
-        ctx = self.browser.new_context()
+        ctx = self.browser.new_context(locale="en-US")
         self.contexts.append(ctx)
         page = ctx.new_page()
         page.on("dialog", lambda d: d.accept())

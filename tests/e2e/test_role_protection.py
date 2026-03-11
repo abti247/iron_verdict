@@ -9,7 +9,7 @@ def test_cannot_join_taken_role(competition):
     head, left, right = competition.join_all_judges()
 
     # A fourth user tries to join as left_judge (already taken)
-    ctx = competition.browser.new_context()
+    ctx = competition.browser.new_context(locale="en-US")
     competition.contexts.append(ctx)
     page = ctx.new_page()
     page.on("dialog", lambda d: d.accept())

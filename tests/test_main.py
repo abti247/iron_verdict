@@ -649,10 +649,10 @@ async def test_vote_lock_reason_stored_in_session():
         async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
             await ws.send_json({"type": "join", "session_code": session_code, "role": "left_judge"})
             await ws.receive_json()  # join_success
-            await ws.send_json({"type": "vote_lock", "color": "yellow", "reason": "Buttocks up"})
+            await ws.send_json({"type": "vote_lock", "color": "yellow", "reason": "reasons.bench.yellow.buttocksUp"})
             await asyncio.sleep(0.1)  # no response expected with <3 judges locked
 
-    assert session_manager.sessions[session_code]["judges"]["left"]["current_reason"] == "Buttocks up"
+    assert session_manager.sessions[session_code]["judges"]["left"]["current_reason"] == "reasons.bench.yellow.buttocksUp"
 
 
 @pytest.mark.asyncio
@@ -752,9 +752,9 @@ async def test_show_results_includes_reasons():
             await right_ws.send_json({"type": "join", "session_code": session_code, "role": "right_judge"})
             await right_ws.receive_json()  # join_success
 
-            await left_ws.send_json({"type": "vote_lock", "color": "yellow", "reason": "Buttocks up"})
+            await left_ws.send_json({"type": "vote_lock", "color": "yellow", "reason": "reasons.bench.yellow.buttocksUp"})
             await center_ws.send_json({"type": "vote_lock", "color": "white"})
-            await right_ws.send_json({"type": "vote_lock", "color": "yellow", "reason": "Incomplete lift"})
+            await right_ws.send_json({"type": "vote_lock", "color": "yellow", "reason": "reasons.bench.yellow.incompleteLift"})
 
             # Collect messages from right_ws until we find show_results
             show_results_msg = None
@@ -769,9 +769,9 @@ async def test_show_results_includes_reasons():
 
             assert show_results_msg is not None
             assert "reasons" in show_results_msg
-            assert show_results_msg["reasons"]["left"] == "Buttocks up"
+            assert show_results_msg["reasons"]["left"] == "reasons.bench.yellow.buttocksUp"
             assert show_results_msg["reasons"]["center"] is None
-            assert show_results_msg["reasons"]["right"] == "Incomplete lift"
+            assert show_results_msg["reasons"]["right"] == "reasons.bench.yellow.incompleteLift"
 
 
 @pytest.mark.asyncio
