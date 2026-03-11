@@ -233,9 +233,9 @@ async def test_lock_vote_stores_reason():
     manager = SessionManager()
     code = await manager.create_session("Test")
     manager.join_session(code, "left_judge")
-    result = await manager.lock_vote(code, "left", "yellow", reason="Buttocks up")
+    result = await manager.lock_vote(code, "left", "yellow", reason="reasons.bench.yellow.buttocksUp")
     assert result["success"] is True
-    assert manager.sessions[code]["judges"]["left"]["current_reason"] == "Buttocks up"
+    assert manager.sessions[code]["judges"]["left"]["current_reason"] == "reasons.bench.yellow.buttocksUp"
 
 
 async def test_lock_vote_reason_defaults_to_none():
@@ -258,7 +258,7 @@ async def test_reset_for_next_lift_clears_reason():
     manager = SessionManager()
     code = await manager.create_session("Test")
     manager.join_session(code, "left_judge")
-    await manager.lock_vote(code, "left", "yellow", reason="Buttocks up")
+    await manager.lock_vote(code, "left", "yellow", reason="reasons.bench.yellow.buttocksUp")
     await manager.reset_for_next_lift(code)
     assert manager.sessions[code]["judges"]["left"]["current_reason"] is None
 
