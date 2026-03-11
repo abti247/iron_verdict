@@ -480,3 +480,60 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     padding: 8px;
     line-height: 0;
 }
+
+/* ---- Language UI ---- */
+.lang-footer {
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--bg-raised);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+}
+.lang-globe {
+    font-size: 1rem;
+}
+.lang-sep {
+    color: var(--chrome-dark);
+}
+.lang-option {
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: color 0.15s;
+}
+.lang-option:hover {
+    color: var(--text-chrome);
+}
+.lang-option.lang-active {
+    color: var(--text-chrome);
+    font-weight: 700;
+}
+
+.lang-toggle {
+    display: flex;
+    justify-content: center;
+    gap: 0.25rem;
+    margin-bottom: 1rem;
+}
+.lang-toggle-btn {
+    background: var(--bg-raised);
+    border: 1px solid var(--chrome-dark);
+    border-radius: 4px;
+    padding: 0.2rem 0.7rem;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+}
+.lang-toggle-btn:hover {
+    color: var(--text-chrome);
+}
+.lang-toggle-btn.active {
+    background: var(--blood);
+    border-color: var(--blood);
+    color: white;
+    font-weight: 700;
+}
