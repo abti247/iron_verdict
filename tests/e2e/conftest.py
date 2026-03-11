@@ -66,7 +66,7 @@ def _reset_server_state():
 class CompetitionHelper:
     ROLE_LABELS = {
         "left_judge": "Left",
-        "center_judge": "Center",
+        "center_judge": "Chief Referee",
         "right_judge": "Right",
         "display": "Display Screen",
     }
@@ -100,7 +100,7 @@ class CompetitionHelper:
         self.session_code = page.locator(".session-tag .code").text_content()
         assert self.session_code, "Failed to extract session code"
 
-        page.locator(".role-btn", has_text="Center").click()
+        page.locator(".role-btn", has_text="Chief Referee").click()
         page.locator(".judge-wrap").wait_for(state="visible")
 
         self.pages["center_judge"] = page

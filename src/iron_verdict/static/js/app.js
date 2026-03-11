@@ -243,16 +243,11 @@ export function ironVerdictApp() {
         },
 
         getRoleDisplayName() {
-            const positionMap = {
-                'left_judge': 'left',
-                'center_judge': 'center',
-                'right_judge': 'right',
-            };
+            if (this.role === 'center_judge') return t('roles.chiefReferee');
+            const positionMap = { 'left_judge': 'left', 'right_judge': 'right' };
             const pos = positionMap[this.role];
             if (!pos) return this.role;
-            const label = t('roles.' + pos) + ' ' + t('roles.judge');
-            if (this.role === 'center_judge') return label + ' ' + t('roles.head');
-            return label;
+            return t('roles.' + pos) + ' ' + t('roles.judge');
         },
 
         isValidLift() {

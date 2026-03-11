@@ -208,8 +208,7 @@
                 <button class="role-btn cut-corner-sm" @click="joinSession('left_judge')">
                     <span x-text="t('roles.left')"></span><br><span x-text="t('roles.judge')"></span>
                 </button>
-                <button class="role-btn cut-corner-sm" @click="joinSession('center_judge')">
-                    <span x-text="t('roles.center')"></span><br><span x-text="t('roles.judge')"></span><span class="sub" x-text="t('roles.head')"></span>
+                <button class="role-btn cut-corner-sm" @click="joinSession('center_judge')" x-text="t('roles.chiefReferee')" style="white-space: pre-line">
                 </button>
                 <button class="role-btn cut-corner-sm" @click="joinSession('right_judge')">
                     <span x-text="t('roles.right')"></span><br><span x-text="t('roles.judge')"></span>

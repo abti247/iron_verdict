@@ -1,6 +1,6 @@
 {
   "landing": {
-    "subtitle": "Powerlifting Kampfrichter",
+    "subtitle": "Powerlifting Judging",
     "createSession": "Neue Sitzung erstellen",
     "joinSession": "Sitzung beitreten",
     "startDemo": "Demo starten",
@@ -59,6 +59,7 @@
     "right": "Rechts",
     "judge": "Kampfrichter",
     "head": "(Hauptkampfrichter)",
+    "chiefReferee": "Haupt-\nkampfrichter",
     "display": "Anzeigebildschirm",
     "backToStart": "Zurück zum Start"
   },
