@@ -1,9 +1,7 @@
 import { ironVerdictApp } from './app.js';
+import { initI18n, t, setLanguage, getLanguage } from './i18n.js';
 
 // Read demo join params from URL before Alpine loads.
-// Demo popup URLs contain ?code=&demo= so Alpine's init() can auto-join.
-// These params only ever appear in demo sessions (not real competitions),
-// so no sensitive data is exposed.
 (function () {
     var p = new URLSearchParams(window.location.search);
     var code = p.get('code');
@@ -11,11 +9,23 @@ import { ironVerdictApp } from './app.js';
     window._demoParams = (code && demo) ? { code: code, demo: demo } : null;
 })();
 
-// Expose as global so Alpine can call ironVerdictApp() when it evaluates
-// x-data="ironVerdictApp()" — this fires before alpine:init in some browsers.
+// Load locale files before Alpine starts
+initI18n().then(lang => {
+    // Store resolved language so Alpine store can use it once alpine:init fires
+    window._resolvedLang = lang;
+});
+
+// Expose as global so Alpine can call ironVerdictApp()
 window.ironVerdictApp = ironVerdictApp;
 
+// Expose t, setLanguage, getLanguage as globals for Alpine template expressions
+window.t = t;
+window.setLanguage = setLanguage;
+window.getLanguage = getLanguage;
+
 document.addEventListener('alpine:init', () => {
+    // Create reactive i18n store — t() reads from this, setLanguage() writes to it
+    Alpine.store('i18n', { lang: window._resolvedLang || 'en' });
     Alpine.data('ironVerdictApp', ironVerdictApp);
 });
 
@@ -26,7 +36,6 @@ window.addEventListener('popstate', () => {
         const app = appElement.__x_data;
         if ((app.screen === 'judge' || app.screen === 'display') && app.sessionCode) {
             app.returnToRoleSelection();
-            // Prevent default back navigation
             history.pushState(null, null, location.href);
         }
     }
