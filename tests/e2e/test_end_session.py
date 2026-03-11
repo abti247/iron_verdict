@@ -41,7 +41,7 @@ def test_session_gone_after_end(competition):
 
     # Try to join ended session
     dialogs = []
-    ctx = competition.browser.new_context()
+    ctx = competition.browser.new_context(locale="en-US")
     competition.contexts.append(ctx)
     page = ctx.new_page()
     page.on("dialog", lambda d: (dialogs.append(d.message), d.accept()))

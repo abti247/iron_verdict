@@ -59,9 +59,9 @@ export async function initI18n() {
  * Falls back to English if key is missing in current language.
  */
 export function t(key) {
-    const lang = typeof Alpine !== 'undefined' && Alpine.store('i18n')
-        ? Alpine.store('i18n').lang
-        : resolveLanguage();
+    const store = typeof Alpine !== 'undefined' && Alpine.store('i18n');
+    const lang = store ? store.lang : resolveLanguage();
+    if (store) void store._v;  // read _v so Alpine tracks this as a reactive dependency
     return resolve(locales[lang], key) ?? resolve(locales[DEFAULT_LANG], key) ?? key;
 }
 
@@ -74,6 +74,7 @@ export function setLanguage(lang) {
     document.documentElement.lang = lang;
     if (typeof Alpine !== 'undefined' && Alpine.store('i18n')) {
         Alpine.store('i18n').lang = lang;
+        Alpine.store('i18n')._v++;
     }
 }
 

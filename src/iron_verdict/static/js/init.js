@@ -11,8 +11,12 @@ import { initI18n, t, setLanguage, getLanguage } from './i18n.js';
 
 // Load locale files before Alpine starts
 initI18n().then(lang => {
-    // Store resolved language so Alpine store can use it once alpine:init fires
     window._resolvedLang = lang;
+    // If Alpine already created the store, update it and bump _v to trigger re-render
+    if (typeof Alpine !== 'undefined' && Alpine.store('i18n')) {
+        Alpine.store('i18n').lang = lang;
+        Alpine.store('i18n')._v++;
+    }
 });
 
 // Expose as global so Alpine can call ironVerdictApp()
@@ -25,7 +29,7 @@ window.getLanguage = getLanguage;
 
 document.addEventListener('alpine:init', () => {
     // Create reactive i18n store — t() reads from this, setLanguage() writes to it
-    Alpine.store('i18n', { lang: window._resolvedLang || 'en' });
+    Alpine.store('i18n', { lang: window._resolvedLang || 'en', _v: 0 });
     Alpine.data('ironVerdictApp', ironVerdictApp);
 });
 

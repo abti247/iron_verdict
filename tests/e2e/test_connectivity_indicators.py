@@ -76,7 +76,7 @@ def test_own_dot_orange_on_reconnecting(competition):
     The auto-reconnect then restores 'connected'.
     """
     # Create left judge with WebSocket tracking init script
-    ctx = competition.browser.new_context()
+    ctx = competition.browser.new_context(locale="en-US")
     ctx.add_init_script("""
         window.__ws_instances = [];
         const OrigWebSocket = window.WebSocket;
