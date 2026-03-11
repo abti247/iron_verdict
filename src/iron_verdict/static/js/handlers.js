@@ -71,12 +71,12 @@ export function handleJoinError(app, message) {
     app.ws.close();
     sessionStorage.removeItem('iv_session');
     const sanitizedMessage = document.createTextNode(message.message).textContent;
-    alert(`Failed to join session: ${sanitizedMessage}`);
+    alert(`${t('alerts.joinFailed')} ${sanitizedMessage}`);
 }
 
 export function handleError(app, message) {
     const sanitizedMessage = document.createTextNode(message.message).textContent;
-    alert(`Error: ${sanitizedMessage}`);
+    alert(`${t('alerts.error')} ${sanitizedMessage}`);
 }
 
 export function handleShowResults(app, message) {
@@ -86,11 +86,20 @@ export function handleShowResults(app, message) {
         app.timerDisplay = String(Math.ceil(message.timer_frozen_ms / 1000));
     }
     app.judgeResultVotes = message.votes;
-    app.judgeResultReasons = message.reasons || { left: null, center: null, right: null };
+    const rawReasons = message.reasons || { left: null, center: null, right: null };
+    app.judgeResultReasons = {
+        left: rawReasons.left ? t(rawReasons.left) : null,
+        center: rawReasons.center ? t(rawReasons.center) : null,
+        right: rawReasons.right ? t(rawReasons.right) : null,
+    };
     if (app.role === 'display') {
         clearTimeout(app._phaseTimer1);
         app.displayVotes = app.judgeResultVotes;
-        app.displayReasons = app.judgeResultReasons;
+        app.displayReasons = {
+            left: rawReasons.left ? t(rawReasons.left) : null,
+            center: rawReasons.center ? t(rawReasons.center) : null,
+            right: rawReasons.right ? t(rawReasons.right) : null,
+        };
         app.displayShowExplanations = message.showExplanations;
         app.displayLiftType = message.liftType;
         app.displayPhase = 'votes';
@@ -108,7 +117,7 @@ export function handleResetForNextLift(app, message) {
         app.displayVotes = { left: null, center: null, right: null };
         app.displayReasons = { left: null, center: null, right: null };
         app.displayPhase = 'idle';
-        app.displayStatus = 'Waiting for judges...';
+        app.displayStatus = '';
     }
 }
 
@@ -123,7 +132,7 @@ export function handleTimerReset(app, message) {
 }
 
 export function handleSessionEnded(app, message) {
-    alert('Session ended');
+    alert(t('alerts.sessionEnded'));
     app.ws.close();
     app.isDemo = false;
     sessionStorage.removeItem('iv_session');
