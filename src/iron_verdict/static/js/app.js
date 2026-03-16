@@ -181,10 +181,9 @@ export function ironVerdictApp() {
             this._reasonScrollHandler = () => check();
             list.addEventListener('scroll', this._reasonScrollHandler, { passive: true });
 
-            let resizeTimer;
             this._reasonResizeHandler = () => {
-                clearTimeout(resizeTimer);
-                resizeTimer = setTimeout(check, 200);
+                clearTimeout(this._resizeTimer);
+                this._resizeTimer = setTimeout(check, 200);
             };
             window.addEventListener('resize', this._reasonResizeHandler);
         },
@@ -197,8 +196,10 @@ export function ironVerdictApp() {
             if (this._reasonResizeHandler) {
                 window.removeEventListener('resize', this._reasonResizeHandler);
             }
+            clearTimeout(this._resizeTimer);
             this._reasonScrollHandler = null;
             this._reasonResizeHandler = null;
+            this._resizeTimer = null;
         },
 
         selectReason(reason) {
