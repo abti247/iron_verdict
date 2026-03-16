@@ -44,6 +44,7 @@ export function ironVerdictApp() {
         requireReasons: false,
         selectedReason: null,
         showingReasonStep: false,
+        reasonListOverflows: false,
         liftType: 'squat',
         displayPhase: 'idle',
         displayShowExplanations: false,
@@ -153,12 +154,51 @@ export function ironVerdictApp() {
                 this.selectedVote = color;
                 this.selectedReason = null;
                 this.showingReasonStep = (color !== 'white');
+                if (color !== 'white') {
+                    this.$nextTick(() => this.initReasonScrollIndicator());
+                }
             }
         },
 
         goBackToColorStep() {
+            this.cleanupReasonScroll();
             this.showingReasonStep = false;
             this.selectedReason = null;
+            this.reasonListOverflows = false;
+        },
+
+        initReasonScrollIndicator() {
+            const list = this.$refs.reasonList;
+            if (!list) return;
+            this.cleanupReasonScroll();
+
+            const check = () => {
+                this.reasonListOverflows = list.scrollHeight > list.clientHeight
+                    && list.scrollTop + list.clientHeight < list.scrollHeight - 4;
+            };
+            check();
+
+            this._reasonScrollHandler = () => check();
+            list.addEventListener('scroll', this._reasonScrollHandler, { passive: true });
+
+            let resizeTimer;
+            this._reasonResizeHandler = () => {
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(check, 200);
+            };
+            window.addEventListener('resize', this._reasonResizeHandler);
+        },
+
+        cleanupReasonScroll() {
+            const list = this.$refs.reasonList;
+            if (this._reasonScrollHandler && list) {
+                list.removeEventListener('scroll', this._reasonScrollHandler);
+            }
+            if (this._reasonResizeHandler) {
+                window.removeEventListener('resize', this._reasonResizeHandler);
+            }
+            this._reasonScrollHandler = null;
+            this._reasonResizeHandler = null;
         },
 
         selectReason(reason) {
@@ -202,11 +242,13 @@ export function ironVerdictApp() {
         },
 
         resetVoting() {
+            this.cleanupReasonScroll();
             this.selectedVote = null;
             this.voteLocked = false;
             this.resultsShown = false;
             this.selectedReason = null;
             this.showingReasonStep = false;
+            this.reasonListOverflows = false;
             this.judgeResultVotes = { left: null, center: null, right: null };
             this.judgeResultReasons = { left: null, center: null, right: null };
         },
@@ -277,7 +319,9 @@ export function ironVerdictApp() {
             this.voteLocked = false;
             this.resultsShown = false;
             this.selectedReason = null;
+            this.cleanupReasonScroll();
             this.showingReasonStep = false;
+            this.reasonListOverflows = false;
             startTimerCountdown(0, () => {});
             this.timerDisplay = '60';
             this.timerExpired = false;

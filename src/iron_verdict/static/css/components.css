@@ -224,6 +224,24 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .reason-step-color.red { color: #ef4444; }
 .reason-step-color.blue { color: #60a5fa; }
 .reason-list { display: flex; flex-direction: column; overflow-y: auto; max-height: 55vh; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); }
+.reason-list-wrap { position: relative; }
+.reason-list-wrap.has-overflow-bottom::after {
+    content: "▾";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 50px;
+    background: linear-gradient(transparent, var(--bg-void));
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 6px;
+    color: rgba(255,255,255,0.4);
+    font-size: 18px;
+    pointer-events: none;
+    border-radius: 0 0 10px 10px;
+}
 .reason-item { padding: 1rem 1.2rem; background: rgba(255,255,255,0.07); border-bottom: 1px solid rgba(255,255,255,0.08); cursor: pointer; font-size: 1rem; color: white; transition: background 0.15s; }
 .reason-item:last-child { border-bottom: none; }
 .reason-item:active, .reason-item:hover { background: rgba(255,255,255,0.15); }
