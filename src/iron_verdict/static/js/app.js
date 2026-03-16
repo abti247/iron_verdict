@@ -1,4 +1,4 @@
-import { CARD_REASONS, ROLE_DISPLAY_NAMES } from './constants.js';
+import { CARD_REASONS } from './constants.js';
 import { startTimerCountdown } from './timer.js';
 import { createWebSocket } from './websocket.js';
 import { demoMethods } from './demo.js';
@@ -38,7 +38,7 @@ export function ironVerdictApp() {
         timerExpired: false,
         displayVotes: { left: null, center: null, right: null },
         displayReasons: { left: null, center: null, right: null },
-        displayStatus: 'Waiting for judges...',
+        displayStatus: '',
         intentionalNavigation: false,
         showExplanations: false,
         requireReasons: false,
@@ -67,7 +67,7 @@ export function ironVerdictApp() {
                     body: JSON.stringify({ name: this.newSessionName.trim() })
                 });
                 if (!response.ok) {
-                    alert('Failed to create session. Please try again.');
+                    alert(t('alerts.createFailed'));
                     return;
                 }
                 const data = await response.json();
@@ -75,7 +75,7 @@ export function ironVerdictApp() {
                 this.sessionName = this.newSessionName.trim();
                 this.screen = 'role-select';
             } catch (error) {
-                alert('Error creating session. Please check your connection.');
+                alert(t('alerts.createError'));
                 console.error('Session creation error:', error);
             }
         },
@@ -167,7 +167,8 @@ export function ironVerdictApp() {
 
         getJudgeReasons() {
             const liftType = this.liftType || 'squat';
-            return CARD_REASONS[liftType]?.[this.selectedVote] || [];
+            const reasonIds = CARD_REASONS[liftType]?.[this.selectedVote] || [];
+            return reasonIds.map(id => ({ id, label: t(id) }));
         },
 
         canLockIn() {
@@ -230,19 +231,23 @@ export function ironVerdictApp() {
         },
 
         nextLiftGuarded() {
-            if (this.resultsShown || confirm('Results haven\'t been shown yet — advance anyway?')) {
+            if (this.resultsShown || confirm(t('alerts.confirmAdvance'))) {
                 this.nextLift();
             }
         },
 
         confirmEndSession() {
-            if (confirm('Are you sure? This will disconnect all judges and the display')) {
+            if (confirm(t('alerts.confirmEnd'))) {
                 this.wsSend({ type: 'end_session_confirmed' });
             }
         },
 
         getRoleDisplayName() {
-            return ROLE_DISPLAY_NAMES[this.role] || this.role;
+            if (this.role === 'center_judge') return t('roles.chiefReferee');
+            const positionMap = { 'left_judge': 'left', 'right_judge': 'right' };
+            const pos = positionMap[this.role];
+            if (!pos) return this.role;
+            return t('roles.' + pos);
         },
 
         isValidLift() {

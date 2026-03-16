@@ -39,7 +39,7 @@ def test_multiple_displays_receive_results(competition):
     display1 = competition.join_as("display")
 
     # Second display — manual flow since "display" key gets reused in pages dict
-    ctx = competition.browser.new_context()
+    ctx = competition.browser.new_context(locale="en-US")
     competition.contexts.append(ctx)
     display2 = ctx.new_page()
     display2.on("dialog", lambda d: d.accept())

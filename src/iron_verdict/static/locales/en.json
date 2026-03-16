@@ -1,0 +1,180 @@
+{
+  "landing": {
+    "subtitle": "Powerlifting Judging",
+    "createSession": "Create New Session",
+    "joinSession": "Join Session",
+    "startDemo": "Start Demo",
+    "contact": "Contact",
+    "or": "or",
+    "placeholder": {
+      "sessionName": "Session name (e.g. Platform A)",
+      "sessionCode": "Enter 8-character session code"
+    }
+  },
+  "demo": {
+    "guideTitle": "Demo Guide",
+    "intro": "Iron Verdict allows judges to pick the reason for an invalid lift, shared instantly with athletes, audience, jury, and fellow judges. Available reasons are based on the IPF technical rulebook (effective date 01 March 2026 - version 3).",
+    "whyTitle": "Why Iron Verdict?",
+    "athletes": "Know your mistake immediately, no time wasted.",
+    "audience": "No more guessing why a lift was ruled invalid.",
+    "judges": "Understand your colleagues' calls and know what to focus on next attempt.",
+    "jury": "Know exactly which part of the lift to review before overruling.",
+    "setupTitle": "Setup",
+    "setupStep1": "Enter a session name → click Create New Session",
+    "setupStep2": "Send the session code to other judges or scan QR code",
+    "setupStep3": "Use the session code to set up a Display Screen",
+    "headControlsTitle": "Head Judge Controls",
+    "showReasonsDesc": "Show reasons on display — ruling reasons appear on the display screen",
+    "requireReasonsDesc": "Require reasons — judges must choose a reason before locking in (optional by default)",
+    "liftCategoryDesc": "Lift category dropdown — changes the reason catalogue (Squat / Bench / Deadlift)",
+    "duringTitle": "During Competition",
+    "duringStep1": "Head judge announces \"The bar is loaded\" and presses Start Timer",
+    "duringStep2": "After the lift, judges press their color, optionally pick a reason, then press Lock In",
+    "duringStep3": "When all 3 judges lock in, the result appears on the Display Screen",
+    "duringStep4": "Head judge presses Next Lift to reset for the next lifter",
+    "duringStep5": "If needed, head judge presses Reset Timer",
+    "duringStep6": "After the event: End Session → confirm with OK",
+    "launchDemo": "Launch Demo",
+    "popupNote": "This demo is designed for desktop — it opens 4 pop-up windows to simulate 3 judges and a display running in parallel. Please allow pop-ups if prompted.",
+    "demoRunning": "Demo running — interact with the 4 open windows",
+    "backToStart": "Back to Start"
+  },
+  "contact": {
+    "title": "Contact",
+    "name": "Name",
+    "email": "Email (optional)",
+    "message": "Message or bug description",
+    "send": "Send Message",
+    "sending": "Sending...",
+    "sent": "Message Sent",
+    "sentSub": "We'll get back to you if you left an email.",
+    "error": "Something went wrong. Please try again.",
+    "back": "Back"
+  },
+  "roles": {
+    "heading": "Select Role",
+    "session": "Session:",
+    "left": "Left Judge",
+    "right": "Right Judge",
+    "chiefReferee": "Chief Referee",
+    "display": "Display Screen",
+    "backToStart": "Back to Start"
+  },
+  "judge": {
+    "lockIn": "LOCK IN",
+    "voteLocked": "Vote Locked",
+    "back": "back",
+    "headControls": "Head Judge Controls",
+    "startTimer": "Start Timer",
+    "resetTimer": "Reset Timer",
+    "nextLift": "Next Lift",
+    "endSession": "End Session",
+    "results": "Results",
+    "settings": {
+      "showReasons": "Show reasons on display",
+      "requireReasons": "Require reasons"
+    },
+    "colors": {
+      "white": "WHITE",
+      "red": "RED",
+      "blue": "BLUE",
+      "yellow": "YELLOW"
+    },
+    "connectivity": {
+      "L": "L",
+      "R": "R"
+    }
+  },
+  "liftTypes": {
+    "squat": "Squat",
+    "bench": "Bench Press",
+    "deadlift": "Deadlift"
+  },
+  "verdict": {
+    "goodLift": "Good Lift",
+    "noLift": "No Lift"
+  },
+  "display": {
+    "waiting": "Waiting for judges..."
+  },
+  "connection": {
+    "serverRestarting": "Server restarting"
+  },
+  "alerts": {
+    "createFailed": "Failed to create session. Please try again.",
+    "createError": "Error creating session. Please check your connection.",
+    "joinFailed": "Failed to join session:",
+    "sessionEnded": "Session ended",
+    "confirmAdvance": "Results haven't been shown yet — advance anyway?",
+    "confirmEnd": "Are you sure? This will disconnect all judges and the display",
+    "demoFailed": "Failed to start demo. Please try again.",
+    "error": "Error:"
+  },
+  "reasons": {
+    "squat": {
+      "red": {
+        "depth": "Depth"
+      },
+      "blue": {
+        "softKnees": "Soft knees",
+        "downwardMovement": "Downward movement"
+      },
+      "yellow": {
+        "incompleteLift": "Incomplete lift",
+        "skippedSignal": "Skipped signal",
+        "footMovement": "Foot movement",
+        "droppedBar": "Dropped bar",
+        "supportingContactOnLegs": "Supporting contact on legs",
+        "spotterContact": "Spotter contact",
+        "technicalNonCompliance": "Technical Non-compliance"
+      }
+    },
+    "bench": {
+      "red": {
+        "elbowDepth": "Elbow depth",
+        "noChestContact": "No chest contact"
+      },
+      "blue": {
+        "downwardMovement": "Downward movement",
+        "armsNotLockedAtCompletion": "Arms not locked at completion",
+        "armsNotLockedBeforeStart": "Arms not locked before start"
+      },
+      "yellow": {
+        "incompleteLift": "Incomplete lift",
+        "skippedSignal": "Skipped signal",
+        "buttocksUp": "Buttocks up",
+        "headUp": "Head up",
+        "feetUp": "Feet up",
+        "sinkingAfterMotionless": "Sinking after motionless",
+        "upperBodyThrust": "Upper Body thrust",
+        "spotterContact": "Spotter contact",
+        "shoulderHandMovement": "Shoulder / Hand movement",
+        "feetTouchedBenchOrSupports": "Feet touched bench or supports",
+        "deliberateBarContactWithRackSupports": "Deliberate bar contact with rack supports",
+        "technicalNonCompliance": "Technical Non-compliance"
+      }
+    },
+    "deadlift": {
+      "red": {
+        "softKnees": "Soft knees",
+        "shouldersNotBack": "Shoulders not back",
+        "failureToStandErect": "Failure to stand erect"
+      },
+      "blue": {
+        "hitching": "Hitching",
+        "downwardMovement": "Downward movement"
+      },
+      "yellow": {
+        "incompleteLift": "Incomplete lift",
+        "droppedBar": "Dropped bar",
+        "skippedSignal": "Skipped signal",
+        "footMovement": "Foot movement",
+        "technicalNonCompliance": "Technical Non-compliance"
+      }
+    }
+  },
+  "language": {
+    "en": "English",
+    "de": "Deutsch"
+  }
+}

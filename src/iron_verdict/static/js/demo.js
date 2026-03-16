@@ -12,7 +12,7 @@ export const demoMethods = {
                 body: JSON.stringify({ name: 'Demo' })
             });
             if (!response.ok) {
-                alert('Failed to create session. Please try again.');
+                alert(t('alerts.createFailed'));
                 return;
             }
             const data = await response.json();
@@ -27,7 +27,7 @@ export const demoMethods = {
 
             this.demoRunning = true;
         } catch (error) {
-            alert('Failed to start demo. Please try again.');
+            alert(t('alerts.demoFailed'));
             console.error('Demo mode error:', error);
         }
     },
