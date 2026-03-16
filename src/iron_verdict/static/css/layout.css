@@ -172,6 +172,7 @@
     font-size: 18px;
     letter-spacing: 3px;
     color: var(--blood-bright);
+    white-space: pre-line;
 }
 
 .judge-timer {

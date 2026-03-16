@@ -205,13 +205,11 @@
             </div>
 
             <div class="role-grid">
-                <button class="role-btn cut-corner-sm" @click="joinSession('left_judge')">
-                    <span x-text="t('roles.left')"></span><br><span x-text="t('roles.judge')"></span>
+                <button class="role-btn cut-corner-sm" @click="joinSession('left_judge')" x-text="t('roles.left')">
                 </button>
                 <button class="role-btn cut-corner-sm" @click="joinSession('center_judge')" x-text="t('roles.chiefReferee')" style="white-space: pre-line">
                 </button>
-                <button class="role-btn cut-corner-sm" @click="joinSession('right_judge')">
-                    <span x-text="t('roles.right')"></span><br><span x-text="t('roles.judge')"></span>
+                <button class="role-btn cut-corner-sm" @click="joinSession('right_judge')" x-text="t('roles.right')">
                 </button>
                 <button class="role-btn role-display-btn cut-corner-sm" @click="joinSession('display')" x-text="t('roles.display')">
                 </button>

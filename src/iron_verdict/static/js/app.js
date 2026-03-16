@@ -247,7 +247,7 @@ export function ironVerdictApp() {
             const positionMap = { 'left_judge': 'left', 'right_judge': 'right' };
             const pos = positionMap[this.role];
             if (!pos) return this.role;
-            return t('roles.' + pos) + ' ' + t('roles.judge');
+            return t('roles.' + pos);
         },
 
         isValidLift() {

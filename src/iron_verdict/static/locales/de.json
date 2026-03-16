@@ -13,29 +13,29 @@
   },
   "demo": {
     "guideTitle": "Demo-Anleitung",
-    "intro": "Iron Verdict ermöglicht Kampfrichtern, den Grund für einen ungültigen Versuch auszuwählen und sofort mit Athleten, Publikum, Jury und anderen Kampfrichtern zu teilen. Die verfügbaren Gründe basieren auf dem technischen Regelwerk der IPF (gültig ab 01. März 2026 - Version 3).",
+    "intro": "Iron Verdict ermöglicht Kampfrichter:innen, den Grund für einen ungültigen Versuch auszuwählen und sofort mit Athleten, Publikum, Jury und anderen Kampfrichter:innen zu teilen. Die verfügbaren Gründe basieren auf dem technischen Regelwerk der IPF (gültig ab 01. März 2026 - Version 3).",
     "whyTitle": "Warum Iron Verdict?",
     "athletes": "Fehler sofort erkennen, keine Zeit verschwendet.",
     "audience": "Kein Rätselraten mehr, warum ein Versuch ungültig war.",
-    "judges": "Entscheidungen der Kollegen nachvollziehen und wissen, worauf beim nächsten Versuch zu achten ist.",
+    "judges": "Entscheidungen der anderen nachvollziehen und wissen, worauf beim nächsten Versuch zu achten ist.",
     "jury": "Genau wissen, welchen Teil des Versuchs man überprüfen muss, bevor man überstimmt.",
     "setupTitle": "Einrichtung",
     "setupStep1": "Sitzungsname eingeben → Neue Sitzung erstellen klicken",
-    "setupStep2": "Sitzungscode an andere Kampfrichter senden",
+    "setupStep2": "Sitzungscode an andere Kampfrichter:innen senden oder QR Code scannen",
     "setupStep3": "Sitzungscode verwenden, um einen Anzeigebildschirm einzurichten",
-    "headControlsTitle": "Hauptkampfrichter-Steuerung",
+    "headControlsTitle": "Haupt-KARI-Steuerung",
     "showReasonsDesc": "Gründe auf Anzeige zeigen — Gründe der Entscheidung erscheinen auf dem Anzeigebildschirm",
-    "requireReasonsDesc": "Gründe erforderlich — Kampfrichter müssen einen Grund auswählen, bevor sie bestätigen (standardmäßig optional)",
+    "requireReasonsDesc": "Gründe erforderlich — Kampfrichter:innen müssen einen Grund auswählen, bevor sie bestätigen (standardmäßig optional)",
     "liftCategoryDesc": "Disziplin-Auswahl — ändert den Grundkatalog (Kniebeuge / Bankdrücken / Kreuzheben)",
     "duringTitle": "Während des Wettkampfs",
-    "duringStep1": "Hauptkampfrichter sagt \"Die Hantel ist geladen\" und drückt Timer starten",
-    "duringStep2": "Nach dem Versuch wählen Kampfrichter ihre Farbe, optional einen Grund, dann Bestätigen",
-    "duringStep3": "Wenn alle 3 Kampfrichter bestätigt haben, erscheint das Ergebnis auf dem Anzeigebildschirm",
-    "duringStep4": "Hauptkampfrichter drückt Nächster Versuch um für den nächsten Heber zurückzusetzen",
-    "duringStep5": "Bei Bedarf drückt der Hauptkampfrichter Timer zurücksetzen",
+    "duringStep1": "Haupt-KARI sagt \"Die Hantel ist geladen\" und drückt Timer starten",
+    "duringStep2": "Nach dem Versuch wählen Kampfrichter:innen ihre Farbe, optional einen Grund, dann Bestätigen",
+    "duringStep3": "Wenn alle 3 Kampfrichter:innen bestätigt haben, erscheint das Ergebnis auf dem Anzeigebildschirm",
+    "duringStep4": "Haupt-KARI drückt Nächster Versuch um für den nächsten Heber zurückzusetzen",
+    "duringStep5": "Bei Bedarf drückt der Haupt-KARI Timer zurücksetzen",
     "duringStep6": "Nach dem Wettkampf: Sitzung beenden → mit OK bestätigen",
     "launchDemo": "Demo starten",
-    "popupNote": "Diese Demo ist für den Desktop gedacht — sie öffnet 4 Pop-up-Fenster, um 3 Kampfrichter und einen Anzeigebildschirm parallel zu simulieren. Bitte Pop-ups erlauben, wenn Sie dazu aufgefordert werden.",
+    "popupNote": "Diese Demo ist für den Desktop gedacht — sie öffnet 4 Pop-up-Fenster, um 3 Kampfrichter:innen und einen Anzeigebildschirm parallel zu simulieren. Bitte Pop-ups erlauben, wenn Sie dazu aufgefordert werden.",
     "demoRunning": "Demo läuft — interagieren Sie mit den 4 geöffneten Fenstern",
     "backToStart": "Zurück zum Start"
   },
@@ -54,12 +54,9 @@
   "roles": {
     "heading": "Rolle wählen",
     "session": "Sitzung:",
-    "left": "Links",
-    "center": "Mitte",
-    "right": "Rechts",
-    "judge": "Kampfrichter",
-    "head": "(Hauptkampfrichter)",
-    "chiefReferee": "Haupt-\nkampfrichter",
+    "left": "KARI Links",
+    "right": "KARI Rechts",
+    "chiefReferee": "Haupt-KARI",
     "display": "Anzeigebildschirm",
     "backToStart": "Zurück zum Start"
   },
@@ -67,7 +64,7 @@
     "lockIn": "BESTÄTIGEN",
     "voteLocked": "Stimme abgegeben",
     "back": "zurück",
-    "headControls": "Hauptkampfrichter-Steuerung",
+    "headControls": "Haupt-KARI-Steuerung",
     "startTimer": "Timer starten",
     "resetTimer": "Timer zurücksetzen",
     "nextLift": "Nächster Versuch",
@@ -98,7 +95,7 @@
     "noLift": "Ungültiger Versuch"
   },
   "display": {
-    "waiting": "Warten auf Kampfrichter..."
+    "waiting": "Warten auf Kampfrichter:innen..."
   },
   "connection": {
     "serverRestarting": "Server wird neu gestartet"
@@ -109,7 +106,7 @@
     "joinFailed": "Beitreten fehlgeschlagen:",
     "sessionEnded": "Sitzung beendet",
     "confirmAdvance": "Ergebnisse wurden noch nicht angezeigt — trotzdem fortfahren?",
-    "confirmEnd": "Sind Sie sicher? Alle Kampfrichter und der Anzeigebildschirm werden getrennt",
+    "confirmEnd": "Sind Sie sicher? Alle Kampfrichter:innen und der Anzeigebildschirm werden getrennt",
     "demoFailed": "Demo konnte nicht gestartet werden. Bitte erneut versuchen.",
     "error": "Fehler:"
   },
@@ -119,14 +116,14 @@
         "depth": "Tiefe"
       },
       "blue": {
-        "softKnees": "Weiche Knie",
+        "softKnees": "Knie nicht gestreckt",
         "downwardMovement": "Abwärtsbewegung"
       },
       "yellow": {
         "incompleteLift": "Unvollständiger Versuch",
         "skippedSignal": "Signal übersprungen",
         "footMovement": "Fußbewegung",
-        "droppedBar": "Hantel fallen gelassen",
+        "droppedBar": "Hantel abgeworfen",
         "supportingContactOnLegs": "Abstützen an den Beinen",
         "spotterContact": "Helferkontakt",
         "technicalNonCompliance": "Technischer Regelverstoß"
@@ -134,7 +131,7 @@
     },
     "bench": {
       "red": {
-        "elbowDepth": "Ellbogentiefe",
+        "elbowDepth": "Ellenbogentiefe",
         "noChestContact": "Kein Brustkontakt"
       },
       "blue": {
@@ -148,23 +145,23 @@
         "buttocksUp": "Gesäß angehoben",
         "headUp": "Kopf angehoben",
         "feetUp": "Füße angehoben",
-        "sinkingAfterMotionless": "Absinken nach Stillstand",
+        "sinkingAfterMotionless": "Einsinken nach Stillstand",
+        "upperBodyThrust": "Oberkörperschwung",
         "spotterContact": "Helferkontakt",
         "shoulderHandMovement": "Schulter-/Handbewegung",
-        "upperBodyThrust": "Oberkörperschwung",
         "feetTouchedBenchOrSupports": "Füße berühren Bank oder Stützen",
-        "deliberateBarContactWithRackSupports": "Absichtlicher Hantelkontakt mit Ablage",
+        "deliberateBarContactWithRackSupports": "Absichtlicher Hantelkontakt mit Hantelständern",
         "technicalNonCompliance": "Technischer Regelverstoß"
       }
     },
     "deadlift": {
       "red": {
-        "softKnees": "Weiche Knie",
+        "softKnees": "Knie nicht gestreckt",
         "shouldersNotBack": "Schultern nicht zurück",
         "failureToStandErect": "Kein aufrechter Stand"
       },
       "blue": {
-        "hitching": "Hochziehen am Oberschenkel",
+        "hitching": "Unterstützung am Oberschenkel",
         "downwardMovement": "Abwärtsbewegung"
       },
       "yellow": {

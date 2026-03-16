@@ -21,7 +21,7 @@
     "jury": "Know exactly which part of the lift to review before overruling.",
     "setupTitle": "Setup",
     "setupStep1": "Enter a session name → click Create New Session",
-    "setupStep2": "Send the session code to other judges",
+    "setupStep2": "Send the session code to other judges or scan QR code",
     "setupStep3": "Use the session code to set up a Display Screen",
     "headControlsTitle": "Head Judge Controls",
     "showReasonsDesc": "Show reasons on display — ruling reasons appear on the display screen",
@@ -54,11 +54,8 @@
   "roles": {
     "heading": "Select Role",
     "session": "Session:",
-    "left": "Left",
-    "center": "Center",
-    "right": "Right",
-    "judge": "Judge",
-    "head": "(Head)",
+    "left": "Left Judge",
+    "right": "Right Judge",
     "chiefReferee": "Chief Referee",
     "display": "Display Screen",
     "backToStart": "Back to Start"
@@ -149,9 +146,9 @@
         "headUp": "Head up",
         "feetUp": "Feet up",
         "sinkingAfterMotionless": "Sinking after motionless",
+        "upperBodyThrust": "Upper Body thrust",
         "spotterContact": "Spotter contact",
         "shoulderHandMovement": "Shoulder / Hand movement",
-        "upperBodyThrust": "Upper Body thrust",
         "feetTouchedBenchOrSupports": "Feet touched bench or supports",
         "deliberateBarContactWithRackSupports": "Deliberate bar contact with rack supports",
         "technicalNonCompliance": "Technical Non-compliance"
