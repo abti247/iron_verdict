@@ -262,14 +262,16 @@
                 <button class="back-btn" @click="goBackToColorStep()">&#8592; <span x-text="t('judge.back')"></span></button>
                 <span class="reason-step-color" :class="selectedVote" x-text="selectedVote ? t('judge.colors.' + selectedVote) : ''"></span>
             </div>
-            <div class="reason-list">
-                <template x-for="reason in getJudgeReasons()" :key="reason.id">
-                    <div class="reason-item"
-                         :class="{ selected: selectedReason === reason.id }"
-                         @click="selectReason(reason.id)"
-                         x-text="reason.label">
-                    </div>
-                </template>
+            <div class="reason-list-wrap" :class="{ 'has-overflow-bottom': reasonListOverflows }">
+                <div class="reason-list" x-ref="reasonList">
+                    <template x-for="reason in getJudgeReasons()" :key="reason.id">
+                        <div class="reason-item"
+                             :class="{ selected: selectedReason === reason.id }"
+                             @click="selectReason(reason.id)"
+                             x-text="reason.label">
+                        </div>
+                    </template>
+                </div>
             </div>
         </div>
 

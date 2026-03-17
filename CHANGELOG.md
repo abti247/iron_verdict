@@ -7,6 +7,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Scroll indicator on the judge reason list shows when more options are available below
 - Multi-language support (English + German) — each device resolves its own language from browser settings or a manual toggle
 - Language switcher on the landing page (footer) and role-select screen (pill toggle)
 - Reason cards and verdict labels now translate per device, so a German display can coexist with English judges
