@@ -22,6 +22,33 @@ The goal of the app is to provide an easy access to a tool for powerlifting judg
 - Write from the perspective of someone deploying or using the app — describe observable behavior, not implementation details. No class names, method names, protocol internals, or technical mechanisms.
 - Style: short, specific, no trailing period — match the tone of existing entries.
 
+## Testing
+
+### Structure
+- Backend tests (unit + integration) live in `tests/` — run with `pytest tests/ --ignore=tests/e2e`
+- E2E tests live in `tests/e2e/` — run with `pytest tests/e2e/`
+- Run all tests: `pytest`
+
+### When to write tests
+- Backend changes: follow TDD — write a failing test first, then implement
+- Frontend-visible features: add an E2E test in `tests/e2e/`
+
+### Test categories
+- **Backend unit tests**: test individual modules directly (e.g., SessionManager, ConnectionManager)
+- **Backend integration tests**: test HTTP/WebSocket endpoints via FastAPI TestClient
+- **E2E feature tests**: Playwright tests targeting specific features (e.g., double-vote prevention, reconnection)
+- **E2E regression suite**: `tests/e2e/test_competition_flow.py` — comprehensive end-to-end walkthrough of a full competition; acts as the primary regression gate to catch cross-feature breakage
+
+### Regression strategy
+- `test_competition_flow.py` must exercise the full happy-path lifecycle (create session → judges join → vote → display updates → next attempt → end session) and be updated when new features affect the main flow
+- Feature-specific E2E tests cover edge cases and niche behavior
+- Before merging, run the full test suite — both backend and E2E
+
+### Reporting
+- Use `pytest --tb=short -v` for human-readable pass/fail output
+- Backend tests: rely on descriptive function names (no docstrings needed)
+- E2E tests: add a docstring explaining the scenario, since multi-step flows aren't obvious from the name alone
+
 ## Security
 - When adding or modifying features, always evaluate whether the change could introduce XSS, injection, or other OWASP Top 10 vulnerabilities.
 - Flag any change that would render unsanitized user input as HTML.
