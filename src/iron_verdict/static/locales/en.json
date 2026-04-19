@@ -176,5 +176,15 @@
   "language": {
     "en": "English",
     "de": "Deutsch"
+  },
+  "privacy": {
+    "link": "Privacy",
+    "title": "Privacy Notice",
+    "back": "Back",
+    "serverLogs": "Server logs (including IP addresses) are retained for up to 7 days for operational and debugging purposes (hosted on Railway).",
+    "session": "Session data (role, session code) is stored in sessionStorage — persists across page reloads within the same tab, deleted automatically when the tab is closed.",
+    "language": "Language preference is stored in localStorage.",
+    "analytics": "Usage statistics via Umami Analytics (cookieless, no personal data).",
+    "cookies": "No cookies are set."
   }
 }

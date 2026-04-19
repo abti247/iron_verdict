@@ -176,5 +176,15 @@
   "language": {
     "en": "English",
     "de": "Deutsch"
+  },
+  "privacy": {
+    "link": "Datenschutz",
+    "title": "Datenschutz",
+    "back": "Zurück",
+    "serverLogs": "Serverlogs (einschließlich IP-Adressen) werden für bis zu 7 Tage zu Betriebs- und Debugging-Zwecken gespeichert (gehostet auf Railway).",
+    "session": "Sitzungsdaten (Rolle, Sitzungscode) werden in sessionStorage gespeichert — bleiben beim Neuladen der Seite erhalten und werden automatisch gelöscht, wenn der Tab geschlossen wird.",
+    "language": "Die Spracheinstellung wird in localStorage gespeichert.",
+    "analytics": "Nutzungsstatistiken über Umami Analytics (ohne Cookies, keine personenbezogenen Daten).",
+    "cookies": "Es werden keine Cookies gesetzt."
   }
 }
