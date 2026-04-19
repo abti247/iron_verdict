@@ -135,6 +135,10 @@
                     </span>
                 </template>
             </div>
+
+            <div class="privacy-footer">
+                <span class="privacy-link" @click="screen = 'privacy'" x-text="t('privacy.link')"></span>
+            </div>
         </div>
     </div>
 
@@ -178,6 +182,28 @@
             <div class="btn-row">
                 <button class="btn-blood btn-blood-ghost" @click="screen = 'landing'">
                     &larr; <span x-text="t('contact.back')"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Privacy Screen -->
+    <div class="landing-wrap" x-show="screen === 'privacy'">
+        <div class="landing-panel cut-corner">
+            <div class="brand-iron chrome-text" x-text="t('privacy.title')"></div>
+            <div class="brand-verdict-sub">Iron Verdict</div>
+
+            <ul class="privacy-list">
+                <li x-text="t('privacy.serverLogs')"></li>
+                <li x-text="t('privacy.session')"></li>
+                <li x-text="t('privacy.language')"></li>
+                <li x-text="t('privacy.analytics')"></li>
+                <li x-text="t('privacy.cookies')"></li>
+            </ul>
+
+            <div class="btn-row">
+                <button class="btn-blood btn-blood-ghost" @click="screen = 'landing'">
+                    &larr; <span x-text="t('privacy.back')"></span>
                 </button>
             </div>
         </div>
