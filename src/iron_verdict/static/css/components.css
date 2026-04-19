@@ -579,10 +579,11 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .privacy-list {
     font-family: 'Rajdhani', sans-serif;
-    font-size: 14px;
+    font-size: 15px;
+    font-weight: 600;
     color: var(--text-dim);
     line-height: 1.6;
-    margin: 16px 0;
+    margin: 20px 0;
     padding-left: 20px;
 }
 
