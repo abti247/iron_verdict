@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import pytest
 from unittest.mock import AsyncMock
@@ -236,8 +237,6 @@ async def test_broadcast_to_others_failure_logs_warning(caplog):
     records = [r for r in caplog.records if r.getMessage() == "broadcast_to_others_send_failed"]
     assert len(records) == 1
 
-
-import asyncio
 
 
 @pytest.mark.asyncio
