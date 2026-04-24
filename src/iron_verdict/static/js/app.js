@@ -134,6 +134,7 @@ export function ironVerdictApp() {
 
         handleMessage(message) {
             const dispatch = {
+                ping:                (self) => self.wsSend({ type: "pong" }),
                 join_success:        handleJoinSuccess,
                 join_error:          handleJoinError,
                 error:               handleError,

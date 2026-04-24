@@ -12,6 +12,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Language switcher on the landing page (footer) and role-select screen (pill toggle)
 - Reason cards and verdict labels now translate per device, so a German display can coexist with English judges
 - Discreet "Privacy" / "Datenschutz" footer link on the landing page opens a privacy notice screen covering server logs, session data, language preference, analytics, and cookie policy
+- WebSocket heartbeat keeps judge and display connections alive through reverse-proxy idle timeouts
 
 ### Changed
 
