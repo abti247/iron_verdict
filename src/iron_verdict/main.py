@@ -133,13 +133,17 @@ async def lifespan(app: FastAPI):
                     })
                     try:
                         await ws.close(code=1001)
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        logger.warning("heartbeat_close_failed", extra={"reason": str(exc)})
                     continue
                 try:
                     await ws.send_json({"type": "ping"})
                 except Exception as exc:
-                    logger.warning("heartbeat_send_failed", extra={"reason": str(exc)})
+                    logger.warning("heartbeat_send_failed", extra={
+                        "session_code": session_code,
+                        "role": "display" if role.startswith("display_") else role,
+                        "reason": str(exc),
+                    })
 
     heartbeat_task = asyncio.create_task(_heartbeat_loop())
     yield
