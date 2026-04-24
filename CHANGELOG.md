@@ -7,6 +7,16 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+### Removed
+
+## [0.1.3-beta] - 2026-04-25
+
+### Added
 - Scroll indicator on the judge reason list shows when more options are available below
 - Multi-language support (English + German) — each device resolves its own language from browser settings or a manual toggle
 - Language switcher on the landing page (footer) and role-select screen (pill toggle)
@@ -14,13 +24,11 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Discreet "Privacy" / "Datenschutz" footer link on the landing page opens a privacy notice screen covering server logs, session data, language preference, analytics, and cookie policy
 - WebSocket heartbeat keeps judge and display connections alive through reverse-proxy idle timeouts
 
-### Changed
-
 ### Fixed
 - Judges now see the correct lift type and reasons immediately on join or reconnect, even if the head judge changed the lift while they were disconnected
 - Starting a new session no longer inherits the lift type from a previous session — new sessions always start with Squat
 
-### Removed
+[0.1.3-beta]: https://github.com/abti247/iron_verdict/compare/v0.1.2-beta...v0.1.3-beta
 
 ## [0.1.2-beta] - 2026-03-04
 

@@ -203,8 +203,8 @@ iron-verdict/
 
 ## Roadmap
 
-- [ ] Multi-language support
 - [ ] CI/CD pipeline (GitHub Actions)
+- [ ] Monitoring w Prometheus+Grafana
 
 ## License
 
