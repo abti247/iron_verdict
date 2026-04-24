@@ -118,10 +118,39 @@ async def lifespan(app: FastAPI):
                 session_manager.cleanup_expired(settings.SESSION_TIMEOUT_HOURS)
 
     task = asyncio.create_task(_cleanup_loop())
+
+    async def _heartbeat_loop():
+        while True:
+            await asyncio.sleep(HEARTBEAT_INTERVAL_SECONDS)
+            now = time.monotonic()
+            for session_code, role, ws in await connection_manager.get_all_connections():
+                last_pong = await connection_manager.get_last_pong(ws)
+                if last_pong is not None and now - last_pong > PONG_STALE_SECONDS:
+                    logger.info("heartbeat_stale_close", extra={
+                        "session_code": session_code,
+                        "role": "display" if role.startswith("display_") else role,
+                        "seconds_since_pong": round(now - last_pong, 1),
+                    })
+                    try:
+                        await ws.close(code=1001)
+                    except Exception:
+                        pass
+                    continue
+                try:
+                    await ws.send_json({"type": "ping"})
+                except Exception as exc:
+                    logger.warning("heartbeat_send_failed", extra={"reason": str(exc)})
+
+    heartbeat_task = asyncio.create_task(_heartbeat_loop())
     yield
     task.cancel()
     try:
         await task
+    except asyncio.CancelledError:
+        pass
+    heartbeat_task.cancel()
+    try:
+        await heartbeat_task
     except asyncio.CancelledError:
         pass
 
