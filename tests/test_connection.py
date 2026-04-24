@@ -235,3 +235,83 @@ async def test_broadcast_to_others_failure_logs_warning(caplog):
 
     records = [r for r in caplog.records if r.getMessage() == "broadcast_to_others_send_failed"]
     assert len(records) == 1
+
+
+import asyncio
+
+
+@pytest.mark.asyncio
+async def test_add_connection_initializes_last_pong():
+    manager = ConnectionManager()
+    mock_ws = AsyncMock()
+    await manager.add_connection("ABC123", "left_judge", mock_ws)
+    assert mock_ws in manager._last_pong
+    assert isinstance(manager._last_pong[mock_ws], float)
+
+
+@pytest.mark.asyncio
+async def test_remove_connection_cleans_up_last_pong():
+    manager = ConnectionManager()
+    mock_ws = AsyncMock()
+    await manager.add_connection("ABC123", "left_judge", mock_ws)
+    await manager.remove_connection("ABC123", "left_judge")
+    assert mock_ws not in manager._last_pong
+
+
+@pytest.mark.asyncio
+async def test_mark_pong_updates_timestamp():
+    manager = ConnectionManager()
+    mock_ws = AsyncMock()
+    await manager.add_connection("ABC123", "left_judge", mock_ws)
+    first = manager._last_pong[mock_ws]
+    await asyncio.sleep(0.01)
+    await manager.mark_pong(mock_ws)
+    assert manager._last_pong[mock_ws] > first
+
+
+@pytest.mark.asyncio
+async def test_mark_pong_noop_for_unknown_websocket():
+    manager = ConnectionManager()
+    unknown_ws = AsyncMock()
+    # Should not raise
+    await manager.mark_pong(unknown_ws)
+    assert unknown_ws not in manager._last_pong
+
+
+@pytest.mark.asyncio
+async def test_get_last_pong_returns_float_for_known_ws():
+    manager = ConnectionManager()
+    mock_ws = AsyncMock()
+    await manager.add_connection("ABC123", "left_judge", mock_ws)
+    result = await manager.get_last_pong(mock_ws)
+    assert isinstance(result, float)
+
+
+@pytest.mark.asyncio
+async def test_get_last_pong_returns_none_for_unknown_ws():
+    manager = ConnectionManager()
+    result = await manager.get_last_pong(AsyncMock())
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_get_all_connections_returns_all_entries():
+    manager = ConnectionManager()
+    ws1, ws2 = AsyncMock(), AsyncMock()
+    await manager.add_connection("S1", "left_judge", ws1)
+    await manager.add_connection("S1", "center_judge", ws2)
+    result = await manager.get_all_connections()
+    assert len(result) == 2
+    codes = {r[0] for r in result}
+    roles = {r[1] for r in result}
+    sockets = {r[2] for r in result}
+    assert codes == {"S1"}
+    assert roles == {"left_judge", "center_judge"}
+    assert sockets == {ws1, ws2}
+
+
+@pytest.mark.asyncio
+async def test_get_all_connections_returns_empty_when_none():
+    manager = ConnectionManager()
+    result = await manager.get_all_connections()
+    assert result == []
