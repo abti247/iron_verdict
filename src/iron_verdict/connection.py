@@ -1,4 +1,5 @@
 import asyncio
+import time
 import logging
 from typing import Dict, Any
 from fastapi import WebSocket
@@ -11,6 +12,7 @@ class ConnectionManager:
         # Structure: {session_code: {role: websocket}}
         self.active_connections: Dict[str, Dict[str, WebSocket]] = {}
         self._lock = asyncio.Lock()
+        self._last_pong: Dict[WebSocket, float] = {}
 
     async def add_connection(self, session_code: str, role: str, websocket: WebSocket):
         """Add a WebSocket connection to a session."""
@@ -18,12 +20,15 @@ class ConnectionManager:
             if session_code not in self.active_connections:
                 self.active_connections[session_code] = {}
             self.active_connections[session_code][role] = websocket
+            self._last_pong[websocket] = time.monotonic()
 
     async def remove_connection(self, session_code: str, role: str):
         """Remove a WebSocket connection from a session."""
         async with self._lock:
             if session_code in self.active_connections:
-                self.active_connections[session_code].pop(role, None)
+                ws = self.active_connections[session_code].pop(role, None)
+                if ws is not None:
+                    self._last_pong.pop(ws, None)
                 if not self.active_connections[session_code]:
                     del self.active_connections[session_code]
 
@@ -108,3 +113,21 @@ class ConnectionManager:
                 await ws.send_json(message)
             except Exception as exc:
                 logger.warning("broadcast_to_others_send_failed", extra={"reason": str(exc)}, exc_info=True)
+
+    async def mark_pong(self, websocket: WebSocket) -> None:
+        async with self._lock:
+            if websocket in self._last_pong:
+                self._last_pong[websocket] = time.monotonic()
+
+    async def get_last_pong(self, websocket: WebSocket) -> float | None:
+        async with self._lock:
+            return self._last_pong.get(websocket)
+
+    async def get_all_connections(self) -> list[tuple[str, str, WebSocket]]:
+        """Return (session_code, role, websocket) for every active connection."""
+        async with self._lock:
+            return [
+                (code, role, ws)
+                for code, roles in self.active_connections.items()
+                for role, ws in roles.items()
+            ]
