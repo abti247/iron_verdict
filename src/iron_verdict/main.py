@@ -23,6 +23,8 @@ from iron_verdict.logging_config import setup_logging
 logger = logging.getLogger("iron_verdict")
 
 VALID_COLORS = {"white", "red", "blue", "yellow"}
+HEARTBEAT_INTERVAL_SECONDS = 30
+PONG_STALE_SECONDS = 70
 
 
 def _get_http_client_ip(request: Request) -> str:
@@ -533,6 +535,9 @@ async def websocket_endpoint(websocket: WebSocket):
                             "requireReasons": session_settings["require_reasons"],
                         }
                     )
+            elif message_type == "pong":
+                await connection_manager.mark_pong(websocket)
+                continue
             else:
                 # Issue 4: Handle post-join messages
                 # For now, just ignore unknown message types silently

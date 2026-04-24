@@ -921,3 +921,26 @@ async def test_head_judge_can_next_lift_in_waiting_state(session_code):
             await ws.send_json({"type": "next_lift"})
             msg = await asyncio.wait_for(ws.receive_json(), timeout=1.0)
             assert msg["type"] == "reset_for_next_lift"
+
+
+@pytest.mark.asyncio
+async def test_pong_message_updates_last_pong(session_code):
+    """Sending a pong message after joining updates the server's last_pong timestamp."""
+    from iron_verdict.main import connection_manager
+    async with httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+            await ws.send_json({"type": "join", "session_code": session_code, "role": "left_judge"})
+            await ws.receive_json()  # join_success
+
+            ws_obj = await connection_manager.get_connection(session_code, "left_judge")
+            before = await connection_manager.get_last_pong(ws_obj)
+            await asyncio.sleep(0.01)
+            await ws.send_json({"type": "pong"})
+            await asyncio.sleep(0.05)
+
+            after = await connection_manager.get_last_pong(ws_obj)
+    assert before is not None
+    assert after is not None
+    assert after > before
