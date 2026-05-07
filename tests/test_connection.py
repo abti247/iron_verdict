@@ -1,11 +1,9 @@
 import asyncio
 import logging
-import pytest
 from unittest.mock import AsyncMock
 from iron_verdict.connection import ConnectionManager
 
 
-@pytest.mark.asyncio
 async def test_add_connection():
     manager = ConnectionManager()
     mock_ws = "mock_websocket"
@@ -16,7 +14,6 @@ async def test_add_connection():
     assert "left_judge" in manager.active_connections["ABC123"]
 
 
-@pytest.mark.asyncio
 async def test_remove_connection():
     manager = ConnectionManager()
     mock_ws = "mock_websocket"
@@ -27,7 +24,6 @@ async def test_remove_connection():
     assert "left_judge" not in manager.active_connections.get("ABC123", {})
 
 
-@pytest.mark.asyncio
 async def test_broadcast_to_session():
     manager = ConnectionManager()
     mock_ws1 = AsyncMock()
@@ -42,7 +38,6 @@ async def test_broadcast_to_session():
     mock_ws2.send_json.assert_called_once_with({"type": "test"})
 
 
-@pytest.mark.asyncio
 async def test_send_to_role():
     manager = ConnectionManager()
     mock_ws = AsyncMock()
@@ -54,21 +49,18 @@ async def test_send_to_role():
     mock_ws.send_json.assert_called_once_with({"type": "test"})
 
 
-@pytest.mark.asyncio
 async def test_broadcast_to_nonexistent_session():
     manager = ConnectionManager()
     # Should not raise exception
     await manager.broadcast_to_session("INVALID", {"type": "test"})
 
 
-@pytest.mark.asyncio
 async def test_send_to_nonexistent_role():
     manager = ConnectionManager()
     # Should not raise exception
     await manager.send_to_role("ABC123", "nonexistent", {"type": "test"})
 
 
-@pytest.mark.asyncio
 async def test_broadcast_handles_failed_websocket():
     manager = ConnectionManager()
     mock_ws_good = AsyncMock()
@@ -85,7 +77,6 @@ async def test_broadcast_handles_failed_websocket():
     mock_ws_good.send_json.assert_called_once_with({"type": "test"})
 
 
-@pytest.mark.asyncio
 async def test_send_to_role_handles_failed_websocket():
     manager = ConnectionManager()
     mock_ws = AsyncMock()
@@ -97,13 +88,11 @@ async def test_send_to_role_handles_failed_websocket():
     await manager.send_to_role("ABC123", "left_judge", {"type": "test"})
 
 
-@pytest.mark.asyncio
 async def test_count_displays_returns_zero_for_empty_session():
     manager = ConnectionManager()
     assert await manager.count_displays("ABC123") == 0
 
 
-@pytest.mark.asyncio
 async def test_count_displays_counts_only_display_connections():
     manager = ConnectionManager()
     await manager.add_connection("ABC123", "display_aabb1122", AsyncMock())
@@ -113,7 +102,6 @@ async def test_count_displays_counts_only_display_connections():
     assert await manager.count_displays("ABC123") == 2
 
 
-@pytest.mark.asyncio
 async def test_send_to_displays_sends_to_all_displays():
     manager = ConnectionManager()
     mock_display1 = AsyncMock()
@@ -132,14 +120,12 @@ async def test_send_to_displays_sends_to_all_displays():
     mock_judge.send_json.assert_not_called()
 
 
-@pytest.mark.asyncio
 async def test_send_to_displays_no_op_for_empty_session():
     manager = ConnectionManager()
     # Should not raise
     await manager.send_to_displays("INVALID", {"type": "test"})
 
 
-@pytest.mark.asyncio
 async def test_broadcast_failure_logs_warning(caplog):
     manager = ConnectionManager()
     broken_ws = AsyncMock()
@@ -153,7 +139,6 @@ async def test_broadcast_failure_logs_warning(caplog):
     assert len(records) == 1
 
 
-@pytest.mark.asyncio
 async def test_send_to_role_failure_logs_warning(caplog):
     manager = ConnectionManager()
     broken_ws = AsyncMock()
@@ -167,7 +152,6 @@ async def test_send_to_role_failure_logs_warning(caplog):
     assert len(records) == 1
 
 
-@pytest.mark.asyncio
 async def test_send_to_displays_failure_logs_warning(caplog):
     manager = ConnectionManager()
     broken_ws = AsyncMock()
@@ -181,7 +165,6 @@ async def test_send_to_displays_failure_logs_warning(caplog):
     assert len(records) == 1
 
 
-@pytest.mark.asyncio
 async def test_get_connection_returns_registered_websocket():
     manager = ConnectionManager()
     mock_ws = AsyncMock()
@@ -190,14 +173,12 @@ async def test_get_connection_returns_registered_websocket():
     assert result is mock_ws
 
 
-@pytest.mark.asyncio
 async def test_get_connection_returns_none_when_not_found():
     manager = ConnectionManager()
     result = await manager.get_connection("ABC123", "left_judge")
     assert result is None
 
 
-@pytest.mark.asyncio
 async def test_broadcast_to_others_skips_excluded_websocket():
     manager = ConnectionManager()
     mock_ws1 = AsyncMock()
@@ -215,14 +196,12 @@ async def test_broadcast_to_others_skips_excluded_websocket():
     mock_ws3.send_json.assert_called_once_with({"type": "test"})
 
 
-@pytest.mark.asyncio
 async def test_broadcast_to_others_no_op_for_nonexistent_session():
     manager = ConnectionManager()
     # Should not raise
     await manager.broadcast_to_others("INVALID", AsyncMock(), {"type": "test"})
 
 
-@pytest.mark.asyncio
 async def test_broadcast_to_others_failure_logs_warning(caplog):
     manager = ConnectionManager()
     broken_ws = AsyncMock()
@@ -239,7 +218,6 @@ async def test_broadcast_to_others_failure_logs_warning(caplog):
 
 
 
-@pytest.mark.asyncio
 async def test_add_connection_initializes_last_pong():
     manager = ConnectionManager()
     mock_ws = AsyncMock()
@@ -248,7 +226,6 @@ async def test_add_connection_initializes_last_pong():
     assert isinstance(manager._last_pong[mock_ws], float)
 
 
-@pytest.mark.asyncio
 async def test_remove_connection_cleans_up_last_pong():
     manager = ConnectionManager()
     mock_ws = AsyncMock()
@@ -257,7 +234,6 @@ async def test_remove_connection_cleans_up_last_pong():
     assert mock_ws not in manager._last_pong
 
 
-@pytest.mark.asyncio
 async def test_mark_pong_updates_timestamp():
     manager = ConnectionManager()
     mock_ws = AsyncMock()
@@ -268,7 +244,6 @@ async def test_mark_pong_updates_timestamp():
     assert manager._last_pong[mock_ws] > first
 
 
-@pytest.mark.asyncio
 async def test_mark_pong_noop_for_unknown_websocket():
     manager = ConnectionManager()
     unknown_ws = AsyncMock()
@@ -277,7 +252,6 @@ async def test_mark_pong_noop_for_unknown_websocket():
     assert unknown_ws not in manager._last_pong
 
 
-@pytest.mark.asyncio
 async def test_get_last_pong_returns_float_for_known_ws():
     manager = ConnectionManager()
     mock_ws = AsyncMock()
@@ -286,14 +260,12 @@ async def test_get_last_pong_returns_float_for_known_ws():
     assert isinstance(result, float)
 
 
-@pytest.mark.asyncio
 async def test_get_last_pong_returns_none_for_unknown_ws():
     manager = ConnectionManager()
     result = await manager.get_last_pong(AsyncMock())
     assert result is None
 
 
-@pytest.mark.asyncio
 async def test_get_all_connections_returns_all_entries():
     manager = ConnectionManager()
     ws1, ws2 = AsyncMock(), AsyncMock()
@@ -309,7 +281,6 @@ async def test_get_all_connections_returns_all_entries():
     assert sockets == {ws1, ws2}
 
 
-@pytest.mark.asyncio
 async def test_get_all_connections_returns_empty_when_none():
     manager = ConnectionManager()
     result = await manager.get_all_connections()

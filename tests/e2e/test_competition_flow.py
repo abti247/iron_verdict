@@ -44,6 +44,13 @@ def test_full_lift_cycle(competition):
     # 2 white + 1 red = "Good Lift" (majority white)
     expect(display.locator(".verdict-stamp")).to_have_text("Good Lift")
 
+    # -- End Session ---------------------------------------------------------
+    head.get_by_role("button", name="End Session").click()
+    for p in (head, left, right, display):
+        expect(
+            p.get_by_role("button", name="Create New Session")
+        ).to_be_visible(timeout=5000)
+
 
 def test_lift_cycle_with_required_reasons(competition):
     """Head judge enables require_reasons → judges must pick reason for non-white."""

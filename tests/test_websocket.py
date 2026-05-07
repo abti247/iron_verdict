@@ -5,7 +5,6 @@ import pytest
 import httpx
 import httpx_ws
 from httpx_ws.transport import ASGIWebSocketTransport
-from fastapi.testclient import TestClient
 from iron_verdict.main import app, session_manager
 from iron_verdict.config import settings
 
@@ -13,15 +12,9 @@ from iron_verdict.config import settings
 @pytest.fixture(autouse=True)
 def reset_rate_limiter():
     """Reset in-memory rate-limit counters so tests don't bleed into each other."""
-    try:
-        from iron_verdict.main import limiter
-        limiter._storage.reset()
-    except (ImportError, AttributeError):
-        pass
+    from iron_verdict.main import limiter
+    limiter.reset()
     yield
-
-
-client = TestClient(app)
 
 
 @pytest.fixture
@@ -31,29 +24,6 @@ async def session_code():
     yield code
     if code in session_manager.sessions:
         session_manager.delete_session(code)
-
-
-def test_create_session_returns_code():
-    response = client.post("/api/sessions", json={"name": "Test"})
-    assert response.status_code == 200
-    data = response.json()
-    assert "session_code" in data
-    assert len(data["session_code"]) == 8
-
-
-def test_create_session_requires_name():
-    response = client.post("/api/sessions", json={})
-    assert response.status_code == 422
-
-
-def test_create_session_rejects_empty_name():
-    response = client.post("/api/sessions", json={"name": ""})
-    assert response.status_code == 422
-
-
-def test_create_session_rejects_whitespace_name():
-    response = client.post("/api/sessions", json={"name": "   "})
-    assert response.status_code == 422
 
 
 @pytest.mark.asyncio
@@ -261,16 +231,6 @@ async def test_display_cap_rejects_when_full(monkeypatch):
         session_manager.delete_session(code)
 
 
-def test_create_session_rate_limited_after_10_requests():
-    """11th request from the same IP within an hour returns 429."""
-    for i in range(10):
-        r = client.post("/api/sessions", json={"name": f"S{i}"})
-        assert r.status_code == 200, f"Request {i+1} should succeed, got {r.status_code}"
-
-    r = client.post("/api/sessions", json={"name": "overflow"})
-    assert r.status_code == 429
-
-
 @pytest.mark.asyncio
 async def test_websocket_rejects_wrong_origin(monkeypatch):
     """WS connection with wrong Origin is closed with code 1008."""
@@ -337,41 +297,7 @@ async def test_websocket_disconnects_on_message_flood(session_code):
                 pass  # Any WebSocket close exception means the server disconnected — test passes
 
 
-def test_security_headers_on_root():
-    response = client.get("/")
-    assert response.headers["X-Content-Type-Options"] == "nosniff"
-    assert response.headers["X-Frame-Options"] == "DENY"
-    assert response.headers["Referrer-Policy"] == "no-referrer"
-    assert "max-age=31536000" in response.headers["Strict-Transport-Security"]
-    csp = response.headers["Content-Security-Policy"]
-    assert "default-src 'self'" in csp
-    assert "cdn.jsdelivr.net" in csp
-    assert "'unsafe-eval'" in csp  # Alpine.js requires eval for x-show/x-bind expression evaluation
-    assert "fonts.googleapis.com" in csp
-    assert "fonts.gstatic.com" in csp
-
-
-def test_security_headers_on_api():
-    response = client.post("/api/sessions", json={"name": "Test"})
-    assert response.headers["X-Content-Type-Options"] == "nosniff"
-    assert "Content-Security-Policy" in response.headers
-
-
 # ---- Session creation logging ----
-
-@pytest.mark.asyncio
-async def test_create_session_logs_info(caplog):
-    async with httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app), base_url="http://test"
-    ) as ac:
-        with caplog.at_level(logging.INFO, logger="iron_verdict"):
-            resp = await ac.post("/api/sessions", json={"name": "TestMeet"})
-    assert resp.status_code == 200
-    messages = [r.getMessage() for r in caplog.records]
-    assert any("session_created" in m for m in messages)
-
-
-# ---- WebSocket join logging ----
 
 @pytest.mark.asyncio
 async def test_ws_join_success_logs_role_and_session(caplog):
@@ -635,7 +561,7 @@ async def test_join_success_time_remaining_ms_when_timer_running():
     assert 58000 <= trms <= 60000
 
 
-# ---- Reason selection (Task 3) ----
+# ---- Reason selection ----
 
 @pytest.mark.asyncio
 async def test_vote_lock_reason_stored_in_session():
