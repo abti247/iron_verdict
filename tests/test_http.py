@@ -73,7 +73,6 @@ def test_security_headers_on_api():
     assert "Content-Security-Policy" in response.headers
 
 
-@pytest.mark.asyncio
 async def test_create_session_logs_info(caplog):
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app), base_url="http://test"
