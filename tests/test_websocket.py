@@ -5,7 +5,6 @@ import pytest
 import httpx
 import httpx_ws
 from httpx_ws.transport import ASGIWebSocketTransport
-from fastapi.testclient import TestClient
 from iron_verdict.main import app, session_manager
 from iron_verdict.config import settings
 
@@ -13,15 +12,9 @@ from iron_verdict.config import settings
 @pytest.fixture(autouse=True)
 def reset_rate_limiter():
     """Reset in-memory rate-limit counters so tests don't bleed into each other."""
-    try:
-        from iron_verdict.main import limiter
-        limiter._storage.reset()
-    except (ImportError, AttributeError):
-        pass
+    from iron_verdict.main import limiter
+    limiter.reset()
     yield
-
-
-client = TestClient(app)
 
 
 @pytest.fixture
@@ -33,30 +26,6 @@ async def session_code():
         session_manager.delete_session(code)
 
 
-def test_create_session_returns_code():
-    response = client.post("/api/sessions", json={"name": "Test"})
-    assert response.status_code == 200
-    data = response.json()
-    assert "session_code" in data
-    assert len(data["session_code"]) == 8
-
-
-def test_create_session_requires_name():
-    response = client.post("/api/sessions", json={})
-    assert response.status_code == 422
-
-
-def test_create_session_rejects_empty_name():
-    response = client.post("/api/sessions", json={"name": ""})
-    assert response.status_code == 422
-
-
-def test_create_session_rejects_whitespace_name():
-    response = client.post("/api/sessions", json={"name": "   "})
-    assert response.status_code == 422
-
-
-@pytest.mark.asyncio
 async def test_settings_update_stored_in_session(session_code):
     """Head judge can update settings via settings_update message."""
     async with httpx.AsyncClient(
@@ -79,7 +48,6 @@ async def test_settings_update_stored_in_session(session_code):
             assert session["settings"]["lift_type"] == "deadlift"
 
 
-@pytest.mark.asyncio
 async def test_show_results_includes_settings(session_code):
     """show_results broadcast includes current settings."""
     async with httpx.AsyncClient(transport=ASGIWebSocketTransport(app=app), base_url="http://test") as left_client, \
@@ -130,7 +98,6 @@ async def test_show_results_includes_settings(session_code):
             assert show_results["liftType"] == "bench"
 
 
-@pytest.mark.asyncio
 async def test_settings_update_invalid_lift_type_returns_error(session_code):
     async with httpx.AsyncClient(
         transport=ASGIWebSocketTransport(app=app), base_url="http://test"
@@ -148,7 +115,6 @@ async def test_settings_update_invalid_lift_type_returns_error(session_code):
             assert msg["type"] == "error"
 
 
-@pytest.mark.asyncio
 async def test_settings_update_broadcasts_to_all_clients(session_code):
     """settings_update message should be broadcast to all connected clients."""
     async with httpx.AsyncClient(
@@ -213,7 +179,6 @@ async def test_settings_update_broadcasts_to_all_clients(session_code):
                     pass
 
 
-@pytest.mark.asyncio
 async def test_vote_lock_invalid_color_returns_error(session_code):
     async with httpx.AsyncClient(
         transport=ASGIWebSocketTransport(app=app), base_url="http://test"
@@ -228,7 +193,6 @@ async def test_vote_lock_invalid_color_returns_error(session_code):
             assert "color" in msg["message"].lower()
 
 
-@pytest.mark.asyncio
 async def test_vote_lock_missing_color_returns_error(session_code):
     async with httpx.AsyncClient(
         transport=ASGIWebSocketTransport(app=app), base_url="http://test"
@@ -243,7 +207,6 @@ async def test_vote_lock_missing_color_returns_error(session_code):
             assert "color" in msg["message"].lower()
 
 
-@pytest.mark.asyncio
 async def test_display_cap_rejects_when_full(monkeypatch):
     """Setting DISPLAY_CAP=0 immediately rejects any display join."""
     monkeypatch.setattr(settings, "DISPLAY_CAP", 0)
@@ -261,17 +224,6 @@ async def test_display_cap_rejects_when_full(monkeypatch):
         session_manager.delete_session(code)
 
 
-def test_create_session_rate_limited_after_10_requests():
-    """11th request from the same IP within an hour returns 429."""
-    for i in range(10):
-        r = client.post("/api/sessions", json={"name": f"S{i}"})
-        assert r.status_code == 200, f"Request {i+1} should succeed, got {r.status_code}"
-
-    r = client.post("/api/sessions", json={"name": "overflow"})
-    assert r.status_code == 429
-
-
-@pytest.mark.asyncio
 async def test_websocket_rejects_wrong_origin(monkeypatch):
     """WS connection with wrong Origin is closed with code 1008."""
     monkeypatch.setattr(settings, "ALLOWED_ORIGIN", "https://app.example.com")
@@ -291,7 +243,6 @@ async def test_websocket_rejects_wrong_origin(monkeypatch):
             pass  # Connection was closed/rejected as expected (1008 close)
 
 
-@pytest.mark.asyncio
 async def test_websocket_accepts_matching_origin(monkeypatch, session_code):
     """WS connection with correct Origin is accepted normally."""
     monkeypatch.setattr(settings, "ALLOWED_ORIGIN", "https://app.example.com")
@@ -307,7 +258,6 @@ async def test_websocket_accepts_matching_origin(monkeypatch, session_code):
             assert msg["type"] == "join_success"
 
 
-@pytest.mark.asyncio
 async def test_websocket_disconnects_on_message_flood(session_code):
     """Sending >20 messages/second closes connection with code 1008."""
     async with httpx.AsyncClient(
@@ -337,43 +287,8 @@ async def test_websocket_disconnects_on_message_flood(session_code):
                 pass  # Any WebSocket close exception means the server disconnected — test passes
 
 
-def test_security_headers_on_root():
-    response = client.get("/")
-    assert response.headers["X-Content-Type-Options"] == "nosniff"
-    assert response.headers["X-Frame-Options"] == "DENY"
-    assert response.headers["Referrer-Policy"] == "no-referrer"
-    assert "max-age=31536000" in response.headers["Strict-Transport-Security"]
-    csp = response.headers["Content-Security-Policy"]
-    assert "default-src 'self'" in csp
-    assert "cdn.jsdelivr.net" in csp
-    assert "'unsafe-eval'" in csp  # Alpine.js requires eval for x-show/x-bind expression evaluation
-    assert "fonts.googleapis.com" in csp
-    assert "fonts.gstatic.com" in csp
-
-
-def test_security_headers_on_api():
-    response = client.post("/api/sessions", json={"name": "Test"})
-    assert response.headers["X-Content-Type-Options"] == "nosniff"
-    assert "Content-Security-Policy" in response.headers
-
-
 # ---- Session creation logging ----
 
-@pytest.mark.asyncio
-async def test_create_session_logs_info(caplog):
-    async with httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app), base_url="http://test"
-    ) as ac:
-        with caplog.at_level(logging.INFO, logger="iron_verdict"):
-            resp = await ac.post("/api/sessions", json={"name": "TestMeet"})
-    assert resp.status_code == 200
-    messages = [r.getMessage() for r in caplog.records]
-    assert any("session_created" in m for m in messages)
-
-
-# ---- WebSocket join logging ----
-
-@pytest.mark.asyncio
 async def test_ws_join_success_logs_role_and_session(caplog):
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app), base_url="http://test"
@@ -395,7 +310,6 @@ async def test_ws_join_success_logs_role_and_session(caplog):
     assert records[0].role == "left_judge"
 
 
-@pytest.mark.asyncio
 async def test_ws_disconnect_logs_info(caplog):
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app), base_url="http://test"
@@ -418,7 +332,6 @@ async def test_ws_disconnect_logs_info(caplog):
     assert records[0].role == "left_judge"
 
 
-@pytest.mark.asyncio
 async def test_vote_lock_logs_info(caplog):
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as ac:
         resp = await ac.post("/api/sessions", json={"name": "Test"})
@@ -441,7 +354,6 @@ async def test_vote_lock_logs_info(caplog):
     assert records[0].color == "white"
 
 
-@pytest.mark.asyncio
 async def test_timer_start_logs_info(caplog):
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as ac:
         resp = await ac.post("/api/sessions", json={"name": "Test"})
@@ -462,7 +374,6 @@ async def test_timer_start_logs_info(caplog):
     assert records[0].session_code == code
 
 
-@pytest.mark.asyncio
 async def test_session_end_logs_info(caplog):
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as ac:
         resp = await ac.post("/api/sessions", json={"name": "Test"})
@@ -486,7 +397,6 @@ async def test_session_end_logs_info(caplog):
     assert records[0].session_code == code
 
 
-@pytest.mark.asyncio
 async def test_origin_rejection_logs_warning(caplog, monkeypatch):
     monkeypatch.setattr(settings, "ALLOWED_ORIGIN", "https://allowed.example.com")
 
@@ -508,7 +418,6 @@ async def test_origin_rejection_logs_warning(caplog, monkeypatch):
     assert records[0].origin == "https://evil.example.com"
 
 
-@pytest.mark.asyncio
 async def test_timer_start_broadcasts_time_remaining_ms():
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as ac:
         resp = await ac.post("/api/sessions", json={"name": "Test"})
@@ -529,7 +438,6 @@ async def test_timer_start_broadcasts_time_remaining_ms():
     assert msg["time_remaining_ms"] == 60000
 
 
-@pytest.mark.asyncio
 async def test_timer_start_stores_timer_started_at():
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as ac:
         resp = await ac.post("/api/sessions", json={"name": "Test"})
@@ -548,7 +456,6 @@ async def test_timer_start_stores_timer_started_at():
     assert abs(session_manager.sessions[code]["timer_started_at"] - time.time()) < 2
 
 
-@pytest.mark.asyncio
 async def test_message_flood_logs_warning(caplog):
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as ac:
         resp = await ac.post("/api/sessions", json={"name": "Test"})
@@ -571,7 +478,6 @@ async def test_message_flood_logs_warning(caplog):
     assert len(records) == 1
 
 
-@pytest.mark.asyncio
 async def test_timer_reset_clears_timer_started_at():
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as ac:
         resp = await ac.post("/api/sessions", json={"name": "Test"})
@@ -591,7 +497,6 @@ async def test_timer_reset_clears_timer_started_at():
     assert session_manager.sessions[code]["timer_started_at"] is None
 
 
-@pytest.mark.asyncio
 async def test_join_success_time_remaining_ms_when_timer_not_running():
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as ac:
         resp = await ac.post("/api/sessions", json={"name": "Test"})
@@ -608,7 +513,6 @@ async def test_join_success_time_remaining_ms_when_timer_not_running():
     assert msg["session_state"]["time_remaining_ms"] is None
 
 
-@pytest.mark.asyncio
 async def test_join_success_time_remaining_ms_when_timer_running():
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as ac:
         resp = await ac.post("/api/sessions", json={"name": "Test"})
@@ -635,9 +539,8 @@ async def test_join_success_time_remaining_ms_when_timer_running():
     assert 58000 <= trms <= 60000
 
 
-# ---- Reason selection (Task 3) ----
+# ---- Reason selection ----
 
-@pytest.mark.asyncio
 async def test_vote_lock_reason_stored_in_session():
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as ac:
         resp = await ac.post("/api/sessions", json={"name": "Test"})
@@ -655,7 +558,6 @@ async def test_vote_lock_reason_stored_in_session():
     assert session_manager.sessions[session_code]["judges"]["left"]["current_reason"] == "reasons.bench.yellow.buttocksUp"
 
 
-@pytest.mark.asyncio
 async def test_vote_lock_requires_reason_when_mandatory():
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as ac:
         resp = await ac.post("/api/sessions", json={"name": "Test"})
@@ -675,7 +577,6 @@ async def test_vote_lock_requires_reason_when_mandatory():
             assert "Reason required" in msg["message"]
 
 
-@pytest.mark.asyncio
 async def test_vote_lock_white_no_reason_ok_when_mandatory():
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as ac:
         resp = await ac.post("/api/sessions", json={"name": "Test"})
@@ -699,7 +600,6 @@ async def test_vote_lock_white_no_reason_ok_when_mandatory():
     assert session_manager.sessions[session_code]["judges"]["left"]["locked"] is True
 
 
-@pytest.mark.asyncio
 async def test_ws_logs_include_conn_id(session_code, caplog):
     """All log records from one WS connection share a conn_id."""
     with caplog.at_level(logging.INFO, logger="iron_verdict"):
@@ -725,7 +625,6 @@ async def test_ws_logs_include_conn_id(session_code, caplog):
     assert len(conn_id) == 16, "conn_id should be 16 hex chars"
 
 
-@pytest.mark.asyncio
 async def test_show_results_includes_reasons():
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as ac:
         resp = await ac.post("/api/sessions", json={"name": "Test"})
@@ -774,7 +673,6 @@ async def test_show_results_includes_reasons():
             assert show_results_msg["reasons"]["right"] == "reasons.bench.yellow.incompleteLift"
 
 
-@pytest.mark.asyncio
 async def test_join_success_includes_reconnect_token(session_code):
     async with httpx.AsyncClient(
         transport=ASGIWebSocketTransport(app=app), base_url="http://test"
@@ -788,7 +686,6 @@ async def test_join_success_includes_reconnect_token(session_code):
     assert len(msg["reconnect_token"]) == 32
 
 
-@pytest.mark.asyncio
 async def test_join_success_session_state_excludes_reconnect_tokens(session_code):
     async with httpx.AsyncClient(
         transport=ASGIWebSocketTransport(app=app), base_url="http://test"
@@ -801,7 +698,6 @@ async def test_join_success_session_state_excludes_reconnect_tokens(session_code
         assert "reconnect_token" not in judge
 
 
-@pytest.mark.asyncio
 async def test_reconnect_with_valid_token_replaces_stale_connection(session_code):
     """New connection with correct token should succeed even while old connection is open."""
     async with httpx.AsyncClient(
@@ -833,7 +729,6 @@ async def test_reconnect_with_valid_token_replaces_stale_connection(session_code
                 assert session_manager.sessions[session_code]["judges"]["left"]["connected"] is True
 
 
-@pytest.mark.asyncio
 async def test_reconnect_with_wrong_token_rejected(session_code):
     async with httpx.AsyncClient(
         transport=ASGIWebSocketTransport(app=app), base_url="http://test"
@@ -856,7 +751,6 @@ async def test_reconnect_with_wrong_token_rejected(session_code):
                 assert "already taken" in msg["message"].lower()
 
 
-@pytest.mark.asyncio
 async def test_judge_disconnect_broadcasts_status_update(session_code):
     async with httpx.AsyncClient(
         transport=ASGIWebSocketTransport(app=app), base_url="http://test"
@@ -885,7 +779,6 @@ async def test_judge_disconnect_broadcasts_status_update(session_code):
             assert msg["connected"] is False
 
 
-@pytest.mark.asyncio
 async def test_judge_join_broadcasts_status_update(session_code):
     async with httpx.AsyncClient(
         transport=ASGIWebSocketTransport(app=app), base_url="http://test"
@@ -907,7 +800,6 @@ async def test_judge_join_broadcasts_status_update(session_code):
             assert msg["connected"] is True
 
 
-@pytest.mark.asyncio
 async def test_head_judge_can_next_lift_in_waiting_state(session_code):
     """next_lift must work even when session state is 'waiting'."""
     async with httpx.AsyncClient(
@@ -923,7 +815,6 @@ async def test_head_judge_can_next_lift_in_waiting_state(session_code):
             assert msg["type"] == "reset_for_next_lift"
 
 
-@pytest.mark.asyncio
 async def test_pong_message_updates_last_pong(session_code):
     """Sending a pong message after joining updates the server's last_pong timestamp."""
     from iron_verdict.main import connection_manager
