@@ -7,6 +7,9 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- JS unit tests for the timer countdown and i18n modules (run with `npm test`)
+- E2E test: lock-in is blocked when `requireReasons` is enabled and no reason is selected; white votes always bypass the gate
+- E2E test: language toggle switches UI strings to German and persists the choice across page reloads
 
 ### Changed
 
