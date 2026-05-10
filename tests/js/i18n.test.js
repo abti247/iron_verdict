@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { initI18n, t, setLanguage, getLanguage, getSupportedLanguages } from '../../src/iron_verdict/static/js/i18n.js';
 
+// Alpine store integration (t(), setLanguage(), getLanguage() reading/writing Alpine.store)
+// is not tested here — Alpine is absent in jsdom. That path is covered by the E2E suite.
+
 const EN = { landing: { createSession: 'Create New Session' } };
 const DE = { landing: { createSession: 'Neue Sitzung erstellen' } };
 
@@ -36,7 +39,9 @@ describe('i18n', () => {
     describe('t()', () => {
         it('resolves a dotted key in the active locale', async () => {
             mockFetch();
-            await initI18n();
+            const lang = await initI18n();
+            expect(lang).toBe('en');
+            expect(document.documentElement.lang).toBe('en');
             expect(t('landing.createSession')).toBe('Create New Session');
         });
 
