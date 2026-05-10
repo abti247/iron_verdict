@@ -24,4 +24,7 @@ def test_language_switches_and_persists(page, server_url):
 
     # Reload — localStorage now holds 'de', so the page should still be in German
     page.reload()
+    page.wait_for_function(
+        '() => typeof window.Alpine !== "undefined" && window.Alpine.store("i18n") != null'
+    )
     expect(page.get_by_role('button', name='Neue Sitzung erstellen')).to_be_visible()

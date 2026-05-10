@@ -16,6 +16,11 @@ def test_lock_blocked_without_reason(competition):
     head.locator('[x-model="showExplanations"]').check()
     head.locator('[x-model="requireReasons"]').check()
 
+    # Wait for the settings_update broadcast to reach left judge's Alpine state
+    left.wait_for_function(
+        '() => document.querySelector("[x-data]")?._x_dataStack?.[0]?.requireReasons === true'
+    )
+
     left.locator('.vote-btn.vote-red').click()
 
     # Lock button must be absent before a reason is chosen
@@ -36,6 +41,10 @@ def test_white_vote_locks_without_reason_when_require_reasons_enabled(competitio
 
     head.locator('[x-model="showExplanations"]').check()
     head.locator('[x-model="requireReasons"]').check()
+
+    left.wait_for_function(
+        '() => document.querySelector("[x-data]")?._x_dataStack?.[0]?.requireReasons === true'
+    )
 
     left.locator('.vote-btn.vote-white').click()
 
