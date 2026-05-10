@@ -53,4 +53,23 @@ describe('i18n', () => {
             expect(t('landing.createSession')).toBe('landing.createSession');
         });
     });
+
+    // exercises resolveLanguage priority: localStorage > navigator > default
+    describe('resolveLanguage (via getLanguage)', () => {
+        it('localStorage value wins over navigator', () => {
+            localStorage.setItem('iron-verdict-lang', 'de');
+            vi.stubGlobal('navigator', { language: 'en-US' });
+            expect(getLanguage()).toBe('de');
+        });
+
+        it('falls back to navigator language prefix when localStorage is empty', () => {
+            vi.stubGlobal('navigator', { language: 'de-AT' });
+            expect(getLanguage()).toBe('de');
+        });
+
+        it('falls back to "en" when neither localStorage nor navigator matches', () => {
+            vi.stubGlobal('navigator', { language: 'fr-FR' });
+            expect(getLanguage()).toBe('en');
+        });
+    });
 });
