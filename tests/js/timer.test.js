@@ -35,4 +35,24 @@ describe('timer', () => {
         vi.advanceTimersByTime(1000);
         expect(onTick.mock.calls.length).toBe(countAtZero);
     });
+
+    it('stopTimer cancels a running timer', () => {
+        const onTick = vi.fn();
+        startTimerCountdown(60000, onTick);
+        vi.advanceTimersByTime(100); // one tick
+        stopTimer();
+        vi.advanceTimersByTime(5000); // would be 50 more ticks
+        expect(onTick).toHaveBeenCalledTimes(1);
+    });
+
+    it('second startTimerCountdown cancels the first', () => {
+        const onTick1 = vi.fn();
+        const onTick2 = vi.fn();
+        startTimerCountdown(60000, onTick1);
+        vi.advanceTimersByTime(100); // onTick1 fires once
+        startTimerCountdown(60000, onTick2); // internally calls stopTimer()
+        vi.advanceTimersByTime(100); // only onTick2 fires
+        expect(onTick1).toHaveBeenCalledTimes(1);
+        expect(onTick2).toHaveBeenCalledTimes(1);
+    });
 });
