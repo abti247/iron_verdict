@@ -7,6 +7,11 @@ def test_language_switches_and_persists(page, server_url):
     """Clicking DE changes button text to German; reloading the page preserves the language via localStorage."""
     page.goto(server_url)
 
+    # Wait for Alpine and i18n store to be ready before asserting
+    page.wait_for_function(
+        '() => typeof window.Alpine !== "undefined" && window.Alpine.store("i18n") != null'
+    )
+
     # Baseline: page loads in English (navigator.language = 'en-US', no localStorage entry)
     expect(page.get_by_role('button', name='Create New Session')).to_be_visible()
 
