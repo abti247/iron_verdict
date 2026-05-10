@@ -72,4 +72,21 @@ describe('i18n', () => {
             expect(getLanguage()).toBe('en');
         });
     });
+
+    describe('setLanguage()', () => {
+        it('persists to localStorage', () => {
+            setLanguage('de');
+            expect(localStorage.getItem('iron-verdict-lang')).toBe('de');
+        });
+
+        it('ignores unsupported languages', () => {
+            localStorage.setItem('iron-verdict-lang', 'en');
+            setLanguage('fr');
+            expect(localStorage.getItem('iron-verdict-lang')).toBe('en');
+        });
+    });
+
+    it('getSupportedLanguages returns ["en", "de"]', () => {
+        expect(getSupportedLanguages()).toEqual(['en', 'de']);
+    });
 });
