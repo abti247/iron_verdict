@@ -53,6 +53,17 @@ pytest --tb=short -v               # readable pass/fail
 | [test_role_protection.py](tests/e2e/test_role_protection.py) | Taken role rejected; role freed on disconnect; role switch via session-code link; head=center invariant. |
 | [test_scroll_indicator.py](tests/e2e/test_scroll_indicator.py) | `.has-overflow-bottom` class appears for bench-yellow (12 reasons), absent for bench-red (2 reasons). Reaches into Alpine via `_x_dataStack` to set `liftType`. |
 | [test_privacy.py](tests/e2e/test_privacy.py) | Privacy footer link → privacy screen → Back returns to landing. |
+| [test_require_reasons.py](tests/e2e/test_require_reasons.py) | `requireReasons` lock-block when no reason selected; white votes always bypass the gate. |
+| [test_language_switching.py](tests/e2e/test_language_switching.py) | Language toggle switches UI to German; choice persists across page reloads. |
+
+## JS unit tests
+
+Run with `npm test` (Vitest). Independent from pytest — both run in parallel in CI.
+
+| File | Purpose |
+|---|---|
+| [tests/js/timer.test.js](tests/js/timer.test.js) | `startTimerCountdown`: tick values, expiry, auto-stop, `stopTimer`, second-call cancellation. |
+| [tests/js/i18n.test.js](tests/js/i18n.test.js) | `t()` key resolution and fallback; `resolveLanguage` priority (localStorage → navigator → default); `setLanguage` persistence; `getSupportedLanguages`. |
 
 ## Regression gate
 
@@ -68,4 +79,24 @@ Three E2E tests have latent timing/race risks documented in [docs/e2e-known-risk
 
 ## Frontend
 
-*Pending Phase 0.3 review — frontend test patterns and Alpine.js conventions.*
+The frontend has no dedicated JS unit test layer. All frontend coverage comes through the E2E suite (Playwright), which tests observable browser behaviour rather than module internals.
+
+**What E2E tests cover:**
+
+| Behaviour | Test file |
+|---|---|
+| Vote flow — color select, reason step, lock-in | `test_competition_flow.py`, `test_double_vote_prevention.py` |
+| Judge reconnection — refresh before/after vote | `test_judge_reconnection.py` |
+| Display — orbs, verdict, timer | `test_competition_flow.py`, `test_display_resilience.py` |
+| Connectivity indicators (L/R dots) | `test_connectivity_indicators.py` |
+| Reason list scroll overflow indicator | `test_scroll_indicator.py` |
+| Session end, role protection | `test_end_session.py`, `test_role_protection.py` |
+
+**What is not tested:**
+
+| Area | Gap |
+|---|---|
+| `websocket.js` | Backoff algorithm and reconnect-token handling untested at unit level. E2E tests exercise the outcome, not the mechanism. |
+| Demo mode | Pop-up opening not Playwright-testable; demo flow untested. |
+| Contact form | Third-party (web3forms) — would need mocking. |
+| QR code generation | DOM side-effect; not tested. |
