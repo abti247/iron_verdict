@@ -68,7 +68,7 @@ Three E2E tests have latent timing/race risks documented in [docs/e2e-known-risk
 
 ## Frontend
 
-The frontend has no dedicated JS unit test layer for Alpine components. Coverage comes from two sources: Vitest unit tests for pure JS modules, and the Playwright E2E suite for observable browser behaviour.
+Frontend coverage comes from two sources: Vitest unit tests for pure JS modules (`timer.js`, `i18n.js`), and the Playwright E2E suite for observable browser behaviour. Alpine components have no dedicated unit tests — they are covered only through E2E.
 
 **What E2E tests cover:**
 
