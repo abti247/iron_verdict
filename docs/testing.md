@@ -68,4 +68,35 @@ Three E2E tests have latent timing/race risks documented in [docs/e2e-known-risk
 
 ## Frontend
 
-*Pending Phase 0.3 review — frontend test patterns and Alpine.js conventions.*
+Frontend coverage comes from two sources: Vitest unit tests for pure JS modules (`timer.js`, `i18n.js`), and the Playwright E2E suite for observable browser behaviour. Alpine components have no dedicated unit tests — they are covered only through E2E.
+
+**What E2E tests cover:**
+
+| Behaviour | Test file |
+|---|---|
+| Vote flow — color select, reason step, lock-in | `test_competition_flow.py`, `test_double_vote_prevention.py` |
+| Judge reconnection — refresh before/after vote | `test_judge_reconnection.py` |
+| Display — orbs, verdict, timer | `test_competition_flow.py`, `test_display_resilience.py` |
+| Connectivity indicators (L/R dots) | `test_connectivity_indicators.py` |
+| Reason list scroll overflow indicator | `test_scroll_indicator.py` |
+| Session end, role protection | `test_end_session.py`, `test_role_protection.py` |
+| requireReasons lock-block + white-vote bypass | `test_require_reasons.py` |
+| Language switching + localStorage persistence | `test_language_switching.py` |
+
+## JS unit tests
+
+Run with `npm test` (Vitest). Independent from pytest — both run in parallel in CI.
+
+| File | Purpose |
+|---|---|
+| [tests/js/timer.test.js](tests/js/timer.test.js) | `startTimerCountdown`: tick values, expiry, auto-stop, `stopTimer`, second-call cancellation. |
+| [tests/js/i18n.test.js](tests/js/i18n.test.js) | `t()` key resolution and fallback; `resolveLanguage` priority (localStorage → navigator → default); `setLanguage` persistence; `getSupportedLanguages`. |
+
+**What is not tested:**
+
+| Area | Gap |
+|---|---|
+| `websocket.js` | Backoff algorithm and reconnect-token handling untested at unit level. E2E tests exercise the outcome, not the mechanism. |
+| Demo mode | Pop-up opening not Playwright-testable; demo flow untested. |
+| Contact form | Third-party (web3forms) — would need mocking. |
+| QR code generation | DOM side-effect; not tested. |

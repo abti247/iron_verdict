@@ -35,3 +35,6 @@ Thumbs.db
 .claude/settings*
 .superpowers
 docs/superpowers/
+
+# Node
+node_modules/
