@@ -22,6 +22,14 @@ The goal of the app is to provide an easy access to a tool for powerlifting judg
 - Write from the perspective of someone deploying or using the app — describe observable behavior, not implementation details. No class names, method names, protocol internals, or technical mechanisms.
 - Style: short, specific, no trailing period — match the tone of existing entries.
 
+## Living documentation
+- `docs/architecture.md` and `docs/testing.md` are living documents — after completing any feature, fix, or refactor, review them for staleness (same trigger as the CHANGELOG entry).
+- Criterion: would a new contributor reading the doc afterwards build a correct mental model of how the system actually works? If a change shifts how the system or its tests are structured in a way the doc doesn't yet capture, update it.
+- For `architecture.md`, this commonly means changes to (non-exhaustive): HTTP/WS endpoints, state managers, persistence, reconnection model, background tasks, scale flags, frontend module structure, external dependencies, configuration/env-var surface, authentication or security model, observability surface, deployment topology, or any architectural "Why:" rationale.
+- For `testing.md`, this commonly means changes to (non-exhaustive): test categories, conventions, per-file purpose tables (backend or E2E), the regression suite, or known flakiness risks.
+- If a change is architectural in a sense no existing section captures, add a new section or extend the most-related one — do not let it fall through because the doc had no slot for it.
+- Match the existing tone — concise, structured, with "Why:" lines for load-bearing decisions. Edit tables and rationale in place rather than appending new sections; if a section becomes incoherent, rewrite it rather than patching.
+
 ## Testing
 
 ### Structure
