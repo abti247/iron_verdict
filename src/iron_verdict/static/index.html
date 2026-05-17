@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Iron Verdict — Powerlifting Judging</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/variables.css">
     <link rel="stylesheet" href="/static/css/base.css">
@@ -12,12 +15,7 @@
     <link rel="stylesheet" href="/static/css/animations.css">
     <script type="module" src="/static/js/init.js"></script>
     <script defer src="https://umami-production-ca4a.up.railway.app/script.js" data-website-id="aca70c7a-7634-4ae5-bffa-cc83d8764bd0"></script>
-    <script
-        defer
-        src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"
-        integrity="sha384-l8f0VcPi/M1iHPv8egOnY/15TDwqgbOR1anMIJWvU6nLRgZVLTLSaNqi/TOoT5Fh"
-        crossorigin="anonymous">
-    </script>
+    <link rel="preload" as="script" href="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js" crossorigin="anonymous">
     <script
         src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"
         integrity="sha384-3zSEDfvllQohrq0PHL1fOXJuC/jSOO34H46t6UQfobFOmxE5BpjjaIJY5F2/bMnU"
@@ -27,7 +25,7 @@
 <body x-data="ironVerdictApp()" :class="{ 'display-mode': role === 'display' && screen === 'display' }">
 
     <!-- Demo Intro Screen -->
-    <div class="landing-wrap" x-show="screen === 'demo-intro'">
+    <div class="landing-wrap" x-show="screen === 'demo-intro'" x-cloak>
         <div class="landing-panel cut-corner landing-panel--demo">
 
             <div class="brand-iron chrome-text">Iron Verdict</div>
@@ -86,7 +84,7 @@
     </div>
 
     <!-- Landing Screen -->
-    <div class="landing-wrap" x-show="screen === 'landing'">
+    <div class="landing-wrap" x-show="screen === 'landing'" x-cloak>
         <div class="landing-panel cut-corner">
             <div class="brand-iron chrome-text">Iron Verdict</div>
             <div class="brand-verdict-sub" x-text="t('landing.subtitle')"></div>
@@ -143,7 +141,7 @@
     </div>
 
     <!-- Contact Screen -->
-    <div class="landing-wrap" x-show="screen === 'contact'">
+    <div class="landing-wrap" x-show="screen === 'contact'" x-cloak>
         <div class="landing-panel cut-corner">
             <div class="brand-iron chrome-text" x-text="t('contact.title')"></div>
             <div class="brand-verdict-sub">Iron Verdict</div>
@@ -188,7 +186,7 @@
     </div>
 
     <!-- Privacy Screen -->
-    <div class="landing-wrap" x-show="screen === 'privacy'">
+    <div class="landing-wrap" x-show="screen === 'privacy'" x-cloak>
         <div class="landing-panel cut-corner">
             <div class="brand-iron chrome-text" x-text="t('privacy.title')"></div>
             <div class="brand-verdict-sub">Iron Verdict</div>
@@ -210,7 +208,7 @@
     </div>
 
     <!-- Role Selection Screen -->
-    <div class="role-wrap" x-show="screen === 'role-select'">
+    <div class="role-wrap" x-show="screen === 'role-select'" x-cloak>
         <div class="role-panel cut-corner">
             <div class="role-heading chrome-text" x-text="t('roles.heading')"></div>
             <div class="session-tag">
@@ -249,7 +247,7 @@
     </div>
 
     <!-- Judge Screen -->
-    <div class="judge-wrap" x-show="screen === 'judge'">
+    <div class="judge-wrap" x-show="screen === 'judge'" x-cloak>
         <div class="judge-bar">
             <div class="judge-role-label" x-text="getRoleDisplayName()"></div>
             <div class="judge-timer" :class="timerExpired && 'expired'" x-text="timerDisplay"></div>
@@ -373,7 +371,7 @@
     </div>
 
     <!-- Display Screen: shows sessionName only — sessionCode intentionally omitted (C3) -->
-    <div class="display-full" x-show="screen === 'display'">
+    <div class="display-full" x-show="screen === 'display'" x-cloak>
         <div class="display-tag">
             <span class="conn-dot" :class="connectionStatus"></span>
             <span class="conn-label" x-show="serverRestarting" x-text="t('connection.serverRestarting')"></span>

@@ -9,14 +9,26 @@ import { initI18n, t, setLanguage, getLanguage } from './i18n.js';
     window._demoParams = (code && demo) ? { code: code, demo: demo } : null;
 })();
 
-// Load locale files before Alpine starts
-initI18n().then(lang => {
+// Wait for translations + custom fonts, then load Alpine. Alpine's CDN build
+// auto-starts on script load, so deferring the load itself is what guarantees
+// the first render uses the right strings in the right font.
+// document.fonts.load() explicitly requests each face — browsers skip loading
+// fonts for display:none elements (x-cloak), so without this we'd never trigger
+// the fetches before Alpine renders.
+const loadFont = (spec) => document.fonts.load(spec).catch(() => null);
+Promise.all([
+    initI18n(),
+    loadFont('1em "Bebas Neue"'),
+    loadFont('400 1em "Rajdhani"'),
+    loadFont('600 1em "Rajdhani"'),
+    loadFont('700 1em "Rajdhani"'),
+]).then(([lang]) => {
     window._resolvedLang = lang;
-    // If Alpine already created the store, update it and bump _v to trigger re-render
-    if (typeof Alpine !== 'undefined' && Alpine.store('i18n')) {
-        Alpine.store('i18n').lang = lang;
-        Alpine.store('i18n')._v++;
-    }
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js';
+    s.integrity = 'sha384-l8f0VcPi/M1iHPv8egOnY/15TDwqgbOR1anMIJWvU6nLRgZVLTLSaNqi/TOoT5Fh';
+    s.crossOrigin = 'anonymous';
+    document.head.appendChild(s);
 });
 
 // Expose as global so Alpine can call ironVerdictApp()
