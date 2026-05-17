@@ -25,6 +25,8 @@ export function ironVerdictApp() {
         isDemo: false,
         demoRunning: false,
         joinCode: '',
+        joinError: '',
+        joinChecking: false,
         role: '',
         isHead: false,
         ws: null,
@@ -81,10 +83,26 @@ export function ironVerdictApp() {
             }
         },
 
-        joinExistingSession() {
-            if (this.joinCode) {
-                this.sessionCode = this.joinCode.trim().toUpperCase();
-                this.screen = 'role-select';
+        async joinExistingSession() {
+            const code = this.joinCode.trim().toUpperCase();
+            if (code.length !== 8 || this.joinChecking) return;
+            this.joinChecking = true;
+            this.joinError = '';
+            try {
+                const res = await fetch('/api/sessions/' + code);
+                if (res.ok) {
+                    this.sessionCode = code;
+                    this.joinCode = code;
+                    this.screen = 'role-select';
+                } else if (res.status === 404 || res.status === 422) {
+                    this.joinError = t('landing.sessionNotFound');
+                } else {
+                    this.joinError = t('landing.lookupFailed');
+                }
+            } catch (_e) {
+                this.joinError = t('landing.lookupFailed');
+            } finally {
+                this.joinChecking = false;
             }
         },
 
@@ -308,6 +326,7 @@ export function ironVerdictApp() {
             this.isDemo = false;
             this.sessionName = '';
             this.newSessionName = '';
+            this.joinError = '';
         },
 
         returnToRoleSelection() {
