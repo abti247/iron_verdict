@@ -18,6 +18,8 @@ Served by FastAPI directly:
 - `GET /health` — single endpoint used by Railway. Currently conflates liveness + readiness.  
 *Why one endpoint:* Railway consumes a single health URL; splitting earned nothing on this platform. Cost: on ECS/K8s, a slow snapshot save could trip a "not ready" signal and cause an unnecessary restart loop — those platforms want `/livez` (is the process up?) separated from `/readyz` (can it serve traffic?).
 - `POST /api/sessions` — create a session. Rate-limited to 10/hour/IP via slowapi.
+- `GET /api/sessions/{code}` — check whether a session is active. Returns `{"exists": true}` on 200 or 404 with `{"detail": "Session not found"}`. Path pattern `^[A-Z0-9]{8}$` rejects malformed codes with 422 before touching the session map. Rate-limited to 30/minute/IP via slowapi.  
+*Why a separate endpoint instead of validating at WebSocket join:* fail-fast UX. Without it, a typo gets the user as far as the role-selection screen before failing — at a live competition that's a real cost. *Why no session name in the response:* minimizes information disclosure; the existence boolean is all the landing screen needs.
 - `GET /static/*` — static assets (CSS, JS, fonts) served by FastAPI. In an AWS deployment these would move to CloudFront → S3.
 
 Security:

@@ -29,7 +29,7 @@ pytest --tb=short -v               # readable pass/fail
 | [tests/test_session.py](tests/test_session.py) | `SessionManager` unit. Code generation, create/join, vote-lock state machine, IPF rule (disconnected non-voter blocks results), timer-freeze math, settings, reconnect-token lifecycle. |
 | [tests/test_connection.py](tests/test_connection.py) | `ConnectionManager` unit with mocked WebSockets. Add/remove/get, broadcast variants, error-swallowing on send failure, heartbeat plumbing (`mark_pong`, `_last_pong`). |
 | [tests/test_logging_config.py](tests/test_logging_config.py) | `JsonFormatter` produces valid JSON with `level`/`message`/`timestamp` and merges arbitrary record extras. |
-| [tests/test_http.py](tests/test_http.py) | Integration — HTTP surface: session creation (validation, rate limit), `/health`, security headers, and the `session_created` log event. |
+| [tests/test_http.py](tests/test_http.py) | Integration — HTTP surface: session creation (validation, rate limit), session lookup (exists / not found / malformed-format rejection / 404 log event), `/health`, security headers, and the `session_created` log event. |
 | [tests/test_websocket.py](tests/test_websocket.py) | Integration — WebSocket protocol: join, vote lock (color, reason, mandatory-reason gate), settings broadcast, timer, origin check, flood disconnect, reconnect tokens, `judge_status_update`, pong heartbeat, display cap, and `caplog` assertions on every major WS log event. |
 
 ## End-to-end tests
@@ -43,6 +43,7 @@ pytest --tb=short -v               # readable pass/fail
 | File | Scenario |
 |---|---|
 | [test_smoke.py](tests/e2e/test_smoke.py) | Landing renders; "Create New Session" reaches the role select. Sentinel that the Uvicorn fixture is healthy. |
+| [test_join_invalid_code.py](tests/e2e/test_join_invalid_code.py) | Landing-screen validation — Join button enables only at 8 chars; unknown code shows inline error and blocks navigation to role-select; typing clears the error; stale QR (`?session=...`) lands on landing with the code pre-filled and the error visible. |
 | [test_competition_flow.py](tests/e2e/test_competition_flow.py) | **Regression gate.** Full lift cycle (white sweep + mixed verdict + Next Lift), required-reasons branch, timer start/reset across all four screens. |
 | [test_double_vote_prevention.py](tests/e2e/test_double_vote_prevention.py) | Locked vote survives refresh; re-voting blocked; Next Lift clears the lock. |
 | [test_judge_reconnection.py](tests/e2e/test_judge_reconnection.py) | Refresh before/after voting, manual role-reselect, all judges refresh simultaneously, timer-frozen-after-results-and-rejoin. |
@@ -82,6 +83,7 @@ Frontend coverage comes from two sources: Vitest unit tests for pure JS modules 
 | Session end, role protection | `test_end_session.py`, `test_role_protection.py` |
 | requireReasons lock-block + white-vote bypass | `test_require_reasons.py` |
 | Language switching + localStorage persistence | `test_language_switching.py` |
+| Session-code validation on landing | `test_join_invalid_code.py` |
 
 ## JS unit tests
 
