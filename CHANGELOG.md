@@ -12,6 +12,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 - App load no longer flashes through unstyled screens, raw translation keys, or fallback fonts before rendering
+- App loads faster on slow networks (mobile data, conference Wi-Fi) — connections to external font and script CDNs are warmed up during initial HTML parsing instead of serially after
 
 ### Removed
 
