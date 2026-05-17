@@ -27,7 +27,7 @@
 <body x-data="ironVerdictApp()" :class="{ 'display-mode': role === 'display' && screen === 'display' }">
 
     <!-- Demo Intro Screen -->
-    <div class="landing-wrap" x-show="screen === 'demo-intro'">
+    <div class="landing-wrap" x-show="screen === 'demo-intro'" x-cloak>
         <div class="landing-panel cut-corner landing-panel--demo">
 
             <div class="brand-iron chrome-text">Iron Verdict</div>
@@ -86,7 +86,7 @@
     </div>
 
     <!-- Landing Screen -->
-    <div class="landing-wrap" x-show="screen === 'landing'">
+    <div class="landing-wrap" x-show="screen === 'landing'" x-cloak>
         <div class="landing-panel cut-corner">
             <div class="brand-iron chrome-text">Iron Verdict</div>
             <div class="brand-verdict-sub" x-text="t('landing.subtitle')"></div>
@@ -143,7 +143,7 @@
     </div>
 
     <!-- Contact Screen -->
-    <div class="landing-wrap" x-show="screen === 'contact'">
+    <div class="landing-wrap" x-show="screen === 'contact'" x-cloak>
         <div class="landing-panel cut-corner">
             <div class="brand-iron chrome-text" x-text="t('contact.title')"></div>
             <div class="brand-verdict-sub">Iron Verdict</div>
@@ -188,7 +188,7 @@
     </div>
 
     <!-- Privacy Screen -->
-    <div class="landing-wrap" x-show="screen === 'privacy'">
+    <div class="landing-wrap" x-show="screen === 'privacy'" x-cloak>
         <div class="landing-panel cut-corner">
             <div class="brand-iron chrome-text" x-text="t('privacy.title')"></div>
             <div class="brand-verdict-sub">Iron Verdict</div>
@@ -210,7 +210,7 @@
     </div>
 
     <!-- Role Selection Screen -->
-    <div class="role-wrap" x-show="screen === 'role-select'">
+    <div class="role-wrap" x-show="screen === 'role-select'" x-cloak>
         <div class="role-panel cut-corner">
             <div class="role-heading chrome-text" x-text="t('roles.heading')"></div>
             <div class="session-tag">
@@ -249,7 +249,7 @@
     </div>
 
     <!-- Judge Screen -->
-    <div class="judge-wrap" x-show="screen === 'judge'">
+    <div class="judge-wrap" x-show="screen === 'judge'" x-cloak>
         <div class="judge-bar">
             <div class="judge-role-label" x-text="getRoleDisplayName()"></div>
             <div class="judge-timer" :class="timerExpired && 'expired'" x-text="timerDisplay"></div>
@@ -373,7 +373,7 @@
     </div>
 
     <!-- Display Screen: shows sessionName only — sessionCode intentionally omitted (C3) -->
-    <div class="display-full" x-show="screen === 'display'">
+    <div class="display-full" x-show="screen === 'display'" x-cloak>
         <div class="display-tag">
             <span class="conn-dot" :class="connectionStatus"></span>
             <span class="conn-label" x-show="serverRestarting" x-text="t('connection.serverRestarting')"></span>
