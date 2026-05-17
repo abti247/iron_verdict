@@ -96,6 +96,7 @@ def test_get_session_exists_returns_200():
 def test_get_session_not_found_returns_404():
     response = client.get("/api/sessions/AAAAAAAA")
     assert response.status_code == 404
+    assert response.json() == {"detail": "Session not found"}
 
 
 def test_get_session_invalid_format_too_short_returns_422():
