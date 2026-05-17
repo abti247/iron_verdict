@@ -1,4 +1,4 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, Path
 from pydantic import BaseModel, field_validator
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -201,6 +201,22 @@ async def create_session(request: Request, body: CreateSessionRequest):
     code = await session_manager.create_session(body.name)
     logger.info("session_created", extra={"session_code": code, "client_ip": _get_http_client_ip(request)})
     return {"session_code": code}
+
+
+@app.get("/api/sessions/{code}")
+@limiter.limit("30/minute")
+async def get_session(
+    request: Request,
+    code: str = Path(..., pattern=r"^[A-Z0-9]{8}$"),
+):
+    """Check whether a session code corresponds to an active session."""
+    if code in session_manager.sessions:
+        return {"exists": True}
+    logger.info("session_lookup_not_found", extra={
+        "session_code": code,
+        "client_ip": _get_http_client_ip(request),
+    })
+    return JSONResponse(status_code=404, content={"detail": "Session not found"})
 
 
 @app.websocket("/ws")

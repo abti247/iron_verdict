@@ -30,7 +30,7 @@ def test_end_redirects_all_participants(competition):
 
 
 def test_session_gone_after_end(competition):
-    """After ending, joining with old code fails."""
+    """After ending, joining with the old code shows an inline error on landing."""
     head = competition.create_session_and_join_head()
     code = competition.session_code
 
@@ -39,20 +39,17 @@ def test_session_gone_after_end(competition):
         head.get_by_role("button", name="Create New Session")
     ).to_be_visible(timeout=5000)
 
-    # Try to join ended session
-    dialogs = []
+    # Try to join ended session in a fresh context
     ctx = competition.browser.new_context(locale="en-US")
     competition.contexts.append(ctx)
     page = ctx.new_page()
-    page.on("dialog", lambda d: (dialogs.append(d.message), d.accept()))
     page.goto(competition.url)
 
     page.locator('[x-model="joinCode"]').fill(code)
     page.get_by_role("button", name="Join Session").click()
-    page.locator(".role-wrap").wait_for(state="visible")
-    page.locator(".role-btn", has_text="Left").click()
 
-    # Should get an error (session not found)
-    page.wait_for_timeout(2000)
-    assert len(dialogs) > 0, "Expected error dialog when joining ended session"
+    # Lookup returns 404 → inline error shown, no navigation to role-select
+    expect(page.locator(".join-error")).to_be_visible()
+    expect(page.locator(".join-error")).to_contain_text("Session not found")
+    expect(page.locator(".role-wrap")).not_to_be_visible()
     expect(page.locator(".judge-wrap")).not_to_be_visible()

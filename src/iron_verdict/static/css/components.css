@@ -555,3 +555,13 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     color: white;
     font-weight: 700;
 }
+
+/* ===== JOIN-CODE VALIDATION ERROR ===== */
+.join-error {
+    text-align: center;
+    color: var(--blood-bright);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 14px;
+    letter-spacing: 1px;
+    margin-top: 8px;
+}

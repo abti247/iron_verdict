@@ -82,3 +82,49 @@ async def test_create_session_logs_info(caplog):
     assert resp.status_code == 200
     messages = [r.getMessage() for r in caplog.records]
     assert any("session_created" in m for m in messages)
+
+
+def test_get_session_exists_returns_200():
+    create = client.post("/api/sessions", json={"name": "Lookup Test"})
+    code = create.json()["session_code"]
+
+    response = client.get(f"/api/sessions/{code}")
+    assert response.status_code == 200
+    assert response.json() == {"exists": True}
+
+
+def test_get_session_not_found_returns_404():
+    response = client.get("/api/sessions/AAAAAAAA")
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Session not found"}
+
+
+def test_get_session_invalid_format_too_short_returns_422():
+    response = client.get("/api/sessions/AAA")
+    assert response.status_code == 422
+
+
+def test_get_session_invalid_format_too_long_returns_422():
+    response = client.get("/api/sessions/AAAAAAAAA")
+    assert response.status_code == 422
+
+
+def test_get_session_invalid_format_lowercase_returns_422():
+    response = client.get("/api/sessions/aaaaaaaa")
+    assert response.status_code == 422
+
+
+def test_get_session_invalid_format_special_chars_returns_422():
+    response = client.get("/api/sessions/ABCD!234")
+    assert response.status_code == 422
+
+
+async def test_get_session_not_found_logs_info(caplog):
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        with caplog.at_level(logging.INFO, logger="iron_verdict"):
+            resp = await ac.get("/api/sessions/ZZZZZZZZ")
+    assert resp.status_code == 404
+    messages = [r.getMessage() for r in caplog.records]
+    assert any("session_lookup_not_found" in m for m in messages)

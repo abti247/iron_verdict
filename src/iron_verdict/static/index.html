@@ -100,11 +100,15 @@
                 <div class="slash-divider" x-text="t('landing.or')"></div>
 
                 <input class="chrome-input" :placeholder="t('landing.placeholder.sessionCode')"
-                       x-model="joinCode" @keyup.enter="joinExistingSession()">
+                       x-model="joinCode"
+                       @input="joinError = ''"
+                       @keyup.enter="joinExistingSession()">
                 <button class="btn-blood btn-blood-secondary cut-corner-sm"
-                        @click="joinExistingSession()" :disabled="!joinCode.trim()"
-                        x-text="t('landing.joinSession')">
+                        @click="joinExistingSession()"
+                        :disabled="joinCode.trim().length !== 8 || joinChecking"
+                        x-text="joinChecking ? t('landing.checking') : t('landing.joinSession')">
                 </button>
+                <div class="join-error" x-show="joinError" x-cloak x-text="joinError"></div>
             </div>
 
             <div class="btn-row">
