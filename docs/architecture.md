@@ -158,7 +158,7 @@ demo-intro → (opens 4 pop-up windows)
 contact / privacy  (info-only screens)
 ```
 
-QR entry point: `?session=XXXX` skips landing, jumps to role-select, then immediately calls `history.replaceState` to clean the URL.
+QR entry point: `?session=XXXX` lands on the landing screen with the code pre-filled, immediately triggers the lookup validator, and navigates to role-select only if the code resolves to an active session. Invalid or unknown codes surface an inline error on landing. `history.replaceState` cleans the URL on entry regardless of outcome.
 
 ### WebSocket client
 
