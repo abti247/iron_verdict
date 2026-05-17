@@ -11,7 +11,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ### Changed
 
 ### Fixed
-- No more brief flash of unstyled screens stacked on top of each other while the app boots
+- App load no longer flashes through unstyled screens, raw translation keys, or fallback fonts before rendering
 
 ### Removed
 
