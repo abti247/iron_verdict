@@ -12,7 +12,17 @@ import { initI18n, t, setLanguage, getLanguage } from './i18n.js';
 // Wait for translations + custom fonts, then load Alpine. Alpine's CDN build
 // auto-starts on script load, so deferring the load itself is what guarantees
 // the first render uses the right strings in the right font.
-Promise.all([initI18n(), document.fonts.ready]).then(([lang]) => {
+// document.fonts.load() explicitly requests each face — browsers skip loading
+// fonts for display:none elements (x-cloak), so without this we'd never trigger
+// the fetches before Alpine renders.
+const loadFont = (spec) => document.fonts.load(spec).catch(() => null);
+Promise.all([
+    initI18n(),
+    loadFont('1em "Bebas Neue"'),
+    loadFont('400 1em "Rajdhani"'),
+    loadFont('600 1em "Rajdhani"'),
+    loadFont('700 1em "Rajdhani"'),
+]).then(([lang]) => {
     window._resolvedLang = lang;
     const s = document.createElement('script');
     s.src = 'https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js';
