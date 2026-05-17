@@ -47,7 +47,7 @@ def test_stale_qr_code_lands_on_landing_with_error(page, server_url):
     """Scanned QR with a stale session code: pre-fill input, show inline error, no role-select."""
     page.goto(f"{server_url}/?session=YYYYYYYY")
 
-    expect(page.locator(".landing-wrap")).to_be_visible()
+    expect(page.get_by_role("button", name="Create New Session")).to_be_visible()
     expect(page.locator('[x-model="joinCode"]')).to_have_value("YYYYYYYY")
     expect(page.locator(".join-error")).to_be_visible()
     expect(page.locator(".role-wrap")).not_to_be_visible()
