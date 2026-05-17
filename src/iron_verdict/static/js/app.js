@@ -398,18 +398,21 @@ export function ironVerdictApp() {
                 }
             });
 
-            // QR code entry point: ?session=XXXX navigates to role-select
+            // QR code entry point: ?session=XXXX validates code, then navigates to role-select
             const urlParams = new URLSearchParams(window.location.search);
             const urlSession = urlParams.get('session');
             if (urlSession) {
                 const trimmed = urlSession.trim().toUpperCase();
-                if (trimmed) {
-                    history.replaceState({}, '', '/');
-                    this.sessionCode = trimmed;
-                    this.joinCode = trimmed;
-                    this.screen = 'role-select';
-                    return;
+                history.replaceState({}, '', '/');
+                this.joinCode = trimmed;
+                this.screen = 'landing';
+                if (trimmed.length === 8) {
+                    // Defer until Alpine has wired the rest of init
+                    setTimeout(() => this.joinExistingSession(), 0);
+                } else if (trimmed.length > 0) {
+                    this.joinError = t('landing.sessionNotFound');
                 }
+                return;
             }
 
             // Reload recovery: auto-rejoin previous session
