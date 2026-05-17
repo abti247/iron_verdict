@@ -74,15 +74,3 @@
 **Solution.** Add Cloudflare Turnstile (cookieless, no-personal-data CAPTCHA) on the session-creation form. Server verifies the Turnstile token in `POST /api/sessions` before creating the session.
 
 **Why.** Belt-and-braces against bot-driven session creation. Lower priority than the items above — Cloudflare's existing protections cover most realistic threat models — but cheap and a nice talking point. Treat as opt-in based on observed abuse, not as a default hardening step.
-
----
-
-## DevOps roadmap reassessment — re-entry checklist (parked)
-
-When resuming Phase 1+ work after the competition, reassess the original roadmap (CI → CD → instrumentation → Prometheus → Grafana → AWS) against the now-documented architecture and the gaps in `profile.md`. Open questions:
-
-1. **Phase ordering.** Is CI → CD → instrumentation → Prometheus → Grafana → AWS still right given the gap cluster (Terraform authoring, IAM, GitOps, OIDC)? Or should AWS-flavored work (IaC + IAM) come earlier to close the most senior-vs-mid differentiator?
-2. **Missing phases.** Profile flags secret management, image scanning (Trivy/Grype), OIDC for CI → AWS, CloudTrail/audit logging, and Go as nice-to-haves. Which become explicit phases vs. inline additions to existing ones?
-3. **Wasted effort?** With the Cloud Engineer role signed, AWS migration could become a planning/design artifact rather than an actual migration. Confirm.
-4. **Tech choices.** Is Prometheus + Grafana still the right observability stack vs. alternatives (Loki/ELK for logs, OTel collectors, hosted options like Grafana Cloud)?
-5. **Architectural prerequisites.** From `docs/architecture.md`'s scale-flags table — should any cheap items (split `/health`, tighten `ALLOWED_ORIGIN`, graceful WS drain) move into a Phase 0.5 "production-readiness" pass *before* Phase 1?
