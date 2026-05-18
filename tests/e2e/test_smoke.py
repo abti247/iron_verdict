@@ -109,3 +109,33 @@ def test_vportal_client_fetch_active_attempt_returns_normalized_shape(page, serv
     assert result["weight"] == 215
     assert result["bodyWeightCategory"] == "-72 kg"
     assert result["ageCategory"] == "Open"
+
+
+def test_vportal_client_poll_invokes_onerror_on_401(page, server_url):
+    page.goto(server_url + "/vportal")
+    page.evaluate("""
+        () => {
+            window.fetch = async (url) => {
+                if (url === '/api/vportal/login') {
+                    return new Response(JSON.stringify({
+                        access_token: 'jwt', exp: 9999999999, fetch_interval_ms: 100,
+                    }), { status: 200 });
+                }
+                if (url === '/api/vportal/graphql') {
+                    return new Response('expired', { status: 401 });
+                }
+                return new Response('', { status: 404 });
+            };
+        }
+    """)
+    result = page.evaluate("""
+        async () => {
+            const m = await import('/static/js/vportalClient.js');
+            await m.vportalClient.login('S1', 'bvdk.vportal-online.de', 'u', 'p');
+            m.vportalClient.setStage('S1', 'STAGE-1', 'P1');
+            return await new Promise((resolve) => {
+                m.vportalClient.pollActiveAttempt('S1', 100, () => {}, (kind) => resolve(kind));
+            });
+        }
+    """)
+    assert result == "token-expired"

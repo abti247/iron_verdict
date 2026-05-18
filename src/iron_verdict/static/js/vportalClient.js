@@ -170,4 +170,40 @@ export const vportalClient = {
             weight: a.weight ?? null,
         };
     },
+
+    pollActiveAttempt(sessionCode, intervalMs, onUpdate, onError) {
+        let consecutiveFailures = 0;
+        let stopped = false;
+
+        const tick = async () => {
+            if (stopped) return;
+            const stored = readStorage(sessionCode);
+            if (!stored) { onError('not-connected'); return; }
+            if (stored.exp && Date.now() / 1000 >= stored.exp) {
+                onError('token-expired');
+                stopped = true;
+                return;
+            }
+            try {
+                const attempt = await this.fetchActiveAttempt(sessionCode);
+                consecutiveFailures = 0;
+                onUpdate(attempt);
+            } catch (err) {
+                if (err.status === 401) {
+                    onError('token-expired');
+                    stopped = true;
+                    return;
+                }
+                consecutiveFailures += 1;
+                if (consecutiveFailures >= 3) {
+                    onError('upstream-unreachable');
+                } else {
+                    onUpdate({ __stale: true });
+                }
+            }
+            if (!stopped) setTimeout(tick, intervalMs);
+        };
+        tick();
+        return () => { stopped = true; };
+    },
 };
