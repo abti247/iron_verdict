@@ -441,3 +441,21 @@ async def test_disconnected_judge_without_vote_blocks_results():
 
     assert result["all_locked"] is False
     assert manager.sessions[code]["state"] != "showing_results"
+
+
+async def test_create_session_defaults_kind_to_generic():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    assert manager.sessions[code]["kind"] == "generic"
+
+
+async def test_create_session_accepts_vportal_kind():
+    manager = SessionManager()
+    code = await manager.create_session("Test", kind="vportal")
+    assert manager.sessions[code]["kind"] == "vportal"
+
+
+async def test_create_session_rejects_unknown_kind():
+    manager = SessionManager()
+    with pytest.raises(ValueError):
+        await manager.create_session("Test", kind="bogus")

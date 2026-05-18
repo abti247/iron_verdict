@@ -11,6 +11,7 @@ from typing import Dict, Any, List
 logger = logging.getLogger("iron_verdict")
 
 VALID_LIFT_TYPES = {"squat", "bench", "deadlift"}
+VALID_SESSION_KINDS = {"generic", "vportal"}
 
 
 class SessionManager:
@@ -25,12 +26,15 @@ class SessionManager:
             if code not in self.sessions:
                 return code
 
-    async def create_session(self, name: str) -> str:
+    async def create_session(self, name: str, kind: str = "generic") -> str:
         """Create a new session and return its code."""
+        if kind not in VALID_SESSION_KINDS:
+            raise ValueError(f"Invalid session kind: {kind}")
         async with self._lock:
             code = self.generate_session_code()
             self.sessions[code] = {
                 "name": name,
+                "kind": kind,
                 "judges": {
                     "left": {
                         "connected": False,
