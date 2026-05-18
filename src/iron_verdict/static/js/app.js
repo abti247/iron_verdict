@@ -59,6 +59,19 @@ export function ironVerdictApp() {
         contactEmail: '',
         contactMessage: '',
         contactStatus: 'idle',
+        sessionKind: 'generic',
+        vportalStagingAvailable: false,
+        vportalConnected: false,
+        vportalStageName: '',
+        vportalFederationLabel: '',
+        vportalModalOpen: false,
+        vportalModalStep: 'federation',
+        vportalLoginError: '',
+
+        openVportalModal() {
+            this.vportalModalOpen = true;
+            this.vportalModalStep = this.vportalConnected ? 'connected' : 'federation';
+        },
 
         ...demoMethods,
 
@@ -78,10 +91,14 @@ export function ironVerdictApp() {
 
         async createSession() {
             try {
+                this.sessionKind = this._initialPathname === '/vportal' ? 'vportal' : 'generic';
                 const response = await fetch('/api/sessions', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: this.newSessionName.trim() })
+                    body: JSON.stringify({
+                        name: this.newSessionName.trim(),
+                        kind: this.sessionKind,
+                    })
                 });
                 if (!response.ok) {
                     alert(t('alerts.createFailed'));
@@ -90,6 +107,14 @@ export function ironVerdictApp() {
                 const data = await response.json();
                 this.sessionCode = data.session_code;
                 this.sessionName = this.newSessionName.trim();
+                // Pick up server-side flags (staging_available) for the freshly-created session.
+                try {
+                    const lookup = await fetch(`/api/sessions/${this.sessionCode}`);
+                    if (lookup.ok) {
+                        const info = await lookup.json();
+                        this.vportalStagingAvailable = !!info.staging_available;
+                    }
+                } catch (_e) { /* swallow — modal will just hide the staging option */ }
                 sessionStorage.setItem('iv_session', JSON.stringify({ code: this.sessionCode }));
                 this.navigateTo('role-select');
             } catch (error) {
@@ -108,6 +133,14 @@ export function ironVerdictApp() {
                 if (res.ok) {
                     this.sessionCode = code;
                     this.joinCode = code;
+                    try {
+                        const data = await res.json();
+                        this.sessionKind = data.kind || 'generic';
+                        this.vportalStagingAvailable = !!data.staging_available;
+                    } catch (_e) {
+                        this.sessionKind = 'generic';
+                        this.vportalStagingAvailable = false;
+                    }
                     sessionStorage.setItem('iv_session', JSON.stringify({ code }));
                     this.navigateTo('role-select');
                 } else if (res.status === 404 || res.status === 422) {
@@ -416,9 +449,10 @@ export function ironVerdictApp() {
         },
 
         init() {
-            // Capture URL params before scrubbing the query string via replaceState.
+            // Capture URL params and pathname before scrubbing via replaceState.
             const urlParams = new URLSearchParams(window.location.search);
             const urlSession = urlParams.get('session');
+            this._initialPathname = window.location.pathname;
             history.replaceState({ screen: 'landing' }, '', '/');
 
             this.$watch('screen', (value) => {

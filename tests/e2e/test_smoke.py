@@ -139,3 +139,21 @@ def test_vportal_client_poll_invokes_onerror_on_401(page, server_url):
         }
     """)
     assert result == "token-expired"
+
+
+def test_vportal_session_shows_connect_button_on_role_select(page, server_url):
+    page.goto(server_url + "/vportal")
+    page.locator('[x-model="newSessionName"]').fill("VPortal Test")
+    page.get_by_role("button", name="Create New Session").click()
+    page.locator(".role-wrap").wait_for(state="visible")
+    expect = __import__('playwright.sync_api', fromlist=['expect']).expect
+    expect(page.locator(".vportal-connect-btn")).to_be_visible()
+
+
+def test_generic_session_does_not_show_connect_button(page, server_url):
+    page.goto(server_url + "/")
+    page.locator('[x-model="newSessionName"]').fill("Generic Test")
+    page.get_by_role("button", name="Create New Session").click()
+    page.locator(".role-wrap").wait_for(state="visible")
+    expect = __import__('playwright.sync_api', fromlist=['expect']).expect
+    expect(page.locator(".vportal-connect-btn")).to_have_count(0)

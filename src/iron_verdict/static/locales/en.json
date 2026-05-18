@@ -180,6 +180,25 @@
     "en": "English",
     "de": "Deutsch"
   },
+  "vportal": {
+    "connectButton": "Connect to comp software",
+    "connectedTo": "Connected to",
+    "modalTitle": "Connect to VPortal",
+    "federationLabel": "Federation",
+    "federationBvdk": "BVDK (Germany)",
+    "federationOevk": "ÖVK (Austria)",
+    "federationBvdkStaging": "BVDK Staging",
+    "usernameLabel": "Username",
+    "passwordLabel": "Password",
+    "stageLabel": "Stage / Platform",
+    "loginButton": "Log in",
+    "stageSelectButton": "Use this stage",
+    "cancelButton": "Cancel",
+    "disconnectButton": "Disconnect",
+    "loginFailed": "Login failed — check username and password.",
+    "loadingStages": "Loading stages…",
+    "disconnectedBanner": "VPortal disconnected — open Select Role to reconnect."
+  },
   "privacy": {
     "link": "Privacy",
     "title": "Privacy Notice",

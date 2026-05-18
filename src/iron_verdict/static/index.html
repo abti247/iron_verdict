@@ -242,6 +242,16 @@
                 <button class="role-btn role-display-btn cut-corner-sm" @click="joinSession('display')" x-text="t('roles.display')">
                 </button>
             </div>
+            <template x-if="sessionKind === 'vportal'">
+                <div class="vportal-connect-wrap">
+                    <button class="vportal-connect-btn cut-corner-sm"
+                            :class="{ 'connected': vportalConnected }"
+                            @click="openVportalModal()"
+                            x-text="vportalConnected
+                                ? (t('vportal.connectedTo') + ' ' + vportalFederationLabel + ' · ' + (vportalStageName || ''))
+                                : t('vportal.connectButton')"></button>
+                </div>
+            </template>
             <div class="btn-row">
                 <button class="btn-blood btn-blood-ghost" @click="returnToLanding()">
                     &larr; <span x-text="t('roles.backToStart')"></span>

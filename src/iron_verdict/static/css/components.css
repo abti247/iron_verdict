@@ -565,3 +565,19 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     letter-spacing: 1px;
     margin-top: 8px;
 }
+
+.vportal-connect-wrap { margin-top: 14px; }
+.vportal-connect-btn {
+    width: 100%;
+    background: linear-gradient(180deg, #1a1a1f, #131316);
+    color: var(--text, #e8e8ea);
+    border: 1px solid #2a2a2e;
+    border-left: 2px solid #ef4444;
+    padding: 10px 14px;
+    font-family: 'Rajdhani', sans-serif;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+.vportal-connect-btn:hover { background: #1a1a1f; }
+.vportal-connect-btn.connected { border-left-color: #22c55e; }

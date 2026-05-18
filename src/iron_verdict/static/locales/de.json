@@ -180,6 +180,25 @@
     "en": "English",
     "de": "Deutsch"
   },
+  "vportal": {
+    "connectButton": "Mit Wettkampf-Software verbinden",
+    "connectedTo": "Verbunden mit",
+    "modalTitle": "Mit VPortal verbinden",
+    "federationLabel": "Verband",
+    "federationBvdk": "BVDK (Deutschland)",
+    "federationOevk": "ÖVK (Österreich)",
+    "federationBvdkStaging": "BVDK Staging",
+    "usernameLabel": "Benutzername",
+    "passwordLabel": "Passwort",
+    "stageLabel": "Bühne / Plattform",
+    "loginButton": "Anmelden",
+    "stageSelectButton": "Diese Bühne verwenden",
+    "cancelButton": "Abbrechen",
+    "disconnectButton": "Trennen",
+    "loginFailed": "Anmeldung fehlgeschlagen – Benutzername oder Passwort prüfen.",
+    "loadingStages": "Bühnen werden geladen…",
+    "disconnectedBanner": "VPortal getrennt – auf Rollenauswahl erneut verbinden."
+  },
   "privacy": {
     "link": "Datenschutz",
     "title": "Datenschutz",
