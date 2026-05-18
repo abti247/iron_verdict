@@ -10,6 +10,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Browser back button now steps back through app screens (judge or display to role-select, role-select to landing) instead of leaving the app
 
 ### Changed
+- Display screen session name in the corner is now clickable, returning to role selection
 
 ### Fixed
 - App load no longer flashes through unstyled screens, raw translation keys, or fallback fonts before rendering
