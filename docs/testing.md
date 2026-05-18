@@ -21,6 +21,7 @@ pytest --tb=short -v               # readable pass/fail
 - Backend tests rely on descriptive function names (no docstrings).
 - E2E tests get a docstring — multi-step flows aren't obvious from the name alone.
 - `pythonpath = ["src"]` is set in `pyproject.toml`.
+- [tests/conftest.py](tests/conftest.py) reorders collection so every backend test runs before any E2E test. **Why:** pytest-playwright's session-scoped fixture creates an asyncio loop on the main thread and leaves it running for the rest of the session; once that happens, pytest-asyncio's per-test `Runner.run()` refuses to start with "cannot be called from a running event loop". Backend-first ordering keeps Playwright's loop out of the way so a single `pytest` invocation runs both suites cleanly. [tests/test_collection_ordering.py](tests/test_collection_ordering.py) guards the ordering.
 
 ## Backend tests
 
@@ -31,6 +32,7 @@ pytest --tb=short -v               # readable pass/fail
 | [tests/test_logging_config.py](tests/test_logging_config.py) | `JsonFormatter` produces valid JSON with `level`/`message`/`timestamp` and merges arbitrary record extras. |
 | [tests/test_http.py](tests/test_http.py) | Integration — HTTP surface: session creation (validation, rate limit), session lookup (exists / not found / malformed-format rejection / 404 log event), `/health`, security headers, and the `session_created` log event. |
 | [tests/test_websocket.py](tests/test_websocket.py) | Integration — WebSocket protocol: join, vote lock (color, reason, mandatory-reason gate), settings broadcast, timer, origin check, flood disconnect, reconnect tokens, `judge_status_update`, pong heartbeat, display cap, and `caplog` assertions on every major WS log event. |
+| [tests/test_collection_ordering.py](tests/test_collection_ordering.py) | Regression — asserts the collection hook in `tests/conftest.py` keeps every backend test ordered before any E2E test, so bare `pytest` keeps working. |
 
 ## End-to-end tests
 
