@@ -33,7 +33,7 @@ def test_reconnect_via_role_select(competition):
     """Judge clicks session code → role-select → re-selects role → session continues."""
     head, left, right = competition.join_all_judges()
 
-    left.locator(".code-link").click()
+    left.locator(".judge-code .code-link").click()
     expect(left.locator(".role-wrap")).to_be_visible()
 
     left.locator(".role-btn", has_text="Left").click()
@@ -81,7 +81,7 @@ def test_timer_frozen_after_all_votes_locked_and_rejoin(competition):
     assert frozen_display != "60", "Expected timer to have ticked before votes locked"
 
     # Left judge navigates back to role selection
-    left.locator(".code-link").click()
+    left.locator(".judge-code .code-link").click()
     expect(left.locator(".role-wrap")).to_be_visible()
 
     # Left judge rejoins
