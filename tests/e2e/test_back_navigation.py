@@ -85,8 +85,8 @@ def test_qr_entry_back_returns_to_landing(competition):
     expect(page.locator(".role-wrap")).not_to_be_visible()
 
 
-def test_reload_recovery_back_returns_to_landing(competition):
-    """After a reload-recovered auto-rejoin to judge, browser back returns to landing."""
+def test_reload_recovery_back_returns_to_role_select(competition):
+    """After a reload-recovered auto-rejoin to judge, browser back returns to role-select."""
     head = competition.create_session_and_join_head()
 
     head.reload()
@@ -94,5 +94,51 @@ def test_reload_recovery_back_returns_to_landing(competition):
 
     head.go_back()
 
-    expect(head.locator('.landing-wrap[x-show*="\'landing\'"]')).to_be_visible()
+    expect(head.locator(".role-wrap")).to_be_visible()
     expect(head.locator(".judge-wrap")).not_to_be_visible()
+
+
+def test_reload_recovery_double_back_returns_to_landing(competition):
+    """After reload, two back presses traverse role-select then land on landing."""
+    head = competition.create_session_and_join_head()
+
+    head.reload()
+    head.locator(".judge-wrap").wait_for(state="visible")
+
+    head.go_back()
+    head.locator(".role-wrap").wait_for(state="visible")
+    head.go_back()
+
+    expect(head.locator('.landing-wrap[x-show*="\'landing\'"]')).to_be_visible()
+    expect(head.locator(".role-wrap")).not_to_be_visible()
+
+
+def test_reload_on_role_select_returns_to_role_select(competition):
+    """Creating a session, reloading on role-select, lands back on role-select."""
+    ctx = competition.browser.new_context(locale="en-US")
+    competition.contexts.append(ctx)
+    page = ctx.new_page()
+    page.on("dialog", lambda d: d.accept())
+    page.goto(competition.url)
+
+    page.locator('[x-model="newSessionName"]').fill("Reload-Role-Select Test")
+    page.get_by_role("button", name="Create New Session").click()
+    page.locator(".role-wrap").wait_for(state="visible")
+
+    page.reload()
+
+    expect(page.locator(".role-wrap")).to_be_visible()
+    expect(page.locator('.landing-wrap[x-show*="\'landing\'"]')).not_to_be_visible()
+
+
+def test_return_to_role_select_then_reload_keeps_role_select(competition):
+    """After leaving a judge screen via the session-code link, reload stays on role-select."""
+    head = competition.create_session_and_join_head()
+
+    head.locator(".judge-code .code-link").click()
+    head.locator(".role-wrap").wait_for(state="visible")
+
+    head.reload()
+
+    expect(head.locator(".role-wrap")).to_be_visible()
+    expect(head.locator('.landing-wrap[x-show*="\'landing\'"]')).not_to_be_visible()

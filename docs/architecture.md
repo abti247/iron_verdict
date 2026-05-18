@@ -158,7 +158,9 @@ demo-intro → (opens 4 pop-up windows)
 contact / privacy  (info-only screens)
 ```
 
-Real screen transitions go through `navigateTo(screen)`, which sets `this.screen` and pushes `{screen}` onto the browser history. `init()` seeds the stack with `replaceState({screen: 'landing'})`. A `popstate` listener reads `event.state.screen` and dispatches to `returnToRoleSelection()` / `returnToLanding()` (which clear vote state and close the WebSocket) or sets `screen` directly for info-only targets; a `_handlingPopstate` guard prevents the helper from re-pushing state during back-navigation. **Why:** before this, the browser back button exited the app — now it steps through screens (judge → role-select → landing) and properly tears down the live WebSocket on the way.
+Real screen transitions go through `navigateTo(screen)`, which sets `this.screen` and pushes `{screen}` onto the browser history. `navigateTo` is idempotent — repeated transitions to the same screen (notably from `handleJoinSuccess` on every WebSocket reconnect) don't pollute the back-stack with duplicates. `init()` seeds the stack with `replaceState({screen: 'landing'})`. A `popstate` listener reads `event.state.screen` and dispatches to `returnToRoleSelection()` / `returnToLanding()` (which clear vote state and close the WebSocket) or sets `screen` directly for info-only targets; a `_handlingPopstate` guard prevents the helper from re-pushing state during back-navigation. **Why:** before this, the browser back button exited the app — now it steps through screens (judge → role-select → landing) and properly tears down the live WebSocket on the way.
+
+Reload behaviour follows the same model. `iv_session` is upgraded as the user moves forward — `{code}` once a code is created or validated, `{code, role, reconnect_token}` once a role is picked. On reload `init()` reads `iv_session`: full state auto-rejoins the judge/display (and seeds a role-select history entry first, so back from the rejoined screen returns there); code-only state re-validates against `/api/sessions/{code}` and returns to role-select. Stale codes (session ended between reloads) clear `iv_session` and surface the "Session not found" error on landing.
 
 QR entry point: `?session=XXXX` lands on the landing screen with the code pre-filled, immediately triggers the lookup validator, and navigates to role-select only if the code resolves to an active session. Invalid or unknown codes surface an inline error on landing. The init-time `replaceState` cleans the URL on entry regardless of outcome. **Why** URL params are captured before the replaceState: scrubbing the query string clears `window.location.search`, so the QR code must be read first.
 
@@ -177,7 +179,7 @@ QR entry point: `?session=XXXX` lands on the landing screen with the code pre-fi
 
 | Storage | Key | Content | Lifetime |
 |---|---|---|---|
-| `sessionStorage` | `iv_session` | `{code, role, reconnect_token?}` | Tab close |
+| `sessionStorage` | `iv_session` | `{code}` on role-select, `{code, role, reconnect_token?}` on judge/display | Tab close |
 | `localStorage` | `iron-verdict-lang` | `'en'` or `'de'` | Persistent |
 | Alpine reactive state | — | `screen`, `selectedVote`, `voteLocked`, timer, etc. | Page lifetime |
 

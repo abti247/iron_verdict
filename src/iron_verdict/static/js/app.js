@@ -63,6 +63,7 @@ export function ironVerdictApp() {
         ...demoMethods,
 
         navigateTo(screen) {
+            if (this.screen === screen) return;
             this.screen = screen;
             if (!this._handlingPopstate) {
                 history.pushState({ screen }, '', '/');
@@ -83,6 +84,7 @@ export function ironVerdictApp() {
                 const data = await response.json();
                 this.sessionCode = data.session_code;
                 this.sessionName = this.newSessionName.trim();
+                sessionStorage.setItem('iv_session', JSON.stringify({ code: this.sessionCode }));
                 this.navigateTo('role-select');
             } catch (error) {
                 alert(t('alerts.createError'));
@@ -100,8 +102,10 @@ export function ironVerdictApp() {
                 if (res.ok) {
                     this.sessionCode = code;
                     this.joinCode = code;
+                    sessionStorage.setItem('iv_session', JSON.stringify({ code }));
                     this.navigateTo('role-select');
                 } else if (res.status === 404 || res.status === 422) {
+                    sessionStorage.removeItem('iv_session');
                     this.joinError = t('landing.sessionNotFound');
                 } else {
                     this.joinError = t('landing.lookupFailed');
@@ -340,7 +344,12 @@ export function ironVerdictApp() {
         },
 
         returnToRoleSelection() {
-            sessionStorage.removeItem('iv_session');
+            // Downgrade to a code-only entry so a reload on role-select returns here.
+            if (this.sessionCode) {
+                sessionStorage.setItem('iv_session', JSON.stringify({ code: this.sessionCode }));
+            } else {
+                sessionStorage.removeItem('iv_session');
+            }
             this.intentionalNavigation = true;
             if (this.ws) {
                 this.ws.close();
@@ -426,17 +435,25 @@ export function ironVerdictApp() {
                 return;
             }
 
-            // Reload recovery: auto-rejoin previous session
+            // Reload recovery: rejoin previous session or return to role-select
             const stored = sessionStorage.getItem('iv_session');
             if (stored) {
                 try {
                     const { code, role } = JSON.parse(stored);
-                    if (!code || !role) {
+                    if (!code) {
                         sessionStorage.removeItem('iv_session');
-                    } else {
+                    } else if (role) {
+                        // Full state — rejoin into the judge or display screen.
+                        // Seed role-select into history so back from the rejoined screen returns there.
                         this.sessionCode = code;
                         this.joinCode = code;
+                        history.pushState({ screen: 'role-select' }, '', '/');
                         setTimeout(() => this.joinSession(role), 100);
+                        return;
+                    } else {
+                        // Code-only state — user was on role-select. Re-validate and return.
+                        this.joinCode = code;
+                        setTimeout(() => this.joinExistingSession(), 0);
                         return;
                     }
                 } catch (_e) {

@@ -11,6 +11,8 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Changed
 - Display screen session name in the corner is now clickable, returning to role selection
+- Reloading on the role-select screen now keeps you there instead of dropping back to the landing page
+- Browser back from a judge or display screen after a reload now returns to role selection (and back again to landing)
 
 ### Fixed
 - App load no longer flashes through unstyled screens, raw translation keys, or fallback fonts before rendering
