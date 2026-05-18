@@ -136,4 +136,20 @@ async def login(body: LoginRequest):
 async def graphql(body: GraphQLRequest):
     _validate_host(body.host)
     _validate_graphql_query(body.query)
-    raise HTTPException(status_code=501, detail="not implemented yet")
+
+    upstream = await _http_client.post(
+        f"https://{body.host}/graphql",
+        json={"query": body.query, "variables": body.variables or {}},
+        headers={
+            "Authorization": f"Bearer {body.token}",
+            "content-type": "application/json",
+            "Accept-Language": "de",
+        },
+    )
+
+    if upstream.status_code == 401:
+        raise HTTPException(status_code=401, detail="VPortal token rejected")
+    if upstream.status_code >= 500:
+        raise HTTPException(status_code=502, detail="VPortal upstream error")
+
+    return upstream.json()

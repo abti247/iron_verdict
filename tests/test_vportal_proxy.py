@@ -71,9 +71,10 @@ def test_graphql_rejects_unknown_query():
     assert response.status_code == 400
 
 
-def test_graphql_accepts_known_operations(monkeypatch):
-    # We can't reach upstream from here — the proxy still returns 501 until Task 7,
-    # but the allowlist check should fire first and let the request through to the impl.
+def test_graphql_accepts_known_operations(mock_vportal):
+    # Allowlist check passes — request reaches the upstream call.
+    # Return 200 so the endpoint terminates cleanly without a real network call.
+    mock_vportal[("POST", "/graphql")] = lambda r: httpx.Response(200, json={"data": {}})
     response = client.post(
         "/api/vportal/graphql",
         json={
@@ -83,8 +84,7 @@ def test_graphql_accepts_known_operations(monkeypatch):
             "variables": {},
         },
     )
-    # Allowlist passed; we hit the 'not implemented' guard.
-    assert response.status_code == 501
+    assert response.status_code == 200
 
 
 @pytest.fixture
@@ -146,3 +146,56 @@ def test_login_failed_credentials_returns_401(mock_vportal):
         json={"host": "bvdk.vportal-online.de", "identity": "u", "credential": "wrong"},
     )
     assert response.status_code == 401
+
+
+def test_graphql_forwards_query_and_auth(mock_vportal):
+    captured = {}
+
+    def gql_response(request):
+        captured["auth"] = request.headers.get("authorization")
+        captured["body"] = request.content.decode()
+        return httpx.Response(200, json={"data": {"profile": {"competition": {"id": "42"}}}})
+
+    mock_vportal[("POST", "/graphql")] = gql_response
+
+    response = client.post(
+        "/api/vportal/graphql",
+        json={
+            "host": "bvdk.vportal-online.de",
+            "token": "jwt-xyz",
+            "query": "{ profile { competition { id } } }",
+            "variables": {},
+        },
+    )
+    assert response.status_code == 200
+    assert response.json() == {"data": {"profile": {"competition": {"id": "42"}}}}
+    assert captured["auth"] == "Bearer jwt-xyz"
+    assert "profile" in captured["body"]
+
+
+def test_graphql_propagates_401(mock_vportal):
+    mock_vportal[("POST", "/graphql")] = lambda req: httpx.Response(401)
+    response = client.post(
+        "/api/vportal/graphql",
+        json={
+            "host": "bvdk.vportal-online.de",
+            "token": "expired",
+            "query": "{ profile { competition { id } } }",
+            "variables": {},
+        },
+    )
+    assert response.status_code == 401
+
+
+def test_graphql_propagates_5xx_as_502(mock_vportal):
+    mock_vportal[("POST", "/graphql")] = lambda req: httpx.Response(503)
+    response = client.post(
+        "/api/vportal/graphql",
+        json={
+            "host": "bvdk.vportal-online.de",
+            "token": "x",
+            "query": "{ profile { competition { id } } }",
+            "variables": {},
+        },
+    )
+    assert response.status_code == 502
