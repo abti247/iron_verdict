@@ -48,7 +48,7 @@ def test_switch_role_via_session_code(competition):
     left = competition.join_as("left_judge")
 
     # Left judge switches to right judge
-    left.locator(".code-link").click()
+    left.locator(".judge-code .code-link").click()
     expect(left.locator(".role-wrap")).to_be_visible()
 
     left.wait_for_timeout(500)

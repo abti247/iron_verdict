@@ -193,7 +193,7 @@
     letter-spacing: 1px;
 }
 
-.judge-code .code-link {
+.code-link {
     color: var(--blood-bright);
     cursor: pointer;
     text-decoration: underline;

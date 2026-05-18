@@ -3,7 +3,7 @@ import { stopTimer } from './timer.js';
 export function handleJoinSuccess(app, message) {
     app.isHead = message.is_head;
     app.sessionName = message.session_state?.name || '';
-    app.screen = app.role === 'display' ? 'display' : 'judge';
+    app.navigateTo(app.role === 'display' ? 'display' : 'judge');
 
     // Initialize live connectivity state from session snapshot
     const judges = message.session_state?.judges;
@@ -136,7 +136,7 @@ export function handleSessionEnded(app, message) {
     app.ws.close();
     app.isDemo = false;
     sessionStorage.removeItem('iv_session');
-    app.screen = 'landing';
+    app.navigateTo('landing');
 }
 
 export function handleSettingsUpdate(app, message) {

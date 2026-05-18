@@ -1,7 +1,7 @@
 export const demoMethods = {
     startDemo() {
         this.demoRunning = false;
-        this.screen = 'demo-intro';
+        this.navigateTo('demo-intro');
     },
 
     async launchDemo() {
@@ -54,6 +54,6 @@ export const demoMethods = {
 
     returnToLandingFromDemo() {
         this.demoRunning = false;
-        this.screen = 'landing';
+        this.navigateTo('landing');
     },
 };

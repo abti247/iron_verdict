@@ -139,7 +139,7 @@
             </div>
 
             <div class="privacy-footer">
-                <span class="privacy-link" @click="screen = 'privacy'" x-text="t('privacy.link')"></span>
+                <span class="privacy-link" @click="navigateTo('privacy')" x-text="t('privacy.link')"></span>
             </div>
         </div>
     </div>
@@ -182,7 +182,7 @@
             </form>
 
             <div class="btn-row">
-                <button class="btn-blood btn-blood-ghost" @click="screen = 'landing'">
+                <button class="btn-blood btn-blood-ghost" @click="navigateTo('landing')">
                     &larr; <span x-text="t('contact.back')"></span>
                 </button>
             </div>
@@ -204,7 +204,7 @@
             </ul>
 
             <div class="btn-row">
-                <button class="btn-blood btn-blood-ghost" @click="screen = 'landing'">
+                <button class="btn-blood btn-blood-ghost" @click="navigateTo('landing')">
                     &larr; <span x-text="t('privacy.back')"></span>
                 </button>
             </div>
@@ -379,7 +379,7 @@
         <div class="display-tag">
             <span class="conn-dot" :class="connectionStatus"></span>
             <span class="conn-label" x-show="serverRestarting" x-text="t('connection.serverRestarting')"></span>
-            <span x-show="!isDemo" x-text="sessionName"></span>
+            <span class="code-link" x-show="!isDemo" @click="returnToRoleSelection()" x-text="sessionName"></span>
             <span x-show="isDemo">DEMO</span>
         </div>
 
