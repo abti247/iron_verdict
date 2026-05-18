@@ -36,3 +36,46 @@ def test_login_accepts_staging_host():
         json={"host": "staging.vportal-online.de", "identity": "u", "credential": "p"},
     )
     assert response.status_code != 400
+
+
+def test_graphql_rejects_mutation():
+    response = client.post(
+        "/api/vportal/graphql",
+        json={
+            "host": "bvdk.vportal-online.de",
+            "token": "x",
+            "query": "mutation updateCompetitionAthleteAttempt { id }",
+            "variables": {},
+        },
+    )
+    assert response.status_code == 400
+    assert "operation" in response.json()["detail"].lower()
+
+
+def test_graphql_rejects_unknown_query():
+    response = client.post(
+        "/api/vportal/graphql",
+        json={
+            "host": "bvdk.vportal-online.de",
+            "token": "x",
+            "query": "{ secretAdminQuery { id } }",
+            "variables": {},
+        },
+    )
+    assert response.status_code == 400
+
+
+def test_graphql_accepts_known_operations(monkeypatch):
+    # We can't reach upstream from here — the proxy still returns 501 until Task 7,
+    # but the allowlist check should fire first and let the request through to the impl.
+    response = client.post(
+        "/api/vportal/graphql",
+        json={
+            "host": "bvdk.vportal-online.de",
+            "token": "x",
+            "query": "{ profile { competition { id } } }",
+            "variables": {},
+        },
+    )
+    # Allowlist passed; we hit the 'not implemented' guard.
+    assert response.status_code == 501
