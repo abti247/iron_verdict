@@ -5,6 +5,7 @@ from fastapi.staticfiles import StaticFiles
 from iron_verdict.config import settings
 from iron_verdict.session import SessionManager
 from iron_verdict.connection import ConnectionManager
+from iron_verdict.vportal_proxy import router as vportal_router
 import asyncio
 import signal
 from contextlib import asynccontextmanager
@@ -170,6 +171,7 @@ async def lifespan(app: FastAPI):
     session_manager.save_snapshot(settings.SNAPSHOT_PATH)
 
 app = FastAPI(title="Iron Verdict", lifespan=lifespan)
+app.include_router(vportal_router)
 app.add_middleware(SecurityHeadersMiddleware)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
