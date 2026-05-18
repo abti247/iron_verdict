@@ -65,7 +65,13 @@ export function ironVerdictApp() {
         navigateTo(screen) {
             if (this.screen === screen) return;
             this.screen = screen;
-            if (!this._handlingPopstate) {
+            if (this._handlingPopstate) return;
+            if (this._navigateInPlaceNext) {
+                // One-shot: rehydrating state in init() — keep the back-stack the same depth
+                // as it was before the reload so mobile swipe-back keeps working.
+                this._navigateInPlaceNext = false;
+                history.replaceState({ screen }, '', '/');
+            } else {
                 history.pushState({ screen }, '', '/');
             }
         },
@@ -435,7 +441,9 @@ export function ironVerdictApp() {
                 return;
             }
 
-            // Reload recovery: rejoin previous session or return to role-select
+            // Reload recovery: rejoin previous session or return to role-select.
+            // Rehydration uses replaceState (via _navigateInPlaceNext) so the post-reload
+            // back-stack matches the pre-reload one — mobile swipe-back stays consistent.
             const stored = sessionStorage.getItem('iv_session');
             if (stored) {
                 try {
@@ -443,16 +451,14 @@ export function ironVerdictApp() {
                     if (!code) {
                         sessionStorage.removeItem('iv_session');
                     } else if (role) {
-                        // Full state — rejoin into the judge or display screen.
-                        // Seed role-select into history so back from the rejoined screen returns there.
                         this.sessionCode = code;
                         this.joinCode = code;
-                        history.pushState({ screen: 'role-select' }, '', '/');
+                        this._navigateInPlaceNext = true;
                         setTimeout(() => this.joinSession(role), 100);
                         return;
                     } else {
-                        // Code-only state — user was on role-select. Re-validate and return.
                         this.joinCode = code;
+                        this._navigateInPlaceNext = true;
                         setTimeout(() => this.joinExistingSession(), 0);
                         return;
                     }

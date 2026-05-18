@@ -142,3 +142,40 @@ def test_return_to_role_select_then_reload_keeps_role_select(competition):
 
     expect(head.locator(".role-wrap")).to_be_visible()
     expect(head.locator('.landing-wrap[x-show*="\'landing\'"]')).not_to_be_visible()
+
+
+def test_reload_on_judge_preserves_history_length(competition):
+    """Reload-recovery uses replaceState, not pushState — so history.length is unchanged.
+
+    Mobile in-app browsers (e.g. iOS Safari opened from a QR scanner) don't always honor
+    JS-pushed history entries created after a reload; the swipe-back gesture skips them
+    and exits the launching app. Asserting history.length stays constant guards against
+    a regression that re-introduces post-reload pushes.
+    """
+    head = competition.create_session_and_join_head()
+
+    before = head.evaluate("history.length")
+    head.reload()
+    head.locator(".judge-wrap").wait_for(state="visible")
+    after = head.evaluate("history.length")
+
+    assert after == before, f"history.length grew on reload-recovery: {before} -> {after}"
+
+
+def test_reload_on_role_select_preserves_history_length(competition):
+    """Same guarantee for the code-only reload-recovery path."""
+    ctx = competition.browser.new_context(locale="en-US")
+    competition.contexts.append(ctx)
+    page = ctx.new_page()
+    page.on("dialog", lambda d: d.accept())
+    page.goto(competition.url)
+    page.locator('[x-model="newSessionName"]').fill("History-Length Test")
+    page.get_by_role("button", name="Create New Session").click()
+    page.locator(".role-wrap").wait_for(state="visible")
+
+    before = page.evaluate("history.length")
+    page.reload()
+    page.locator(".role-wrap").wait_for(state="visible")
+    after = page.evaluate("history.length")
+
+    assert after == before, f"history.length grew on reload-recovery: {before} -> {after}"
