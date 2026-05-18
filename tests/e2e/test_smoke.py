@@ -59,3 +59,53 @@ def test_vportal_client_login_stores_token(page, server_url):
     assert result["token"] == "jwt-test"
     assert result["host"] == "bvdk.vportal-online.de"
     assert result["fetch_interval_ms"] == 3000
+
+
+def test_vportal_client_fetch_active_attempt_returns_normalized_shape(page, server_url):
+    page.goto(server_url + "/vportal")
+    page.evaluate("""
+        () => {
+            const responses = {
+                '/api/vportal/login': {
+                    access_token: 'jwt', exp: 9999999999, fetch_interval_ms: 3000,
+                },
+                'COMP_ID': { data: { profile: { competition: { id: 'C-1' } } } },
+                'GROUP':   { data: { competitionGroupList: { competitionGroups: [{ id: 'G-1' }] } } },
+                'ATHLETES': { data: { competitionAthleteAttemptList: { competitionAthleteAttempts: [{
+                    id: 'A-1', attempt: 2, discipline: 'SQUAT', weight: 215, status: null,
+                    competitionAthlete: {
+                        firstName: 'Maria', lastName: 'Schneider',
+                        club: { name: 'SV Eisenkraft Berlin' },
+                        bodyWeightCategory: { name: '-72 kg' },
+                        ageCategory: { name: 'Open' },
+                    }
+                }] } } }
+            };
+            window.fetch = async (url, opts) => {
+                if (url === '/api/vportal/login') {
+                    return new Response(JSON.stringify(responses['/api/vportal/login']), { status: 200 });
+                }
+                const body = JSON.parse(opts.body);
+                let key = 'ATHLETES';
+                if (body.query.includes('profile')) key = 'COMP_ID';
+                else if (body.query.includes('competitionGroupList')) key = 'GROUP';
+                return new Response(JSON.stringify(responses[key]), { status: 200 });
+            };
+        }
+    """)
+    result = page.evaluate("""
+        async () => {
+            const m = await import('/static/js/vportalClient.js');
+            await m.vportalClient.login('S1', 'bvdk.vportal-online.de', 'u', 'p');
+            m.vportalClient.setStage('S1', 'STAGE-1', 'Platform 1');
+            return await m.vportalClient.fetchActiveAttempt('S1');
+        }
+    """)
+    assert result["firstName"] == "Maria"
+    assert result["lastName"] == "Schneider"
+    assert result["club"] == "SV Eisenkraft Berlin"
+    assert result["discipline"] == "SQUAT"
+    assert result["attempt"] == 2
+    assert result["weight"] == 215
+    assert result["bodyWeightCategory"] == "-72 kg"
+    assert result["ageCategory"] == "Open"

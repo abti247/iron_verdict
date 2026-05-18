@@ -96,4 +96,78 @@ export const vportalClient = {
     logout(sessionCode) {
         clearStorage(sessionCode);
     },
+
+    async fetchStages(sessionCode) {
+        const stored = readStorage(sessionCode);
+        if (!stored) throw new Error('vportal-not-connected');
+
+        // Ensure we have the competition ID; fetch once and cache.
+        if (!stored.competition_id) {
+            const compResp = await callProxy('/api/vportal/graphql', {
+                host: stored.host,
+                token: stored.token,
+                query: QUERY_COMPETITION_ID,
+                variables: {},
+            });
+            stored.competition_id = compResp.data?.profile?.competition?.id;
+            writeStorage(sessionCode, stored);
+        }
+
+        const { query, variables } = queryStages(stored.competition_id);
+        const stagesResp = await callProxy('/api/vportal/graphql', {
+            host: stored.host,
+            token: stored.token,
+            query,
+            variables,
+        });
+        return stagesResp.data?.competitionStageList?.competitionStages ?? [];
+    },
+
+    async fetchActiveAttempt(sessionCode) {
+        const stored = readStorage(sessionCode);
+        if (!stored || !stored.stage_id) throw new Error('vportal-not-configured');
+
+        if (!stored.competition_id) {
+            const compResp = await callProxy('/api/vportal/graphql', {
+                host: stored.host,
+                token: stored.token,
+                query: QUERY_COMPETITION_ID,
+                variables: {},
+            });
+            stored.competition_id = compResp.data?.profile?.competition?.id;
+            writeStorage(sessionCode, stored);
+        }
+
+        const groupReq = queryActiveGroup(stored.competition_id, stored.stage_id);
+        const groupResp = await callProxy('/api/vportal/graphql', {
+            host: stored.host,
+            token: stored.token,
+            query: groupReq.query,
+            variables: groupReq.variables,
+        });
+        const groups = groupResp.data?.competitionGroupList?.competitionGroups ?? [];
+        if (groups.length === 0) return null;
+        const groupId = groups[0].id;
+
+        const athReq = queryAthletes(stored.competition_id, stored.stage_id, [groupId]);
+        const athResp = await callProxy('/api/vportal/graphql', {
+            host: stored.host,
+            token: stored.token,
+            query: athReq.query,
+            variables: athReq.variables,
+        });
+        const attempts = athResp.data?.competitionAthleteAttemptList?.competitionAthleteAttempts ?? [];
+        if (attempts.length === 0) return null;
+        const a = attempts[0];
+        return {
+            firstName: a.competitionAthlete?.firstName ?? '',
+            lastName: a.competitionAthlete?.lastName ?? '',
+            club: a.competitionAthlete?.club?.name ?? '',
+            bodyWeightCategory: a.competitionAthlete?.bodyWeightCategory?.name ?? '',
+            ageCategory: a.competitionAthlete?.ageCategory?.name ?? '',
+            discipline: a.discipline ?? '',
+            attempt: a.attempt ?? null,
+            weight: a.weight ?? null,
+        };
+    },
 };
