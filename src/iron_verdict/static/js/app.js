@@ -62,6 +62,13 @@ export function ironVerdictApp() {
 
         ...demoMethods,
 
+        navigateTo(screen) {
+            this.screen = screen;
+            if (!this._handlingPopstate) {
+                history.pushState({ screen }, '', '/');
+            }
+        },
+
         async createSession() {
             try {
                 const response = await fetch('/api/sessions', {
@@ -76,7 +83,7 @@ export function ironVerdictApp() {
                 const data = await response.json();
                 this.sessionCode = data.session_code;
                 this.sessionName = this.newSessionName.trim();
-                this.screen = 'role-select';
+                this.navigateTo('role-select');
             } catch (error) {
                 alert(t('alerts.createError'));
                 console.error('Session creation error:', error);
@@ -93,7 +100,7 @@ export function ironVerdictApp() {
                 if (res.ok) {
                     this.sessionCode = code;
                     this.joinCode = code;
-                    this.screen = 'role-select';
+                    this.navigateTo('role-select');
                 } else if (res.status === 404 || res.status === 422) {
                     this.joinError = t('landing.sessionNotFound');
                 } else {
@@ -320,7 +327,10 @@ export function ironVerdictApp() {
         returnToLanding() {
             sessionStorage.removeItem('iv_session');
             this.intentionalNavigation = true;
-            this.screen = 'landing';
+            if (this.ws) {
+                this.ws.close();
+            }
+            this.navigateTo('landing');
             this.sessionCode = '';
             this.joinCode = '';
             this.isDemo = false;
@@ -335,7 +345,7 @@ export function ironVerdictApp() {
             if (this.ws) {
                 this.ws.close();
             }
-            this.screen = 'role-select';
+            this.navigateTo('role-select');
             this.selectedVote = null;
             this.voteLocked = false;
             this.resultsShown = false;
@@ -367,7 +377,7 @@ export function ironVerdictApp() {
             this.contactEmail = '';
             this.contactMessage = '';
             this.contactStatus = 'idle';
-            this.screen = 'contact';
+            this.navigateTo('contact');
         },
 
         async submitContact() {
@@ -391,6 +401,10 @@ export function ironVerdictApp() {
         },
 
         init() {
+            // Capture URL params before scrubbing the query string via replaceState.
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlSession = urlParams.get('session');
+            history.replaceState({ screen: 'landing' }, '', '/');
 
             this.$watch('screen', (value) => {
                 if (value === 'role-select' && this.sessionCode) {
@@ -399,11 +413,8 @@ export function ironVerdictApp() {
             });
 
             // QR code entry point: ?session=XXXX validates code, then navigates to role-select
-            const urlParams = new URLSearchParams(window.location.search);
-            const urlSession = urlParams.get('session');
             if (urlSession) {
                 const trimmed = urlSession.trim().toUpperCase();
-                history.replaceState({}, '', '/');
                 this.joinCode = trimmed;
                 this.screen = 'landing';
                 if (trimmed.length === 8) {

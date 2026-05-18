@@ -45,14 +45,24 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('ironVerdictApp', ironVerdictApp);
 });
 
-// Handle browser back button
-window.addEventListener('popstate', () => {
+// Handle browser back button — navigate within the screen machine.
+window.addEventListener('popstate', (event) => {
     const appElement = document.querySelector('[x-data]');
-    if (appElement && appElement.__x_data) {
-        const app = appElement.__x_data;
-        if ((app.screen === 'judge' || app.screen === 'display') && app.sessionCode) {
+    if (!appElement || !window.Alpine) return;
+    const app = Alpine.$data(appElement);
+    if (!app) return;
+
+    const target = event.state?.screen ?? 'landing';
+    app._handlingPopstate = true;
+    try {
+        if (target === 'role-select') {
             app.returnToRoleSelection();
-            history.pushState(null, null, location.href);
+        } else if (target === 'landing') {
+            app.returnToLanding();
+        } else {
+            app.screen = target;
         }
+    } finally {
+        app._handlingPopstate = false;
     }
 });

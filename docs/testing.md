@@ -56,6 +56,7 @@ pytest --tb=short -v               # readable pass/fail
 | [test_role_protection.py](tests/e2e/test_role_protection.py) | Taken role rejected; role freed on disconnect; role switch via session-code link; head=center invariant. |
 | [test_scroll_indicator.py](tests/e2e/test_scroll_indicator.py) | `.has-overflow-bottom` class appears for bench-yellow (12 reasons), absent for bench-red (2 reasons). Reaches into Alpine via `_x_dataStack` to set `liftType`. |
 | [test_privacy.py](tests/e2e/test_privacy.py) | Privacy footer link → privacy screen → Back returns to landing. |
+| [test_back_navigation.py](tests/e2e/test_back_navigation.py) | Clicking the session-name link on the display screen returns to role-select; pressing the browser back button on the judge screen returns to role-select. |
 
 ## Regression gate
 
@@ -86,6 +87,7 @@ Frontend coverage comes from two sources: Vitest unit tests for pure JS modules 
 | requireReasons lock-block + white-vote bypass | `test_require_reasons.py` |
 | Language switching + localStorage persistence | `test_language_switching.py` |
 | Session-code validation on landing | `test_join_invalid_code.py` |
+| Back navigation — display name click, browser back button | `test_back_navigation.py` |
 
 ## JS unit tests
 

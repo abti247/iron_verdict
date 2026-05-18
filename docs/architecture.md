@@ -136,7 +136,7 @@ No-build single-page application. One HTML file served by FastAPI's `StaticFiles
 
 | File | Purpose |
 |---|---|
-| `init.js` | Entry point: reads demo URL params before Alpine boots, loads i18n, bootstraps Alpine, handles popstate. |
+| `init.js` | Entry point: reads demo URL params before Alpine boots, loads i18n, bootstraps Alpine, dispatches `popstate` events into the screen machine. |
 | `app.js` | The single Alpine component (`ironVerdictApp`) — all reactive state and methods. |
 | `websocket.js` | WebSocket wrapper with exponential-backoff auto-reconnect. |
 | `handlers.js` | One named handler per incoming WS message type; imported by `app.js`. |
@@ -149,7 +149,7 @@ No-build single-page application. One HTML file served by FastAPI's `StaticFiles
 
 ### Screen machine
 
-The `screen` string drives visibility via Alpine `x-show`. No URL changes on transition:
+The `screen` string drives visibility via Alpine `x-show`. The URL stays at `/`; only `history.state` changes:
 
 ```
 landing → role-select → judge
@@ -158,7 +158,9 @@ demo-intro → (opens 4 pop-up windows)
 contact / privacy  (info-only screens)
 ```
 
-QR entry point: `?session=XXXX` lands on the landing screen with the code pre-filled, immediately triggers the lookup validator, and navigates to role-select only if the code resolves to an active session. Invalid or unknown codes surface an inline error on landing. `history.replaceState` cleans the URL on entry regardless of outcome.
+Real screen transitions go through `navigateTo(screen)`, which sets `this.screen` and pushes `{screen}` onto the browser history. `init()` seeds the stack with `replaceState({screen: 'landing'})`. A `popstate` listener reads `event.state.screen` and dispatches to `returnToRoleSelection()` / `returnToLanding()` (which clear vote state and close the WebSocket) or sets `screen` directly for info-only targets; a `_handlingPopstate` guard prevents the helper from re-pushing state during back-navigation. **Why:** before this, the browser back button exited the app — now it steps through screens (judge → role-select → landing) and properly tears down the live WebSocket on the way.
+
+QR entry point: `?session=XXXX` lands on the landing screen with the code pre-filled, immediately triggers the lookup validator, and navigates to role-select only if the code resolves to an active session. Invalid or unknown codes surface an inline error on landing. The init-time `replaceState` cleans the URL on entry regardless of outcome. **Why** URL params are captured before the replaceState: scrubbing the query string clears `window.location.search`, so the QR code must be read first.
 
 ### WebSocket client
 

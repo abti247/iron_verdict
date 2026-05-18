@@ -7,6 +7,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Browser back button now steps back through app screens (judge or display to role-select, role-select to landing) instead of leaving the app
 
 ### Changed
 
