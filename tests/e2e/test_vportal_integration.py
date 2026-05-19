@@ -46,6 +46,7 @@ def test_full_connect_flow_shows_lifter_on_display(page, server_url, fake_vporta
 def _connect_and_open_display(page, server_url, fake_vportal_url):
     """Helper: full connect flow up to display screen visible with overlay."""
     httpx.post(f"http://{fake_vportal_url}/_control/reset")
+    httpx.post(f"http://{fake_vportal_url}/_control/restore_attempt")
     page.goto(server_url + "/vportal")
     page.locator('[x-model="newSessionName"]').fill("VP Test")
     page.get_by_role("button", name="Create New Session").click()
@@ -82,3 +83,14 @@ def test_upstream_unreachable_after_three_failures_shows_banner(page, server_url
     # Three poll cycles at 2000ms → wait up to ~15s for the banner
     expect(page.locator(".vportal-disconnected-banner")).to_be_visible(timeout=15000)
     httpx.post(f"http://{fake_vportal_url}/_control/reset")
+
+
+def test_no_active_attempt_hides_overlay_without_banner(page, server_url, fake_vportal_url):
+    _connect_and_open_display(page, server_url, fake_vportal_url)
+    from playwright.sync_api import expect
+    expect(page.locator(".vportal-corner-left")).to_be_visible(timeout=10000)
+    httpx.post(f"http://{fake_vportal_url}/_control/clear_attempt")
+    expect(page.locator(".vportal-corner-left")).not_to_be_visible(timeout=8000)
+    # No disconnected banner — empty state is not an error
+    expect(page.locator(".vportal-disconnected-banner")).not_to_be_visible()
+    httpx.post(f"http://{fake_vportal_url}/_control/restore_attempt")

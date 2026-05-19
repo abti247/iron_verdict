@@ -91,3 +91,23 @@ async def _reset():
 async def _unreachable():
     STATE["unreachable"] = True
     return {"ok": True}
+
+
+@app.post("/_control/clear_attempt")
+async def _clear_attempt():
+    STATE["active_attempt"] = None
+    return {"ok": True}
+
+
+@app.post("/_control/restore_attempt")
+async def _restore_attempt():
+    STATE["active_attempt"] = {
+        "id": "A-1", "attempt": 2, "discipline": "SQUAT", "weight": 215, "status": None,
+        "competitionAthlete": {
+            "firstName": "Maria", "lastName": "Schneider",
+            "club": {"name": "SV Eisenkraft Berlin"},
+            "bodyWeightCategory": {"name": "-72 kg"},
+            "ageCategory": {"name": "Open"},
+        },
+    }
+    return {"ok": True}
