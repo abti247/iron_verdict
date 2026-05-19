@@ -27,7 +27,7 @@ A real-time powerlifting competition judging application.
    - Note the 8-character session code
 
 2. **Join as Judges:**
-   - Three judges enter the session code
+   - Three judges enter the session code — or scan the QR code shown on the host's Select Role screen
    - Select their position: Left Judge, Center Judge (Head), or Right Judge
    - Head judge decides if all judges are required to pick a reason and if this is displayed to the audience
 
@@ -61,12 +61,38 @@ docker run -p 8000:8000 \
 
 The `-v` flag mounts a persistent directory for session snapshots (`/data/sessions.json`). Without it, active sessions are lost on container restart. The `/data` directory is created inside the container automatically.
 
+On Windows PowerShell, replace `./data` with `${PWD}/data`.
+
 For local development without persistence:
 ```bash
 docker run -p 8000:8000 iron_verdict
 ```
 
 For all available environment variables see [Configuration](#configuration).
+
+### Docker Compose
+
+For local hosting, the included `docker-compose.yml` is the simplest path — it bind-mounts `./data` for snapshot persistence and sets sensible defaults:
+
+```bash
+docker compose up
+```
+
+Edit `docker-compose.yml` to override `ALLOWED_ORIGIN` or other environment variables before running in any setting where the app is reachable beyond your machine.
+
+### Running locally on competition WiFi
+
+If the venue's uplink is slow or unreliable, you can host the app on your laptop and have judges/display connect over the local WiFi. Judging traffic (votes, timer, lights) then flows directly over the LAN — only optional VPortal lifter-info polling crosses the internet, and it is not on the critical path.
+
+1. Start the server on your laptop with `docker compose up` or `python run.py`. The default `HOST=0.0.0.0` already binds to all interfaces.
+2. Find your laptop's WiFi IPv4 address (`ipconfig` on Windows, `ifconfig`/`ip addr` on macOS/Linux). Example: `192.168.1.42`.
+3. **Open the app on the laptop using that LAN IP, not `localhost`** — i.e. `http://192.168.1.42:8000`. The QR code on the Select Role screen is generated from whatever URL you loaded, so creating the session via `localhost` would produce a QR that no other device can reach.
+4. Allow inbound TCP port 8000 in your OS firewall on the **Private** network profile. On Windows, the first run typically triggers a prompt.
+5. Disable laptop sleep / lid-close-suspend and keep the machine on power for the duration of the event.
+
+Tips:
+- Reserve your laptop's IP in the router's DHCP settings so a mid-event lease change can't break shared QR codes.
+- The default `ALLOWED_ORIGIN=*` is fine for LAN use; do not expose this configuration to the public internet.
 
 ### Railway
 
@@ -172,55 +198,26 @@ Iron Verdict never writes back to VPortal — verdicts are still recorded manual
 
 ```
 iron-verdict/
-├── src/iron_verdict/
-│   ├── main.py              # FastAPI application, routes, WebSocket handlers
-│   ├── session.py           # Session management and persistence
-│   ├── connection.py        # WebSocket connection manager
-│   ├── config.py            # Configuration from environment variables
-│   ├── logging_config.py    # Structured JSON logging
-│   └── static/
-│       ├── index.html       # Frontend UI
-│       ├── css/
-│       │   ├── variables.css
-│       │   ├── base.css
-│       │   ├── layout.css
-│       │   ├── components.css
-│       │   └── animations.css
-│       └── js/
-│           ├── app.js       # Alpine.js application state
-│           ├── websocket.js # WebSocket client with reconnection
-│           ├── handlers.js  # Server message handlers
-│           ├── timer.js     # Countdown timer logic
-│           ├── demo.js      # Demo mode
-│           ├── init.js      # Page initialization
-│           └── constants.js # Shared constants
-├── tests/
-│   ├── test_session.py
-│   ├── test_connection.py
-│   ├── test_main.py
-│   ├── test_logging_config.py
-│   └── e2e/
-│       ├── conftest.py          # Server fixture and CompetitionHelper
-│       ├── test_competition_flow.py
-│       ├── test_judge_reconnection.py
-│       ├── test_double_vote_prevention.py
-│       ├── test_role_protection.py
-│       ├── test_connectivity_indicators.py
-│       ├── test_session_stuck_states.py
-│       ├── test_display_resilience.py
-│       └── test_end_session.py
+├── src/iron_verdict/        # FastAPI app, session/connection
+│   │                          managers, VPortal proxy
+│   └── static/              # Frontend (HTML + Alpine.js,
+│                              CSS, i18n locales, vendored JS)
+├── tests/                   # Backend + JS unit tests
+│   └── e2e/                 # Playwright end-to-end tests
 ├── docs/
-│   └── plans/               # Design and implementation plans
+│   ├── architecture.md      # System architecture & rationale
+│   ├── testing.md           # Test layout & regression strategy
+│   ├── backlog.md
+│   ├── e2e-known-risks.md
+│   └── vportal-fake-server-fidelity.md
 ├── pyproject.toml
+├── package.json             # Vitest config for JS unit tests
 ├── Dockerfile
 ├── docker-compose.yml
 └── run.py
 ```
 
-## Roadmap
-
-- [ ] CI/CD pipeline (GitHub Actions)
-- [ ] Monitoring w Prometheus+Grafana
+See [docs/architecture.md](docs/architecture.md) for module-level detail.
 
 ## License
 
