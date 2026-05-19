@@ -172,6 +172,7 @@ export function ironVerdictApp() {
         navigateTo(screen) {
             if (this.screen === screen) return;
             this.screen = screen;
+            this.displaySettingsOpen = false;
             if (this._handlingPopstate) return;
             if (this._navigateInPlaceNext) {
                 // One-shot: rehydrating state in init() — keep the back-stack the same depth
