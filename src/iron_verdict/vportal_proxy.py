@@ -1,8 +1,9 @@
 """Thin proxy to VPortal — see docs/superpowers/specs/2026-05-13-vportal-integration-design.md."""
 
+import base64
+import json
 import logging
 import re
-from urllib.parse import urlencode
 
 import httpx
 from fastapi import APIRouter, HTTPException
@@ -53,6 +54,26 @@ _MUTATION_RE = re.compile(r"^\s*mutation\b", re.IGNORECASE)
 _http_client: httpx.AsyncClient = httpx.AsyncClient(timeout=5.0)
 
 
+def _extract_jwt_exp(token: str) -> int | None:
+    """Decode the JWT payload segment and return the `exp` claim, if any.
+
+    Why: real VPortal does not include `exp` at the top level of the /auth/token
+    response (referee reads it from the JWT itself). Keep a top-level fallback
+    in the caller so this stays robust if a future VPortal release adds it back.
+    """
+    try:
+        parts = token.split(".")
+        if len(parts) < 2:
+            return None
+        payload_b64 = parts[1]
+        padding = "=" * (-len(payload_b64) % 4)
+        payload = json.loads(base64.urlsafe_b64decode(payload_b64 + padding))
+        exp = payload.get("exp")
+        return int(exp) if isinstance(exp, (int, float)) else None
+    except Exception:
+        return None
+
+
 def _validate_graphql_query(query: str) -> None:
     if _MUTATION_RE.match(query):
         raise HTTPException(status_code=400, detail="Mutation operations are not permitted; this proxy is read-only.")
@@ -96,47 +117,48 @@ async def login(body: LoginRequest):
     _validate_host(body.host)
     base = _base_url(body.host)
 
-    form_data = urlencode({"identity": body.identity, "credential": body.credential})
-
-    # Step 1: form-POST /account/login
+    # Step 1: multipart-POST /account/login. Status code is intentionally not
+    # inspected — referee doesn't either, and real VPortal may redirect (302)
+    # on success. Cookie presence is the success signal.
+    #
+    # Wrong-credentials UX caveat: bad creds will surface as 502 "no session
+    # cookie" rather than 401 until we capture real VPortal's wrong-creds
+    # response shape during staging (see docs/vportal-fake-server-fidelity-followups.md).
     login_resp = await _http_client.post(
         f"{base}/account/login",
-        content=form_data,
-        headers={
-            "content-type": "application/x-www-form-urlencoded",
-            "Accept-Language": "de",
+        files={
+            "identity": (None, body.identity),
+            "credential": (None, body.credential),
         },
+        headers={"Accept-Language": "de"},
         follow_redirects=False,
     )
-    if login_resp.status_code in (401, 403):
-        raise HTTPException(status_code=401, detail="Invalid VPortal credentials")
-    if login_resp.status_code >= 500:
-        raise HTTPException(status_code=502, detail="VPortal login failed (upstream error)")
 
-    cookie_header = login_resp.headers.get("set-cookie", "")
-    vportal_cookie = None
-    for part in cookie_header.split(","):
-        if "VPORTAL=" in part:
-            vportal_cookie = part.split(";")[0].strip()
-            break
-    if not vportal_cookie:
+    # Use httpx's parsed cookies rather than splitting Set-Cookie on commas —
+    # the standard cookielib parser handles commas inside expires=... correctly.
+    vportal_cookie_value = login_resp.cookies.get("VPORTAL")
+    if not vportal_cookie_value:
         raise HTTPException(status_code=502, detail="VPortal did not return a session cookie")
 
-    # Step 2: GET /auth/token
+    # Step 2: GET /auth/token with the parsed cookie value
     token_resp = await _http_client.get(
         f"{base}/auth/token",
-        headers={"cookie": vportal_cookie, "Accept-Language": "de"},
+        headers={
+            "cookie": f"VPORTAL={vportal_cookie_value}",
+            "Accept-Language": "de",
+        },
     )
     if token_resp.status_code != 200:
         raise HTTPException(status_code=502, detail="VPortal token exchange failed")
 
     token_payload = token_resp.json()
-    if "access_token" not in token_payload:
+    access_token = token_payload.get("access_token")
+    if not access_token:
         raise HTTPException(status_code=502, detail="VPortal token response missing access_token")
 
     return {
-        "access_token": token_payload["access_token"],
-        "exp": token_payload.get("exp"),
+        "access_token": access_token,
+        "exp": _extract_jwt_exp(access_token) or token_payload.get("exp"),
         "fetch_interval_ms": settings.VPORTAL_FETCH_INTERVAL_MS,
     }
 

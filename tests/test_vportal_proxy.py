@@ -1,3 +1,6 @@
+import base64
+import json
+
 import pytest
 import httpx
 from fastapi.testclient import TestClient
@@ -5,6 +8,13 @@ from iron_verdict.main import app
 from iron_verdict import vportal_proxy as proxy_module
 
 client = TestClient(app)
+
+
+def _jwt_with_exp(exp: int) -> str:
+    """Build a base64url-encoded JWT-shaped string with `exp` in the payload."""
+    header = base64.urlsafe_b64encode(b'{"alg":"HS256","typ":"JWT"}').decode().rstrip("=")
+    payload = base64.urlsafe_b64encode(json.dumps({"exp": exp}).encode()).decode().rstrip("=")
+    return f"{header}.{payload}.sig"
 
 
 def test_login_rejects_unknown_host():
@@ -125,15 +135,23 @@ def test_login_success_returns_token_and_interval(mock_vportal, monkeypatch):
     original = proxy_module.settings.VPORTAL_FETCH_INTERVAL_MS
     proxy_module.settings.VPORTAL_FETCH_INTERVAL_MS = 4000
 
+    fake_jwt = _jwt_with_exp(9999999999)
+
     def login_response(request):
+        # Real VPortal redirects on success; cookie's expires=... contains a
+        # comma to verify the proxy doesn't naively split Set-Cookie on commas.
         return httpx.Response(
-            200,
-            headers={"set-cookie": "VPORTAL=cookie123; Path=/; HttpOnly"},
+            302,
+            headers={
+                "set-cookie": "VPORTAL=cookie123; expires=Wed, 21 Oct 2099 07:28:00 GMT; Path=/; HttpOnly",
+                "location": "/dashboard",
+            },
         )
 
     def token_response(request):
-        assert request.headers.get("cookie") == "VPORTAL=cookie123"
-        return httpx.Response(200, json={"access_token": "jwt-xyz", "exp": 9999999999})
+        assert "VPORTAL=cookie123" in request.headers.get("cookie", "")
+        # No top-level exp — mirrors real VPortal. exp must come from the JWT.
+        return httpx.Response(200, json={"access_token": fake_jwt})
 
     mock_vportal[("POST", "/account/login")] = login_response
     mock_vportal[("GET", "/auth/token")] = token_response
@@ -145,23 +163,54 @@ def test_login_success_returns_token_and_interval(mock_vportal, monkeypatch):
     try:
         assert response.status_code == 200
         body = response.json()
-        assert body["access_token"] == "jwt-xyz"
+        assert body["access_token"] == fake_jwt
+        assert body["exp"] == 9999999999  # decoded from the JWT payload
         assert body["fetch_interval_ms"] == 4000
     finally:
         proxy_module.settings.VPORTAL_FETCH_INTERVAL_MS = original
 
 
-def test_login_failed_credentials_returns_401(mock_vportal):
+def test_login_sends_multipart_form_data(mock_vportal):
+    captured = {}
+
     def login_response(request):
-        return httpx.Response(401, json={"error": "invalid_credentials"})
+        captured["content_type"] = request.headers.get("content-type", "")
+        captured["body"] = request.content
+        return httpx.Response(
+            200,
+            headers={"set-cookie": "VPORTAL=abc; Path=/; HttpOnly"},
+        )
 
     mock_vportal[("POST", "/account/login")] = login_response
+    mock_vportal[("GET", "/auth/token")] = lambda r: httpx.Response(
+        200, json={"access_token": _jwt_with_exp(1234)}
+    )
+
+    client.post(
+        "/api/vportal/login",
+        json={"host": "bvdk.vportal-online.de", "identity": "u", "credential": "p"},
+    )
+    assert captured["content_type"].startswith("multipart/form-data")
+    assert b"identity" in captured["body"]
+    assert b"credential" in captured["body"]
+
+
+def test_login_no_cookie_returned_surfaces_as_502(mock_vportal):
+    # Referee-aligned: the proxy no longer inspects the login status code.
+    # Wrong credentials therefore surface as a missing cookie rather than 401.
+    # Mapping bad creds to a clean 401 requires a staging visit to capture
+    # real VPortal's wrong-creds response shape — see
+    # docs/vportal-fake-server-fidelity-followups.md.
+    mock_vportal[("POST", "/account/login")] = lambda r: httpx.Response(
+        401, json={"error": "invalid_credentials"}
+    )
 
     response = client.post(
         "/api/vportal/login",
         json={"host": "bvdk.vportal-online.de", "identity": "u", "credential": "wrong"},
     )
-    assert response.status_code == 401
+    assert response.status_code == 502
+    assert "cookie" in response.json()["detail"].lower()
 
 
 def test_graphql_forwards_query_and_auth(mock_vportal):

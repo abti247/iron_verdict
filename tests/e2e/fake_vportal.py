@@ -1,14 +1,27 @@
 """Tiny FastAPI app that mimics the subset of VPortal Iron Verdict consumes."""
 
-from urllib.parse import parse_qs
+import base64
+import json
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Form, Request
 from fastapi.responses import JSONResponse, Response
 
 app = FastAPI()
 
+
+def _make_jwt(exp: int) -> str:
+    header = base64.urlsafe_b64encode(b'{"alg":"HS256","typ":"JWT"}').decode().rstrip("=")
+    payload = base64.urlsafe_b64encode(json.dumps({"exp": exp}).encode()).decode().rstrip("=")
+    return f"{header}.{payload}.fake-signature"
+
+
+# Real-JWT-shaped token. Mirrors real VPortal in that `exp` is inside the JWT,
+# not in the top-level `/auth/token` response envelope.
+FAKE_JWT = _make_jwt(9999999999)
+
+
 STATE = {
-    "credentials": {"u": "p"},  # default fake creds
+    "credentials": {"u": "p"},
     "active_attempt": {
         "id": "A-1", "attempt": 2, "discipline": "SQUAT", "weight": 215, "status": None,
         "competitionAthlete": {
@@ -26,26 +39,38 @@ STATE = {
 
 
 @app.post("/account/login")
-async def login(request: Request):
+async def login(
+    request: Request,
+    identity: str | None = Form(None),
+    credential: str | None = Form(None),
+):
     if STATE["unreachable"]:
         return Response(status_code=503)
-    raw = (await request.body()).decode("utf-8", errors="replace")
-    parsed = parse_qs(raw)
-    identity = (parsed.get("identity") or [None])[0]
-    credential = (parsed.get("credential") or [None])[0]
+    # Real referee/VPortal traffic is multipart/form-data. Anything else means
+    # a regression in our proxy; reject loudly so it fails the test.
+    content_type = request.headers.get("content-type", "")
+    if not content_type.startswith("multipart/form-data"):
+        return Response(status_code=415)
     if (identity, credential) != ("u", STATE["credentials"]["u"]):
         return Response(status_code=401)
+    # 302 + Set-Cookie + Location stress-tests two things at once:
+    # status-code tolerance in the proxy (referee ignores the code) and
+    # Set-Cookie parsing of the comma inside expires=...
     return Response(
-        status_code=200,
-        headers={"set-cookie": "VPORTAL=fake-cookie; Path=/; HttpOnly"},
+        status_code=302,
+        headers={
+            "set-cookie": "VPORTAL=fake-cookie; expires=Wed, 21 Oct 2099 07:28:00 GMT; Path=/; HttpOnly",
+            "location": "/dashboard",
+        },
     )
 
 
 @app.get("/auth/token")
 async def token(request: Request):
-    if request.headers.get("cookie", "").find("VPORTAL=fake-cookie") == -1:
+    if "VPORTAL=fake-cookie" not in request.headers.get("cookie", ""):
         return Response(status_code=401)
-    return JSONResponse({"access_token": "fake-jwt", "exp": 9999999999})
+    # No top-level exp — mirrors real VPortal; the proxy must decode the JWT.
+    return JSONResponse({"access_token": FAKE_JWT})
 
 
 @app.post("/graphql")
@@ -53,7 +78,7 @@ async def graphql(request: Request):
     if STATE["unreachable"]:
         return Response(status_code=503)
     auth = request.headers.get("authorization", "")
-    if STATE["force_token_invalid"] or auth != "Bearer fake-jwt":
+    if STATE["force_token_invalid"] or auth != f"Bearer {FAKE_JWT}":
         return Response(status_code=401)
     body = await request.json()
     query = body.get("query", "")

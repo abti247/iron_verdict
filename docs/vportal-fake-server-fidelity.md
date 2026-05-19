@@ -1,11 +1,15 @@
 # Fake VPortal Server — Fidelity Assessment
 
-**Date:** 2026-05-19
+**Date:** 2026-05-19 (originally written before the referee cross-check)
 **Context:** End-to-end tests for the VPortal integration run against [`tests/e2e/fake_vportal.py`](../tests/e2e/fake_vportal.py), a small FastAPI app that mimics the subset of VPortal that Iron Verdict consumes. This document captures how confident we are that the fake matches real BVDK / ÖVK / staging VPortal behavior, what's likely wrong, and where to look first when running against the real instance.
 
-**Companion reference:** the BVDK referee project at `github.com/franknitschke/referee`. The spec calls out `server/vportal/queries.js` (and presumably an auth module nearby) as the source of truth that the spec — and therefore the fake — was modeled after. **None of the claims in this document have been verified against the referee repo directly; they are inferred from the spec.** In a follow-up review with the referee codebase open, every "from spec" assumption below should be cross-checked.
+**Companion reference:** the BVDK referee project at `github.com/franknitschke/referee`. The spec calls out `server/vportal/queries.js` (and presumably an auth module nearby) as the source of truth that the spec — and therefore the fake — was modeled after.
 
-## Overall confidence: 6 / 10
+> **Update — referee cross-check performed.** A separate review session compared the worktree against `server/vportal/vportalHelper.js`, `queries.js`, and `getCompetitionData.js` in the referee repo. The four changes captured in [`vportal-fake-server-fidelity-followups.md`](vportal-fake-server-fidelity-followups.md) have been implemented and merged: multipart login, httpx-parsed cookies, JWT-payload `exp` extraction, and removal of the upstream-login status-code short-circuit. The fake was tightened in the same pass (rejects urlencoded, returns 302 + cookie with comma in `expires=`, emits real JWT-shaped tokens). **One open item** remains for the staging visit: the wrong-credentials response shape. See the linked followups doc for the staging capture procedure.
+
+## Overall confidence: ~9 / 10 (after referee cross-check)
+
+The auth-layer items previously rated 6/10 — cookie name, GraphQL variable shapes, Set-Cookie parsing fragility, login redirect behavior, JWT `exp` location — are now confirmed against referee or explicitly stress-tested by the fake. The remaining ~10% is the wrong-credentials UX and any production-only response variations we can't see without staging traffic.
 
 The structural shape is right and was lifted from a working integration. The pieces most likely to break against real VPortal are the Set-Cookie parsing, the assumption that login does not redirect, and the GraphQL error-envelope shape. These are not protected by any of our tests because the fake server emits clean canonical responses.
 
