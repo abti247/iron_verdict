@@ -198,50 +198,26 @@ Iron Verdict never writes back to VPortal — verdicts are still recorded manual
 
 ```
 iron-verdict/
-├── src/iron_verdict/
-│   ├── main.py              # FastAPI application, routes, WebSocket handlers
-│   ├── session.py           # Session management and persistence
-│   ├── connection.py        # WebSocket connection manager
-│   ├── config.py            # Configuration from environment variables
-│   ├── logging_config.py    # Structured JSON logging
-│   └── static/
-│       ├── index.html       # Frontend UI
-│       ├── css/
-│       │   ├── variables.css
-│       │   ├── base.css
-│       │   ├── layout.css
-│       │   ├── components.css
-│       │   └── animations.css
-│       └── js/
-│           ├── app.js       # Alpine.js application state
-│           ├── websocket.js # WebSocket client with reconnection
-│           ├── handlers.js  # Server message handlers
-│           ├── timer.js     # Countdown timer logic
-│           ├── demo.js      # Demo mode
-│           ├── init.js      # Page initialization
-│           └── constants.js # Shared constants
-├── tests/
-│   ├── test_session.py
-│   ├── test_connection.py
-│   ├── test_main.py
-│   ├── test_logging_config.py
-│   └── e2e/
-│       ├── conftest.py          # Server fixture and CompetitionHelper
-│       ├── test_competition_flow.py
-│       ├── test_judge_reconnection.py
-│       ├── test_double_vote_prevention.py
-│       ├── test_role_protection.py
-│       ├── test_connectivity_indicators.py
-│       ├── test_session_stuck_states.py
-│       ├── test_display_resilience.py
-│       └── test_end_session.py
+├── src/iron_verdict/        # FastAPI app, session/connection
+│   │                          managers, VPortal proxy
+│   └── static/              # Frontend (HTML + Alpine.js,
+│                              CSS, i18n locales, vendored JS)
+├── tests/                   # Backend + JS unit tests
+│   └── e2e/                 # Playwright end-to-end tests
 ├── docs/
-│   └── plans/               # Design and implementation plans
+│   ├── architecture.md      # System architecture & rationale
+│   ├── testing.md           # Test layout & regression strategy
+│   ├── backlog.md
+│   ├── e2e-known-risks.md
+│   └── vportal-fake-server-fidelity.md
 ├── pyproject.toml
+├── package.json             # Vitest config for JS unit tests
 ├── Dockerfile
 ├── docker-compose.yml
 └── run.py
 ```
+
+See [docs/architecture.md](docs/architecture.md) for module-level detail.
 
 ## Roadmap
 
