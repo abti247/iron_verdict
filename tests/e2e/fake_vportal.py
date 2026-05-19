@@ -72,3 +72,22 @@ async def graphql(request: Request):
             "competitionAthleteAttempts": [STATE["active_attempt"]] if STATE["active_attempt"] else [],
         }}})
     return JSONResponse({"errors": [{"message": "unknown query"}]}, status_code=400)
+
+
+@app.post("/_control/force_token_invalid")
+async def _force_token_invalid():
+    STATE["force_token_invalid"] = True
+    return {"ok": True}
+
+
+@app.post("/_control/reset")
+async def _reset():
+    STATE["force_token_invalid"] = False
+    STATE["unreachable"] = False
+    return {"ok": True}
+
+
+@app.post("/_control/unreachable")
+async def _unreachable():
+    STATE["unreachable"] = True
+    return {"ok": True}
