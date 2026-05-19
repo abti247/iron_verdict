@@ -1,4 +1,4 @@
-"""Thin proxy to VPortal — see docs/superpowers/specs/2026-05-13-vportal-integration-design.md."""
+"""Thin, stateless proxy to VPortal — host- and operation-allowlisted, pull-only."""
 
 import base64
 import json

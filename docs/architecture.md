@@ -132,10 +132,7 @@ Optional, pull-only overlay of the current lifter on the display screen for sess
 | `TEST_MODE` | unset | When `1`, the proxy accepts `localhost`/`127.0.0.1` (with optional port) as VPortal hosts. E2E tests only — never set in production. |
 | `EXPOSE_VPORTAL_STAGING` | unset | When `1`, the connect modal exposes a third federation option (BVDK Staging) pointing at `staging-bvdk.vportal-online.de`. Unset on production once staging access expires. |
 
-**Reference docs:**
-
-- Spec: [docs/superpowers/specs/2026-05-13-vportal-integration-design.md](superpowers/specs/2026-05-13-vportal-integration-design.md) — full design and threat model.
-- Fake-server fidelity assessment: [docs/vportal-fake-server-fidelity.md](vportal-fake-server-fidelity.md) — pre-staging risks and what was resolved against the referee codebase.
+**Reference:** [docs/vportal-fake-server-fidelity.md](vportal-fake-server-fidelity.md) — pre-staging risks and what was resolved against the referee codebase.
 
 ## Edge
 

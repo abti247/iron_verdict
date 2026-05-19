@@ -1,5 +1,4 @@
 // VPortal client SDK. Owns the JWT in localStorage and talks to /api/vportal/* on the IV server.
-// See docs/superpowers/specs/2026-05-13-vportal-integration-design.md
 
 import {
     QUERY_COMPETITION_ID,
@@ -7,11 +6,6 @@ import {
     queryActiveGroup,
     queryAthletes,
 } from './vportalQueries.js';
-
-const FEDERATIONS = {
-    BVDK: 'bvdk.vportal-online.de',
-    OEVK: 'oevk.vportal-online.de',
-};
 
 function storageKey(sessionCode) {
     return `vportal:${sessionCode}`;
@@ -52,8 +46,6 @@ async function callProxy(path, payload) {
 }
 
 export const vportalClient = {
-    FEDERATIONS,
-
     async login(sessionCode, host, identity, credential) {
         const result = await callProxy('/api/vportal/login', { host, identity, credential });
         writeStorage(sessionCode, {

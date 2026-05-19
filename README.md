@@ -166,7 +166,7 @@ To use it:
 3. On the Select Role screen, click **Connect to comp software** and enter your VPortal operator credentials.
 4. Pick your stage. The display screen will now show lifter info alongside the lights/timer/verdict.
 
-Iron Verdict never writes back to VPortal — verdicts are still recorded manually by the official scorekeeper on the VPortal side. See [docs/superpowers/specs/2026-05-13-vportal-integration-design.md](docs/superpowers/specs/2026-05-13-vportal-integration-design.md) for the full design and security model.
+Iron Verdict never writes back to VPortal — verdicts are still recorded manually by the official scorekeeper on the VPortal side.
 
 ## Project Structure
 
