@@ -27,12 +27,14 @@ pytest --tb=short -v               # readable pass/fail
 
 | File | Purpose |
 |---|---|
-| [tests/test_session.py](tests/test_session.py) | `SessionManager` unit. Code generation, create/join, vote-lock state machine, IPF rule (disconnected non-voter blocks results), timer-freeze math, settings, reconnect-token lifecycle. |
+| [tests/test_session.py](tests/test_session.py) | `SessionManager` unit. Code generation, create/join, vote-lock state machine, IPF rule (disconnected non-voter blocks results), timer-freeze math, settings, reconnect-token lifecycle, `kind` field validation (`generic` / `vportal` / reject unknown). |
 | [tests/test_connection.py](tests/test_connection.py) | `ConnectionManager` unit with mocked WebSockets. Add/remove/get, broadcast variants, error-swallowing on send failure, heartbeat plumbing (`mark_pong`, `_last_pong`). |
 | [tests/test_logging_config.py](tests/test_logging_config.py) | `JsonFormatter` produces valid JSON with `level`/`message`/`timestamp` and merges arbitrary record extras. |
-| [tests/test_http.py](tests/test_http.py) | Integration — HTTP surface: session creation (validation, rate limit), session lookup (exists / not found / malformed-format rejection / 404 log event), `/health`, security headers, and the `session_created` log event. |
+| [tests/test_config.py](tests/test_config.py) | `Settings` env-var parsing for the VPortal config surface: `VPORTAL_FETCH_INTERVAL_MS` default, honor, and clamp-to-2000 minimum; `TEST_MODE` and `EXPOSE_VPORTAL_STAGING` boolean parsing. Uses `importlib.reload` — see [docs/test-config-reload-issue.md](test-config-reload-issue.md) for the foot-gun this pattern creates. |
+| [tests/test_http.py](tests/test_http.py) | Integration — HTTP surface: session creation (validation, rate limit, `kind` accepted / rejected), session lookup (exists / not found / malformed-format rejection / 404 log event / `kind` + `staging_available` in body), `/vportal` route serves identical HTML as `/`, `/health`, security headers, and the `session_created` log event. |
+| [tests/test_vportal_proxy.py](tests/test_vportal_proxy.py) | Integration — VPortal proxy: host allowlist (production + staging accepted, localhost rejected without TEST_MODE, attackers rejected), operation allowlist (known reads accepted, mutations and unknown queries rejected with 400), login endpoint forwards cookie→JWT chain and returns the server-clamped polling interval, GraphQL forwarding propagates 401 verbatim and maps 5xx to 502. Upstream simulated via `httpx.MockTransport`. |
 | [tests/test_websocket.py](tests/test_websocket.py) | Integration — WebSocket protocol: join, vote lock (color, reason, mandatory-reason gate), settings broadcast, timer, origin check, flood disconnect, reconnect tokens, `judge_status_update`, pong heartbeat, display cap, and `caplog` assertions on every major WS log event. |
-| [tests/test_collection_ordering.py](tests/test_collection_ordering.py) | Regression — asserts the collection hook in `tests/conftest.py` keeps every backend test ordered before any E2E test, so bare `pytest` keeps working. |
+| [tests/test_collection_ordering.py](tests/test_collection_ordering.py) | Regression — asserts the collection hook in `tests/conftest.py` keeps every backend test ordered before any E2E test, so bare `pytest` keeps working. **Known false-negative on Windows + Python 3.14:** the test spawns `pytest --collect-only` as a subprocess and hits a Windows handle-capture quirk that fails even though the ordering it audits is correct. Verifiable by running `python -m pytest --collect-only -q` manually. |
 
 ## End-to-end tests
 
@@ -41,6 +43,7 @@ pytest --tb=short -v               # readable pass/fail
 - `server_url` (session-scoped) — starts Uvicorn on a random port, yields the URL, shuts down at session exit.
 - `_reset_server_state` (autouse) — clears sessions, connections, and rate limiter between tests.
 - `competition` — yields a `CompetitionHelper` that encapsulates session creation, role joining, voting, and browser-context cleanup.
+- `fake_vportal_url` (session-scoped) — starts [tests/e2e/fake_vportal.py](tests/e2e/fake_vportal.py) (a tiny FastAPI app that mimics VPortal's `/account/login`, `/auth/token`, and `/graphql`) on a random port and yields `host:port`. Used by `test_vportal_integration.py`. Sets `TEST_MODE=1` and `VPORTAL_FETCH_INTERVAL_MS=2000` at module import so the proxy accepts the fake host and polls fast enough for tests. The fake server exposes `/_control/{force_token_invalid,unreachable,clear_attempt,restore_attempt,reset}` so tests can simulate error states.
 
 | File | Scenario |
 |---|---|
@@ -57,6 +60,7 @@ pytest --tb=short -v               # readable pass/fail
 | [test_scroll_indicator.py](tests/e2e/test_scroll_indicator.py) | `.has-overflow-bottom` class appears for bench-yellow (12 reasons), absent for bench-red (2 reasons). Reaches into Alpine via `_x_dataStack` to set `liftType`. |
 | [test_privacy.py](tests/e2e/test_privacy.py) | Privacy footer link → privacy screen → Back returns to landing. |
 | [test_back_navigation.py](tests/e2e/test_back_navigation.py) | Clickable display-screen session name returns to role-select; browser back navigates judge/display → role-select → landing; two-step `history.go(-2)` jump from judge tears down the WebSocket; QR-entry → back returns to landing; reload-recovery rejoin → back returns to role-select (second back → landing); reloading on role-select or after returning to it stays on role-select. |
+| [test_vportal_integration.py](tests/e2e/test_vportal_integration.py) | Full VPortal flow against the `fake_vportal_url` fixture: connect modal (federation → credentials → stage), display overlay populates from polling, token-expiry mid-session hides overlay and shows banner, three consecutive upstream failures show banner, empty active group hides overlay without banner, session-driven visibility (device that joined via plain `/` still sees the connect button when the underlying session is `kind=vportal`). |
 
 ## Regression gate
 
