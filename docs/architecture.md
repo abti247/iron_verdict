@@ -134,9 +134,8 @@ Optional, pull-only overlay of the current lifter on the display screen for sess
 
 **Reference docs:**
 
-- Spec: [docs/superpowers/specs/2026-05-13-vportal-integration-design.md](superpowers/specs/2026-05-13-vportal-integration-design.md)
-- Manual smoke test: [docs/vportal-smoke-test.md](vportal-smoke-test.md)
-- Fake-server fidelity caveats: [docs/vportal-fake-server-fidelity.md](vportal-fake-server-fidelity.md)
+- Spec: [docs/superpowers/specs/2026-05-13-vportal-integration-design.md](superpowers/specs/2026-05-13-vportal-integration-design.md) — full design and threat model.
+- Fake-server fidelity assessment: [docs/vportal-fake-server-fidelity.md](vportal-fake-server-fidelity.md) — pre-staging risks and what was resolved against the referee codebase.
 
 ## Edge
 

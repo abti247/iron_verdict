@@ -196,11 +196,10 @@ def test_login_sends_multipart_form_data(mock_vportal):
 
 
 def test_login_no_cookie_returned_surfaces_as_502(mock_vportal):
-    # Referee-aligned: the proxy no longer inspects the login status code.
-    # Wrong credentials therefore surface as a missing cookie rather than 401.
-    # Mapping bad creds to a clean 401 requires a staging visit to capture
-    # real VPortal's wrong-creds response shape — see
-    # docs/vportal-fake-server-fidelity-followups.md.
+    # The proxy no longer inspects the login status code; wrong credentials
+    # therefore surface as a missing cookie rather than 401. Mapping bad
+    # creds to a clean 401 needs a future capture of VPortal's actual
+    # wrong-credentials response shape.
     mock_vportal[("POST", "/account/login")] = lambda r: httpx.Response(
         401, json={"error": "invalid_credentials"}
     )

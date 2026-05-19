@@ -123,12 +123,10 @@ async def login(body: LoginRequest):
     base = _base_url(body.host)
 
     # Step 1: multipart-POST /account/login. Status code is intentionally not
-    # inspected — referee doesn't either, and real VPortal may redirect (302)
-    # on success. Cookie presence is the success signal.
-    #
-    # Wrong-credentials UX caveat: bad creds will surface as 502 "no session
-    # cookie" rather than 401 until we capture real VPortal's wrong-creds
-    # response shape during staging (see docs/vportal-fake-server-fidelity-followups.md).
+    # inspected — real VPortal may redirect (302) on success; cookie presence
+    # is the success signal. Caveat: bad credentials currently surface as 502
+    # "no session cookie" rather than 401, pending capture of VPortal's real
+    # wrong-credentials response shape.
     login_resp = await _http_client.post(
         f"{base}/account/login",
         files={

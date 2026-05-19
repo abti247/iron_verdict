@@ -5,7 +5,7 @@
 
 **Companion reference:** the BVDK referee project at `github.com/franknitschke/referee`. The spec calls out `server/vportal/queries.js` (and presumably an auth module nearby) as the source of truth that the spec — and therefore the fake — was modeled after.
 
-> **Update — referee cross-check performed.** A separate review session compared the worktree against `server/vportal/vportalHelper.js`, `queries.js`, and `getCompetitionData.js` in the referee repo. The four changes captured in [`vportal-fake-server-fidelity-followups.md`](vportal-fake-server-fidelity-followups.md) have been implemented and merged: multipart login, httpx-parsed cookies, JWT-payload `exp` extraction, and removal of the upstream-login status-code short-circuit. The fake was tightened in the same pass (rejects urlencoded, returns 302 + cookie with comma in `expires=`, emits real JWT-shaped tokens). **One open item** remains for the staging visit: the wrong-credentials response shape. See the linked followups doc for the staging capture procedure.
+> **Update — referee cross-check performed.** A separate review session compared the worktree against `server/vportal/vportalHelper.js`, `queries.js`, and `getCompetitionData.js` in the referee repo. Four follow-up changes were implemented and merged: multipart login, httpx-parsed cookies, JWT-payload `exp` extraction, and removal of the upstream-login status-code short-circuit. The fake was tightened in the same pass (rejects urlencoded, returns 302 + cookie with comma in `expires=`, emits real JWT-shaped tokens). **One open item** remains: the wrong-credentials response shape — currently surfaces as 502 "no session cookie" rather than a clean 401 until we capture real VPortal's actual wrong-creds response.
 
 ## Overall confidence: ~9 / 10 (after referee cross-check)
 
@@ -79,9 +79,9 @@ If real VPortal's `/auth/token` doesn't include an `exp` field — or returns th
 - **Multiple stages with one of them marked inactive.** Fake returns one stage in one state. Real VPortal might return stages with various visibility flags we don't filter on.
 - **Athletes without a `bodyWeightCategory` or `ageCategory`.** Real BVDK youth flights sometimes use different category models. Our normalizer renders empty strings for missing fields — visually fine but not tested.
 
-## Recommendation for the staging smoke test
+## Recommendation for any future smoke test
 
-Before running the documented procedure in [`docs/vportal-smoke-test.md`](vportal-smoke-test.md), open browser DevTools → Network. While stepping through the flow, capture these for later cross-checking with the referee codebase:
+Open browser DevTools → Network while stepping through the flow. Capture these for later cross-checking with the referee codebase:
 
 1. The raw `Set-Cookie` header value from `/account/login`. Compare to what our parser expects.
 2. The HTTP status code on `/account/login` on success — is it 200 or 302?
