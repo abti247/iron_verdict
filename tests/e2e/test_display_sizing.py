@@ -113,3 +113,18 @@ def test_zoom_persists_across_reload(page, server_url):
     page.locator(".display-full").wait_for(state="visible", timeout=10000)
 
     assert abs(_display_zoom_value(page) - 1.25) < 0.001
+
+
+def test_panel_closes_on_navigation_away_from_display(page, server_url):
+    """Open panel → leave display via session-name link → re-enter → panel must be closed."""
+    _open_display(page, server_url)
+    page.locator(".display-settings-gear").click()
+    page.locator(".display-settings-panel").wait_for(state="visible")
+
+    page.locator(".display-tag .code-link").click()
+    page.locator(".role-wrap").wait_for(state="visible")
+
+    page.locator(".role-btn", has_text="Display Screen").click()
+    page.locator(".display-full").wait_for(state="visible")
+
+    expect(page.locator(".display-settings-panel")).to_be_hidden()
