@@ -59,7 +59,7 @@ def test_login_accepts_staging_host(mock_vportal):
 
     response = client.post(
         "/api/vportal/login",
-        json={"host": "staging.vportal-online.de", "identity": "u", "credential": "p"},
+        json={"host": "staging-bvdk.vportal-online.de", "identity": "u", "credential": "p"},
     )
     assert response.status_code != 400
 

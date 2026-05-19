@@ -2,13 +2,13 @@
 
 Run before any release that touches the VPortal integration (server proxy, client polling, modal flow, display overlay).
 
-## Primary procedure — against `staging.vportal-online.de`
+## Primary procedure — against `staging-bvdk.vportal-online.de`
 
 Used whenever BVDK staging access is available. Faster turnaround than coordinating a production dummy comp.
 
 ### Prerequisites
 
-- BVDK staging credentials (`identity` + `credential`) for `staging.vportal-online.de`, plus the staging instance having at least one stage and one active flight set up.
+- BVDK staging credentials (`identity` + `credential`) for `staging-bvdk.vportal-online.de`, plus the staging instance having at least one stage and one active flight set up.
 - The Railway deployment configured with `EXPOSE_VPORTAL_STAGING=1` so the modal exposes the staging option. Set this in the Railway dashboard and redeploy.
 - Iron Verdict reachable at its production URL.
 

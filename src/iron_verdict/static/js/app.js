@@ -122,7 +122,7 @@ export function ironVerdictApp() {
             if (window._testVportalHost) return window._testVportalHost;
             if (fed === 'BVDK') return 'bvdk.vportal-online.de';
             if (fed === 'OEVK') return 'oevk.vportal-online.de';
-            if (fed === 'BVDK_STAGING') return 'staging.vportal-online.de';
+            if (fed === 'BVDK_STAGING') return 'staging-bvdk.vportal-online.de';
             return 'bvdk.vportal-online.de';
         },
 

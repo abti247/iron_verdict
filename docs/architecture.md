@@ -117,7 +117,7 @@ Optional, pull-only overlay of the current lifter on the display screen for sess
 
 **Security boundaries.**
 
-- **Host allowlist** in the proxy: `bvdk.vportal-online.de`, `oevk.vportal-online.de`, `staging.vportal-online.de`. When `TEST_MODE=1`, `localhost`/`127.0.0.1` (and `host:port` variants) are additionally allowed for the E2E fake-server fixture. Any other host returns 400 before the outbound call — the proxy is not an open relay.
+- **Host allowlist** in the proxy: `bvdk.vportal-online.de`, `oevk.vportal-online.de`, `staging-bvdk.vportal-online.de`, `staging-oevk.vportal-online.de`. When `TEST_MODE=1`, `localhost`/`127.0.0.1` (and `host:port` variants) are additionally allowed for the E2E fake-server fixture. Any other host returns 400 before the outbound call — the proxy is not an open relay.
 - **GraphQL operation allowlist**: hard-coded set of four read operations (`profile`, `competitionStageList`, `competitionGroupList`, `competitionAthleteAttemptList`). Mutations and any other top-level field are rejected with 400. Iron Verdict therefore cannot write to VPortal even if a modified client tries — the official scorekeeper continues to record verdicts on the VPortal side manually.  
 *Why an allowlist instead of trusting "we only send reads":* defence in depth. A leaked or stolen JWT grants whatever permissions the operator account has; without the gate, a malicious client could send mutations through the same proxy that's already authenticated. The four-operation allowlist makes write attempts a 400 at our edge.
 - **No credential storage server-side**. Login credentials cross the proxy in-memory for the duration of one request and are not logged. The JWT flows back to the browser.
@@ -130,7 +130,7 @@ Optional, pull-only overlay of the current lifter on the display screen for sess
 |---|---|---|
 | `VPORTAL_FETCH_INTERVAL_MS` | `3000` | Polling cadence for the display overlay, in ms. Server-side clamped to 2000ms minimum; the clamped value is returned to the client at login. |
 | `TEST_MODE` | unset | When `1`, the proxy accepts `localhost`/`127.0.0.1` (with optional port) as VPortal hosts. E2E tests only — never set in production. |
-| `EXPOSE_VPORTAL_STAGING` | unset | When `1`, the connect modal exposes a third federation option (BVDK Staging) pointing at `staging.vportal-online.de`. Unset on production once staging access expires. |
+| `EXPOSE_VPORTAL_STAGING` | unset | When `1`, the connect modal exposes a third federation option (BVDK Staging) pointing at `staging-bvdk.vportal-online.de`. Unset on production once staging access expires. |
 
 **Reference docs:**
 

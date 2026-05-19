@@ -16,7 +16,12 @@ logger = logging.getLogger("iron_verdict")
 _PRODUCTION_HOSTS = {
     "bvdk.vportal-online.de",
     "oevk.vportal-online.de",
-    "staging.vportal-online.de",
+    # Federation-prefixed staging instances. Same DNS zone as production but
+    # gated by separate operator credentials. Surfaced in the UI only when
+    # EXPOSE_VPORTAL_STAGING=1; allowlisted unconditionally because no-one
+    # can log in without staging credentials anyway.
+    "staging-bvdk.vportal-online.de",
+    "staging-oevk.vportal-online.de",
 }
 _TEST_HOSTS = {"localhost", "127.0.0.1"}
 

@@ -153,7 +153,7 @@ All settings are optional and have defaults suitable for local development.
 | `LOG_LEVEL` | `INFO` | Logging verbosity (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
 | `VPORTAL_FETCH_INTERVAL_MS` | `3000` | How often the display polls VPortal for the current lifter, in milliseconds. Clamped to 2000ms minimum. Only used for sessions created via `/vportal`. |
 | `TEST_MODE` | unset | When set to `1`, the VPortal proxy allows `localhost`/`127.0.0.1` hosts (for E2E tests). Never set this in production. |
-| `EXPOSE_VPORTAL_STAGING` | unset | When set to `1`, the VPortal connect modal exposes a third federation option, **BVDK Staging**, pointing at `staging.vportal-online.de`. Use only while you have valid staging credentials; leave unset otherwise so end users don't see an unusable option. |
+| `EXPOSE_VPORTAL_STAGING` | unset | When set to `1`, the VPortal connect modal exposes a third federation option, **BVDK Staging**, pointing at `staging-bvdk.vportal-online.de`. Use only while you have valid staging credentials; leave unset otherwise so end users don't see an unusable option. |
 
 ## VPortal integration (BVDK / ÖVK)
 
