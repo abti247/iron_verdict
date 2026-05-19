@@ -197,7 +197,8 @@
     "disconnectButton": "Disconnect",
     "loginFailed": "Login failed — check username and password.",
     "loadingStages": "Loading stages…",
-    "disconnectedBanner": "VPortal disconnected — open Select Role to reconnect."
+    "disconnectedBanner": "VPortal disconnected — open Select Role to reconnect.",
+    "attemptShort": "Att"
   },
   "privacy": {
     "link": "Privacy",

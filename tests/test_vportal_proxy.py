@@ -17,11 +17,21 @@ def test_login_rejects_unknown_host():
 
 
 def test_login_rejects_localhost_without_test_mode():
-    response = client.post(
-        "/api/vportal/login",
-        json={"host": "localhost", "identity": "u", "credential": "p"},
-    )
-    assert response.status_code == 400
+    # Why: tests/e2e/conftest.py sets TEST_MODE=1 at import time so the proxy
+    # talks to the fake VPortal server. That env var leaks across the whole
+    # pytest process, so this test explicitly toggles the in-memory flag off
+    # for the duration of the assertion.
+    from iron_verdict import vportal_proxy as proxy_module
+    original = proxy_module.settings.TEST_MODE
+    proxy_module.settings.TEST_MODE = False
+    try:
+        response = client.post(
+            "/api/vportal/login",
+            json={"host": "localhost", "identity": "u", "credential": "p"},
+        )
+        assert response.status_code == 400
+    finally:
+        proxy_module.settings.TEST_MODE = original
 
 
 def test_graphql_rejects_unknown_host():

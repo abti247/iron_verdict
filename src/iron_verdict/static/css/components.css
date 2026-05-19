@@ -606,3 +606,28 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .vportal-loading { color: #9ca3af; font-size: 12px; margin-top: 6px; }
 .vportal-btn-row { display: flex; justify-content: space-between; gap: 10px; margin-top: 18px; }
 .vportal-btn-row .btn-blood { flex: 1; }
+
+.vportal-corner {
+    position: absolute;
+    bottom: 20px;
+    color: #d1d5db;
+    font-family: 'Rajdhani', sans-serif;
+    pointer-events: none;
+}
+.vportal-corner-left { left: 28px; text-align: left; }
+.vportal-corner-right { right: 28px; text-align: right; }
+.vportal-corner-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 16px; letter-spacing: 0.04em; color: #f5f5f7;
+    text-transform: uppercase;
+}
+.vportal-corner-meta { font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; color: #6b7280; margin-top: 4px; }
+.vportal-corner-disc { font-family: 'Bebas Neue', sans-serif; font-size: 11px; letter-spacing: 0.12em; color: #9ca3af; }
+.vportal-corner-weight { font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 0.04em; color: #d1d5db; margin-top: 4px; }
+.vportal-disconnected-banner {
+    position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+    background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.4);
+    color: #fca5a5; padding: 4px 12px;
+    font-family: 'Rajdhani', sans-serif; font-size: 11px;
+    letter-spacing: 0.1em; text-transform: uppercase;
+}

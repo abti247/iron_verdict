@@ -197,7 +197,8 @@
     "disconnectButton": "Trennen",
     "loginFailed": "Anmeldung fehlgeschlagen – Benutzername oder Passwort prüfen.",
     "loadingStages": "Bühnen werden geladen…",
-    "disconnectedBanner": "VPortal getrennt – auf Rollenauswahl erneut verbinden."
+    "disconnectedBanner": "VPortal getrennt – auf Rollenauswahl erneut verbinden.",
+    "attemptShort": "Vers"
   },
   "privacy": {
     "link": "Datenschutz",

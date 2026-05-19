@@ -489,6 +489,24 @@
         </div>
 
         <div class="display-status" x-text="displayStatus || (displayPhase === 'idle' ? t('display.waiting') : '')"></div>
+
+        <div class="vportal-corner vportal-corner-left" x-show="vportalDisplayAttempt">
+            <div class="vportal-corner-name" x-text="vportalDisplayAttempt?.firstName + ' ' + vportalDisplayAttempt?.lastName"></div>
+            <div class="vportal-corner-meta">
+                <span x-text="vportalDisplayAttempt?.club"></span> ·
+                <span x-text="vportalDisplayAttempt?.bodyWeightCategory"></span> ·
+                <span x-text="vportalDisplayAttempt?.ageCategory"></span>
+            </div>
+        </div>
+        <div class="vportal-corner vportal-corner-right" x-show="vportalDisplayAttempt">
+            <div class="vportal-corner-disc">
+                <span x-text="vportalDisplayAttempt?.discipline"></span> ·
+                <span x-text="t('vportal.attemptShort') + ' ' + vportalDisplayAttempt?.attempt"></span>
+            </div>
+            <div class="vportal-corner-weight" x-text="vportalDisplayAttempt?.weight + ' KG'"></div>
+        </div>
+        <div class="vportal-disconnected-banner" x-show="vportalDisconnectedReason"
+             x-text="t('vportal.disconnectedBanner')"></div>
     </div>
 
 </body>

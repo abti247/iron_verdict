@@ -36,7 +36,7 @@ def test_full_connect_flow_shows_lifter_on_display(page, server_url, fake_vporta
     page.locator(".display-full").wait_for(state="visible")
 
     # Lifter corner appears within polling interval
-    expect(page.locator(".vportal-corner-left")).to_contain_text("MARIA SCHNEIDER", timeout=10000)
+    expect(page.locator(".vportal-corner-left")).to_contain_text("MARIA SCHNEIDER", timeout=10000, ignore_case=True)
     expect(page.locator(".vportal-corner-left")).to_contain_text("SV Eisenkraft")
     expect(page.locator(".vportal-corner-right")).to_contain_text("215")
-    expect(page.locator(".vportal-corner-right")).to_contain_text("SQUAT")
+    expect(page.locator(".vportal-corner-right")).to_contain_text("SQUAT", ignore_case=True)

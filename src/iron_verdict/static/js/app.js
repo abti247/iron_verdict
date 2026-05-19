@@ -73,6 +73,9 @@ export function ironVerdictApp() {
         vportalCredential: '',
         vportalStages: [],
         vportalSelectedStage: '',
+        vportalDisplayAttempt: null,
+        vportalDisconnectedReason: '',
+        _vportalPollStop: null,
 
         openVportalModal() {
             this.vportalModalOpen = true;
@@ -121,6 +124,43 @@ export function ironVerdictApp() {
             if (fed === 'OEVK') return 'oevk.vportal-online.de';
             if (fed === 'BVDK_STAGING') return 'staging.vportal-online.de';
             return 'bvdk.vportal-online.de';
+        },
+
+        async _maybeStartVportalPolling() {
+            // Authoritative kind check — sessionKind in state may be stale after reload-recovery
+            // because role-select didn't run on this page lifetime.
+            try {
+                const resp = await fetch(`/api/sessions/${this.sessionCode}`);
+                if (!resp.ok) return;
+                const data = await resp.json();
+                this.sessionKind = data.kind || 'generic';
+                this.vportalStagingAvailable = !!data.staging_available;
+            } catch (_e) {
+                return;
+            }
+            if (this.sessionKind !== 'vportal') return;
+            this._startVportalPolling();
+        },
+
+        _startVportalPolling() {
+            if (!vportalClient.isConnected(this.sessionCode)) return;
+            const stored = vportalClient.getStored(this.sessionCode);
+            if (!stored?.stage_id) return;
+            this._vportalPollStop = vportalClient.pollActiveAttempt(
+                this.sessionCode,
+                stored.fetch_interval_ms || 3000,
+                (attempt) => {
+                    if (attempt && attempt.__stale) {
+                        return;
+                    }
+                    this.vportalDisplayAttempt = attempt;
+                    this.vportalDisconnectedReason = '';
+                },
+                (kind) => {
+                    this.vportalDisplayAttempt = null;
+                    this.vportalDisconnectedReason = kind;
+                },
+            );
         },
 
         ...demoMethods,
@@ -248,6 +288,9 @@ export function ironVerdictApp() {
 
             this.ws = wsWrapper;
             this.wsSend = (data) => wsWrapper.send(data);
+            if (role === 'display') {
+                this._maybeStartVportalPolling();
+            }
         },
 
         handleMessage(message) {
