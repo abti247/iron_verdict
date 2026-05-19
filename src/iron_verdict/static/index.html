@@ -449,7 +449,8 @@
     </div>
 
     <!-- Display Screen: shows sessionName only — sessionCode intentionally omitted (C3) -->
-    <div class="display-full" x-show="screen === 'display'" x-cloak>
+    <div class="display-full" x-show="screen === 'display'" x-cloak
+         :style="`--display-zoom: ${displayZoom || 1}`">
         <div class="display-tag">
             <span class="conn-dot" :class="connectionStatus"></span>
             <span class="conn-label" x-show="serverRestarting" x-text="t('connection.serverRestarting')"></span>

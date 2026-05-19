@@ -380,8 +380,8 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 
 .display-orb {
-    width:  clamp(48px, 24vmin, 280px);
-    height: clamp(48px, 24vmin, 280px);
+    width:  calc(clamp(48px, 24vmin, 280px) * var(--display-zoom, 1));
+    height: calc(clamp(48px, 24vmin, 280px) * var(--display-zoom, 1));
     border-radius: 50%;
     background: radial-gradient(circle at 40% 40%, #2a2a2a, #141414);
     border: 3px solid var(--chrome-dark);
@@ -435,8 +435,8 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .display-status {
     font-family: 'Rajdhani', sans-serif;
     font-weight: 600;
-    font-size: clamp(16px, 2.8vmin, 48px);
-    letter-spacing: clamp(3px, 0.5vmin, 10px);
+    font-size: calc(clamp(16px, 2.8vmin, 48px) * var(--display-zoom, 1));
+    letter-spacing: calc(clamp(3px, 0.5vmin, 10px) * var(--display-zoom, 1));
     text-transform: uppercase;
     color: var(--text-dim);
 }
@@ -452,9 +452,9 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .verdict-stamp {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: clamp(22px, 8.4vmin, 110px);
-    letter-spacing: clamp(3px, 0.9vmin, 14px);
-    padding: clamp(6px, 1.1vmin, 16px) clamp(20px, 5vmin, 64px);
+    font-size: calc(clamp(22px, 8.4vmin, 110px) * var(--display-zoom, 1));
+    letter-spacing: calc(clamp(3px, 0.9vmin, 14px) * var(--display-zoom, 1));
+    padding: calc(clamp(6px, 1.1vmin, 16px) * var(--display-zoom, 1)) calc(clamp(20px, 5vmin, 64px) * var(--display-zoom, 1));
 }
 
 .verdict-stamp.valid {
@@ -609,51 +609,51 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .vportal-corner {
     position: absolute;
-    bottom: clamp(12px, 2vmin, 40px);
+    bottom: calc(clamp(12px, 2vmin, 40px) * var(--display-zoom, 1));
     color: #d1d5db;
     font-family: 'Rajdhani', sans-serif;
     pointer-events: none;
 }
-.vportal-corner-left  { left:  clamp(16px, 2.6vmin, 56px); text-align: left;  }
-.vportal-corner-right { right: clamp(16px, 2.6vmin, 56px); text-align: right; }
+.vportal-corner-left  { left:  calc(clamp(16px, 2.6vmin, 56px) * var(--display-zoom, 1)); text-align: left;  }
+.vportal-corner-right { right: calc(clamp(16px, 2.6vmin, 56px) * var(--display-zoom, 1)); text-align: right; }
 .vportal-corner-name {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: clamp(16px, 3vmin, 64px);
+    font-size: calc(clamp(16px, 3vmin, 64px) * var(--display-zoom, 1));
     letter-spacing: 0.04em;
     color: #f5f5f7;
     text-transform: uppercase;
 }
 .vportal-corner-meta {
-    font-size: clamp(10px, 1.6vmin, 32px);
+    font-size: calc(clamp(10px, 1.6vmin, 32px) * var(--display-zoom, 1));
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: #9ca3af;
-    margin-top: clamp(3px, 0.5vmin, 8px);
+    margin-top: calc(clamp(3px, 0.5vmin, 8px) * var(--display-zoom, 1));
 }
 .vportal-corner-disc {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: clamp(12px, 2vmin, 40px);
+    font-size: calc(clamp(12px, 2vmin, 40px) * var(--display-zoom, 1));
     letter-spacing: 0.12em;
     color: #cfd3da;
 }
 .vportal-corner-weight {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: clamp(18px, 3.5vmin, 76px);
+    font-size: calc(clamp(18px, 3.5vmin, 76px) * var(--display-zoom, 1));
     letter-spacing: 0.04em;
     color: #e5e7eb;
-    margin-top: clamp(3px, 0.5vmin, 8px);
+    margin-top: calc(clamp(3px, 0.5vmin, 8px) * var(--display-zoom, 1));
 }
 .vportal-disconnected-banner {
     position: absolute;
-    top: clamp(8px, 1vmin, 24px);
+    top: calc(clamp(8px, 1vmin, 24px) * var(--display-zoom, 1));
     left: 50%;
     transform: translateX(-50%);
     background: rgba(239,68,68,0.1);
     border: 1px solid rgba(239,68,68,0.4);
     color: #fca5a5;
-    padding: clamp(3px, 0.5vmin, 8px) clamp(8px, 1.2vmin, 24px);
+    padding: calc(clamp(3px, 0.5vmin, 8px) * var(--display-zoom, 1)) calc(clamp(8px, 1.2vmin, 24px) * var(--display-zoom, 1));
     font-family: 'Rajdhani', sans-serif;
-    font-size: clamp(10px, 1.4vmin, 22px);
+    font-size: calc(clamp(10px, 1.4vmin, 22px) * var(--display-zoom, 1));
     letter-spacing: 0.1em;
     text-transform: uppercase;
 }
