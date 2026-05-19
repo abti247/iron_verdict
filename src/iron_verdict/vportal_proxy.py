@@ -59,6 +59,21 @@ _MUTATION_RE = re.compile(r"^\s*mutation\b", re.IGNORECASE)
 _http_client: httpx.AsyncClient = httpx.AsyncClient(timeout=5.0)
 
 
+def _make_login_client() -> httpx.AsyncClient:
+    """Fresh httpx client per login flow.
+
+    Why: httpx.AsyncClient keeps a cookie jar that persists across requests
+    on the same instance. If the shared `_http_client` were used for login,
+    a still-valid VPORTAL cookie from a previous operator's login would be
+    sent on the new login's outbound request — real VPortal would treat it
+    as a session refresh, ignore the form credentials, and return a fresh
+    cookie/JWT for the *previous* operator. A user typing garbage credentials
+    would inherit the prior session. Scoping cookies to one login flow
+    closes that leak.
+    """
+    return httpx.AsyncClient(timeout=5.0)
+
+
 def _extract_jwt_exp(token: str) -> int | None:
     """Decode the JWT payload segment and return the `exp` claim, if any.
 
@@ -122,48 +137,51 @@ async def login(body: LoginRequest):
     _validate_host(body.host)
     base = _base_url(body.host)
 
-    # Step 1: multipart-POST /account/login. Status code is intentionally not
-    # inspected — real VPortal may redirect (302) on success; cookie presence
-    # is the success signal. Caveat: bad credentials currently surface as 502
-    # "no session cookie" rather than 401, pending capture of VPortal's real
-    # wrong-credentials response shape.
-    login_resp = await _http_client.post(
-        f"{base}/account/login",
-        files={
-            "identity": (None, body.identity),
-            "credential": (None, body.credential),
-        },
-        headers={"Accept-Language": "de"},
-        follow_redirects=False,
-    )
+    # Fresh client per login — see _make_login_client docstring for why
+    # the shared client would otherwise leak cookies between operators.
+    async with _make_login_client() as http:
+        # Step 1: multipart-POST /account/login. Status code is intentionally not
+        # inspected — real VPortal may redirect (302) on success; cookie presence
+        # is the success signal. Caveat: bad credentials currently surface as 502
+        # "no session cookie" rather than 401, pending capture of VPortal's real
+        # wrong-credentials response shape.
+        login_resp = await http.post(
+            f"{base}/account/login",
+            files={
+                "identity": (None, body.identity),
+                "credential": (None, body.credential),
+            },
+            headers={"Accept-Language": "de"},
+            follow_redirects=False,
+        )
 
-    # Use httpx's parsed cookies rather than splitting Set-Cookie on commas —
-    # the standard cookielib parser handles commas inside expires=... correctly.
-    vportal_cookie_value = login_resp.cookies.get("VPORTAL")
-    if not vportal_cookie_value:
-        raise HTTPException(status_code=502, detail="VPortal did not return a session cookie")
+        # Use httpx's parsed cookies rather than splitting Set-Cookie on commas —
+        # the standard cookielib parser handles commas inside expires=... correctly.
+        vportal_cookie_value = login_resp.cookies.get("VPORTAL")
+        if not vportal_cookie_value:
+            raise HTTPException(status_code=502, detail="VPortal did not return a session cookie")
 
-    # Step 2: GET /auth/token with the parsed cookie value
-    token_resp = await _http_client.get(
-        f"{base}/auth/token",
-        headers={
-            "cookie": f"VPORTAL={vportal_cookie_value}",
-            "Accept-Language": "de",
-        },
-    )
-    if token_resp.status_code != 200:
-        raise HTTPException(status_code=502, detail="VPortal token exchange failed")
+        # Step 2: GET /auth/token with the parsed cookie value
+        token_resp = await http.get(
+            f"{base}/auth/token",
+            headers={
+                "cookie": f"VPORTAL={vportal_cookie_value}",
+                "Accept-Language": "de",
+            },
+        )
+        if token_resp.status_code != 200:
+            raise HTTPException(status_code=502, detail="VPortal token exchange failed")
 
-    token_payload = token_resp.json()
-    access_token = token_payload.get("access_token")
-    if not access_token:
-        raise HTTPException(status_code=502, detail="VPortal token response missing access_token")
+        token_payload = token_resp.json()
+        access_token = token_payload.get("access_token")
+        if not access_token:
+            raise HTTPException(status_code=502, detail="VPortal token response missing access_token")
 
-    return {
-        "access_token": access_token,
-        "exp": _extract_jwt_exp(access_token) or token_payload.get("exp"),
-        "fetch_interval_ms": settings.VPORTAL_FETCH_INTERVAL_MS,
-    }
+        return {
+            "access_token": access_token,
+            "exp": _extract_jwt_exp(access_token) or token_payload.get("exp"),
+            "fetch_interval_ms": settings.VPORTAL_FETCH_INTERVAL_MS,
+        }
 
 
 @router.post("/graphql")

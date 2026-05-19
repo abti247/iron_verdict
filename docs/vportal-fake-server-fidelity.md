@@ -53,6 +53,18 @@ Resolution: staging returned canonical `{data: ...}` shapes for all four queries
 
 See ["Still open"](#still-open) below.
 
+### Cookie-jar leakage across login attempts — **✅ Resolved (post-staging discovery)**
+
+Pre-staging concern: not on the original list. Discovered during a follow-up staging attempt to capture the wrong-credentials response shape.
+
+The reproduction: type deliberately-wrong credentials into the connect modal *after* a successful login earlier in the same Railway container's lifetime. The login succeeded anyway, returning a JWT for the *previous* operator.
+
+Root cause: the proxy used a single module-level `httpx.AsyncClient` for everything, and `httpx.AsyncClient` keeps a cookie jar that persists across requests. After the first successful login seeded `VPORTAL=<valid>` into the jar, every subsequent login's outbound POST included that cookie in the `Cookie:` header. Real VPortal treated the request as a session refresh — ignoring the form credentials in the body — and responded with a 302 + refreshed cookie for the previous operator. The proxy then completed `/auth/token` with that cookie and handed the previous operator's JWT back to a user who never had valid credentials.
+
+Severity: session-bleed. Two operators sharing the same Railway deployment could inherit each other's VPortal sessions.
+
+Resolution: introduced `_make_login_client()` factory that returns a fresh `httpx.AsyncClient` per login flow, used inside `async with`. Cookie jar is scoped to a single login's two HTTP calls; nothing persists between logins. The shared `_http_client` remains for `/graphql` (bearer auth, no cookies). Regression test `test_login_does_not_leak_cookie_jar_between_calls` asserts no `VPORTAL` cookie appears on a second outbound login after a successful first one.
+
 ### `exp` field presence — **✅ Resolved**
 
 Pre-staging concern: spec assumed `/auth/token` returns a top-level `exp` field. Referee instead does `jwt.decode(access_token).exp`, suggesting real VPortal puts `exp` inside the JWT only.
@@ -71,9 +83,9 @@ The proxy no longer inspects the login status code (referee-aligned, as required
 - HTTP 200 + JSON `{"error": "invalid_credentials"}`
 - HTTP 302 to `/login?error=1`
 
-We haven't captured the real response because the staging visit successfully logged in on the first attempt — we never sent a deliberately-wrong password.
+The first attempt to capture this (after the initial successful staging login) instead discovered the cookie-jar leakage bug above — the bad-creds attempt didn't fail at all because it inherited the previous session's cookie. With the per-login client fix now in place, a future bad-creds attempt will go out without any prior cookie and will surface real VPortal's actual response.
 
-**How to resolve:** during any future staging session, deliberately enter wrong credentials once. In DevTools → Network → `/account/login` row → grab the status code and response body, paste into a follow-up issue. Then add a branch in [`vportal_proxy.login`](../src/iron_verdict/vportal_proxy.py) that maps the observed shape back to a 401 with `"Invalid VPortal credentials"`.
+**How to resolve:** during any future staging session (or any production smoke test), deliberately enter wrong credentials once. In DevTools → Network → `/account/login` row → grab the status code and response body, paste into a follow-up issue. Then add a branch in [`vportal_proxy.login`](../src/iron_verdict/vportal_proxy.py) that maps the observed shape back to a 401 with `"Invalid VPortal credentials"`.
 
 Total work to resolve: ~5 lines of code once we have the capture.
 

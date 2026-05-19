@@ -109,7 +109,13 @@ def test_graphql_accepts_known_operations(mock_vportal):
 
 @pytest.fixture
 def mock_vportal():
-    """Inject a fake VPortal upstream. Yields the handler so tests can program it."""
+    """Inject a fake VPortal upstream. Yields the handler so tests can program it.
+
+    Patches both the shared `_http_client` (used by graphql) and the login-time
+    client factory (`_make_login_client`) so all outbound proxy traffic is
+    routed through the same mock transport. Each login flow still gets a fresh
+    AsyncClient with its own cookie jar, mirroring production.
+    """
     handlers = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -118,12 +124,18 @@ def mock_vportal():
             return handlers[key](request)
         return httpx.Response(404, json={"error": "no handler"})
 
-    original = proxy_module._http_client
-    proxy_module._http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    transport = httpx.MockTransport(handler)
+
+    original_http_client = proxy_module._http_client
+    original_make_login_client = proxy_module._make_login_client
+
+    proxy_module._http_client = httpx.AsyncClient(transport=transport)
+    proxy_module._make_login_client = lambda: httpx.AsyncClient(transport=transport)
     try:
         yield handlers
     finally:
-        proxy_module._http_client = original
+        proxy_module._http_client = original_http_client
+        proxy_module._make_login_client = original_make_login_client
 
 
 def test_login_success_returns_token_and_interval(mock_vportal, monkeypatch):
@@ -263,3 +275,54 @@ def test_graphql_propagates_5xx_as_502(mock_vportal):
         },
     )
     assert response.status_code == 502
+
+
+def test_login_does_not_leak_cookie_jar_between_calls(mock_vportal):
+    # Why: real VPortal treats an incoming Cookie: VPORTAL=<valid> as a session
+    # refresh and ignores the form credentials. If the proxy shared a cookie
+    # jar across login calls, a second operator typing garbage credentials
+    # would inherit the previous operator's session — session-bleed.
+    fake_jwt = _jwt_with_exp(9999999999)
+    call_count = {"login": 0}
+    second_login_request_cookies = {"value": None}
+
+    def login_response(request):
+        call_count["login"] += 1
+        if call_count["login"] == 1:
+            return httpx.Response(
+                302,
+                headers={
+                    "set-cookie": "VPORTAL=A-cookie; Path=/; HttpOnly",
+                    "location": "/dashboard",
+                },
+            )
+        # Second login: capture whether the proxy forwarded any cookie
+        second_login_request_cookies["value"] = request.headers.get("cookie", "")
+        return httpx.Response(401)
+
+    mock_vportal[("POST", "/account/login")] = login_response
+    mock_vportal[("GET", "/auth/token")] = lambda r: httpx.Response(
+        200, json={"access_token": fake_jwt}
+    )
+
+    # First login: succeeds and would seed a jar on a shared client
+    r1 = client.post(
+        "/api/vportal/login",
+        json={"host": "bvdk.vportal-online.de", "identity": "u", "credential": "p"},
+    )
+    assert r1.status_code == 200
+
+    # Second login: bad creds. With per-login client (the fix), no prior cookie
+    # leaks into the outbound request; the upstream returns 401 with no cookie;
+    # the proxy raises 502. Without the fix, the jar would carry VPORTAL=A-cookie
+    # to the upstream and the response would refresh-and-return a valid cookie.
+    r2 = client.post(
+        "/api/vportal/login",
+        json={"host": "bvdk.vportal-online.de", "identity": "wrong", "credential": "wrong"},
+    )
+
+    assert "VPORTAL" not in second_login_request_cookies["value"], (
+        "Second login leaked a cookie from the first login's jar: "
+        f"{second_login_request_cookies['value']!r}"
+    )
+    assert r2.status_code == 502
