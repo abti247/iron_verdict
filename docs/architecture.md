@@ -15,11 +15,15 @@ Iron Verdict is a single-process FastAPI + Uvicorn application serving real-time
 Served by FastAPI directly:
 
 - `GET /` — landing page (static HTML + Alpine.js).
+- `GET /vportal` — alternate landing page for VPortal-integrated sessions; serves the identical HTML as `/`. The client infers session kind from `location.pathname` at create time. No server-side marker.
 - `GET /health` — single endpoint used by Railway. Currently conflates liveness + readiness.  
 *Why one endpoint:* Railway consumes a single health URL; splitting earned nothing on this platform. Cost: on ECS/K8s, a slow snapshot save could trip a "not ready" signal and cause an unnecessary restart loop — those platforms want `/livez` (is the process up?) separated from `/readyz` (can it serve traffic?).
-- `POST /api/sessions` — create a session. Rate-limited to 10/hour/IP via slowapi.
-- `GET /api/sessions/{code}` — check whether a session is active. Returns `{"exists": true}` on 200 or 404 with `{"detail": "Session not found"}`. Path pattern `^[A-Z0-9]{8}$` rejects malformed codes with 422 before touching the session map. Rate-limited to 30/minute/IP via slowapi.  
-*Why a separate endpoint instead of validating at WebSocket join:* fail-fast UX. Without it, a typo gets the user as far as the role-selection screen before failing — at a live competition that's a real cost. *Why no session name in the response:* minimizes information disclosure; the existence boolean is all the landing screen needs.
+- `POST /api/sessions` — create a session. Accepts optional `kind: "generic" | "vportal"` (default `generic`); rejects other values with 422. Rate-limited to 10/hour/IP via slowapi.
+- `GET /api/sessions/{code}` — look up an active session. Returns `{"exists": true, "kind": ..., "staging_available": ...}` on 200 or 404 with `{"detail": "Session not found"}`. Path pattern `^[A-Z0-9]{8}$` rejects malformed codes with 422 before touching the session map. Rate-limited to 30/minute/IP via slowapi.  
+*Why a separate endpoint instead of validating at WebSocket join:* fail-fast UX. Without it, a typo gets the user as far as the role-selection screen before failing — at a live competition that's a real cost.  
+*Why the lookup also returns `kind`:* it is the single source of truth for "should the VPortal connect button appear on Select Role?" Reading from the server avoids relying on `location.pathname` (which the back-nav code scrubs to `/` via `replaceState` on every load) and lets a device that joined via QR (plain `/`) still see the connect button when the underlying session was created via `/vportal`. *Why no session name in the response:* minimizes information disclosure; the kind + existence is all callers need.
+- `POST /api/vportal/login` — proxy endpoint; forwards browser credentials to a federation's VPortal instance via a host-allowlisted outbound request and returns the JWT plus the server-clamped polling interval. See *VPortal integration* below.
+- `POST /api/vportal/graphql` — proxy endpoint; forwards GraphQL reads to VPortal with `Authorization: Bearer <jwt>`. Read-only by construction: mutations and any operation outside a hard-coded allowlist of four read queries are rejected with 400 before the outbound call.
 - `GET /static/*` — static assets (CSS, JS, fonts) served by FastAPI. In an AWS deployment these would move to CloudFront → S3.
 
 Security:
@@ -55,7 +59,8 @@ Two in-process managers, each guarded by its own `asyncio.Lock`. The two locks a
 ### `SessionManager`
 
 - Holds `self.sessions: dict[str, dict]` — domain state per session code.
-- Each session records: `judges` (left/center/right with vote, reason, locked, connected, reconnect token), `phase`, `state`, `settings`, `timer_started_at`, `timer_frozen_ms`, `last_activity`, `name`.
+- Each session records: `name`, `kind` (`"generic" | "vportal"`, immutable after create), `judges` (left/center/right with vote, reason, locked, connected, reconnect token), `phase`, `state`, `settings`, `timer_started_at`, `timer_frozen_ms`, `last_activity`.  
+*Why `kind` lives in session state:* drives whether the VPortal connect button appears on Select Role and whether the display screen starts polling. Set at create, read by every consumer via `GET /api/sessions/{code}`.
 - Generates 8-character alphanumeric session codes.
 - Owns business rules: vote-lock state machine, all-judges-locked → results computation (including the IPF rule that a disconnected non-voter blocks results), timer freeze on results, reset for next lift.
 
@@ -98,6 +103,36 @@ Single `lifespan` task runs two periodic operations:
 - **Cleanup expired sessions** — every 30 minutes; deletes sessions with `last_activity` older than 4 hours.
 
 A server-initiated heartbeat pings WebSocket clients at a fixed interval and disconnects clients that don't reply within the timeout.
+
+## VPortal integration
+
+Optional, pull-only overlay of the current lifter on the display screen for sessions created via `/vportal`. The integration is opt-in at session creation; generic sessions are unaffected.
+
+**Architecture.** Stateless Python proxy ([src/iron_verdict/vportal_proxy.py](../src/iron_verdict/vportal_proxy.py)) + client module ([src/iron_verdict/static/js/vportalClient.js](../src/iron_verdict/static/js/vportalClient.js)). The JWT lives in browser `localStorage` keyed by session code (`vportal:<sessionCode>`); the proxy holds no tokens, no credentials, and no per-session state — only a shared `httpx.AsyncClient` plus the host and operation allowlists.
+
+*Why client-side storage instead of server-side sessions:* a server-side token store concentrates risk — one server-side leak compromises every active session. localStorage scopes the blast radius to a single device; the existing XSS surface is small (no user-generated content rendered to HTML, Alpine `x-text` only). Accepted cost: standard browser threat model — XSS would steal the token.
+
+**Data flow per polling cycle.** Browser reads `{host, token, competition_id, stage_id}` from localStorage; the proxy forwards two GraphQL reads per tick (`competitionGroupList`, then `competitionAthleteAttemptList`) with `Authorization: Bearer <token>`. `profile.competition.id` is fetched once at login and cached. Polling cadence is server-controlled via `VPORTAL_FETCH_INTERVAL_MS` (default 3000ms, clamped to 2000ms minimum); the client receives the clamped value at login and uses it — no client-side default.  
+*Why server-controlled with a hard minimum:* prevents a malicious or buggy client from polling sub-2000ms, and keeps tuning a between-event operation (Railway env var → redeploy) rather than a code change.
+
+**Security boundaries.**
+
+- **Host allowlist** in the proxy: `bvdk.vportal-online.de`, `oevk.vportal-online.de`, `staging-bvdk.vportal-online.de`, `staging-oevk.vportal-online.de`. When `TEST_MODE=1`, `localhost`/`127.0.0.1` (and `host:port` variants) are additionally allowed for the E2E fake-server fixture. Any other host returns 400 before the outbound call — the proxy is not an open relay.
+- **GraphQL operation allowlist**: hard-coded set of four read operations (`profile`, `competitionStageList`, `competitionGroupList`, `competitionAthleteAttemptList`). Mutations and any other top-level field are rejected with 400. Iron Verdict therefore cannot write to VPortal even if a modified client tries — the official scorekeeper continues to record verdicts on the VPortal side manually.  
+*Why an allowlist instead of trusting "we only send reads":* defence in depth. A leaked or stolen JWT grants whatever permissions the operator account has; without the gate, a malicious client could send mutations through the same proxy that's already authenticated. The four-operation allowlist makes write attempts a 400 at our edge.
+- **No credential storage server-side**. Login credentials cross the proxy in-memory for the duration of one request and are not logged. The JWT flows back to the browser.
+
+**Failure isolation.** Every VPortal failure path — wrong credentials, expired token, upstream 5xx, unreachable network, empty active group, missing stage — leaves the core judging functionality (lights, timer, votes, verdict, WebSocket layer) fully operational. The overlay is strictly additive: corners hide, an unobtrusive banner may appear, and the rest of the display continues to render.
+
+**Configuration env vars** (in addition to the existing surface — `HOST`, `PORT`, `SESSION_TIMEOUT_HOURS`, etc.):
+
+| Var | Default | Effect |
+|---|---|---|
+| `VPORTAL_FETCH_INTERVAL_MS` | `3000` | Polling cadence for the display overlay, in ms. Server-side clamped to 2000ms minimum; the clamped value is returned to the client at login. |
+| `TEST_MODE` | unset | When `1`, the proxy accepts `localhost`/`127.0.0.1` (with optional port) as VPortal hosts. E2E tests only — never set in production. |
+| `EXPOSE_VPORTAL_STAGING` | unset | When `1`, the connect modal exposes a third federation option (BVDK Staging) pointing at `staging-bvdk.vportal-online.de`. Unset on production once staging access expires. |
+
+**Reference:** [docs/vportal-fake-server-fidelity.md](vportal-fake-server-fidelity.md) — pre-staging risks and what was resolved against the referee codebase.
 
 ## Edge
 

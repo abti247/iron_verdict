@@ -5,6 +5,7 @@ from fastapi.staticfiles import StaticFiles
 from iron_verdict.config import settings
 from iron_verdict.session import SessionManager
 from iron_verdict.connection import ConnectionManager
+from iron_verdict.vportal_proxy import router as vportal_router
 import asyncio
 import signal
 from contextlib import asynccontextmanager
@@ -39,6 +40,7 @@ def _get_ws_client_ip(websocket: WebSocket) -> str:
 
 class CreateSessionRequest(BaseModel):
     name: str
+    kind: str = "generic"
 
     @field_validator('name')
     @classmethod
@@ -46,6 +48,13 @@ class CreateSessionRequest(BaseModel):
         if not v.strip():
             raise ValueError('name cannot be empty')
         return v.strip()
+
+    @field_validator('kind')
+    @classmethod
+    def kind_valid(cls, v):
+        if v not in {"generic", "vportal"}:
+            raise ValueError("kind must be 'generic' or 'vportal'")
+        return v
 
 
 _CSP = (
@@ -162,6 +171,7 @@ async def lifespan(app: FastAPI):
     session_manager.save_snapshot(settings.SNAPSHOT_PATH)
 
 app = FastAPI(title="Iron Verdict", lifespan=lifespan)
+app.include_router(vportal_router)
 app.add_middleware(SecurityHeadersMiddleware)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -182,9 +192,7 @@ async def health():
     return {"status": "ok"}
 
 
-@app.get("/", response_class=HTMLResponse)
-async def root():
-    """Serve the main HTML page."""
+def _serve_index() -> Response:
     with open(os.path.join(static_dir, "index.html"), encoding="utf-8") as f:
         content = f.read().replace("__APP_VERSION__", settings.APP_VERSION)
     return Response(
@@ -194,12 +202,27 @@ async def root():
     )
 
 
+@app.get("/", response_class=HTMLResponse)
+async def root():
+    """Serve the main HTML page (generic sessions)."""
+    return _serve_index()
+
+
+@app.get("/vportal", response_class=HTMLResponse)
+async def vportal_root():
+    """Same HTML as `/`; the client reads location.pathname to decide kind on create."""
+    return _serve_index()
+
+
 @app.post("/api/sessions")
 @limiter.limit("10/hour")
 async def create_session(request: Request, body: CreateSessionRequest):
     """Create a new judging session."""
-    code = await session_manager.create_session(body.name)
-    logger.info("session_created", extra={"session_code": code, "client_ip": _get_http_client_ip(request)})
+    code = await session_manager.create_session(body.name, kind=body.kind)
+    logger.info(
+        "session_created",
+        extra={"session_code": code, "kind": body.kind, "client_ip": _get_http_client_ip(request)},
+    )
     return {"session_code": code}
 
 
@@ -209,9 +232,18 @@ async def get_session(
     request: Request,
     code: str = Path(..., pattern=r"^[A-Z0-9]{8}$"),
 ):
-    """Check whether a session code corresponds to an active session."""
+    """Look up an active session. Used by:
+       - landing-screen code validation (checks `exists`)
+       - role-select to decide whether to show the VPortal connect button (reads `kind`)
+       - the connect modal to decide whether to surface the staging option (reads `staging_available`)
+    """
     if code in session_manager.sessions:
-        return {"exists": True}
+        session = session_manager.sessions[code]
+        return {
+            "exists": True,
+            "kind": session["kind"],
+            "staging_available": settings.EXPOSE_VPORTAL_STAGING,
+        }
     logger.info("session_lookup_not_found", extra={
         "session_code": code,
         "client_ip": _get_http_client_ip(request),

@@ -6,6 +6,10 @@ from datetime import datetime, timezone
 _EXTRA_FIELDS = (
     "session_code", "role", "client_ip", "color",
     "position", "all_locked", "reason", "origin", "conn_id",
+    # VPortal integration — proxy diagnostics
+    "kind", "host", "first_field", "upstream_status",
+    # VPortal integration — config-time diagnostics
+    "raw", "requested", "clamped_to",
 )
 
 class JsonFormatter(logging.Formatter):

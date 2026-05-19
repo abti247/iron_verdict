@@ -40,3 +40,23 @@ def test_json_formatter_includes_conn_id():
     output = formatter.format(record)
     parsed = json.loads(output)
     assert parsed["conn_id"] == "abc12345def67890"
+
+
+def test_json_formatter_includes_vportal_fields():
+    # Why: vportal_proxy.py logs structured diagnostics with these keys.
+    # If the whitelist drops them, we lose context on every failure path.
+    formatter = JsonFormatter()
+    record = logging.LogRecord(
+        name="iron_verdict", level=logging.WARNING, pathname="", lineno=0,
+        msg="vportal_token_exchange_failed", args=(), exc_info=None,
+    )
+    record.upstream_status = 302
+    record.host = "staging-bvdk.vportal-online.de"
+    record.kind = "vportal"
+    record.first_field = "secretAdminQuery"
+    output = formatter.format(record)
+    parsed = json.loads(output)
+    assert parsed["upstream_status"] == 302
+    assert parsed["host"] == "staging-bvdk.vportal-online.de"
+    assert parsed["kind"] == "vportal"
+    assert parsed["first_field"] == "secretAdminQuery"

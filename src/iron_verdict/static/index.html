@@ -242,10 +242,84 @@
                 <button class="role-btn role-display-btn cut-corner-sm" @click="joinSession('display')" x-text="t('roles.display')">
                 </button>
             </div>
+            <template x-if="sessionKind === 'vportal'">
+                <div class="vportal-connect-wrap">
+                    <button class="vportal-connect-btn cut-corner-sm"
+                            :class="{ 'connected': vportalConnected }"
+                            @click="openVportalModal()"
+                            x-text="vportalConnected
+                                ? (t('vportal.connectedTo') + ' ' + vportalFederationLabel + ' · ' + (vportalStageName || ''))
+                                : t('vportal.connectButton')"></button>
+                </div>
+            </template>
             <div class="btn-row">
                 <button class="btn-blood btn-blood-ghost" @click="returnToLanding()">
                     &larr; <span x-text="t('roles.backToStart')"></span>
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- VPortal Connect Modal -->
+    <div class="vportal-modal-backdrop" x-show="vportalModalOpen" @click.self="vportalModalOpen = false">
+        <div class="vportal-modal cut-corner" @click.stop>
+            <div class="vportal-modal-title chrome-text" x-text="t('vportal.modalTitle')"></div>
+
+            <!-- Step 1: Federation -->
+            <div class="vportal-step-federation" x-show="vportalModalStep === 'federation'">
+                <label class="vportal-label" x-text="t('vportal.federationLabel')"></label>
+                <select class="chrome-input" x-model="vportalFederation">
+                    <option value="BVDK" x-text="t('vportal.federationBvdk')"></option>
+                    <option value="OEVK" x-text="t('vportal.federationOevk')"></option>
+                    <template x-if="vportalStagingAvailable">
+                        <option value="BVDK_STAGING" x-text="t('vportal.federationBvdkStaging')"></option>
+                    </template>
+                </select>
+                <div class="vportal-btn-row">
+                    <button class="btn-blood btn-blood-ghost" @click="vportalModalOpen = false" x-text="t('vportal.cancelButton')"></button>
+                    <button class="btn-blood btn-blood-primary vportal-next-btn" @click="vportalModalStep = 'credentials'">→</button>
+                </div>
+            </div>
+
+            <!-- Step 2: Credentials -->
+            <div class="vportal-step-credentials" x-show="vportalModalStep === 'credentials'">
+                <label class="vportal-label" x-text="t('vportal.usernameLabel')"></label>
+                <input class="chrome-input" type="text" x-model="vportalIdentity" autocomplete="username">
+                <label class="vportal-label" x-text="t('vportal.passwordLabel')"></label>
+                <input class="chrome-input" type="password" x-model="vportalCredential" autocomplete="current-password">
+                <div class="vportal-error" x-show="vportalLoginError" x-text="vportalLoginError"></div>
+                <div class="vportal-btn-row">
+                    <button class="btn-blood btn-blood-ghost" @click="vportalModalStep = 'federation'">←</button>
+                    <button class="btn-blood btn-blood-primary vportal-next-btn" @click="vportalDoLogin()" :disabled="!vportalIdentity || !vportalCredential" x-text="t('vportal.loginButton')"></button>
+                </div>
+            </div>
+
+            <!-- Step 3: Stage picker -->
+            <div class="vportal-step-stage" x-show="vportalModalStep === 'stage'">
+                <label class="vportal-label" x-text="t('vportal.stageLabel')"></label>
+                <select class="chrome-input" x-model="vportalSelectedStage" :disabled="vportalStages.length === 0">
+                    <template x-for="stage in vportalStages" :key="stage.id">
+                        <option :value="stage.id" x-text="stage.name"></option>
+                    </template>
+                </select>
+                <div class="vportal-loading" x-show="vportalStages.length === 0" x-text="t('vportal.loadingStages')"></div>
+                <div class="vportal-btn-row">
+                    <button class="btn-blood btn-blood-ghost" @click="vportalModalOpen = false" x-text="t('vportal.cancelButton')"></button>
+                    <button class="btn-blood btn-blood-primary vportal-next-btn" @click="vportalConfirmStage()" :disabled="!vportalSelectedStage" x-text="t('vportal.stageSelectButton')"></button>
+                </div>
+            </div>
+
+            <!-- Step 4: Connected (when re-opened on already-connected session) -->
+            <div class="vportal-step-connected" x-show="vportalModalStep === 'connected'">
+                <p>
+                    <span x-text="t('vportal.connectedTo')"></span>
+                    <strong x-text="vportalFederationLabel"></strong>
+                    · <strong x-text="vportalStageName"></strong>
+                </p>
+                <div class="vportal-btn-row">
+                    <button class="btn-blood btn-blood-ghost" @click="vportalModalOpen = false" x-text="t('vportal.cancelButton')"></button>
+                    <button class="btn-blood btn-blood-primary" @click="vportalDisconnect()" x-text="t('vportal.disconnectButton')"></button>
+                </div>
             </div>
         </div>
     </div>
@@ -415,6 +489,24 @@
         </div>
 
         <div class="display-status" x-text="displayStatus || (displayPhase === 'idle' ? t('display.waiting') : '')"></div>
+
+        <div class="vportal-corner vportal-corner-left" x-show="vportalDisplayAttempt">
+            <div class="vportal-corner-name" x-text="vportalDisplayAttempt?.firstName + ' ' + vportalDisplayAttempt?.lastName"></div>
+            <div class="vportal-corner-meta">
+                <span x-text="vportalDisplayAttempt?.club"></span> ·
+                <span x-text="vportalDisplayAttempt?.bodyWeightCategory"></span> ·
+                <span x-text="vportalDisplayAttempt?.ageCategory"></span>
+            </div>
+        </div>
+        <div class="vportal-corner vportal-corner-right" x-show="vportalDisplayAttempt">
+            <div class="vportal-corner-disc">
+                <span x-text="vportalDisplayAttempt?.discipline"></span> ·
+                <span x-text="t('vportal.attemptShort') + ' ' + vportalDisplayAttempt?.attempt"></span>
+            </div>
+            <div class="vportal-corner-weight" x-text="vportalDisplayAttempt?.weight + ' KG'"></div>
+        </div>
+        <div class="vportal-disconnected-banner" x-show="vportalDisconnectedReason"
+             x-text="t('vportal.disconnectedBanner')"></div>
     </div>
 
 </body>

@@ -565,3 +565,69 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     letter-spacing: 1px;
     margin-top: 8px;
 }
+
+.vportal-connect-wrap { margin-top: 14px; }
+.vportal-connect-btn {
+    width: 100%;
+    background: linear-gradient(180deg, #1a1a1f, #131316);
+    color: var(--text, #e8e8ea);
+    border: 1px solid #2a2a2e;
+    border-left: 2px solid #ef4444;
+    padding: 10px 14px;
+    font-family: 'Rajdhani', sans-serif;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+.vportal-connect-btn:hover { background: #1a1a1f; }
+.vportal-connect-btn.connected { border-left-color: #22c55e; }
+
+.vportal-modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100;
+}
+.vportal-modal {
+    background: #131316;
+    border: 1px solid #2a2a2e;
+    border-top: 2px solid #ef4444;
+    padding: 24px;
+    width: 360px; max-width: 90vw;
+    color: #e8e8ea;
+    font-family: 'Rajdhani', sans-serif;
+}
+.vportal-modal-title { font-size: 18px; letter-spacing: .12em; margin-bottom: 18px; }
+.vportal-label {
+    display: block; font-size: 11px; letter-spacing: .12em;
+    text-transform: uppercase; color: #9ca3af; margin: 10px 0 4px;
+}
+.vportal-error { color: #ef4444; font-size: 12px; margin-top: 8px; }
+.vportal-loading { color: #9ca3af; font-size: 12px; margin-top: 6px; }
+.vportal-btn-row { display: flex; justify-content: space-between; gap: 10px; margin-top: 18px; }
+.vportal-btn-row .btn-blood { flex: 1; }
+
+.vportal-corner {
+    position: absolute;
+    bottom: 20px;
+    color: #d1d5db;
+    font-family: 'Rajdhani', sans-serif;
+    pointer-events: none;
+}
+.vportal-corner-left { left: 28px; text-align: left; }
+.vportal-corner-right { right: 28px; text-align: right; }
+.vportal-corner-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 16px; letter-spacing: 0.04em; color: #f5f5f7;
+    text-transform: uppercase;
+}
+.vportal-corner-meta { font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; color: #6b7280; margin-top: 4px; }
+.vportal-corner-disc { font-family: 'Bebas Neue', sans-serif; font-size: 11px; letter-spacing: 0.12em; color: #9ca3af; }
+.vportal-corner-weight { font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 0.04em; color: #d1d5db; margin-top: 4px; }
+.vportal-disconnected-banner {
+    position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+    background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.4);
+    color: #fca5a5; padding: 4px 12px;
+    font-family: 'Rajdhani', sans-serif; font-size: 11px;
+    letter-spacing: 0.1em; text-transform: uppercase;
+}

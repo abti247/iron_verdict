@@ -90,7 +90,10 @@ def test_get_session_exists_returns_200():
 
     response = client.get(f"/api/sessions/{code}")
     assert response.status_code == 200
-    assert response.json() == {"exists": True}
+    body = response.json()
+    assert body["exists"] is True
+    assert body["kind"] == "generic"
+    assert body["staging_available"] is False
 
 
 def test_get_session_not_found_returns_404():
@@ -128,3 +131,49 @@ async def test_get_session_not_found_logs_info(caplog):
     assert resp.status_code == 404
     messages = [r.getMessage() for r in caplog.records]
     assert any("session_lookup_not_found" in m for m in messages)
+
+
+def test_vportal_route_returns_200():
+    response = client.get("/vportal")
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+
+
+def test_root_and_vportal_serve_identical_html():
+    # Same HTML — kind is decided client-side from location.pathname, not from a server-injected marker.
+    assert client.get("/").text == client.get("/vportal").text
+
+
+def test_create_session_accepts_kind_vportal():
+    response = client.post("/api/sessions", json={"name": "T", "kind": "vportal"})
+    assert response.status_code == 200
+    code = response.json()["session_code"]
+
+    lookup = client.get(f"/api/sessions/{code}")
+    assert lookup.status_code == 200
+    assert lookup.json()["kind"] == "vportal"
+
+
+def test_create_session_defaults_to_generic():
+    response = client.post("/api/sessions", json={"name": "T"})
+    code = response.json()["session_code"]
+    lookup = client.get(f"/api/sessions/{code}")
+    assert lookup.json()["kind"] == "generic"
+
+
+def test_create_session_rejects_unknown_kind():
+    response = client.post("/api/sessions", json={"name": "T", "kind": "bogus"})
+    assert response.status_code == 422
+
+
+def test_session_lookup_reports_staging_available_when_env_set():
+    import iron_verdict.main as main_module
+    original = main_module.settings.EXPOSE_VPORTAL_STAGING
+    main_module.settings.EXPOSE_VPORTAL_STAGING = True
+    try:
+        create = client.post("/api/sessions", json={"name": "T", "kind": "vportal"})
+        code = create.json()["session_code"]
+        lookup = client.get(f"/api/sessions/{code}")
+        assert lookup.json()["staging_available"] is True
+    finally:
+        main_module.settings.EXPOSE_VPORTAL_STAGING = original

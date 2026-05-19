@@ -151,6 +151,22 @@ All settings are optional and have defaults suitable for local development.
 | `DISPLAY_CAP` | `20` | Maximum number of display connections per session |
 | `SNAPSHOT_PATH` | `/data/sessions.json` | Path for session persistence snapshot — mount `/data` as a volume to survive restarts |
 | `LOG_LEVEL` | `INFO` | Logging verbosity (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
+| `VPORTAL_FETCH_INTERVAL_MS` | `3000` | How often the display polls VPortal for the current lifter, in milliseconds. Clamped to 2000ms minimum. Only used for sessions created via `/vportal`. |
+| `TEST_MODE` | unset | When set to `1`, the VPortal proxy allows `localhost`/`127.0.0.1` hosts (for E2E tests). Never set this in production. |
+| `EXPOSE_VPORTAL_STAGING` | unset | When set to `1`, the VPortal connect modal exposes a third federation option, **BVDK Staging**, pointing at `staging-bvdk.vportal-online.de`. Use only while you have valid staging credentials; leave unset otherwise so end users don't see an unusable option. |
+
+## VPortal integration (BVDK / ÖVK)
+
+Iron Verdict can optionally pull the current lifter, attempt, and weight from the VPortal competition-management software used by the German (BVDK) and Austrian (ÖVK) federations, and display it on the projector view.
+
+To use it:
+
+1. Open `<your-iron-verdict-url>/vportal` instead of the normal landing page.
+2. Create a session as usual.
+3. On the Select Role screen, click **Connect to comp software** and enter your VPortal operator credentials.
+4. Pick your stage. The display screen will now show lifter info alongside the lights/timer/verdict.
+
+Iron Verdict never writes back to VPortal — verdicts are still recorded manually by the official scorekeeper on the VPortal side.
 
 ## Project Structure
 

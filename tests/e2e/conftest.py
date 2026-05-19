@@ -1,8 +1,12 @@
 """E2E test infrastructure — server fixture, cleanup, and CompetitionHelper."""
 
+import os
 import socket
 import threading
 import time
+
+os.environ["TEST_MODE"] = "1"
+os.environ["VPORTAL_FETCH_INTERVAL_MS"] = "2000"
 
 import httpx
 import pytest
@@ -167,3 +171,28 @@ def competition(browser, server_url):
     helper = CompetitionHelper(browser, server_url)
     yield helper
     helper.cleanup()
+
+
+# ---------------------------------------------------------------------------
+# 5. Fake VPortal server fixture
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope="session")
+def fake_vportal_url():
+    from tests.e2e.fake_vportal import app as fake_app
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+    config = uvicorn.Config(app=fake_app, host="127.0.0.1", port=port, log_level="warning")
+    server = uvicorn.Server(config)
+    thread = threading.Thread(target=server.run, daemon=True)
+    thread.start()
+    for _ in range(50):
+        try:
+            httpx.get(f"http://127.0.0.1:{port}/auth/token", timeout=1.0)
+            break
+        except Exception:
+            time.sleep(0.1)
+    yield f"127.0.0.1:{port}"
+    server.should_exit = True
+    thread.join(timeout=5)

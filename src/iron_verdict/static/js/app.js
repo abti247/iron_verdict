@@ -2,6 +2,7 @@ import { CARD_REASONS } from './constants.js';
 import { startTimerCountdown } from './timer.js';
 import { createWebSocket } from './websocket.js';
 import { demoMethods } from './demo.js';
+import { vportalClient } from './vportalClient.js';
 import {
     handleJoinSuccess,
     handleJoinError,
@@ -59,6 +60,108 @@ export function ironVerdictApp() {
         contactEmail: '',
         contactMessage: '',
         contactStatus: 'idle',
+        sessionKind: 'generic',
+        vportalStagingAvailable: false,
+        vportalConnected: false,
+        vportalStageName: '',
+        vportalFederationLabel: '',
+        vportalModalOpen: false,
+        vportalModalStep: 'federation',
+        vportalLoginError: '',
+        vportalFederation: 'BVDK',
+        vportalIdentity: '',
+        vportalCredential: '',
+        vportalStages: [],
+        vportalSelectedStage: '',
+        vportalDisplayAttempt: null,
+        vportalDisconnectedReason: '',
+        _vportalPollStop: null,
+
+        openVportalModal() {
+            this.vportalModalOpen = true;
+            this.vportalModalStep = this.vportalConnected ? 'connected' : 'federation';
+        },
+
+        async vportalDoLogin() {
+            this.vportalLoginError = '';
+            const host = this._vportalHostForFederation(this.vportalFederation);
+            try {
+                await vportalClient.login(this.sessionCode, host, this.vportalIdentity, this.vportalCredential);
+                this.vportalFederationLabel = this.vportalFederation;
+                this.vportalModalStep = 'stage';
+                this.vportalStages = await vportalClient.fetchStages(this.sessionCode);
+                if (this.vportalStages.length > 0) {
+                    this.vportalSelectedStage = this.vportalStages[0].id;
+                }
+            } catch (err) {
+                if (err.status === 401) {
+                    this.vportalLoginError = t('vportal.loginFailed');
+                } else {
+                    this.vportalLoginError = 'Error: ' + (err.message || 'unknown');
+                }
+            }
+        },
+
+        vportalConfirmStage() {
+            const stage = this.vportalStages.find(s => s.id === this.vportalSelectedStage);
+            vportalClient.setStage(this.sessionCode, stage.id, stage.name);
+            this.vportalStageName = stage.name;
+            this.vportalConnected = true;
+            this.vportalModalOpen = false;
+        },
+
+        vportalDisconnect() {
+            vportalClient.logout(this.sessionCode);
+            this.vportalConnected = false;
+            this.vportalStageName = '';
+            this.vportalModalOpen = false;
+        },
+
+        _vportalHostForFederation(fed) {
+            // Test-only override: any test that sets window._testVportalHost gets routed to the fake server.
+            if (window._testVportalHost) return window._testVportalHost;
+            if (fed === 'BVDK') return 'bvdk.vportal-online.de';
+            if (fed === 'OEVK') return 'oevk.vportal-online.de';
+            if (fed === 'BVDK_STAGING') return 'staging-bvdk.vportal-online.de';
+            return 'bvdk.vportal-online.de';
+        },
+
+        async _maybeStartVportalPolling() {
+            // Authoritative kind check — sessionKind in state may be stale after reload-recovery
+            // because role-select didn't run on this page lifetime.
+            try {
+                const resp = await fetch(`/api/sessions/${this.sessionCode}`);
+                if (!resp.ok) return;
+                const data = await resp.json();
+                this.sessionKind = data.kind || 'generic';
+                this.vportalStagingAvailable = !!data.staging_available;
+            } catch (_e) {
+                return;
+            }
+            if (this.sessionKind !== 'vportal') return;
+            this._startVportalPolling();
+        },
+
+        _startVportalPolling() {
+            if (!vportalClient.isConnected(this.sessionCode)) return;
+            const stored = vportalClient.getStored(this.sessionCode);
+            if (!stored?.stage_id) return;
+            this._vportalPollStop = vportalClient.pollActiveAttempt(
+                this.sessionCode,
+                stored.fetch_interval_ms || 3000,
+                (attempt) => {
+                    if (attempt && attempt.__stale) {
+                        return;
+                    }
+                    this.vportalDisplayAttempt = attempt;
+                    this.vportalDisconnectedReason = '';
+                },
+                (kind) => {
+                    this.vportalDisplayAttempt = null;
+                    this.vportalDisconnectedReason = kind;
+                },
+            );
+        },
 
         ...demoMethods,
 
@@ -78,10 +181,14 @@ export function ironVerdictApp() {
 
         async createSession() {
             try {
+                this.sessionKind = this._initialPathname === '/vportal' ? 'vportal' : 'generic';
                 const response = await fetch('/api/sessions', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: this.newSessionName.trim() })
+                    body: JSON.stringify({
+                        name: this.newSessionName.trim(),
+                        kind: this.sessionKind,
+                    })
                 });
                 if (!response.ok) {
                     alert(t('alerts.createFailed'));
@@ -90,6 +197,14 @@ export function ironVerdictApp() {
                 const data = await response.json();
                 this.sessionCode = data.session_code;
                 this.sessionName = this.newSessionName.trim();
+                // Pick up server-side flags (staging_available) for the freshly-created session.
+                try {
+                    const lookup = await fetch(`/api/sessions/${this.sessionCode}`);
+                    if (lookup.ok) {
+                        const info = await lookup.json();
+                        this.vportalStagingAvailable = !!info.staging_available;
+                    }
+                } catch (_e) { /* swallow — modal will just hide the staging option */ }
                 sessionStorage.setItem('iv_session', JSON.stringify({ code: this.sessionCode }));
                 this.navigateTo('role-select');
             } catch (error) {
@@ -108,6 +223,14 @@ export function ironVerdictApp() {
                 if (res.ok) {
                     this.sessionCode = code;
                     this.joinCode = code;
+                    try {
+                        const data = await res.json();
+                        this.sessionKind = data.kind || 'generic';
+                        this.vportalStagingAvailable = !!data.staging_available;
+                    } catch (_e) {
+                        this.sessionKind = 'generic';
+                        this.vportalStagingAvailable = false;
+                    }
                     sessionStorage.setItem('iv_session', JSON.stringify({ code }));
                     this.navigateTo('role-select');
                 } else if (res.status === 404 || res.status === 422) {
@@ -165,6 +288,9 @@ export function ironVerdictApp() {
 
             this.ws = wsWrapper;
             this.wsSend = (data) => wsWrapper.send(data);
+            if (role === 'display') {
+                this._maybeStartVportalPolling();
+            }
         },
 
         handleMessage(message) {
@@ -416,9 +542,10 @@ export function ironVerdictApp() {
         },
 
         init() {
-            // Capture URL params before scrubbing the query string via replaceState.
+            // Capture URL params and pathname before scrubbing via replaceState.
             const urlParams = new URLSearchParams(window.location.search);
             const urlSession = urlParams.get('session');
+            this._initialPathname = window.location.pathname;
             history.replaceState({ screen: 'landing' }, '', '/');
 
             this.$watch('screen', (value) => {
