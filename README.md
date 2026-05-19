@@ -219,11 +219,6 @@ iron-verdict/
 
 See [docs/architecture.md](docs/architecture.md) for module-level detail.
 
-## Roadmap
-
-- [ ] CI/CD pipeline (GitHub Actions)
-- [ ] Monitoring w Prometheus+Grafana
-
 ## License
 
 [MIT](LICENSE)
