@@ -172,7 +172,11 @@ async def login(body: LoginRequest):
                 "Accept-Language": "de",
             },
         )
-        if token_resp.status_code in (401, 403):
+        # Treat redirects and 4xx-class statuses on /auth/token as auth
+        # failures. Real VPortal returns 302 (redirect back to /login) when
+        # the pre-auth cookie can't be exchanged — verified at staging
+        # 2026-05-19. 401/403 covered for defensive completeness.
+        if token_resp.status_code in (302, 401, 403):
             raise HTTPException(status_code=401, detail="Invalid VPortal credentials")
         if token_resp.status_code != 200:
             logger.warning(

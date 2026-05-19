@@ -55,9 +55,13 @@ Pre-staging concern: the proxy treated only HTTP 401/403 on `/account/login` as 
 
 Resolution: real VPortal turned out to use a **two-step rejection** — verified at staging 2026-05-19:
 1. `POST /account/login` with wrong credentials still returns **200 + `Set-Cookie: VPORTAL=…`** (a pre-auth cookie marking that the form was processed).
-2. `GET /auth/token` with that pre-auth cookie is where the real auth check happens — it returns **401**.
+2. `GET /auth/token` with that pre-auth cookie rejects via **302 redirect** to `/login?error=1` (not 401 as first hypothesised). httpx with `follow_redirects=False` (the default for `AsyncClient.get`) returns the 302 directly.
 
-The proxy now maps a 401/403 from `/auth/token` to its own **401 "Invalid VPortal credentials"**, which the client modal already renders as "Login failed — check username and password." A non-200-non-401/403 status from `/auth/token` still surfaces as 502 with the upstream status logged for diagnostics.
+The proxy maps 302/401/403 from `/auth/token` to its own **401 "Invalid VPortal credentials"**, which the client modal already renders as "Login failed — check username and password." Any other non-200 status from `/auth/token` still surfaces as 502 with the upstream status code logged for diagnostics.
+
+### Logging whitelist (post-deployment discovery) — **✅ Resolved**
+
+While diagnosing the above, found that [`logging_config.py`](../src/iron_verdict/logging_config.py) had an `_EXTRA_FIELDS` whitelist that silently dropped any `logger.warning(..., extra={...})` field not listed in it. Every VPortal log statement was emitting context-less log lines (no `host`, no `upstream_status`, no `kind`, etc.). Added the VPortal-specific keys to the whitelist. Worth a follow-up refactor to either drop the whitelist (emit all extras) or document the field-registration requirement somewhere visible — silent-drop logging is unkind to debugging.
 
 ### Cookie-jar leakage across login attempts — **✅ Resolved (post-staging discovery)**
 

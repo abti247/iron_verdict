@@ -242,6 +242,27 @@ def test_login_wrong_credentials_surfaces_as_401(mock_vportal):
     assert "credentials" in response.json()["detail"].lower()
 
 
+def test_login_token_redirect_surfaces_as_401(mock_vportal):
+    # Real VPortal returns 302 (redirect to /login) when /auth/token gets a
+    # pre-auth cookie that can't be exchanged. httpx with follow_redirects=False
+    # surfaces the 302 directly; map it to "Invalid VPortal credentials" same
+    # as 401/403 so the modal renders the inline "Login failed" message.
+    mock_vportal[("POST", "/account/login")] = lambda r: httpx.Response(
+        200,
+        headers={"set-cookie": "VPORTAL=pre-auth-cookie; Path=/; HttpOnly"},
+    )
+    mock_vportal[("GET", "/auth/token")] = lambda r: httpx.Response(
+        302, headers={"location": "/login?error=1"}
+    )
+
+    response = client.post(
+        "/api/vportal/login",
+        json={"host": "bvdk.vportal-online.de", "identity": "u", "credential": "wrong"},
+    )
+    assert response.status_code == 401
+    assert "credentials" in response.json()["detail"].lower()
+
+
 def test_graphql_forwards_query_and_auth(mock_vportal):
     captured = {}
 
