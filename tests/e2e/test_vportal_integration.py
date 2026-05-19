@@ -94,3 +94,29 @@ def test_no_active_attempt_hides_overlay_without_banner(page, server_url, fake_v
     # No disconnected banner — empty state is not an error
     expect(page.locator(".vportal-disconnected-banner")).not_to_be_visible()
     httpx.post(f"http://{fake_vportal_url}/_control/restore_attempt")
+
+
+def test_rejoin_via_qr_keeps_connect_button_visible(browser, server_url, fake_vportal_url):
+    # Device A creates the session
+    ctx_a = browser.new_context(locale="en-US")
+    page_a = ctx_a.new_page()
+    page_a.goto(server_url + "/vportal")
+    page_a.locator('[x-model="newSessionName"]').fill("Rejoin Test")
+    page_a.get_by_role("button", name="Create New Session").click()
+    page_a.locator(".role-wrap").wait_for(state="visible")
+    session_code = page_a.locator(".session-tag .code").text_content()
+
+    # Device B opens the session via the join flow
+    ctx_b = browser.new_context(locale="en-US")
+    page_b = ctx_b.new_page()
+    page_b.goto(server_url + "/")
+    page_b.locator('[x-model="joinCode"]').fill(session_code)
+    page_b.get_by_role("button", name="Join Session").click()
+    page_b.locator(".role-wrap").wait_for(state="visible")
+
+    from playwright.sync_api import expect
+    # Connect button visible on device B even though it joined via plain /
+    expect(page_b.locator(".vportal-connect-btn")).to_be_visible()
+
+    ctx_a.close()
+    ctx_b.close()
