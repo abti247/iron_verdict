@@ -27,7 +27,7 @@ A real-time powerlifting competition judging application.
    - Note the 8-character session code
 
 2. **Join as Judges:**
-   - Three judges enter the session code
+   - Three judges enter the session code — or scan the QR code shown on the host's Select Role screen
    - Select their position: Left Judge, Center Judge (Head), or Right Judge
    - Head judge decides if all judges are required to pick a reason and if this is displayed to the audience
 
@@ -61,12 +61,38 @@ docker run -p 8000:8000 \
 
 The `-v` flag mounts a persistent directory for session snapshots (`/data/sessions.json`). Without it, active sessions are lost on container restart. The `/data` directory is created inside the container automatically.
 
+On Windows PowerShell, replace `./data` with `${PWD}/data`.
+
 For local development without persistence:
 ```bash
 docker run -p 8000:8000 iron_verdict
 ```
 
 For all available environment variables see [Configuration](#configuration).
+
+### Docker Compose
+
+For local hosting, the included `docker-compose.yml` is the simplest path — it bind-mounts `./data` for snapshot persistence and sets sensible defaults:
+
+```bash
+docker compose up
+```
+
+Edit `docker-compose.yml` to override `ALLOWED_ORIGIN` or other environment variables before running in any setting where the app is reachable beyond your machine.
+
+### Running locally on competition WiFi
+
+If the venue's uplink is slow or unreliable, you can host the app on your laptop and have judges/display connect over the local WiFi. Judging traffic (votes, timer, lights) then flows directly over the LAN — only optional VPortal lifter-info polling crosses the internet, and it is not on the critical path.
+
+1. Start the server on your laptop with `docker compose up` or `python run.py`. The default `HOST=0.0.0.0` already binds to all interfaces.
+2. Find your laptop's WiFi IPv4 address (`ipconfig` on Windows, `ifconfig`/`ip addr` on macOS/Linux). Example: `192.168.1.42`.
+3. **Open the app on the laptop using that LAN IP, not `localhost`** — i.e. `http://192.168.1.42:8000`. The QR code on the Select Role screen is generated from whatever URL you loaded, so creating the session via `localhost` would produce a QR that no other device can reach.
+4. Allow inbound TCP port 8000 in your OS firewall on the **Private** network profile. On Windows, the first run typically triggers a prompt.
+5. Disable laptop sleep / lid-close-suspend and keep the machine on power for the duration of the event.
+
+Tips:
+- Reserve your laptop's IP in the router's DHCP settings so a mid-event lease change can't break shared QR codes.
+- The default `ALLOWED_ORIGIN=*` is fine for LAN use; do not expose this configuration to the public internet.
 
 ### Railway
 
