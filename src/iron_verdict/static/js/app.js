@@ -2,6 +2,7 @@ import { CARD_REASONS } from './constants.js';
 import { startTimerCountdown } from './timer.js';
 import { createWebSocket } from './websocket.js';
 import { demoMethods } from './demo.js';
+import { vportalClient } from './vportalClient.js';
 import {
     handleJoinSuccess,
     handleJoinError,
@@ -67,10 +68,59 @@ export function ironVerdictApp() {
         vportalModalOpen: false,
         vportalModalStep: 'federation',
         vportalLoginError: '',
+        vportalFederation: 'BVDK',
+        vportalIdentity: '',
+        vportalCredential: '',
+        vportalStages: [],
+        vportalSelectedStage: '',
 
         openVportalModal() {
             this.vportalModalOpen = true;
             this.vportalModalStep = this.vportalConnected ? 'connected' : 'federation';
+        },
+
+        async vportalDoLogin() {
+            this.vportalLoginError = '';
+            const host = this._vportalHostForFederation(this.vportalFederation);
+            try {
+                await vportalClient.login(this.sessionCode, host, this.vportalIdentity, this.vportalCredential);
+                this.vportalFederationLabel = this.vportalFederation;
+                this.vportalModalStep = 'stage';
+                this.vportalStages = await vportalClient.fetchStages(this.sessionCode);
+                if (this.vportalStages.length > 0) {
+                    this.vportalSelectedStage = this.vportalStages[0].id;
+                }
+            } catch (err) {
+                if (err.status === 401) {
+                    this.vportalLoginError = t('vportal.loginFailed');
+                } else {
+                    this.vportalLoginError = 'Error: ' + (err.message || 'unknown');
+                }
+            }
+        },
+
+        vportalConfirmStage() {
+            const stage = this.vportalStages.find(s => s.id === this.vportalSelectedStage);
+            vportalClient.setStage(this.sessionCode, stage.id, stage.name);
+            this.vportalStageName = stage.name;
+            this.vportalConnected = true;
+            this.vportalModalOpen = false;
+        },
+
+        vportalDisconnect() {
+            vportalClient.logout(this.sessionCode);
+            this.vportalConnected = false;
+            this.vportalStageName = '';
+            this.vportalModalOpen = false;
+        },
+
+        _vportalHostForFederation(fed) {
+            // Test-only override: any test that sets window._testVportalHost gets routed to the fake server.
+            if (window._testVportalHost) return window._testVportalHost;
+            if (fed === 'BVDK') return 'bvdk.vportal-online.de';
+            if (fed === 'OEVK') return 'oevk.vportal-online.de';
+            if (fed === 'BVDK_STAGING') return 'staging.vportal-online.de';
+            return 'bvdk.vportal-online.de';
         },
 
         ...demoMethods,

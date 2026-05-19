@@ -26,10 +26,19 @@ def _allowed_hosts() -> set[str]:
     return _PRODUCTION_HOSTS
 
 
+def _base_url(host: str) -> str:
+    if settings.TEST_MODE and (host.startswith("127.0.0.1") or host.startswith("localhost")):
+        return f"http://{host}"
+    return f"https://{host}"
+
+
 def _validate_host(host: str) -> None:
-    if host not in _allowed_hosts():
-        logger.warning("vportal_host_rejected", extra={"host": host})
-        raise HTTPException(status_code=400, detail=f"Host not in allowlist: {host}")
+    if host in _allowed_hosts():
+        return
+    if settings.TEST_MODE and (host.startswith("127.0.0.1:") or host.startswith("localhost:")):
+        return
+    logger.warning("vportal_host_rejected", extra={"host": host})
+    raise HTTPException(status_code=400, detail=f"Host not in allowlist: {host}")
 
 
 _ALLOWED_TOP_LEVEL_FIELDS = {
@@ -85,7 +94,7 @@ class GraphQLRequest(BaseModel):
 @router.post("/login")
 async def login(body: LoginRequest):
     _validate_host(body.host)
-    base = f"https://{body.host}"
+    base = _base_url(body.host)
 
     form_data = urlencode({"identity": body.identity, "credential": body.credential})
 
@@ -138,7 +147,7 @@ async def graphql(body: GraphQLRequest):
     _validate_graphql_query(body.query)
 
     upstream = await _http_client.post(
-        f"https://{body.host}/graphql",
+        f"{_base_url(body.host)}/graphql",
         json={"query": body.query, "variables": body.variables or {}},
         headers={
             "Authorization": f"Bearer {body.token}",
