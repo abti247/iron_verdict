@@ -7,7 +7,7 @@
 
 ## Overall confidence: ~9.5 / 10
 
-The integration was validated end-to-end against `staging-bvdk.vportal-online.de` on 2026-05-19: login, JWT decoding, cookie parsing, GraphQL query shapes, and the lifter-overlay normalizer all confirmed against production-shape data (lifter `BJARNE DÜCKER`, club `V.F.V BRAUNSCHWEIG E.V.`, etc., rendered cleanly).
+The integration was validated end-to-end against `staging-bvdk.vportal-online.de` on 2026-05-19: login, JWT decoding, cookie parsing, GraphQL query shapes, and the lifter-overlay normalizer all confirmed against production-shape data (lifter `B.D.`, club `V.F.V BRAUNSCHWEIG E.V.`, etc., rendered cleanly).
 
 One item remains open: the wrong-credentials UX (see ["Still open"](#still-open) below).
 
