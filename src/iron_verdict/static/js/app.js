@@ -77,6 +77,10 @@ export function ironVerdictApp() {
         vportalDisconnectedReason: '',
         _vportalPollStop: null,
 
+        displaySettingsOpen: false,
+        displayZoom: 1,
+        _displayKeydownHandler: null,
+
         openVportalModal() {
             this.vportalModalOpen = true;
             this.vportalModalStep = this.vportalConnected ? 'connected' : 'federation';
@@ -521,6 +525,41 @@ export function ironVerdictApp() {
             this.navigateTo('contact');
         },
 
+        openDisplaySettings() {
+            this.displaySettingsOpen = true;
+        },
+
+        closeDisplaySettings() {
+            this.displaySettingsOpen = false;
+        },
+
+        resetDisplayZoom() {
+            this.displayZoom = 1;
+        },
+
+        onDisplayZoomInput(event) {
+            const n = parseFloat(event.target.value);
+            if (!Number.isFinite(n)) return;
+            this.displayZoom = Math.min(1.5, Math.max(0.7, n));
+        },
+
+        _installDisplayKeyHandler() {
+            if (this._displayKeydownHandler) return;
+            this._displayKeydownHandler = (e) => {
+                if (this.screen !== 'display') return;
+                const tag = (e.target && e.target.tagName) || '';
+                if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+                if (e.key === 's' || e.key === 'S') {
+                    e.preventDefault();
+                    this.displaySettingsOpen = !this.displaySettingsOpen;
+                } else if (e.key === 'Escape' && this.displaySettingsOpen) {
+                    e.preventDefault();
+                    this.displaySettingsOpen = false;
+                }
+            };
+            window.addEventListener('keydown', this._displayKeydownHandler);
+        },
+
         async submitContact() {
             this.contactStatus = 'loading';
             try {
@@ -616,6 +655,8 @@ export function ironVerdictApp() {
                     }
                 } catch (_e) {}
             });
+
+            this._installDisplayKeyHandler();
         }
     };
 }

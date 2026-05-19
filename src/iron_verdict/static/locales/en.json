@@ -200,6 +200,12 @@
     "disconnectedBanner": "VPortal disconnected — open Select Role to reconnect.",
     "attemptShort": "Att"
   },
+  "displaySettings": {
+    "title": "Display Size",
+    "sliderLabel": "Zoom",
+    "resetButton": "Reset",
+    "openTitle": "Display settings (S)"
+  },
   "privacy": {
     "link": "Privacy",
     "title": "Privacy Notice",
