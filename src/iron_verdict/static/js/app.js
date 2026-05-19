@@ -17,6 +17,8 @@ import {
     handleJudgeStatusUpdate,
 } from './handlers.js';
 
+const DISPLAY_ZOOM_KEY = 'iron-verdict:display-zoom';
+
 export function ironVerdictApp() {
     return {
         screen: 'landing',
@@ -536,12 +538,24 @@ export function ironVerdictApp() {
 
         resetDisplayZoom() {
             this.displayZoom = 1;
+            try { localStorage.setItem(DISPLAY_ZOOM_KEY, '1'); } catch (_) {}
         },
 
         onDisplayZoomInput(event) {
             const n = parseFloat(event.target.value);
             if (!Number.isFinite(n)) return;
             this.displayZoom = Math.min(1.5, Math.max(0.7, n));
+            try { localStorage.setItem(DISPLAY_ZOOM_KEY, String(this.displayZoom)); } catch (_) {}
+        },
+
+        _loadDisplayZoomFromStorage() {
+            try {
+                const raw = localStorage.getItem(DISPLAY_ZOOM_KEY);
+                if (raw == null) return;
+                const n = parseFloat(raw);
+                if (!Number.isFinite(n)) return;
+                this.displayZoom = Math.min(1.5, Math.max(0.7, n));
+            } catch (_) {}
         },
 
         _installDisplayKeyHandler() {
@@ -587,6 +601,9 @@ export function ironVerdictApp() {
             const urlSession = urlParams.get('session');
             this._initialPathname = window.location.pathname;
             history.replaceState({ screen: 'landing' }, '', '/');
+
+            this._loadDisplayZoomFromStorage();
+            this._installDisplayKeyHandler();
 
             this.$watch('screen', (value) => {
                 if (value === 'role-select' && this.sessionCode) {
@@ -657,7 +674,6 @@ export function ironVerdictApp() {
                 } catch (_e) {}
             });
 
-            this._installDisplayKeyHandler();
         }
     };
 }

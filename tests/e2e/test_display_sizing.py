@@ -92,3 +92,24 @@ def test_click_outside_dismisses_panel(page, server_url):
     # Click on the timer area (not the panel)
     page.locator(".display-timer-big").click()
     expect(page.locator(".display-settings-panel")).to_be_hidden()
+
+
+def test_zoom_persists_across_reload(page, server_url):
+    _open_display(page, server_url)
+    page.locator(".display-settings-gear").click()
+    page.locator(".display-settings-panel").wait_for(state="visible")
+
+    slider = page.locator(".display-settings-slider")
+    slider.evaluate("""(el) => {
+        el.value = '1.25';
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+    }""")
+    page.wait_for_function("""() => Math.abs(
+        parseFloat(getComputedStyle(document.querySelector('.display-full'))
+            .getPropertyValue('--display-zoom')) - 1.25
+    ) < 0.001""")
+
+    page.reload()
+    page.locator(".display-full").wait_for(state="visible", timeout=10000)
+
+    assert abs(_display_zoom_value(page) - 1.25) < 0.001
