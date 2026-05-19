@@ -1,15 +1,15 @@
 # Fake VPortal Server — Fidelity Assessment
 
 **Date:** 2026-05-19 — originally written pre-staging, updated after the referee cross-check and the 2026-05-19 staging visit.
-**Context:** End-to-end tests for the VPortal integration run against [`tests/e2e/fake_vportal.py`](../tests/e2e/fake_vportal.py), a small FastAPI app that mimics the subset of VPortal that Iron Verdict consumes. This document captures the pre-staging risk assessment, how each risk was resolved, and what (single) item remains open against real production VPortal.
+**Context:** End-to-end tests for the VPortal integration run against [`tests/e2e/fake_vportal.py`](../tests/e2e/fake_vportal.py), a small FastAPI app that mimics the subset of VPortal that Iron Verdict consumes. This document captures the pre-staging risk assessment and how each risk was resolved against real production-shape behavior.
 
 **Companion reference:** the BVDK referee project at `github.com/franknitschke/referee` — specifically `server/vportal/vportalHelper.js`, `queries.js`, and `getCompetitionData.js`. The fake server and proxy were modeled after referee, and the worktree was cross-checked against it during implementation.
 
 ## Overall confidence: ~9.5 / 10
 
-The integration was validated end-to-end against `staging-bvdk.vportal-online.de` on 2026-05-19: login, JWT decoding, cookie parsing, GraphQL query shapes, and the lifter-overlay normalizer all confirmed against production-shape data (lifter `B.D.`, club `V.F.V BRAUNSCHWEIG E.V.`, etc., rendered cleanly).
+The integration was validated end-to-end against `staging-bvdk.vportal-online.de` on 2026-05-19: login, JWT decoding, cookie parsing, GraphQL query shapes, and the lifter-overlay normalizer all confirmed against production-shape data (lifter `B.D.`, club `V.F.V BRAUNSCHWEIG E.V.`, etc., rendered cleanly). Wrong-credentials handling (initially flagged as the one open item) was also resolved after a follow-up staging probe revealed the two-step rejection pattern.
 
-One item remains open: the wrong-credentials UX (see ["Still open"](#still-open) below).
+The remaining ~5% covers the items in ["What we deliberately do not test"](#what-we-deliberately-do-not-test) below and any production-only response variations we couldn't see from staging traffic.
 
 ## What was validated at staging (2026-05-19)
 
@@ -49,9 +49,15 @@ Pre-staging concern: the fake returned either canonical `{data: ...}` or `{error
 
 Resolution: staging returned canonical `{data: ...}` shapes for all four queries — exactly what the fake emits. We never received an error envelope from staging, so the specific shape of `errors[]` is still untested in practice — but the client's `?.` chains and the normalizer's `?? ''` fallbacks render gracefully (empty fields) on any unexpected null/undefined, which is the desired behavior anyway.
 
-### Auth-failure status codes (wrong-credentials UX) — **🟡 Still open**
+### Auth-failure status codes (wrong-credentials UX) — **✅ Resolved**
 
-See ["Still open"](#still-open) below.
+Pre-staging concern: the proxy treated only HTTP 401/403 on `/account/login` as "bad credentials." If real VPortal returned anything else on wrong creds (e.g., 200 + HTML), the proxy would surface a confusing "VPortal upstream error" instead of "wrong password."
+
+Resolution: real VPortal turned out to use a **two-step rejection** — verified at staging 2026-05-19:
+1. `POST /account/login` with wrong credentials still returns **200 + `Set-Cookie: VPORTAL=…`** (a pre-auth cookie marking that the form was processed).
+2. `GET /auth/token` with that pre-auth cookie is where the real auth check happens — it returns **401**.
+
+The proxy now maps a 401/403 from `/auth/token` to its own **401 "Invalid VPortal credentials"**, which the client modal already renders as "Login failed — check username and password." A non-200-non-401/403 status from `/auth/token` still surfaces as 502 with the upstream status logged for diagnostics.
 
 ### Cookie-jar leakage across login attempts — **✅ Resolved (post-staging discovery)**
 
@@ -71,24 +77,6 @@ Pre-staging concern: spec assumed `/auth/token` returns a top-level `exp` field.
 
 Resolution: implemented `_extract_jwt_exp` in the proxy — base64url-decode the JWT's middle segment, read `exp` from the payload, fall back to top-level `exp` for safety. Confirmed at staging: real `/auth/token` returns only `{access_token: ...}` with no top-level `exp`; the JWT payload contains a future `exp` timestamp, which our decoder extracts correctly.
 
-## Still open
-
-### Wrong-credentials UX
-
-The proxy no longer inspects the login status code (referee-aligned, as required by the 302-on-success behavior real VPortal exhibits). The side-effect: bad credentials produce no `VPORTAL` cookie, so the proxy surfaces them as **502 "VPortal did not return a session cookie"** rather than a clean **401 "Invalid VPortal credentials"**. Functionally correct but confusing UX — an operator typing the wrong password sees an "upstream error" instead of "wrong password."
-
-**Why it's still open:** resolving cleanly requires knowing what real VPortal returns on bad credentials. Possibilities:
-- HTTP 401
-- HTTP 200 with HTML containing an error message (traditional server-rendered login form)
-- HTTP 200 + JSON `{"error": "invalid_credentials"}`
-- HTTP 302 to `/login?error=1`
-
-The first attempt to capture this (after the initial successful staging login) instead discovered the cookie-jar leakage bug above — the bad-creds attempt didn't fail at all because it inherited the previous session's cookie. With the per-login client fix now in place, a future bad-creds attempt will go out without any prior cookie and will surface real VPortal's actual response.
-
-**How to resolve:** during any future staging session (or any production smoke test), deliberately enter wrong credentials once. In DevTools → Network → `/account/login` row → grab the status code and response body, paste into a follow-up issue. Then add a branch in [`vportal_proxy.login`](../src/iron_verdict/vportal_proxy.py) that maps the observed shape back to a 401 with `"Invalid VPortal credentials"`.
-
-Total work to resolve: ~5 lines of code once we have the capture.
-
 ## What we deliberately do not test
 
 - **Concurrent logins from the same operator account.** Real VPortal probably tracks active sessions; if Iron Verdict's proxy login invalidates a parallel operator session somewhere, that's bad. We don't simulate it.
@@ -105,6 +93,6 @@ Open browser DevTools → Network while stepping through the flow. The items bel
 2. The HTTP status code on `/account/login` on success (was: 302 at staging).
 3. The full JSON body of `/auth/token` (was: `{access_token: "..."}` only, no top-level `exp`).
 4. The full JSON body of one `/graphql` call. Field paths the normalizer reads: `data.competitionAthleteAttemptList.competitionAthleteAttempts[0].{attempt, discipline, weight, competitionAthlete.{firstName, lastName, club.name, bodyWeightCategory.name, ageCategory.name}}`.
-5. **(Still useful):** deliberately log in with wrong credentials once and capture the response status + body. That resolves the one outstanding open item above.
+5. (Optional) Deliberately log in with wrong credentials. The proxy should return **401 "Invalid VPortal credentials"** to the browser, mapped from upstream `/auth/token`'s 401. If you see anything else, the two-step rejection pattern has changed.
 
-If any of (1)–(4) differs from what we saw at the 2026-05-19 staging visit, VPortal has changed its API and our code likely needs adjustment — auth-layer shape mismatches go in [`vportal_proxy.py`](../src/iron_verdict/vportal_proxy.py), response-shape mismatches go in [`vportalClient.js`](../src/iron_verdict/static/js/vportalClient.js) `fetchActiveAttempt`.
+If any of (1)–(5) differs from what we saw at the 2026-05-19 staging visit, VPortal has changed its API and our code likely needs adjustment — auth-layer shape mismatches go in [`vportal_proxy.py`](../src/iron_verdict/vportal_proxy.py), response-shape mismatches go in [`vportalClient.js`](../src/iron_verdict/static/js/vportalClient.js) `fetchActiveAttempt`.

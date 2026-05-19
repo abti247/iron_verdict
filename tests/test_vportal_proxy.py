@@ -208,10 +208,8 @@ def test_login_sends_multipart_form_data(mock_vportal):
 
 
 def test_login_no_cookie_returned_surfaces_as_502(mock_vportal):
-    # The proxy no longer inspects the login status code; wrong credentials
-    # therefore surface as a missing cookie rather than 401. Mapping bad
-    # creds to a clean 401 needs a future capture of VPortal's actual
-    # wrong-credentials response shape.
+    # Defensive case: if /account/login ever returns no Set-Cookie at all,
+    # surface that as 502 with a distinct error message.
     mock_vportal[("POST", "/account/login")] = lambda r: httpx.Response(
         401, json={"error": "invalid_credentials"}
     )
@@ -222,6 +220,26 @@ def test_login_no_cookie_returned_surfaces_as_502(mock_vportal):
     )
     assert response.status_code == 502
     assert "cookie" in response.json()["detail"].lower()
+
+
+def test_login_wrong_credentials_surfaces_as_401(mock_vportal):
+    # Verified at staging 2026-05-19: real VPortal issues a pre-auth VPORTAL
+    # cookie on /account/login even for wrong credentials, then rejects the
+    # cookie at /auth/token. Map that path to a clean 401 so the modal can
+    # show "Login failed — check username and password" instead of
+    # "VPortal token exchange failed."
+    mock_vportal[("POST", "/account/login")] = lambda r: httpx.Response(
+        200,
+        headers={"set-cookie": "VPORTAL=pre-auth-cookie; Path=/; HttpOnly"},
+    )
+    mock_vportal[("GET", "/auth/token")] = lambda r: httpx.Response(401)
+
+    response = client.post(
+        "/api/vportal/login",
+        json={"host": "bvdk.vportal-online.de", "identity": "u", "credential": "wrong"},
+    )
+    assert response.status_code == 401
+    assert "credentials" in response.json()["detail"].lower()
 
 
 def test_graphql_forwards_query_and_auth(mock_vportal):

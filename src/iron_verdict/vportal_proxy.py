@@ -140,11 +140,12 @@ async def login(body: LoginRequest):
     # Fresh client per login — see _make_login_client docstring for why
     # the shared client would otherwise leak cookies between operators.
     async with _make_login_client() as http:
-        # Step 1: multipart-POST /account/login. Status code is intentionally not
-        # inspected — real VPortal may redirect (302) on success; cookie presence
-        # is the success signal. Caveat: bad credentials currently surface as 502
-        # "no session cookie" rather than 401, pending capture of VPortal's real
-        # wrong-credentials response shape.
+        # Step 1: multipart-POST /account/login. Status code is intentionally
+        # not inspected — real VPortal returns a pre-auth VPORTAL cookie even
+        # for wrong credentials (verified at staging 2026-05-19), and the
+        # actual auth check happens at /auth/token. Cookie presence is the
+        # success signal for "the form was processed," not "the credentials
+        # were valid."
         login_resp = await http.post(
             f"{base}/account/login",
             files={
@@ -161,7 +162,9 @@ async def login(body: LoginRequest):
         if not vportal_cookie_value:
             raise HTTPException(status_code=502, detail="VPortal did not return a session cookie")
 
-        # Step 2: GET /auth/token with the parsed cookie value
+        # Step 2: GET /auth/token with the cookie. This is where VPortal
+        # validates the underlying credentials — a pre-auth cookie issued
+        # for wrong credentials gets rejected here with 401/403.
         token_resp = await http.get(
             f"{base}/auth/token",
             headers={
@@ -169,7 +172,13 @@ async def login(body: LoginRequest):
                 "Accept-Language": "de",
             },
         )
+        if token_resp.status_code in (401, 403):
+            raise HTTPException(status_code=401, detail="Invalid VPortal credentials")
         if token_resp.status_code != 200:
+            logger.warning(
+                "vportal_token_exchange_failed",
+                extra={"upstream_status": token_resp.status_code},
+            )
             raise HTTPException(status_code=502, detail="VPortal token exchange failed")
 
         token_payload = token_resp.json()
