@@ -118,9 +118,12 @@ def mock_vportal():
 
 def test_login_success_returns_token_and_interval(mock_vportal, monkeypatch):
     monkeypatch.setenv("VPORTAL_FETCH_INTERVAL_MS", "4000")
-    # Force settings to re-read for this test
-    from iron_verdict import config
-    config.settings.VPORTAL_FETCH_INTERVAL_MS = 4000
+    # Why: vportal_proxy.py captured its own `settings` reference at import.
+    # If test_config.py reloaded the config module earlier in the run, the
+    # `iron_verdict.config.settings` name now points at a different object
+    # than the proxy is reading. Mutate the object the proxy actually sees.
+    original = proxy_module.settings.VPORTAL_FETCH_INTERVAL_MS
+    proxy_module.settings.VPORTAL_FETCH_INTERVAL_MS = 4000
 
     def login_response(request):
         return httpx.Response(
@@ -139,10 +142,13 @@ def test_login_success_returns_token_and_interval(mock_vportal, monkeypatch):
         "/api/vportal/login",
         json={"host": "bvdk.vportal-online.de", "identity": "u", "credential": "p"},
     )
-    assert response.status_code == 200
-    body = response.json()
-    assert body["access_token"] == "jwt-xyz"
-    assert body["fetch_interval_ms"] == 4000
+    try:
+        assert response.status_code == 200
+        body = response.json()
+        assert body["access_token"] == "jwt-xyz"
+        assert body["fetch_interval_ms"] == 4000
+    finally:
+        proxy_module.settings.VPORTAL_FETCH_INTERVAL_MS = original
 
 
 def test_login_failed_credentials_returns_401(mock_vportal):
