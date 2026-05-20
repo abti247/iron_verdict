@@ -609,39 +609,39 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .vportal-corner {
     position: absolute;
-    bottom: calc(clamp(11px, 1.84vmin, 37px) * var(--display-zoom, 1));
+    bottom: calc(clamp(13px, 2.21vmin, 44px) * var(--display-zoom, 1));
     color: #d1d5db;
     font-family: 'Rajdhani', sans-serif;
     pointer-events: none;
 }
-.vportal-corner-left  { left:  calc(clamp(14px, 2.4vmin, 51px) * var(--display-zoom, 1)); text-align: left;  }
-.vportal-corner-right { right: calc(clamp(14px, 2.4vmin, 51px) * var(--display-zoom, 1)); text-align: right; }
+.vportal-corner-left  { left:  calc(clamp(17px, 2.88vmin, 61px) * var(--display-zoom, 1)); text-align: left;  }
+.vportal-corner-right { right: calc(clamp(17px, 2.88vmin, 61px) * var(--display-zoom, 1)); text-align: right; }
 .vportal-corner-name {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: calc(clamp(14px, 2.76vmin, 59px) * var(--display-zoom, 1));
+    font-size: calc(clamp(17px, 3.31vmin, 71px) * var(--display-zoom, 1));
     letter-spacing: 0.04em;
     color: #f5f5f7;
     text-transform: uppercase;
 }
 .vportal-corner-meta {
-    font-size: calc(clamp(10px, 1.48vmin, 30px) * var(--display-zoom, 1));
+    font-size: calc(clamp(12px, 1.78vmin, 36px) * var(--display-zoom, 1));
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: #9ca3af;
-    margin-top: calc(clamp(2px, 0.48vmin, 7px) * var(--display-zoom, 1));
+    margin-top: calc(clamp(2px, 0.58vmin, 8px) * var(--display-zoom, 1));
 }
 .vportal-corner-disc {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: calc(clamp(11px, 1.84vmin, 37px) * var(--display-zoom, 1));
+    font-size: calc(clamp(13px, 2.21vmin, 44px) * var(--display-zoom, 1));
     letter-spacing: 0.12em;
     color: #cfd3da;
 }
 .vportal-corner-weight {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: calc(clamp(17px, 3.2vmin, 70px) * var(--display-zoom, 1));
+    font-size: calc(clamp(20px, 3.84vmin, 84px) * var(--display-zoom, 1));
     letter-spacing: 0.04em;
     color: #e5e7eb;
-    margin-top: calc(clamp(2px, 0.48vmin, 7px) * var(--display-zoom, 1));
+    margin-top: calc(clamp(2px, 0.58vmin, 8px) * var(--display-zoom, 1));
 }
 .vportal-disconnected-banner {
     position: absolute;
