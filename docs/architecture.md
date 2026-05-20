@@ -218,6 +218,7 @@ QR entry point: `?session=XXXX` lands on the landing screen with the code pre-fi
 |---|---|---|---|
 | `sessionStorage` | `iv_session` | `{code}` on role-select, `{code, role, reconnect_token?}` on judge/display | Tab close |
 | `localStorage` | `iron-verdict-lang` | `'en'` or `'de'` | Persistent |
+| `localStorage` | `iron-verdict:display-zoom` | Display screen zoom multiplier (0.7–1.5) | Persistent |
 | Alpine reactive state | — | `screen`, `selectedVote`, `voteLocked`, timer, etc. | Page lifetime |
 
 *Why `sessionStorage` (not `localStorage`) for the reconnect token:* tab-scoped lifetime matches the lifetime of a judging session. If the token survived in `localStorage`, an old token could leak into a *new* session opened in the same browser later, leading to confusing "Role already taken" failures (server rejects because the role belongs to a stale judge identity). `localStorage` is reserved for genuinely persistent preferences like language.
@@ -233,6 +234,14 @@ Reason keys in `constants.js` are i18n keys. They double as the identifier sent 
 ### Demo mode
 
 `launchDemo()` creates a real session via `POST /api/sessions`, then opens 4 browser windows with `?code=XXXX&demo=<role>` params. `init.js` reads those params before Alpine boots and stores them in `window._demoParams`; `app.js init()` picks them up and auto-joins the specified role. Requires the browser to allow pop-ups.
+
+### Display settings overlay
+
+The display screen has a single interactive control: a low-contrast gear icon (top-left) and `S` keyboard shortcut, both of which open a small overlay with a 0.7×–1.5× zoom slider. The slider writes to `--display-zoom` on the display root; every responsive size on the display multiplies through that variable. Selection persists to `localStorage` as `iron-verdict:display-zoom`.
+
+*Why a low-contrast gear plus a keyboard shortcut:* the display is mixed-deployment — sometimes the operator knows the app, sometimes a volunteer is at the keyboard. A faint gear is invisible at projector distance but discoverable on the operator laptop; `S` exists as the power-user path. There is no other interactive control on the display screen, so a single conventional dismiss model (`Escape`, click-outside) suffices.
+
+*Why per-browser localStorage:* the same laptop typically goes to the same venue, so the setting should outlive a session. A new laptop re-tunes once. Server-side per-session storage would add a new API surface for a per-device UI preference — out of proportion with the value.
 
 ### Security note
 

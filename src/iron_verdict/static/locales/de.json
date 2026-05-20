@@ -200,6 +200,12 @@
     "disconnectedBanner": "VPortal getrennt – auf Rollenauswahl erneut verbinden.",
     "attemptShort": "Vers"
   },
+  "displaySettings": {
+    "title": "Anzeigegröße",
+    "sliderLabel": "Zoom",
+    "resetButton": "Zurücksetzen",
+    "openTitle": "Anzeigeeinstellungen (S)"
+  },
   "privacy": {
     "link": "Datenschutz",
     "title": "Datenschutz",

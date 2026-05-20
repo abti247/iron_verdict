@@ -9,8 +9,11 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ### Added
 - Browser back button now steps back through app screens (judge or display to role-select, role-select to landing) instead of leaving the app
 - Optional VPortal integration: sessions created via `/vportal` can connect to the BVDK/ÖVK competition-management software and overlay the current lifter (name, club, weight class, age category, discipline, attempt, weight) on the display screen
+- Display screen scales to viewport and supports a manual size adjustment via a settings panel (gear icon top-left of display, or `S` key)
+- Display zoom preference persists per browser
 
 ### Changed
+- VPortal lifter info on the display screen (name, club, age/weight class, lift, attempt, weight) is now clearly readable from across the room
 - Display screen session name in the corner is now clickable, returning to role selection
 - Reloading on the role-select screen now keeps you there instead of dropping back to the landing page
 - Browser back from a judge or display screen after a reload now returns to role selection (and back again to landing)

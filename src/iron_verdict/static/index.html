@@ -449,7 +449,8 @@
     </div>
 
     <!-- Display Screen: shows sessionName only — sessionCode intentionally omitted (C3) -->
-    <div class="display-full" x-show="screen === 'display'" x-cloak>
+    <div class="display-full" x-show="screen === 'display'" x-cloak
+         :style="`--display-zoom: ${displayZoom || 1}`">
         <div class="display-tag">
             <span class="conn-dot" :class="connectionStatus"></span>
             <span class="conn-label" x-show="serverRestarting" x-text="t('connection.serverRestarting')"></span>
@@ -507,6 +508,39 @@
         </div>
         <div class="vportal-disconnected-banner" x-show="vportalDisconnectedReason"
              x-text="t('vportal.disconnectedBanner')"></div>
+
+        <!-- Display settings: gear + panel -->
+        <button class="display-settings-gear"
+                @click.stop="openDisplaySettings()"
+                :title="t('displaySettings.openTitle')"
+                aria-label="Display settings">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+        </button>
+
+        <div class="display-settings-panel"
+             x-show="displaySettingsOpen"
+             @click.outside="closeDisplaySettings()"
+             x-cloak>
+            <div class="display-settings-title" x-text="t('displaySettings.title')"></div>
+            <label class="display-settings-label">
+                <span x-text="t('displaySettings.sliderLabel')"></span>
+                <span class="display-settings-readout" x-text="(displayZoom).toFixed(2) + '×'"></span>
+            </label>
+            <input class="display-settings-slider"
+                   type="range"
+                   min="0.7" max="1.5" step="0.05"
+                   :value="displayZoom"
+                   @input="onDisplayZoomInput($event)">
+            <div class="display-settings-actions">
+                <button class="display-settings-reset"
+                        @click="resetDisplayZoom()"
+                        x-text="t('displaySettings.resetButton')"></button>
+            </div>
+        </div>
     </div>
 
 </body>

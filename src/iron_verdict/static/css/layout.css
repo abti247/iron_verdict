@@ -243,14 +243,14 @@
     gap: 8px;
     font-family: 'Rajdhani', sans-serif;
     font-weight: 600;
-    font-size: 18px;
-    letter-spacing: 2px;
+    font-size: calc(clamp(10px, 1.44vmin, 26px) * var(--display-zoom, 1));
+    letter-spacing: calc(clamp(1px, 0.2vmin, 3px) * var(--display-zoom, 1));
     color: var(--text-dim);
 }
 
 .display-timer-big {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: min(30vw, 300px);
+    font-size: calc(clamp(51px, 24vmin, 288px) * var(--display-zoom, 1));
     color: var(--text-chrome);
     line-height: 1;
     font-variant-numeric: tabular-nums;

@@ -380,8 +380,8 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 
 .display-orb {
-    width: min(24vw, 240px);
-    height: min(24vw, 240px);
+    width:  calc(clamp(38px, 19.2vmin, 224px) * var(--display-zoom, 1));
+    height: calc(clamp(38px, 19.2vmin, 224px) * var(--display-zoom, 1));
     border-radius: 50%;
     background: radial-gradient(circle at 40% 40%, #2a2a2a, #141414);
     border: 3px solid var(--chrome-dark);
@@ -435,8 +435,8 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .display-status {
     font-family: 'Rajdhani', sans-serif;
     font-weight: 600;
-    font-size: 22px;
-    letter-spacing: 6px;
+    font-size: calc(clamp(13px, 2.24vmin, 38px) * var(--display-zoom, 1));
+    letter-spacing: calc(clamp(2px, 0.4vmin, 8px) * var(--display-zoom, 1));
     text-transform: uppercase;
     color: var(--text-dim);
 }
@@ -452,9 +452,9 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .verdict-stamp {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: min(8.4vw, 72px);
-    letter-spacing: 8px;
-    padding: 10px 48px;
+    font-size: calc(clamp(18px, 6.72vmin, 88px) * var(--display-zoom, 1));
+    letter-spacing: calc(clamp(2px, 0.72vmin, 11px) * var(--display-zoom, 1));
+    padding: calc(clamp(5px, 0.88vmin, 13px) * var(--display-zoom, 1)) calc(clamp(16px, 4vmin, 51px) * var(--display-zoom, 1));
 }
 
 .verdict-stamp.valid {
@@ -609,25 +609,131 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .vportal-corner {
     position: absolute;
-    bottom: 20px;
+    bottom: calc(clamp(14px, 2.43vmin, 48px) * var(--display-zoom, 1));
     color: #d1d5db;
     font-family: 'Rajdhani', sans-serif;
     pointer-events: none;
 }
-.vportal-corner-left { left: 28px; text-align: left; }
-.vportal-corner-right { right: 28px; text-align: right; }
+.vportal-corner-left  { left:  calc(clamp(19px, 3.17vmin, 67px) * var(--display-zoom, 1)); text-align: left;  }
+.vportal-corner-right { right: calc(clamp(19px, 3.17vmin, 67px) * var(--display-zoom, 1)); text-align: right; }
 .vportal-corner-name {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 16px; letter-spacing: 0.04em; color: #f5f5f7;
+    font-size: calc(clamp(19px, 3.64vmin, 78px) * var(--display-zoom, 1));
+    letter-spacing: 0.04em;
+    color: #f5f5f7;
     text-transform: uppercase;
 }
-.vportal-corner-meta { font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; color: #6b7280; margin-top: 4px; }
-.vportal-corner-disc { font-family: 'Bebas Neue', sans-serif; font-size: 11px; letter-spacing: 0.12em; color: #9ca3af; }
-.vportal-corner-weight { font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 0.04em; color: #d1d5db; margin-top: 4px; }
-.vportal-disconnected-banner {
-    position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
-    background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.4);
-    color: #fca5a5; padding: 4px 12px;
-    font-family: 'Rajdhani', sans-serif; font-size: 11px;
-    letter-spacing: 0.1em; text-transform: uppercase;
+.vportal-corner-meta {
+    font-size: calc(clamp(13px, 1.96vmin, 40px) * var(--display-zoom, 1));
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #9ca3af;
+    margin-top: calc(clamp(2px, 0.64vmin, 9px) * var(--display-zoom, 1));
 }
+.vportal-corner-disc {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: calc(clamp(14px, 2.43vmin, 48px) * var(--display-zoom, 1));
+    letter-spacing: 0.12em;
+    color: #cfd3da;
+}
+.vportal-corner-weight {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: calc(clamp(22px, 4.22vmin, 92px) * var(--display-zoom, 1));
+    letter-spacing: 0.04em;
+    color: #e5e7eb;
+    margin-top: calc(clamp(2px, 0.64vmin, 9px) * var(--display-zoom, 1));
+}
+.vportal-disconnected-banner {
+    position: absolute;
+    top: calc(clamp(6px, 0.8vmin, 19px) * var(--display-zoom, 1));
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(239,68,68,0.1);
+    border: 1px solid rgba(239,68,68,0.4);
+    color: #fca5a5;
+    padding: calc(clamp(2px, 0.4vmin, 6px) * var(--display-zoom, 1)) calc(clamp(6px, 0.96vmin, 19px) * var(--display-zoom, 1));
+    font-family: 'Rajdhani', sans-serif;
+    font-size: calc(clamp(8px, 1.12vmin, 18px) * var(--display-zoom, 1));
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+/* ===== DISPLAY SETTINGS PANEL ===== */
+.display-settings-gear {
+    position: absolute;
+    top: clamp(8px, 1.2vmin, 24px);
+    left: clamp(8px, 1.2vmin, 24px);
+    width: clamp(28px, 3vmin, 48px);
+    height: clamp(28px, 3vmin, 48px);
+    background: transparent;
+    border: none;
+    color: rgba(120, 120, 130, 0.35);
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s, transform 0.15s;
+    z-index: 10;
+}
+.display-settings-gear:hover { color: rgba(220, 220, 230, 0.9); transform: rotate(30deg); }
+.display-settings-gear svg { width: 70%; height: 70%; }
+
+.display-settings-panel {
+    position: absolute;
+    top: clamp(48px, 6vmin, 88px);
+    left: clamp(16px, 2vmin, 40px);
+    z-index: 11;
+    background: #131316;
+    border: 1px solid #2a2a2e;
+    border-top: 2px solid #ef4444;
+    padding: 18px 20px;
+    width: 240px;
+    color: #e8e8ea;
+    font-family: 'Rajdhani', sans-serif;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+}
+.display-settings-title {
+    font-size: 14px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: #f5f5f7;
+    margin-bottom: 14px;
+}
+.display-settings-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 11px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: #9ca3af;
+    margin-bottom: 8px;
+}
+.display-settings-readout {
+    color: #f5f5f7;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 16px;
+    letter-spacing: .04em;
+}
+.display-settings-slider {
+    width: 100%;
+    accent-color: #ef4444;
+}
+.display-settings-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 14px;
+}
+.display-settings-reset {
+    background: transparent;
+    border: 1px solid #2a2a2e;
+    color: #d1d5db;
+    padding: 6px 14px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 11px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+.display-settings-reset:hover { border-color: #4a4a4e; color: #f5f5f7; }

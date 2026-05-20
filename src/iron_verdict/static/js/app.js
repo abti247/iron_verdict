@@ -17,6 +17,8 @@ import {
     handleJudgeStatusUpdate,
 } from './handlers.js';
 
+const DISPLAY_ZOOM_KEY = 'iron-verdict:display-zoom';
+
 export function ironVerdictApp() {
     return {
         screen: 'landing',
@@ -76,6 +78,10 @@ export function ironVerdictApp() {
         vportalDisplayAttempt: null,
         vportalDisconnectedReason: '',
         _vportalPollStop: null,
+
+        displaySettingsOpen: false,
+        displayZoom: 1,
+        _displayKeydownHandler: null,
 
         openVportalModal() {
             this.vportalModalOpen = true;
@@ -168,6 +174,7 @@ export function ironVerdictApp() {
         navigateTo(screen) {
             if (this.screen === screen) return;
             this.screen = screen;
+            this.displaySettingsOpen = false;
             if (this._handlingPopstate) return;
             if (this._navigateInPlaceNext) {
                 // One-shot: rehydrating state in init() — keep the back-stack the same depth
@@ -521,6 +528,53 @@ export function ironVerdictApp() {
             this.navigateTo('contact');
         },
 
+        openDisplaySettings() {
+            this.displaySettingsOpen = true;
+        },
+
+        closeDisplaySettings() {
+            this.displaySettingsOpen = false;
+        },
+
+        resetDisplayZoom() {
+            this.displayZoom = 1;
+            try { localStorage.setItem(DISPLAY_ZOOM_KEY, '1'); } catch (_) {}
+        },
+
+        onDisplayZoomInput(event) {
+            const n = parseFloat(event.target.value);
+            if (!Number.isFinite(n)) return;
+            this.displayZoom = Math.min(1.5, Math.max(0.7, n));
+            try { localStorage.setItem(DISPLAY_ZOOM_KEY, String(this.displayZoom)); } catch (_) {}
+        },
+
+        _loadDisplayZoomFromStorage() {
+            try {
+                const raw = localStorage.getItem(DISPLAY_ZOOM_KEY);
+                if (raw == null) return;
+                const n = parseFloat(raw);
+                if (!Number.isFinite(n)) return;
+                this.displayZoom = Math.min(1.5, Math.max(0.7, n));
+            } catch (_) {}
+        },
+
+        _installDisplayKeyHandler() {
+            if (this._displayKeydownHandler) return;
+            this._displayKeydownHandler = (e) => {
+                if (this.screen !== 'display') return;
+                const tag = (e.target && e.target.tagName) || '';
+                if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+                if (e.key === 's' || e.key === 'S') {
+                    e.preventDefault();
+                    this.displaySettingsOpen = !this.displaySettingsOpen;
+                } else if (e.key === 'Escape' && this.displaySettingsOpen) {
+                    e.preventDefault();
+                    this.displaySettingsOpen = false;
+                }
+            };
+            window.addEventListener('keydown', this._displayKeydownHandler);
+        },
+
         async submitContact() {
             this.contactStatus = 'loading';
             try {
@@ -547,6 +601,9 @@ export function ironVerdictApp() {
             const urlSession = urlParams.get('session');
             this._initialPathname = window.location.pathname;
             history.replaceState({ screen: 'landing' }, '', '/');
+
+            this._loadDisplayZoomFromStorage();
+            this._installDisplayKeyHandler();
 
             this.$watch('screen', (value) => {
                 if (value === 'role-select' && this.sessionCode) {
@@ -616,6 +673,7 @@ export function ironVerdictApp() {
                     }
                 } catch (_e) {}
             });
+
         }
     };
 }
