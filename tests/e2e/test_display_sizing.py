@@ -53,7 +53,7 @@ def test_slider_updates_display_zoom_variable(page, server_url):
     assert abs(_display_zoom_value(page) - 1.3) < 0.001
 
 
-def test_reset_button_restores_zoom_to_one(page, server_url):
+def test_reset_button_restores_zoom_to_default(page, server_url):
     _open_display(page, server_url)
     page.locator(".display-settings-gear").click()
     page.locator(".display-settings-panel").wait_for(state="visible")
@@ -71,10 +71,10 @@ def test_reset_button_restores_zoom_to_one(page, server_url):
     page.locator(".display-settings-reset").click()
     page.wait_for_function("""() => Math.abs(
         parseFloat(getComputedStyle(document.querySelector('.display-full'))
-            .getPropertyValue('--display-zoom')) - 1.0
+            .getPropertyValue('--display-zoom')) - 0.8
     ) < 0.001""")
 
-    assert abs(_display_zoom_value(page) - 1.0) < 0.001
+    assert abs(_display_zoom_value(page) - 0.8) < 0.001
 
 
 def test_escape_dismisses_panel(page, server_url):
