@@ -7,6 +7,17 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+### Removed
+
+
+## [0.1.4-beta] - 2026-05-20
+
+### Added
 - Browser back button now steps back through app screens (judge or display to role-select, role-select to landing) instead of leaving the app
 - Optional VPortal integration: sessions created via `/vportal` can connect to the BVDK/ÖVK competition-management software and overlay the current lifter (name, club, weight class, age category, discipline, attempt, weight) on the display screen
 - Display screen scales to viewport and supports a manual size adjustment via a settings panel (gear icon top-left of display, or `S` key)
@@ -24,7 +35,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - App loads faster on slow networks (mobile data, conference Wi-Fi) — connections to external font and script CDNs are warmed up during initial HTML parsing instead of serially after
 - Joining with an invalid or unknown session code now shows an inline error on the landing screen instead of failing later at role selection
 
-### Removed
+[0.1.4-beta]: https://github.com/abti247/iron_verdict/compare/v0.1.3-beta...v0.1.4-beta
 
 ## [0.1.3-beta] - 2026-04-25
 
