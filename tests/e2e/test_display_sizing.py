@@ -71,10 +71,10 @@ def test_reset_button_restores_zoom_to_default(page, server_url):
     page.locator(".display-settings-reset").click()
     page.wait_for_function("""() => Math.abs(
         parseFloat(getComputedStyle(document.querySelector('.display-full'))
-            .getPropertyValue('--display-zoom')) - 0.8
+            .getPropertyValue('--display-zoom')) - 1.0
     ) < 0.001""")
 
-    assert abs(_display_zoom_value(page) - 0.8) < 0.001
+    assert abs(_display_zoom_value(page) - 1.0) < 0.001
 
 
 def test_escape_dismisses_panel(page, server_url):

@@ -237,7 +237,7 @@ Reason keys in `constants.js` are i18n keys. They double as the identifier sent 
 
 ### Display settings overlay
 
-The display screen has a single interactive control: a low-contrast gear icon (top-left) and `S` keyboard shortcut, both of which open a small overlay with a 0.7×–1.5× zoom slider (default 0.8×). The slider writes to `--display-zoom` on the display root; every responsive size on the display multiplies through that variable. Selection persists to `localStorage` as `iron-verdict:display-zoom`.
+The display screen has a single interactive control: a low-contrast gear icon (top-left) and `S` keyboard shortcut, both of which open a small overlay with a 0.7×–1.5× zoom slider. The slider writes to `--display-zoom` on the display root; every responsive size on the display multiplies through that variable. Selection persists to `localStorage` as `iron-verdict:display-zoom`.
 
 *Why a low-contrast gear plus a keyboard shortcut:* the display is mixed-deployment — sometimes the operator knows the app, sometimes a volunteer is at the keyboard. A faint gear is invisible at projector distance but discoverable on the operator laptop; `S` exists as the power-user path. There is no other interactive control on the display screen, so a single conventional dismiss model (`Escape`, click-outside) suffices.
 

@@ -80,7 +80,7 @@ export function ironVerdictApp() {
         _vportalPollStop: null,
 
         displaySettingsOpen: false,
-        displayZoom: 0.8,
+        displayZoom: 1,
         _displayKeydownHandler: null,
 
         openVportalModal() {
@@ -537,8 +537,8 @@ export function ironVerdictApp() {
         },
 
         resetDisplayZoom() {
-            this.displayZoom = 0.8;
-            try { localStorage.setItem(DISPLAY_ZOOM_KEY, '0.8'); } catch (_) {}
+            this.displayZoom = 1;
+            try { localStorage.setItem(DISPLAY_ZOOM_KEY, '1'); } catch (_) {}
         },
 
         onDisplayZoomInput(event) {

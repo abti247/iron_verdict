@@ -380,8 +380,8 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 
 .display-orb {
-    width:  calc(clamp(48px, 24vmin, 280px) * var(--display-zoom, 1));
-    height: calc(clamp(48px, 24vmin, 280px) * var(--display-zoom, 1));
+    width:  calc(clamp(38px, 19.2vmin, 224px) * var(--display-zoom, 1));
+    height: calc(clamp(38px, 19.2vmin, 224px) * var(--display-zoom, 1));
     border-radius: 50%;
     background: radial-gradient(circle at 40% 40%, #2a2a2a, #141414);
     border: 3px solid var(--chrome-dark);
@@ -435,8 +435,8 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .display-status {
     font-family: 'Rajdhani', sans-serif;
     font-weight: 600;
-    font-size: calc(clamp(16px, 2.8vmin, 48px) * var(--display-zoom, 1));
-    letter-spacing: calc(clamp(3px, 0.5vmin, 10px) * var(--display-zoom, 1));
+    font-size: calc(clamp(13px, 2.24vmin, 38px) * var(--display-zoom, 1));
+    letter-spacing: calc(clamp(2px, 0.4vmin, 8px) * var(--display-zoom, 1));
     text-transform: uppercase;
     color: var(--text-dim);
 }
@@ -452,9 +452,9 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .verdict-stamp {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: calc(clamp(22px, 8.4vmin, 110px) * var(--display-zoom, 1));
-    letter-spacing: calc(clamp(3px, 0.9vmin, 14px) * var(--display-zoom, 1));
-    padding: calc(clamp(6px, 1.1vmin, 16px) * var(--display-zoom, 1)) calc(clamp(20px, 5vmin, 64px) * var(--display-zoom, 1));
+    font-size: calc(clamp(18px, 6.72vmin, 88px) * var(--display-zoom, 1));
+    letter-spacing: calc(clamp(2px, 0.72vmin, 11px) * var(--display-zoom, 1));
+    padding: calc(clamp(5px, 0.88vmin, 13px) * var(--display-zoom, 1)) calc(clamp(16px, 4vmin, 51px) * var(--display-zoom, 1));
 }
 
 .verdict-stamp.valid {
@@ -609,51 +609,51 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .vportal-corner {
     position: absolute;
-    bottom: calc(clamp(14px, 2.3vmin, 46px) * var(--display-zoom, 1));
+    bottom: calc(clamp(11px, 1.84vmin, 37px) * var(--display-zoom, 1));
     color: #d1d5db;
     font-family: 'Rajdhani', sans-serif;
     pointer-events: none;
 }
-.vportal-corner-left  { left:  calc(clamp(18px, 3vmin, 64px) * var(--display-zoom, 1)); text-align: left;  }
-.vportal-corner-right { right: calc(clamp(18px, 3vmin, 64px) * var(--display-zoom, 1)); text-align: right; }
+.vportal-corner-left  { left:  calc(clamp(14px, 2.4vmin, 51px) * var(--display-zoom, 1)); text-align: left;  }
+.vportal-corner-right { right: calc(clamp(14px, 2.4vmin, 51px) * var(--display-zoom, 1)); text-align: right; }
 .vportal-corner-name {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: calc(clamp(18px, 3.45vmin, 74px) * var(--display-zoom, 1));
+    font-size: calc(clamp(14px, 2.76vmin, 59px) * var(--display-zoom, 1));
     letter-spacing: 0.04em;
     color: #f5f5f7;
     text-transform: uppercase;
 }
 .vportal-corner-meta {
-    font-size: calc(clamp(12px, 1.85vmin, 37px) * var(--display-zoom, 1));
+    font-size: calc(clamp(10px, 1.48vmin, 30px) * var(--display-zoom, 1));
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: #9ca3af;
-    margin-top: calc(clamp(3px, 0.6vmin, 9px) * var(--display-zoom, 1));
+    margin-top: calc(clamp(2px, 0.48vmin, 7px) * var(--display-zoom, 1));
 }
 .vportal-corner-disc {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: calc(clamp(14px, 2.3vmin, 46px) * var(--display-zoom, 1));
+    font-size: calc(clamp(11px, 1.84vmin, 37px) * var(--display-zoom, 1));
     letter-spacing: 0.12em;
     color: #cfd3da;
 }
 .vportal-corner-weight {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: calc(clamp(21px, 4vmin, 87px) * var(--display-zoom, 1));
+    font-size: calc(clamp(17px, 3.2vmin, 70px) * var(--display-zoom, 1));
     letter-spacing: 0.04em;
     color: #e5e7eb;
-    margin-top: calc(clamp(3px, 0.6vmin, 9px) * var(--display-zoom, 1));
+    margin-top: calc(clamp(2px, 0.48vmin, 7px) * var(--display-zoom, 1));
 }
 .vportal-disconnected-banner {
     position: absolute;
-    top: calc(clamp(8px, 1vmin, 24px) * var(--display-zoom, 1));
+    top: calc(clamp(6px, 0.8vmin, 19px) * var(--display-zoom, 1));
     left: 50%;
     transform: translateX(-50%);
     background: rgba(239,68,68,0.1);
     border: 1px solid rgba(239,68,68,0.4);
     color: #fca5a5;
-    padding: calc(clamp(3px, 0.5vmin, 8px) * var(--display-zoom, 1)) calc(clamp(8px, 1.2vmin, 24px) * var(--display-zoom, 1));
+    padding: calc(clamp(2px, 0.4vmin, 6px) * var(--display-zoom, 1)) calc(clamp(6px, 0.96vmin, 19px) * var(--display-zoom, 1));
     font-family: 'Rajdhani', sans-serif;
-    font-size: calc(clamp(10px, 1.4vmin, 22px) * var(--display-zoom, 1));
+    font-size: calc(clamp(8px, 1.12vmin, 18px) * var(--display-zoom, 1));
     letter-spacing: 0.1em;
     text-transform: uppercase;
 }
