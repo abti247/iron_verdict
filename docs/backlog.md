@@ -11,9 +11,9 @@
 
 **Definition.** The 60-second snapshot task in the lifespan handler writes `/data/sessions.json` with a regular `open().write()` call inside an `async def`. The write is synchronous: while the kernel is committing bytes to disk, the calling thread is parked waiting for the I/O-completion interrupt. That thread is the event loop's thread, so during the wait no coroutines run on this worker — incoming WebSocket messages are not processed, outgoing broadcasts are not dispatched, and the heartbeat task cannot fire.
 
-**Solution.** Replace `open().write()` with either `aiofiles.open()` + `await f.write()`, or wrap the sync call in `await asyncio.to_thread(write_sync)`. Both offload the blocking I/O to a separate OS thread from the standard thread pool, leaving the event loop's thread free to keep serving coroutines. Optionally wrap the call in `asyncio.wait_for(..., timeout=10)` so a stuck disk affects only the snapshot coroutine rather than blocking the snapshot save forever. Roughly 5 lines of `session.py` (or wherever the snapshot lives).
+**Solution.** Two changes: (1) skip the write entirely if there are no active sessions — the task fires unconditionally every 60 s regardless of load, so on an idle server this eliminates the I/O call altogether; (2) replace `open().write()` with either `aiofiles.open()` + `await f.write()`, or wrap the sync call in `await asyncio.to_thread(write_sync)`, to offload the blocking I/O to a separate OS thread when a write does occur. Optionally wrap in `asyncio.wait_for(..., timeout=10)` so a stuck disk affects only the snapshot coroutine. Roughly 5–8 lines of `session.py` (or wherever the snapshot lives).
 
-**Why.** Today the snapshot is small (kilobytes) and the write completes in single-digit milliseconds, so the stall is invisible. At meaningfully higher session counts the stall becomes visible to clients: heartbeat-timing artifacts, vote_lock round-trip spikes every 60 s, and risk of the heartbeat task missing its window. The fix is small and converts a documented future bottleneck into "already handled."
+**Why.** The task fires every 60 s unconditionally — confirmed in production logs, where `snapshot_saved` appears every minute even with no active competition session, meaning the event loop is blocked on a write of `{}` indefinitely. Today the write completes in single-digit milliseconds so the stall is invisible, but the idle write is pointless and the async fix is small. At meaningfully higher session counts the stall would become visible to clients: heartbeat-timing artifacts, vote_lock round-trip spikes every 60 s, and risk of the heartbeat task missing its window.
 
 ---
 
@@ -44,6 +44,16 @@
 **Solution.** Move the check and write into a single `async with self.lock:` block (no release in between). Standard check-then-act-under-lock pattern, no design change.
 
 **Why.** The window is microseconds wide and the failure mode is recoverable (server returns "Role already taken" to whichever client gets the second response), so this hasn't caused observable problems. But it's a real bug listed in the architecture scale-flags table and trivial to fix. Removing it eliminates an interview talking point and is the right thing to do regardless.
+
+---
+
+## Self-host Alpine.js (mitigates third-party-CDN dependency)
+
+**Definition.** Alpine.js is loaded from `cdn.jsdelivr.net` at runtime — via a `<link rel="preload">` and a dynamically-injected `<script>` in `init.js`. If jsdelivr is unreachable (CDN outage, regional ISP issue, competition-venue Wi-Fi that blocks third-party domains), Alpine never loads and the app stays black forever — every screen has `x-cloak` that only Alpine knows how to strip.
+
+**Solution.** Download `alpinejs@3.14.1/dist/cdn.min.js`, commit to `src/iron_verdict/static/js/alpine.min.js`, point the dynamic injection in `init.js` at the local path. Drop the SRI integrity hash and `crossOrigin` flag (pointless on same-origin). Keep `<link rel="preload">` pointed at the new local path so the parallel-fetch optimization is preserved. Roughly 5 lines in `init.js` and 1 in `index.html`, plus the committed JS file.
+
+**Why.** Removes a single point of failure outside Iron Verdict's control. Low probability (jsdelivr is reliable) but total impact during a competition — no Alpine = no UI. Worth doing in the pre-competition window specifically; outside that window it's a normal hygiene item. Same logic does *not* apply to qrcodejs (only the QR-join flow degrades; everyone else fine) or Google Fonts (graceful fallback to system fonts; UI fully functional).
 
 ---
 
