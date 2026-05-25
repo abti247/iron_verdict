@@ -47,6 +47,16 @@
 
 ---
 
+## VPortal proxy leaks transport errors as 500s
+
+**Definition.** `/api/vportal/graphql` at [src/iron_verdict/vportal_proxy.py:205](../src/iron_verdict/vportal_proxy.py#L205) wraps the outbound httpx call with no exception handler. The status-code checks below it only fire if a response was actually received. Transport-layer failures — `httpx.RemoteProtocolError`, `httpx.ConnectError`, `httpx.ReadTimeout` — bubble up to FastAPI and surface to the client as `500 Internal Server Error`, implying an Iron Verdict bug when the real cause is upstream. Observed once during the 2026-05-23 live competition: a single poll hit `RemoteProtocolError: Server disconnected without sending a response`; neighbouring polls from the same client succeeded.
+
+**Solution.** Wrap the `_http_client.post(...)` call in `try/except (httpx.RemoteProtocolError, httpx.ConnectError, httpx.ReadTimeout)`. On exception, retry once — httpx will discard the dead socket and dial a fresh connection — and if the retry also fails, log a structured warning and raise `HTTPException(502, "VPortal upstream unreachable")` so the status code matches the existing 5xx-from-upstream branch on line 217. Roughly 10 lines.
+
+**Why.** The most likely root cause is a stale-keepalive race: the shared module-level `httpx.AsyncClient` pools connections to `bvdk.vportal-online.de`, and an idle connection silently closed by VPortal or an intermediate NAT/LB gets reused on the next poll before the client notices it's dead. Unavoidable in any pooled HTTP client; the fix is to catch and retry, not to disable pooling. Severity is low (the next poll cycle succeeded and no vote state was affected), but the misleading 500 will recur, and a transparent retry makes it invisible. Worth doing before the next competition so the logs stay readable and a real upstream outage would show as a 502 rather than being lost in the noise.
+
+---
+
 ## Self-host Alpine.js (mitigates third-party-CDN dependency)
 
 **Definition.** Alpine.js is loaded from `cdn.jsdelivr.net` at runtime — via a `<link rel="preload">` and a dynamically-injected `<script>` in `init.js`. If jsdelivr is unreachable (CDN outage, regional ISP issue, competition-venue Wi-Fi that blocks third-party domains), Alpine never loads and the app stays black forever — every screen has `x-cloak` that only Alpine knows how to strip.
