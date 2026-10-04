@@ -25,8 +25,8 @@ src/iron_verdict/static/
 
 ### Separation of Concerns
 - **HTML files contain ONLY markup.** No `<style>` blocks. No inline `style=""` attributes except for dynamic Alpine bindings (`:style`). No `<script>` blocks with application logic.
-- **CSS files contain ONLY styles.** One responsibility per file. When a CSS file exceeds 200 lines, split it further.
-- **JS files contain ONLY one module/concern.** Each file should have a single, clear purpose. When a JS file exceeds 200 lines, split it further (see *File Size Limits* for current exceptions).
+- **CSS files contain ONLY styles.** One responsibility per file.
+- **JS files contain ONLY one module/concern.** Each file should have a single, clear purpose.
 
 ### CSS
 - All colors, spacing tokens, and theme values MUST be defined as CSS custom properties in `variables.css` — never as magic numbers in component styles.
@@ -41,10 +41,11 @@ src/iron_verdict/static/
 - All static data (card reasons, role mappings, display names) belongs in `constants.js`, not inline in component logic.
 - Never manipulate DOM directly (`document.body.classList`, `document.querySelector`) inside Alpine components — use Alpine's reactive bindings (`:class`, `x-bind`) instead.
 
-### File Size Limits
-- **Target: no single file exceeds 200 lines.** If it does, refactor into smaller files.
-- Prefer many small, focused files over few large ones.
-- **Known exception:** `js/app.js` is currently far above the target. It is being split by the refactoring issues [#65](https://github.com/abti247/iron_verdict/issues/65) (VPortal state into its own Alpine component), [#66](https://github.com/abti247/iron_verdict/issues/66) (shared state into `Alpine.store`) and [#67](https://github.com/abti247/iron_verdict/issues/67) (one component per screen, `app.js` under 200 lines). Until then: do not grow `app.js` further — put new logic in a new module and import it.
+### File Size and Splitting
+- **Split by concern, not by line count.** A file is too big when it mixes responsibilities (e.g. VPortal state, timer and vote handling in one component) or when you can no longer name its single purpose in one sentence — not when it crosses a number.
+- **~200 lines is a review signal, not a limit.** When a file grows past it, check whether it still has one concern. If yes, leave it; if no, split along the concern boundary. Never trim or squash code just to get under a number.
+- Prefer many small, focused files over few large ones when the split follows a real boundary; a split that scatters one concern across files is worse than a long file.
+- **Known exception:** `js/app.js` mixes several concerns (all screens, VPortal, shared state) in one Alpine component. It is being split by the refactoring issues [#65](https://github.com/abti247/iron_verdict/issues/65) (VPortal state into its own Alpine component), [#66](https://github.com/abti247/iron_verdict/issues/66) (shared state into `Alpine.store`) and [#67](https://github.com/abti247/iron_verdict/issues/67) (one component per screen). Until then: do not grow `app.js` further — put new logic in a new module and import it.
 
 ### Adding New Features
 - New UI components get their own CSS class in `components.css` (or a new CSS file if the component is complex).
