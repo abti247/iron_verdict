@@ -26,7 +26,7 @@ src/iron_verdict/static/
 ### Separation of Concerns
 - **HTML files contain ONLY markup.** No `<style>` blocks. No inline `style=""` attributes except for dynamic Alpine bindings (`:style`). No `<script>` blocks with application logic.
 - **CSS files contain ONLY styles.** One responsibility per file. When a CSS file exceeds 200 lines, split it further.
-- **JS files contain ONLY one module/concern.** Each file should have a single, clear purpose. When a JS file exceeds 200 lines, split it further.
+- **JS files contain ONLY one module/concern.** Each file should have a single, clear purpose. When a JS file exceeds 200 lines, split it further (see *File Size Limits* for current exceptions).
 
 ### CSS
 - All colors, spacing tokens, and theme values MUST be defined as CSS custom properties in `variables.css` — never as magic numbers in component styles.
@@ -42,8 +42,9 @@ src/iron_verdict/static/
 - Never manipulate DOM directly (`document.body.classList`, `document.querySelector`) inside Alpine components — use Alpine's reactive bindings (`:class`, `x-bind`) instead.
 
 ### File Size Limits
-- **Hard limit: No single file should exceed 300 lines.** If it does, refactor into smaller files.
+- **Target: no single file exceeds 200 lines.** If it does, refactor into smaller files.
 - Prefer many small, focused files over few large ones.
+- **Known exception:** `js/app.js` is currently far above the target. It is being split by the refactoring issues [#65](https://github.com/abti247/iron_verdict/issues/65) (VPortal state into its own Alpine component), [#66](https://github.com/abti247/iron_verdict/issues/66) (shared state into `Alpine.store`) and [#67](https://github.com/abti247/iron_verdict/issues/67) (one component per screen, `app.js` under 200 lines). Until then: do not grow `app.js` further — put new logic in a new module and import it.
 
 ### Adding New Features
 - New UI components get their own CSS class in `components.css` (or a new CSS file if the component is complex).
