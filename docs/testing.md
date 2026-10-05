@@ -15,6 +15,46 @@ pytest                             # everything
 pytest --tb=short -v               # readable pass/fail
 ```
 
+## Continuous integration
+
+[.github/workflows/ci.yml](.github/workflows/ci.yml) runs on every pull request and is reusable via `workflow_call`, so a main-branch pipeline can call the same checks instead of duplicating them. Three parallel jobs, each a required status check for merging into `main`:
+
+| Job | What it runs |
+|---|---|
+| `backend` | Python 3.13 (same as the Dockerfile), `pip install -e ".[dev]"`, `pytest tests/ --ignore=tests/e2e` |
+| `js` | Node LTS, `npm ci`, `npx vitest run` |
+| `e2e` | Same Python setup + `playwright install --with-deps chromium`, `pytest tests/e2e/` with `--tracing retain-on-failure --screenshot only-on-failure` |
+
+- pip, npm and the Playwright browser download are cached. The browser cache key is the resolved Playwright version, because each Playwright release pins its own Chromium build.
+- When `e2e` fails, the traces and screenshots of the failing tests are uploaded as the `playwright-traces` artifact (kept 14 days). Open a trace with `playwright show-trace <trace.zip>` or at trace.playwright.dev.
+- A new push to a PR cancels the still-running CI of the previous push.
+- No automatic retries. **Why:** retries hide flaky tests; a flaky test is fixed or documented in [docs/e2e-known-risks.md](docs/e2e-known-risks.md).
+- Branch protection on `main` (configured by the maintainer in the repo settings): merge only via PR, `backend`, `js` and `e2e` required, branch must be up to date. No required reviewer approval — a sole maintainer cannot approve their own PRs on GitHub.
+
+## Claude cloud environment setup
+
+Claude Code cloud sessions start from a fresh VM. The maintainer enters this script under **Setup script** in the environment settings on claude.ai/code, so every session can run the full suite right away:
+
+```bash
+#!/bin/bash
+set -euo pipefail
+cd /home/user/iron_verdict
+python -m pip install -e ".[dev]"
+npm ci
+python -m playwright install --with-deps chromium
+# The VM ships a standalone pytest (uv tool) that shadows the project's
+# pytest and lacks its plugins; remove it so plain `pytest` works.
+uv tool uninstall pytest || true
+```
+
+Requirements and caveats:
+
+- **Network access** (Network access → Custom, keep the default package-manager list; the default list blocks both hosts):
+  - `cdn.playwright.dev` — the Chromium build pre-installed on the VM rarely matches the Playwright version pip resolves; without the download E2E tests fail with "Executable doesn't exist".
+  - `cdn.jsdelivr.net` — the app still loads Alpine.js and the QR library from this CDN (until issue #54 ships them locally); without it the landing page never renders and every E2E test times out waiting for the first input.
+- The script runs once per environment and the result is cached for roughly seven days. After a dependency change in `pyproject.toml` or `package.json`, run `pip install -e ".[dev]"` / `npm ci` in the session (or edit the script to force a rebuild).
+- If plain `pytest` reports `ModuleNotFoundError` for a project dependency, it is the VM's standalone pytest — use `python -m pytest`.
+
 ## Conventions
 
 - `pyproject.toml` sets `asyncio_mode = "auto"` — every `async def test_*` is automatically run as an asyncio test. No `@pytest.mark.asyncio` decorator needed.
