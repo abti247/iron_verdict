@@ -42,6 +42,8 @@ Rules:
 - **Ask, don't assume.** When a decision belongs to the maintainer, ask before acting on it — never pick an answer from assumptions. This covers anything affecting product behavior, the critical path, VPortal, security, cost, external services, deployment, or scope (doing more or less than asked), and any rule that is ambiguous or contradicts the code.
   - Issues: if an issue has a "Zu klären" section or other open questions, get the answers before implementing the affected parts and record them in the issue so later sessions know them.
   - Pure implementation details with an obvious convention in the codebase (naming, file placement, test structure) don't need a question — but state the choice in the PR so it can be reviewed.
+- **Working an issue:** follow the skill `/work-on-issue <n>` (`.claude/skills/work-on-issue/SKILL.md`) — issue → clarification → branch → TDD → full test suite → docs → review → PR.
+- **Independent review:** before opening a PR, run the read-only agent `live-reliability-reviewer` (`.claude/agents/live-reliability-reviewer.md`) on the diff and fix its blocking and should findings. It checks the rules in this file (critical path, dropped messages, external dependencies, delays, VPortal, tests, docs).
 
 ## Project Structure
 - Place all application implementation files (code, modules, components) under /src directory.
