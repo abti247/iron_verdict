@@ -84,6 +84,8 @@ Unsanitized user input rendered as HTML (`x-html`, `innerHTML`, string-built HTM
 
 Only report what you can point to. Every finding needs a file and line (or "missing: <file>" for something that should exist). No speculative findings without a concrete scenario.
 
+Weigh severity by **reachability**: check whether the scenario can happen through the real UI (which role sees which button, which screen sends which message) or only through a manipulated or buggy client. A silently dropped message that a judge or display operator can trigger in normal use is blocking. One reachable only by a manipulated client is a security concern — keep the server-side check and its test in view, but do not describe it as a user-facing outage. State the reachability in the scenario.
+
 ## Report format
 
 ```
