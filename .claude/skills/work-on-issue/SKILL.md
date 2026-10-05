@@ -1,6 +1,6 @@
 ---
 name: work-on-issue
-description: Work a GitHub issue of abti247/iron_verdict from reading it to an open PR — clarify open questions, branch, TDD, full test suite, CHANGELOG and living docs, independent review by the live-reliability-reviewer agent, PR with "Closes #<n>". Use when asked to work on, implement or "bearbeiten" an issue, e.g. `/work-on-issue 48`.
+description: 'Work a GitHub issue of abti247/iron_verdict from reading it to an open PR — clarify open questions, branch, TDD, full test suite, CHANGELOG and living docs, independent review by the live-reliability-reviewer agent, PR with "Closes #<n>". Use when asked to work on, implement or "bearbeiten" an issue, e.g. `/work-on-issue 48`.'
 argument-hint: <issue-number>
 ---
 
