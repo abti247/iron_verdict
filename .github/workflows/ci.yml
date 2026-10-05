@@ -10,9 +10,12 @@ on:
 permissions:
   contents: read
 
-# A new push to the same PR makes the previous run obsolete.
+# A new push to the same PR makes the previous run obsolete. Under
+# workflow_call the github context is the caller's, so non-PR runs get a
+# unique group (run_id): the caller owns its own concurrency, and queued
+# main-branch runs are never dropped or deadlocked against the caller.
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ci-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
@@ -98,8 +101,9 @@ jobs:
           --screenshot only-on-failure
           --output test-results
 
+      # cancelled() also covers the job timeout, so a hung run keeps its traces.
       - name: Upload Playwright traces and screenshots
-        if: failure()
+        if: failure() || cancelled()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-traces

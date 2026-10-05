@@ -23,10 +23,11 @@ pytest --tb=short -v               # readable pass/fail
 |---|---|
 | `backend` | Python 3.13 (same as the Dockerfile), `pip install -e ".[dev]"`, `pytest tests/ --ignore=tests/e2e` |
 | `js` | Node LTS, `npm ci`, `npx vitest run` |
-| `e2e` | Same Python setup + `playwright install --with-deps chromium`, `pytest tests/e2e/` with `--tracing retain-on-failure --screenshot only-on-failure` |
+| `e2e` | Same Python setup + Chromium with its system packages (`playwright install --with-deps chromium`; only `install-deps` when the browser is cached), `pytest tests/e2e/` with `--tracing retain-on-failure --screenshot only-on-failure` |
 
 - pip, npm and the Playwright browser download are cached. The browser cache key is the resolved Playwright version, because each Playwright release pins its own Chromium build.
-- When `e2e` fails, the traces and screenshots of the failing tests are uploaded as the `playwright-traces` artifact (kept 14 days). Open a trace with `playwright show-trace <trace.zip>` or at trace.playwright.dev.
+- When `e2e` fails (or times out), the traces and screenshots of the failing tests are uploaded as the `playwright-traces` artifact (kept 14 days), one trace per browser context. Open a trace with `playwright show-trace <trace.zip>` or at trace.playwright.dev. Only contexts created through pytest-playwright are recorded — the `page`/`context` fixtures and `competition.new_context()`. A bare `browser.new_context()` produces no trace, so new tests must not use it (the remaining one is `test_rejoin_via_qr_keeps_connect_button_visible` in the VPortal-protected `test_vportal_integration.py`).
+- E2E tests need `cdn.jsdelivr.net` at runtime (Alpine.js and the QR library, until issue #54 ships them locally). If **every** E2E test times out waiting for the first input, check that CDN before suspecting a regression.
 - A new push to a PR cancels the still-running CI of the previous push.
 - No automatic retries. **Why:** retries hide flaky tests; a flaky test is fixed or documented in [docs/e2e-known-risks.md](docs/e2e-known-risks.md).
 - Branch protection on `main` (configured by the maintainer in the repo settings): merge only via PR, `backend`, `js` and `e2e` required, branch must be up to date. No required reviewer approval — a sole maintainer cannot approve their own PRs on GitHub.
@@ -82,7 +83,7 @@ Requirements and caveats:
 
 - `server_url` (session-scoped) — starts Uvicorn on a random port, yields the URL, shuts down at session exit.
 - `_reset_server_state` (autouse) — clears sessions, connections, and rate limiter between tests.
-- `competition` — yields a `CompetitionHelper` that encapsulates session creation, role joining, voting, and browser-context cleanup.
+- `competition` — yields a `CompetitionHelper` that encapsulates session creation, role joining, voting, and browser-context cleanup. `competition.new_context()` opens an extra context for manual flows; it goes through pytest-playwright's `new_context` fixture so the context is traced on failure.
 - `fake_vportal_url` (session-scoped) — starts [tests/e2e/fake_vportal.py](tests/e2e/fake_vportal.py) (a tiny FastAPI app that mimics VPortal's `/account/login`, `/auth/token`, and `/graphql`) on a random port and yields `host:port`. Used by `test_vportal_integration.py`. Sets `TEST_MODE=1` and `VPORTAL_FETCH_INTERVAL_MS=2000` at module import so the proxy accepts the fake host and polls fast enough for tests. The fake server exposes `/_control/{force_token_invalid,unreachable,clear_attempt,restore_attempt,reset}` so tests can simulate error states.
 
 | File | Scenario |
