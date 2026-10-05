@@ -39,6 +39,7 @@ Rules:
 - Never push directly to `main`. Merge only with green CI and approval by the maintainer.
 - Issues and communication with the maintainer in German; code, commit messages, documentation and CHANGELOG stay in English.
 - Open work is tracked in GitHub Issues (there is no backlog file).
+- If an issue has a "Zu klären" section (or other open questions only the maintainer can decide), ask the maintainer for the answers before implementing anything they affect, and record the answers in the issue so later sessions know them. Never guess an answer.
 
 ## Project Structure
 - Place all application implementation files (code, modules, components) under /src directory.
