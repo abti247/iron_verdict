@@ -15,7 +15,7 @@ permissions:
 # unique group (run_id): the caller owns its own concurrency, and queued
 # main-branch runs are never dropped or deadlocked against the caller.
 concurrency:
-  group: ci-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
+  group: ci-${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
@@ -101,7 +101,8 @@ jobs:
           --screenshot only-on-failure
           --output test-results
 
-      # cancelled() also covers the job timeout, so a hung run keeps its traces.
+      # cancelled() also covers the job timeout: tests that failed before a hang
+      # keep their traces (the hung test itself has none, pytest is killed).
       - name: Upload Playwright traces and screenshots
         if: failure() || cancelled()
         uses: actions/upload-artifact@v4
