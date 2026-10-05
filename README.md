@@ -207,7 +207,6 @@ iron-verdict/
 ├── docs/
 │   ├── architecture.md      # System architecture & rationale
 │   ├── testing.md           # Test layout & regression strategy
-│   ├── backlog.md
 │   ├── e2e-known-risks.md
 │   └── vportal-fake-server-fidelity.md
 ├── pyproject.toml

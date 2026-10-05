@@ -4,6 +4,42 @@
 
 The goal of the app is to provide an easy access to a tool for powerlifting judging.
 
+## Product Requirements
+- **Simple, intuitive operation** for judges and display operators. They use the app under time pressure at a live competition, often on unfamiliar devices — no hidden steps, no ambiguous states.
+- **Live competition: no unnecessary waiting, no outages.** Every change is weighed against "could this delay or break a running competition?"
+
+## Critical Path
+The critical path is everything from the moment a judge or a display has joined a session: voting, timer, result display, reconnection, page reload.
+
+Rules for any change touching the critical path:
+- **No external runtime dependencies** (CDNs, third-party services) in the critical path. Venue Wi-Fi may block or lose them.
+- **No message may be dropped silently.** The user always sees the real state (e.g. a vote is only shown as confirmed once the server confirmed it; a lost connection is visible).
+- **Every change needs an E2E test.** For network-related changes this includes a connection-loss scenario (drop, reconnect, reload).
+- **No artificial delays** (`setTimeout`, sleeps, debounces) without a written justification in the code or PR.
+
+## VPortal Protection
+The VPortal integration (BVDK/ÖVK competition-management software) is hard to verify: access to the real BVDK staging environment is **not permanently available**, so the fake-server tests are the safety net.
+
+Protected files:
+- `src/iron_verdict/vportal_proxy.py`
+- `src/iron_verdict/static/js/vportalClient.js`
+- `src/iron_verdict/static/js/vportalQueries.js`
+- VPortal parts of `src/iron_verdict/static/index.html` and `src/iron_verdict/static/js/app.js`
+- `tests/e2e/fake_vportal.py`
+- `tests/e2e/test_vportal_integration.py`
+- `tests/test_vportal_proxy.py`
+- `docs/vportal-fake-server-fidelity.md`
+
+Rules:
+- Every PR touching one of these files gets the label `vportal` and a checklist in the PR description of what to verify in the next manual test against the BVDK staging environment.
+- The fake server (`tests/e2e/fake_vportal.py`) may only be changed with a justification recorded in `docs/vportal-fake-server-fidelity.md` (what real VPortal behavior it now mirrors, and how that is known) — never just "to make the test green".
+
+## Workflow
+- One issue per PR, one branch per issue. The PR description contains `Closes #<n>`.
+- Never push directly to `main`. Merge only with green CI and approval by the maintainer.
+- Issues and communication with the maintainer in German; code, commit messages, documentation and CHANGELOG stay in English.
+- Open work is tracked in GitHub Issues (there is no backlog file).
+
 ## Project Structure
 - Place all application implementation files (code, modules, components) under /src directory.
 - Place all application documentation files under /docs directory.
@@ -14,8 +50,8 @@ The goal of the app is to provide an easy access to a tool for powerlifting judg
 - Never commit dependency directories, build artifacts, .env files, IDE configs, logs, or cache files; when in doubt about any file, ask before committing.
 
 ## Implementation
-- Use worktrees to implement new features or fixes
-- Create worktrees in the project folder under .worktrees
+- Local sessions: use worktrees to implement new features or fixes; create them in the project folder under .worktrees
+- Cloud sessions: a branch is sufficient, no worktree needed
 
 ## Changelog
 - After completing a feature or fix, add one to three lines to the `[Unreleased]` section of `CHANGELOG.md` under the appropriate subsection (`Added`, `Fixed`, `Changed`, or `Removed`).

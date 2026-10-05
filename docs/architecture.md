@@ -33,7 +33,7 @@ Security:
 - WebSocket origin check via `ALLOWED_ORIGIN`. In-code default is `"*"` for local dev; **production overrides this via the Railway env var `ALLOWED_ORIGIN=https://iron-verdict.com`**, so the live deployment rejects cross-origin WebSocket handshakes.  
 *Why the origin check matters:* Same-Origin Policy does not apply to WebSockets — without a server-side `Origin` check, any site could open a WS to `/ws` from a victim's browser and hijack the session (Cross-Site WebSocket Hijacking).  
 *Why the permissive default:* local dev convenience.  
-*Caveat (tracked in the operational backlog):* secure-by-discipline rather than secure-by-default — a new deployment surface that forgets to set the env var would silently accept any origin. Failing loud at startup in non-dev environments without an explicit value would close that gap.
+*Caveat (tracked in [#60](https://github.com/abti247/iron_verdict/issues/60)):* secure-by-discipline rather than secure-by-default — a new deployment surface that forgets to set the env var would silently accept any origin. Failing loud at startup in non-dev environments without an explicit value would close that gap.
 
 ## WebSocket surface
 
@@ -148,12 +148,12 @@ These block multi-instance deployment. Listed for the Phase 6 AWS migration, not
 | In-memory `SessionManager.sessions` | No horizontal scaling. Fix path: Redis (state + pub/sub). |
 | In-memory `ConnectionManager` | Broadcasts don't cross instances. Fix path: Redis pub/sub. |
 | `/data/sessions.json` | Needs EFS or persistent volume on ECS. |
-| Sync file I/O in async loop | Event-loop stall at high session counts. |
-| `ALLOWED_ORIGIN="*"` in-code default | No CSRF risk on the *current* production deploy (Railway env var overrides to `https://iron-verdict.com`), but secure-by-discipline rather than secure-by-default — a new deployment surface that forgets to set the env var would silently accept any origin. Fix: fail loud at startup in non-dev mode if the value is unset or `"*"`. |
-| `/health` conflates liveness + readiness | ECS/Kubernetes prefer separate `/livez` + `/readyz`. |
-| `_handle_shutdown` does not drain WebSockets | Clients flap on rolling deploys. |
+| Sync file I/O in async loop | Event-loop stall at high session counts. Tracked in [#56](https://github.com/abti247/iron_verdict/issues/56). |
+| `ALLOWED_ORIGIN="*"` in-code default | No CSRF risk on the *current* production deploy (Railway env var overrides to `https://iron-verdict.com`), but secure-by-discipline rather than secure-by-default — a new deployment surface that forgets to set the env var would silently accept any origin. Fix: fail loud at startup in non-dev mode if the value is unset or `"*"`. Tracked in [#60](https://github.com/abti247/iron_verdict/issues/60). |
+| `/health` conflates liveness + readiness | ECS/Kubernetes prefer separate `/livez` + `/readyz`. Tracked in [#64](https://github.com/abti247/iron_verdict/issues/64). |
+| `_handle_shutdown` does not drain WebSockets | Clients flap on rolling deploys. Tracked in [#63](https://github.com/abti247/iron_verdict/issues/63). |
 | No Prometheus metrics surface | Phase 3 work on the roadmap. |
-| `join_session` race at `session.py:104–110` | Check-then-write outside the lock. Low priority. |
+| `join_session` race at `session.py:104–110` | Check-then-write outside the lock. Low priority; [#57](https://github.com/abti247/iron_verdict/issues/57) checks whether it is a real bug. |
 
 ## Frontend
 
