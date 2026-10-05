@@ -39,6 +39,9 @@ Rules:
 - Never push directly to `main`. Merge only with green CI and approval by the maintainer.
 - Issues and communication with the maintainer in German; code, commit messages, documentation and CHANGELOG stay in English.
 - Open work is tracked in GitHub Issues (there is no backlog file).
+- **Ask, don't assume.** When a decision belongs to the maintainer, ask before acting on it — never pick an answer from assumptions. This covers anything affecting product behavior, the critical path, VPortal, security, cost, external services, deployment, or scope (doing more or less than asked), and any rule that is ambiguous or contradicts the code.
+  - Issues: if an issue has a "Zu klären" section or other open questions, get the answers before implementing the affected parts and record them in the issue so later sessions know them.
+  - Pure implementation details with an obvious convention in the codebase (naming, file placement, test structure) don't need a question — but state the choice in the PR so it can be reviewed.
 
 ## Project Structure
 - Place all application implementation files (code, modules, components) under /src directory.
