@@ -37,8 +37,7 @@ def test_display_browser_back_returns_to_role_select(competition):
 
 def test_role_select_browser_back_returns_to_landing(competition):
     """Browser back from role-select returns to the landing screen."""
-    ctx = competition.browser.new_context(locale="en-US")
-    competition.contexts.append(ctx)
+    ctx = competition.new_context()
     page = ctx.new_page()
     page.on("dialog", lambda d: d.accept())
     page.goto(competition.url)
@@ -71,8 +70,7 @@ def test_qr_entry_back_returns_to_landing(competition):
     competition.create_session_and_join_head()
     code = competition.session_code
 
-    ctx = competition.browser.new_context(locale="en-US")
-    competition.contexts.append(ctx)
+    ctx = competition.new_context()
     page = ctx.new_page()
     page.on("dialog", lambda d: d.accept())
     page.goto(f"{competition.url}/?session={code}")
@@ -115,8 +113,7 @@ def test_reload_recovery_double_back_returns_to_landing(competition):
 
 def test_reload_on_role_select_returns_to_role_select(competition):
     """Creating a session, reloading on role-select, lands back on role-select."""
-    ctx = competition.browser.new_context(locale="en-US")
-    competition.contexts.append(ctx)
+    ctx = competition.new_context()
     page = ctx.new_page()
     page.on("dialog", lambda d: d.accept())
     page.goto(competition.url)
@@ -164,8 +161,7 @@ def test_reload_on_judge_preserves_history_length(competition):
 
 def test_reload_on_role_select_preserves_history_length(competition):
     """Same guarantee for the code-only reload-recovery path."""
-    ctx = competition.browser.new_context(locale="en-US")
-    competition.contexts.append(ctx)
+    ctx = competition.new_context()
     page = ctx.new_page()
     page.on("dialog", lambda d: d.accept())
     page.goto(competition.url)

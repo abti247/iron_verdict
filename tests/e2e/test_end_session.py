@@ -40,8 +40,7 @@ def test_session_gone_after_end(competition):
     ).to_be_visible(timeout=5000)
 
     # Try to join ended session in a fresh context
-    ctx = competition.browser.new_context(locale="en-US")
-    competition.contexts.append(ctx)
+    ctx = competition.new_context()
     page = ctx.new_page()
     page.goto(competition.url)
 
