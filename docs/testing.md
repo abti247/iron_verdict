@@ -31,7 +31,13 @@ pytest --tb=short -v               # readable pass/fail
 - A new push to a PR cancels the still-running CI of the previous push.
 - CI records a trace for every browser context, which makes E2E runs slightly slower than a plain local `pytest tests/e2e/`. If a test flakes in CI but not locally, rerun it locally with `--tracing on` before blaming the code — the timing-sensitive tests in [docs/e2e-known-risks.md](docs/e2e-known-risks.md) are the first suspects.
 - No automatic retries. **Why:** retries hide flaky tests; a flaky test is fixed or documented in [docs/e2e-known-risks.md](docs/e2e-known-risks.md).
-- Branch protection on `main` (configured by the maintainer in the repo settings): merge only via PR, `backend`, `js` and `e2e` required, branch must be up to date. No required reviewer approval — a sole maintainer cannot approve their own PRs on GitHub.
+- Branch protection on `main` (configured by the maintainer in the repo settings): merge only via PR, `backend`, `js`, `e2e` and `image` required, branch must be up to date. No required reviewer approval — a sole maintainer cannot approve their own PRs on GitHub.
+
+### Image check
+
+[.github/workflows/image.yml](.github/workflows/image.yml) (job `image`, required on PRs) builds the Docker image with Buildx (GitHub Actions layer cache, `APP_VERSION=sha-<head commit>`), starts it with a named `/data` volume and smoke-tests the **running container** from outside: `pytest tests/e2e/test_smoke.py` with `E2E_BASE_URL=http://127.0.0.1:8000`. Afterwards it stops the container and requires `/data/sessions.json` to have been written — proof that the entrypoint handed the root-owned volume to `appuser`. Container logs are always printed; Playwright traces go to the `playwright-traces-image` artifact on failure. **Why:** the other jobs test the source tree; a file dropped by `.dockerignore` or package data, a broken entrypoint or wrong permissions only show up in the built image.
+
+The [Main workflow](.github/workflows/main.yml) runs `ci.yml` and `image.yml` on every push to `main` and pushes the tested image to GHCR only when both are green; the [Release workflow](.github/workflows/release.yml) re-tags it on `v*` tags. See [docs/release.md](docs/release.md).
 
 ## Claude cloud environment setup
 
@@ -82,14 +88,14 @@ Requirements and caveats:
 
 [tests/e2e/conftest.py](tests/e2e/conftest.py) provides:
 
-- `server_url` (session-scoped) — starts Uvicorn on a random port, yields the URL, shuts down at session exit.
-- `_reset_server_state` (autouse) — clears sessions, connections, and rate limiter between tests.
+- `server_url` (session-scoped) — starts Uvicorn on a random port, yields the URL, shuts down at session exit. With `E2E_BASE_URL` set it yields that URL instead and starts nothing (external mode: the Docker image in CI, later staging).
+- `_reset_server_state` (autouse) — clears sessions, connections, and rate limiter between tests. No-op in external mode.
 - `competition` — yields a `CompetitionHelper` that encapsulates session creation, role joining, voting, and browser-context cleanup. `competition.new_context()` opens an extra context for manual flows; it goes through pytest-playwright's `new_context` fixture so the context is traced on failure.
-- `fake_vportal_url` (session-scoped) — starts [tests/e2e/fake_vportal.py](tests/e2e/fake_vportal.py) (a tiny FastAPI app that mimics VPortal's `/account/login`, `/auth/token`, and `/graphql`) on a random port and yields `host:port`. Used by `test_vportal_integration.py`. Sets `TEST_MODE=1` and `VPORTAL_FETCH_INTERVAL_MS=2000` at module import so the proxy accepts the fake host and polls fast enough for tests. The fake server exposes `/_control/{force_token_invalid,unreachable,clear_attempt,restore_attempt,reset}` so tests can simulate error states.
+- `fake_vportal_url` (session-scoped) — starts [tests/e2e/fake_vportal.py](tests/e2e/fake_vportal.py) (a tiny FastAPI app that mimics VPortal's `/account/login`, `/auth/token`, and `/graphql`) on a random port and yields `host:port`. Used by `test_vportal_integration.py`; skips in external mode (needs the in-process server's `TEST_MODE`). Sets `TEST_MODE=1` and `VPORTAL_FETCH_INTERVAL_MS=2000` at module import so the proxy accepts the fake host and polls fast enough for tests. The fake server exposes `/_control/{force_token_invalid,unreachable,clear_attempt,restore_attempt,reset}` so tests can simulate error states.
 
 | File | Scenario |
 |---|---|
-| [test_smoke.py](tests/e2e/test_smoke.py) | Landing renders; "Create New Session" reaches the role select. Sentinel that the Uvicorn fixture is healthy. |
+| [test_smoke.py](tests/e2e/test_smoke.py) | Landing renders; "Create New Session" reaches the role select; `/health`; every static asset the app loads (followed from `/`, `/vportal` and ES-module imports) is served; app version rendered (`E2E_EXPECTED_APP_VERSION` pins it); WebSocket join as head judge; VPortal client modules load. Also the **container smoke test** (`image` job): must work in external mode, so no in-process state and only a few sessions (creation is rate-limited to 10/hour per IP). |
 | [test_join_invalid_code.py](tests/e2e/test_join_invalid_code.py) | Landing-screen validation — Join button enables only at 8 chars; unknown code shows inline error and blocks navigation to role-select; typing clears the error; stale QR (`?session=...`) lands on landing with the code pre-filled and the error visible. |
 | [test_competition_flow.py](tests/e2e/test_competition_flow.py) | **Regression gate.** Full lift cycle (white sweep + mixed verdict + Next Lift), required-reasons branch, timer start/reset across all four screens. |
 | [test_double_vote_prevention.py](tests/e2e/test_double_vote_prevention.py) | Locked vote survives refresh; re-voting blocked; Next Lift clears the lock. |

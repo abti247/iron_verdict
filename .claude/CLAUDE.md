@@ -49,6 +49,7 @@ Rules:
 - Place all application implementation files (code, modules, components) under /src directory.
 - Place all application documentation files under /docs directory.
 - Place all test files and test-related code under /tests directory.
+- Place repository tooling scripts (CI/release helpers, not part of the app) under /scripts directory.
 
 ## GitHub
 - Before committing any files, ask the user for confirmation if you're uncertain whether they should be committed, especially for generated files, logs, cache files, or system files.
@@ -94,7 +95,7 @@ Rules:
 - Before merging, run the full test suite — both backend and E2E
 
 ### CI
-- `.github/workflows/ci.yml` runs on every PR: jobs `backend`, `js` (Vitest) and `e2e`; branch protection on `main` (set by the maintainer) requires all three. On an E2E failure, Playwright traces and screenshots are downloadable as the `playwright-traces` artifact — open extra browser contexts in E2E tests with `competition.new_context()` (not `browser.new_context()`), otherwise they are not traced.
+- `.github/workflows/ci.yml` runs on every PR: jobs `backend`, `js` (Vitest) and `e2e`; `.github/workflows/image.yml` adds job `image` (Docker build + container smoke test via `E2E_BASE_URL`). Branch protection on `main` (set by the maintainer) requires all four. Pushes to `main` publish the tested image to GHCR; `v*` tags release it — see `docs/release.md` and the `/release` skill. On an E2E failure, Playwright traces and screenshots are downloadable as the `playwright-traces` artifact — open extra browser contexts in E2E tests with `competition.new_context()` (not `browser.new_context()`), otherwise they are not traced.
 - Never make CI green by skipping, disabling or retrying a test — fix it or document it in `docs/e2e-known-risks.md`.
 - Cloud sessions get dependencies and Chromium from the environment's setup script (see `docs/testing.md`, "Claude cloud environment setup"). If plain `pytest` fails with `ModuleNotFoundError`, use `python -m pytest`.
 

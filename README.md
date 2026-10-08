@@ -96,11 +96,21 @@ Tips:
 
 ### Railway
 
-1. Deploy from your GitHub repository.
+Production runs the image built and tested by CI, not a build from source:
+
+1. Create a service from the Docker image `ghcr.io/abti247/iron_verdict:vX.Y.Z` (a release tag from GitHub → Releases).
 2. Add a **Volume** mounted at `/data` (Railway dashboard → Storage).
 3. Set the `ALLOWED_ORIGIN` environment variable to your Railway-assigned domain.
 
-All other settings default to sensible production values.
+All other settings default to sensible production values. Deploying a new version or rolling back means changing the image tag in the service's **Source Image** setting — see [docs/release.md](docs/release.md) for release, deploy and rollback.
+
+### Prebuilt images
+
+Every commit on `main` that passes CI is published as `ghcr.io/abti247/iron_verdict:sha-<commit>` (and `:main`); releases add `:vX.Y.Z` to the same image. Use a release tag outside of development:
+
+```bash
+docker run -p 8000:8000 -v ./data:/data ghcr.io/abti247/iron_verdict:vX.Y.Z
+```
 
 ## Development
 
