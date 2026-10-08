@@ -38,3 +38,6 @@ docs/superpowers/
 
 # Node
 node_modules/
+
+# Playwright traces/screenshots from failed E2E runs
+test-results/

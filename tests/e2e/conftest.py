@@ -75,12 +75,25 @@ class CompetitionHelper:
         "display": "Display Screen",
     }
 
-    def __init__(self, browser, url):
+    def __init__(self, browser, url, new_context_factory):
         self.browser = browser
         self.url = url
+        self._new_context_factory = new_context_factory
         self.contexts = []
         self.pages = {}
         self.session_code = None
+
+    def new_context(self, **kwargs):
+        """Open a browser context that pytest-playwright records.
+
+        Contexts from pytest-playwright's ``new_context`` fixture get the
+        ``--tracing`` / ``--screenshot`` artifacts on failure (CI uploads
+        them); contexts from ``browser.new_context`` do not. The ``en-US``
+        locale comes from ``browser_context_args``.
+        """
+        ctx = self._new_context_factory(**kwargs)
+        self.contexts.append(ctx)
+        return ctx
 
     def cleanup(self):
         for ctx in self.contexts:
@@ -91,8 +104,7 @@ class CompetitionHelper:
 
     def create_session_and_join_head(self, name="Test Session"):
         """Create a session and join as head judge (center). Returns page."""
-        ctx = self.browser.new_context(locale="en-US")
-        self.contexts.append(ctx)
+        ctx = self.new_context()
         page = ctx.new_page()
         page.on("dialog", lambda d: d.accept())
         page.goto(self.url)
@@ -112,8 +124,7 @@ class CompetitionHelper:
 
     def join_as(self, role):
         """Join the session as *role*. Returns page."""
-        ctx = self.browser.new_context(locale="en-US")
-        self.contexts.append(ctx)
+        ctx = self.new_context()
         page = ctx.new_page()
         page.on("dialog", lambda d: d.accept())
         page.goto(self.url)
@@ -167,8 +178,8 @@ class CompetitionHelper:
 # ---------------------------------------------------------------------------
 
 @pytest.fixture()
-def competition(browser, server_url):
-    helper = CompetitionHelper(browser, server_url)
+def competition(browser, server_url, new_context):
+    helper = CompetitionHelper(browser, server_url, new_context)
     yield helper
     helper.cleanup()
 

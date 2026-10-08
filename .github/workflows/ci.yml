@@ -1,0 +1,113 @@
+name: CI
+
+# Required status checks for merging into main: backend, js, e2e.
+# workflow_call lets other workflows (e.g. the main-branch pipeline) reuse
+# exactly these checks instead of duplicating them.
+on:
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+# A new push to the same PR makes the previous run obsolete. Under
+# workflow_call the github context is the caller's, so non-PR runs get a
+# unique group (run_id): the caller owns its own concurrency, and queued
+# main-branch runs are never dropped or deadlocked against the caller.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # Same Python version as the Dockerfile.
+  PYTHON_VERSION: "3.13"
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install dependencies
+        run: python -m pip install -e ".[dev]"
+
+      - name: Run backend tests
+        run: python -m pytest tests/ --ignore=tests/e2e --tb=short -v
+
+  js:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Vitest
+        run: npx vitest run
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install dependencies
+        run: python -m pip install -e ".[dev]"
+
+      # Browser builds are tied to the Playwright version, so the cache key
+      # uses the version pip actually resolved.
+      - name: Get Playwright version
+        id: playwright
+        run: echo "version=$(python -c 'import importlib.metadata as m; print(m.version("playwright"))')" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+
+      - name: Install Chromium with system dependencies
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: python -m playwright install --with-deps chromium
+
+      - name: Install Chromium system dependencies (browser cached)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: python -m playwright install-deps chromium
+
+      - name: Run E2E tests
+        run: >-
+          python -m pytest tests/e2e/ --tb=short -v
+          --tracing retain-on-failure
+          --screenshot only-on-failure
+          --output test-results
+
+      # cancelled() also covers the job timeout: tests that failed before a hang
+      # keep their traces (the hung test itself has none, pytest is killed).
+      - name: Upload Playwright traces and screenshots
+        if: failure() || cancelled()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 14
+          if-no-files-found: ignore

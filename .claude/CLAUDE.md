@@ -93,6 +93,11 @@ Rules:
 - Feature-specific E2E tests cover edge cases and niche behavior
 - Before merging, run the full test suite — both backend and E2E
 
+### CI
+- `.github/workflows/ci.yml` runs on every PR: jobs `backend`, `js` (Vitest) and `e2e`; branch protection on `main` (set by the maintainer) requires all three. On an E2E failure, Playwright traces and screenshots are downloadable as the `playwright-traces` artifact — open extra browser contexts in E2E tests with `competition.new_context()` (not `browser.new_context()`), otherwise they are not traced.
+- Never make CI green by skipping, disabling or retrying a test — fix it or document it in `docs/e2e-known-risks.md`.
+- Cloud sessions get dependencies and Chromium from the environment's setup script (see `docs/testing.md`, "Claude cloud environment setup"). If plain `pytest` fails with `ModuleNotFoundError`, use `python -m pytest`.
+
 ### Reporting
 - Use `pytest --tb=short -v` for human-readable pass/fail output
 - Backend tests: rely on descriptive function names (no docstrings needed)

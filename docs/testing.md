@@ -15,6 +15,48 @@ pytest                             # everything
 pytest --tb=short -v               # readable pass/fail
 ```
 
+## Continuous integration
+
+[.github/workflows/ci.yml](.github/workflows/ci.yml) runs on every pull request and is reusable via `workflow_call`, so a main-branch pipeline can call the same checks instead of duplicating them. Three parallel jobs, each a required status check for merging into `main`:
+
+| Job | What it runs |
+|---|---|
+| `backend` | Python 3.13 (same as the Dockerfile), `pip install -e ".[dev]"`, `pytest tests/ --ignore=tests/e2e` |
+| `js` | Node LTS, `npm ci`, `npx vitest run` |
+| `e2e` | Same Python setup + Chromium with its system packages (`playwright install --with-deps chromium`; only `install-deps` when the browser is cached), `pytest tests/e2e/` with `--tracing retain-on-failure --screenshot only-on-failure` |
+
+- pip, npm and the Playwright browser download are cached. The browser cache key is the resolved Playwright version, because each Playwright release pins its own Chromium build.
+- When `e2e` fails (or times out — then only tests that failed before the hang have artifacts), the traces and screenshots of the failing tests are uploaded as the `playwright-traces` artifact (kept 14 days), one trace per browser context. Open a trace with `playwright show-trace <trace.zip>` or at trace.playwright.dev. Only contexts created through pytest-playwright are recorded — the `page`/`context` fixtures and `competition.new_context()`. A bare `browser.new_context()` produces no trace, so new tests must not use it (the remaining one is `test_rejoin_via_qr_keeps_connect_button_visible` in the VPortal-protected `test_vportal_integration.py`).
+- E2E tests need `cdn.jsdelivr.net` at runtime (Alpine.js and the QR library, until issue #54 ships them locally). If **every** E2E test times out waiting for the first input, check that CDN before suspecting a regression.
+- A new push to a PR cancels the still-running CI of the previous push.
+- CI records a trace for every browser context, which makes E2E runs slightly slower than a plain local `pytest tests/e2e/`. If a test flakes in CI but not locally, rerun it locally with `--tracing on` before blaming the code — the timing-sensitive tests in [docs/e2e-known-risks.md](docs/e2e-known-risks.md) are the first suspects.
+- No automatic retries. **Why:** retries hide flaky tests; a flaky test is fixed or documented in [docs/e2e-known-risks.md](docs/e2e-known-risks.md).
+- Branch protection on `main` (configured by the maintainer in the repo settings): merge only via PR, `backend`, `js` and `e2e` required, branch must be up to date. No required reviewer approval — a sole maintainer cannot approve their own PRs on GitHub.
+
+## Claude cloud environment setup
+
+Claude Code cloud sessions start from a fresh VM. The maintainer enters this script under **Setup script** in the environment settings on claude.ai/code, so every session can run the full suite right away:
+
+```bash
+#!/bin/bash
+set -euo pipefail
+cd /home/user/iron_verdict
+python -m pip install -e ".[dev]"
+npm ci
+python -m playwright install --with-deps chromium
+# The VM ships a standalone pytest (uv tool) that shadows the project's
+# pytest and lacks its plugins; remove it so plain `pytest` works.
+uv tool uninstall pytest || true
+```
+
+Requirements and caveats:
+
+- **Network access** (Network access → Custom, keep the default package-manager list; the default list blocks both hosts):
+  - `cdn.playwright.dev` — the Chromium build pre-installed on the VM rarely matches the Playwright version pip resolves; without the download E2E tests fail with "Executable doesn't exist".
+  - `cdn.jsdelivr.net` — the app still loads Alpine.js and the QR library from this CDN (until issue #54 ships them locally); without it the landing page never renders and every E2E test times out waiting for the first input.
+- The script runs once per environment and the result is cached for roughly seven days. After a dependency change in `pyproject.toml` or `package.json`, run `pip install -e ".[dev]"` / `npm ci` in the session (or edit the script to force a rebuild).
+- If plain `pytest` reports `ModuleNotFoundError` for a project dependency, it is the VM's standalone pytest — use `python -m pytest`.
+
 ## Conventions
 
 - `pyproject.toml` sets `asyncio_mode = "auto"` — every `async def test_*` is automatically run as an asyncio test. No `@pytest.mark.asyncio` decorator needed.
@@ -42,7 +84,7 @@ pytest --tb=short -v               # readable pass/fail
 
 - `server_url` (session-scoped) — starts Uvicorn on a random port, yields the URL, shuts down at session exit.
 - `_reset_server_state` (autouse) — clears sessions, connections, and rate limiter between tests.
-- `competition` — yields a `CompetitionHelper` that encapsulates session creation, role joining, voting, and browser-context cleanup.
+- `competition` — yields a `CompetitionHelper` that encapsulates session creation, role joining, voting, and browser-context cleanup. `competition.new_context()` opens an extra context for manual flows; it goes through pytest-playwright's `new_context` fixture so the context is traced on failure.
 - `fake_vportal_url` (session-scoped) — starts [tests/e2e/fake_vportal.py](tests/e2e/fake_vportal.py) (a tiny FastAPI app that mimics VPortal's `/account/login`, `/auth/token`, and `/graphql`) on a random port and yields `host:port`. Used by `test_vportal_integration.py`. Sets `TEST_MODE=1` and `VPORTAL_FETCH_INTERVAL_MS=2000` at module import so the proxy accepts the fake host and polls fast enough for tests. The fake server exposes `/_control/{force_token_invalid,unreachable,clear_attempt,restore_attempt,reset}` so tests can simulate error states.
 
 | File | Scenario |
