@@ -1,0 +1,154 @@
+name: Image
+
+# Builds the Docker image and smoke-tests the running container, so a broken
+# image (Dockerfile, .dockerignore, appuser permissions, gosu entrypoint)
+# fails before the merge instead of at deploy time.
+# Required status check for merging into main: image. Nothing is pushed here;
+# main.yml calls this workflow with upload-image: true and pushes exactly the
+# image this job tested.
+on:
+  pull_request:
+  workflow_call:
+    inputs:
+      upload-image:
+        description: Upload the tested image as the `image` artifact for publishing
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# Same scheme as ci.yml: a new push to a PR cancels the previous run; calls
+# from main.yml get a unique group and are never cancelled here.
+concurrency:
+  group: image-${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  PYTHON_VERSION: "3.13"
+  IMAGE: iron_verdict:ci
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+
+      # On pull_request, github.sha is the temporary merge commit; the head
+      # commit is the one a reviewer sees.
+      - name: Compute app version
+        id: version
+        env:
+          COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: echo "app-version=sha-${COMMIT::7}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Build image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          load: true
+          push: false
+          tags: ${{ env.IMAGE }}
+          build-args: APP_VERSION=${{ steps.version.outputs.app-version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # A named volume is mounted as root, like Railway's volume: the
+      # entrypoint must hand /data to appuser before the app can write it.
+      - name: Start container
+        run: >-
+          docker run -d --name iron-verdict
+          -p 8000:8000
+          -v iron-verdict-data:/data
+          "$IMAGE"
+
+      # Poll instead of a fixed sleep: continue as soon as /health answers,
+      # give up after 60 s (a container that does not start is the failure).
+      - name: Wait for /health
+        run: |
+          for _ in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8000/health; then exit 0; fi
+            if [ "$(docker inspect -f '{{.State.Running}}' iron-verdict)" != "true" ]; then
+              echo "::error::Container exited before /health answered"
+              exit 1
+            fi
+            sleep 1
+          done
+          echo "::error::/health did not answer within 60 s"
+          exit 1
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      # The tests run outside the container (.dockerignore excludes tests/).
+      - name: Install test dependencies
+        run: python -m pip install -e ".[dev]"
+
+      - name: Get Playwright version
+        id: playwright
+        run: echo "version=$(python -c 'import importlib.metadata as m; print(m.version("playwright"))')" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+
+      - name: Install Chromium with system dependencies
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: python -m playwright install --with-deps chromium
+
+      - name: Install Chromium system dependencies (browser cached)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: python -m playwright install-deps chromium
+
+      - name: Smoke-test the container
+        env:
+          E2E_BASE_URL: http://127.0.0.1:8000
+          E2E_EXPECTED_APP_VERSION: ${{ steps.version.outputs.app-version }}
+        run: >-
+          python -m pytest tests/e2e/test_smoke.py --tb=short -v
+          --tracing retain-on-failure
+          --screenshot only-on-failure
+          --output test-results
+
+      # Graceful stop writes the session snapshot as appuser: proves the
+      # entrypoint made the root-owned volume writable.
+      - name: Check snapshot is written on shutdown
+        run: |
+          docker stop --timeout 30 iron-verdict
+          docker run --rm -v iron-verdict-data:/data --entrypoint test "$IMAGE" -s /data/sessions.json \
+            || { echo "::error::/data/sessions.json was not written on shutdown"; exit 1; }
+
+      - name: Container logs
+        if: always()
+        run: docker logs iron-verdict || true
+
+      - name: Upload Playwright traces and screenshots
+        if: failure() || cancelled()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-traces-image
+          path: test-results/
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Save tested image
+        if: inputs.upload-image
+        run: docker save "$IMAGE" | gzip > image.tar.gz
+
+      - name: Upload tested image
+        if: inputs.upload-image
+        uses: actions/upload-artifact@v7
+        with:
+          name: image
+          path: image.tar.gz
+          retention-days: 1
+          if-no-files-found: error

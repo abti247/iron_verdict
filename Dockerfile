@@ -1,6 +1,9 @@
 ARG PYTHON_VERSION=3.13
 FROM python:${PYTHON_VERSION}-slim AS base
 
+# Links the GHCR package to the repository, so CI can push with GITHUB_TOKEN.
+LABEL org.opencontainers.image.source="https://github.com/abti247/iron_verdict"
+
 # Prevents Python from writing pyc files.
 ENV PYTHONDONTWRITEBYTECODE=1
 
