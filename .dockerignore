@@ -19,3 +19,6 @@ compose.yaml
 docker-compose.yml
 
 src/iron_verdict/static/AGENTS.md
+
+# DEMO for #50: deliberately broken image, reverted in the next commit
+src/iron_verdict/static/js/timer.js
