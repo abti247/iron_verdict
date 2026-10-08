@@ -1,4 +1,12 @@
-"""E2E test infrastructure — server fixture, cleanup, and CompetitionHelper."""
+"""E2E test infrastructure — server fixture, cleanup, and CompetitionHelper.
+
+Set ``E2E_BASE_URL`` (e.g. ``http://127.0.0.1:8000``) to run the tests against
+an already running server — the Docker image in CI, later a staging
+deployment — instead of starting the app in-process. In that mode the
+fixtures cannot reset or inspect server state and there is no fake VPortal,
+so tests that need either are skipped; CI runs them in the ``e2e`` job
+against the in-process server.
+"""
 
 import os
 import socket
@@ -15,6 +23,8 @@ import uvicorn
 from iron_verdict.main import app, session_manager, connection_manager
 from iron_verdict.main import limiter
 
+EXTERNAL_BASE_URL = os.environ.get("E2E_BASE_URL", "").rstrip("/")
+
 
 # ---------------------------------------------------------------------------
 # 1. Session-scoped server fixture — starts real FastAPI on a random port
@@ -22,6 +32,10 @@ from iron_verdict.main import limiter
 
 @pytest.fixture(scope="session")
 def server_url():
+    if EXTERNAL_BASE_URL:
+        yield EXTERNAL_BASE_URL
+        return
+
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(("127.0.0.1", 0))
         port = s.getsockname()[1]
@@ -57,6 +71,10 @@ def browser_context_args(browser_context_args):
 
 @pytest.fixture(autouse=True)
 def _reset_server_state():
+    if EXTERNAL_BASE_URL:
+        # The state lives in another process; nothing to reset.
+        yield
+        return
     limiter.reset()
     yield
     session_manager.sessions.clear()
@@ -190,6 +208,8 @@ def competition(browser, server_url, new_context):
 
 @pytest.fixture(scope="session")
 def fake_vportal_url():
+    if EXTERNAL_BASE_URL:
+        pytest.skip("fake VPortal needs the in-process server (TEST_MODE); runs in the e2e job")
     from tests.e2e.fake_vportal import app as fake_app
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(("127.0.0.1", 0))

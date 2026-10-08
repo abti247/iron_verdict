@@ -46,6 +46,12 @@ RUN printf '#!/bin/sh\nset -e\nchown -R appuser:appuser /data\nexec gosu appuser
     > /usr/local/bin/docker-entrypoint.sh \
     && chmod +x /usr/local/bin/docker-entrypoint.sh
 
+# Version shown in the app footer. CI passes sha-<commit>; the release tag
+# (vX.Y.Z) is only added to the already-built image, so it cannot be baked in.
+# Declared late so a new commit does not invalidate the cached layers above.
+ARG APP_VERSION=dev
+ENV APP_VERSION=${APP_VERSION}
+
 # Expose the port that the application listens on.
 EXPOSE 8000
 
