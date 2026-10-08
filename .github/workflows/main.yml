@@ -45,9 +45,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Push sha-<commit>
+      # sha-<commit> is immutable: a re-run rebuilds the image (new digest),
+      # and overwriting the tag would detach it from releases already cut
+      # from it. The first tested image of a commit wins.
+      - name: Push sha-<commit> (unless it already exists)
         run: |
           SHA_TAG="$IMAGE_REPO:sha-${GITHUB_SHA::7}"
+          if docker buildx imagetools inspect "$SHA_TAG" > /dev/null 2>&1; then
+            echo "\`$SHA_TAG\` already exists; keeping it (re-run)" | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           docker tag iron_verdict:ci "$SHA_TAG"
           docker push "$SHA_TAG"
           echo "Pushed \`$SHA_TAG\`" >> "$GITHUB_STEP_SUMMARY"
@@ -63,8 +70,7 @@ jobs:
             echo "main moved on to $HEAD_SHA; leaving the main tag to its run" | tee -a "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
-          docker tag iron_verdict:ci "$IMAGE_REPO:main"
-          docker push "$IMAGE_REPO:main"
+          docker buildx imagetools create --tag "$IMAGE_REPO:main" "$IMAGE_REPO:sha-${GITHUB_SHA::7}"
           echo "Pushed \`$IMAGE_REPO:main\`" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Record digest

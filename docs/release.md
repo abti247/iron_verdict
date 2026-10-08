@@ -13,8 +13,8 @@ Image: `ghcr.io/abti247/iron_verdict`. Tags:
 
 | Tag | Set by | Meaning |
 |---|---|---|
-| `sha-<7-char commit>` | Main workflow | Tested image of that commit on `main`. Never overwritten. |
-| `main` | Main workflow | Latest tested commit on `main`. Not for production. |
+| `sha-<7-char commit>` | Main workflow | Tested image of that commit on `main`. Never overwritten — a re-run of the Main workflow keeps the existing tag. |
+| `main` | Main workflow | Points to the `sha-<commit>` image of the latest tested commit on `main`. Not for production. |
 | `vX.Y.Z` | Release workflow | Same digest as the `sha-<commit>` of the tagged commit. Production uses only these. |
 
 Versions follow SemVer with a `v` prefix and no pre-release suffix (`v0.2.0`); the 0.x major already signals pre-1.0. Older releases up to `v0.1.4-beta` kept the `-beta` suffix.
@@ -24,7 +24,8 @@ The footer of the app shows `sha-<commit>` of the running image (baked in at bui
 ## One-time setup
 
 - **Branch protection on `main`:** add `image` to the required status checks (next to `backend`, `js`, `e2e`).
-- **GHCR write access for Actions:** GitHub → Packages → `iron_verdict` → Package settings → *Manage Actions access* → add the repository `abti247/iron_verdict` with role **Write**. Without it the Main and Release workflows fail at the push with `403`/`denied`. The image's `org.opencontainers.image.source` label links new pushes to the repository.
+- **GHCR write access for Actions:** the package `iron_verdict` already exists (pushed by hand so far), so GitHub → your profile → Packages → `iron_verdict` → Package settings → *Manage Actions access* → add the repository `abti247/iron_verdict` with role **Write**. Without it the Main and Release workflows fail at the push with `403`/`denied`. (A package first created by a workflow is linked automatically via the image's `org.opencontainers.image.source` label.)
+- **Package visibility:** Railway pulls without credentials, so the package must stay **Public** (Package settings → Danger Zone → Change visibility). It is today, since Railway pulls `v0.1.4-beta`; check it once after the first workflow push. Alternative: keep it private and give Railway registry credentials.
 - **Railway auto updates off:** under Settings → Source → Source Image → *Configure auto updates*, keep automatic updates disabled. Deploys happen only when the tag reference is changed.
 
 ## Release

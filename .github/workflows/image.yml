@@ -119,13 +119,13 @@ jobs:
           --screenshot only-on-failure
           --output test-results
 
-      # Graceful stop writes the session snapshot as appuser: proves the
-      # entrypoint made the root-owned volume writable.
-      - name: Check snapshot is written on shutdown
+      # The app writes the session snapshot as appuser (on graceful stop, and
+      # periodically): proves the entrypoint made the root-owned volume writable.
+      - name: Check snapshot is written to /data
         run: |
           docker stop --timeout 30 iron-verdict
           docker run --rm -v iron-verdict-data:/data --entrypoint test "$IMAGE" -s /data/sessions.json \
-            || { echo "::error::/data/sessions.json was not written on shutdown"; exit 1; }
+            || { echo "::error::/data/sessions.json was not written"; exit 1; }
 
       - name: Container logs
         if: always()

@@ -4,7 +4,7 @@ Three tiers, kept honest by tooling boundaries:
 
 - **Backend unit** — modules tested in isolation. No FastAPI involved.
 - **Backend integration** — drives the FastAPI app through ASGI (`TestClient` for HTTP, `httpx_ws.aconnect_ws` for WebSocket).
-- **End-to-end** — real Uvicorn on a random port; Playwright drives the browser against the real DOM.
+- **End-to-end** — real Uvicorn on a random port (or an external server via `E2E_BASE_URL`); Playwright drives the browser against the real DOM.
 
 ## How to run
 
@@ -35,7 +35,7 @@ pytest --tb=short -v               # readable pass/fail
 
 ### Image check
 
-[.github/workflows/image.yml](.github/workflows/image.yml) (job `image`, required on PRs) builds the Docker image with Buildx (GitHub Actions layer cache, `APP_VERSION=sha-<head commit>`), starts it with a named `/data` volume and smoke-tests the **running container** from outside: `pytest tests/e2e/test_smoke.py` with `E2E_BASE_URL=http://127.0.0.1:8000`. Afterwards it stops the container and requires `/data/sessions.json` to have been written — proof that the entrypoint handed the root-owned volume to `appuser`. Container logs are always printed; Playwright traces go to the `playwright-traces-image` artifact on failure. **Why:** the other jobs test the source tree; a file dropped by `.dockerignore` or package data, a broken entrypoint or wrong permissions only show up in the built image.
+[.github/workflows/image.yml](.github/workflows/image.yml) (job `image`, required on PRs) builds the Docker image with Buildx (GitHub Actions layer cache, `APP_VERSION=sha-<head commit>`), starts it with a named `/data` volume and smoke-tests the **running container** from outside: `pytest tests/e2e/test_smoke.py` with `E2E_BASE_URL=http://127.0.0.1:8000`. Afterwards it stops the container and requires `/data/sessions.json` to have been written by the app — proof that the entrypoint handed the root-owned volume to `appuser`. Container logs are always printed; Playwright traces go to the `playwright-traces-image` artifact on failure. **Why:** the other jobs test the source tree; a file dropped by `.dockerignore` or package data, a broken entrypoint or wrong permissions only show up in the built image.
 
 The [Main workflow](.github/workflows/main.yml) runs `ci.yml` and `image.yml` on every push to `main` and pushes the tested image to GHCR only when both are green; the [Release workflow](.github/workflows/release.yml) re-tags it on `v*` tags. See [docs/release.md](docs/release.md).
 
@@ -82,6 +82,7 @@ Requirements and caveats:
 | [tests/test_http.py](tests/test_http.py) | Integration — HTTP surface: session creation (validation, rate limit, `kind` accepted / rejected), session lookup (exists / not found / malformed-format rejection / 404 log event / `kind` + `staging_available` in body), `/vportal` route serves identical HTML as `/`, `/health`, security headers, and the `session_created` log event. |
 | [tests/test_vportal_proxy.py](tests/test_vportal_proxy.py) | Integration — VPortal proxy: host allowlist (production + staging accepted, localhost rejected without TEST_MODE, attackers rejected), operation allowlist (known reads accepted, mutations and unknown queries rejected with 400), login endpoint forwards cookie→JWT chain and returns the server-clamped polling interval, GraphQL forwarding propagates 401 verbatim and maps 5xx to 502. Upstream simulated via `httpx.MockTransport`. |
 | [tests/test_websocket.py](tests/test_websocket.py) | Integration — WebSocket protocol: join, vote lock (color, reason, mandatory-reason gate), settings broadcast, timer, origin check, flood disconnect, reconnect tokens, `judge_status_update`, pong heartbeat, display cap, and `caplog` assertions on every major WS log event. |
+| [tests/test_changelog_section.py](tests/test_changelog_section.py) | `scripts/changelog_section.py` (release notes for the Release workflow): extracts a version's CHANGELOG section with its compare link, exact version match (no prefix), CRLF input, errors on missing or entry-less sections, CLI exit codes, and that the real `CHANGELOG.md` parses. |
 | [tests/test_collection_ordering.py](tests/test_collection_ordering.py) | Regression — asserts the collection hook in `tests/conftest.py` keeps every backend test ordered before any E2E test, so bare `pytest` keeps working. **Known false-negative on Windows + Python 3.14:** the test spawns `pytest --collect-only` as a subprocess and hits a Windows handle-capture quirk that fails even though the ordering it audits is correct. Verifiable by running `python -m pytest --collect-only -q` manually. |
 
 ## End-to-end tests

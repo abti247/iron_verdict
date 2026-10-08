@@ -3,8 +3,10 @@
 Set ``E2E_BASE_URL`` (e.g. ``http://127.0.0.1:8000``) to run the tests against
 an already running server — the Docker image in CI, later a staging
 deployment — instead of starting the app in-process. In that mode the
-fixtures cannot reset or inspect server state and there is no fake VPortal,
-so tests that need either are skipped; CI runs them in the ``e2e`` job
+fixtures cannot reset server state and there is no fake VPortal (tests using
+``fake_vportal_url`` are skipped). Tests that import the in-process managers
+directly (e.g. ``connection_manager``) do not work externally either; CI only
+runs ``test_smoke.py`` in external mode and everything else in the ``e2e`` job
 against the in-process server.
 """
 
