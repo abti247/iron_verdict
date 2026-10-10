@@ -1,0 +1,79 @@
+name: Main
+
+# Every push to main: the same checks as a PR (ci.yml), the image build and
+# container smoke test (image.yml), and only if all are green, push of that
+# tested image to GHCR as sha-<commit> and main. Releases (release.yml) only
+# re-tag these images, they never rebuild.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  IMAGE_REPO: ghcr.io/abti247/iron_verdict
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  image:
+    uses: ./.github/workflows/image.yml
+    with:
+      upload-image: true
+
+  publish:
+    needs: [ci, image]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Download tested image
+        uses: actions/download-artifact@v8
+        with:
+          name: image
+
+      - name: Load tested image
+        run: gunzip -c image.tar.gz | docker load
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # sha-<commit> is immutable: a re-run rebuilds the image (new digest),
+      # and overwriting the tag would detach it from releases already cut
+      # from it. The first tested image of a commit wins.
+      - name: Push sha-<commit> (unless it already exists)
+        run: |
+          SHA_TAG="$IMAGE_REPO:sha-${GITHUB_SHA::7}"
+          if docker buildx imagetools inspect "$SHA_TAG" > /dev/null 2>&1; then
+            echo "\`$SHA_TAG\` already exists; keeping it (re-run)" | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          docker tag iron_verdict:ci "$SHA_TAG"
+          docker push "$SHA_TAG"
+          echo "Pushed \`$SHA_TAG\`" >> "$GITHUB_STEP_SUMMARY"
+
+      # Runs of consecutive pushes can finish out of order; only the run for
+      # the current head of main may move the main tag.
+      - name: Push main (only if this commit is still the head of main)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          HEAD_SHA="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)"
+          if [ "$HEAD_SHA" != "$GITHUB_SHA" ]; then
+            echo "main moved on to $HEAD_SHA; leaving the main tag to its run" | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          docker buildx imagetools create --tag "$IMAGE_REPO:main" "$IMAGE_REPO:sha-${GITHUB_SHA::7}"
+          echo "Pushed \`$IMAGE_REPO:main\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Record digest
+        run: |
+          DIGEST="$(docker buildx imagetools inspect "$IMAGE_REPO:sha-${GITHUB_SHA::7}" --format '{{json .Manifest}}' | jq -r .digest)"
+          echo "Digest: \`$DIGEST\`" | tee -a "$GITHUB_STEP_SUMMARY"

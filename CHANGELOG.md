@@ -7,8 +7,11 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Every tested commit on `main` is published as a Docker image (`ghcr.io/abti247/iron_verdict:sha-<commit>`); releases reuse that exact image under `vX.Y.Z` and come with GitHub release notes
+- Release, deploy and rollback runbook with a pre-competition checklist (`docs/release.md`)
 
 ### Changed
+- App footer shows the commit the running image was built from (`sha-<commit>`)
 
 ### Fixed
 

@@ -1,6 +1,9 @@
 ARG PYTHON_VERSION=3.13
 FROM python:${PYTHON_VERSION}-slim AS base
 
+# Links the GHCR package to the repository, so CI can push with GITHUB_TOKEN.
+LABEL org.opencontainers.image.source="https://github.com/abti247/iron_verdict"
+
 # Prevents Python from writing pyc files.
 ENV PYTHONDONTWRITEBYTECODE=1
 
@@ -45,6 +48,12 @@ COPY . .
 RUN printf '#!/bin/sh\nset -e\nchown -R appuser:appuser /data\nexec gosu appuser "$@"\n' \
     > /usr/local/bin/docker-entrypoint.sh \
     && chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Version shown in the app footer. CI passes sha-<commit>; the release tag
+# (vX.Y.Z) is only added to the already-built image, so it cannot be baked in.
+# Declared late so a new commit does not invalidate the cached layers above.
+ARG APP_VERSION=dev
+ENV APP_VERSION=${APP_VERSION}
 
 # Expose the port that the application listens on.
 EXPOSE 8000

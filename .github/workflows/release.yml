@@ -1,0 +1,86 @@
+name: Release
+
+# Pushing a tag vX.Y.Z promotes the image main.yml already built and tested
+# for that commit (sha-<commit>) to vX.Y.Z without rebuilding, then creates
+# the GitHub release from the CHANGELOG section. Deploying stays manual:
+# point the Railway service at the new tag (docs/release.md).
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  IMAGE_REPO: ghcr.io/abti247/iron_verdict
+  TAG: ${{ github.ref_name }}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Check tag, version and commit
+        run: |
+          if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Tag $TAG is not of the form vX.Y.Z"
+            exit 1
+          fi
+          VERSION="${TAG#v}"
+          PYPROJECT_VERSION="$(python3 -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')"
+          if [ "$PYPROJECT_VERSION" != "$VERSION" ]; then
+            echo "::error::pyproject.toml has version $PYPROJECT_VERSION, tag is $TAG"
+            exit 1
+          fi
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::Tagged commit $GITHUB_SHA is not on main"
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Build release notes
+        run: |
+          python3 scripts/changelog_section.py "$VERSION" > release-notes.md
+          printf '\n## Docker\n\ndocker pull %s:%s\n' "$IMAGE_REPO" "$TAG" >> release-notes.md
+          cat release-notes.md
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tag the tested image as ${{ github.ref_name }} (no rebuild)
+        run: |
+          SOURCE="$IMAGE_REPO:sha-${GITHUB_SHA::7}"
+          if ! SOURCE_DIGEST="$(docker buildx imagetools inspect "$SOURCE" --format '{{json .Manifest}}' | jq -re .digest)"; then
+            echo "::error::$SOURCE not found. Wait until the Main workflow for this commit is green, then re-run this job."
+            exit 1
+          fi
+          docker buildx imagetools create --tag "$IMAGE_REPO:$TAG" "$IMAGE_REPO@$SOURCE_DIGEST"
+          RELEASE_DIGEST="$(docker buildx imagetools inspect "$IMAGE_REPO:$TAG" --format '{{json .Manifest}}' | jq -re .digest)"
+          if [ "$RELEASE_DIGEST" != "$SOURCE_DIGEST" ]; then
+            echo "::error::$TAG has digest $RELEASE_DIGEST, expected $SOURCE_DIGEST"
+            exit 1
+          fi
+          {
+            echo "| Tag | Digest |"
+            echo "|---|---|"
+            echo "| \`sha-${GITHUB_SHA::7}\` | \`$SOURCE_DIGEST\` |"
+            echo "| \`$TAG\` | \`$RELEASE_DIGEST\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create "$TAG" --title "$TAG" --notes-file release-notes.md --verify-tag

@@ -1,6 +1,81 @@
-"""Smoke test — verify E2E infrastructure works."""
+"""Smoke tests — the app starts, serves its pages and assets, and accepts a judge.
 
+Also the container smoke test: CI runs this file with ``E2E_BASE_URL``
+against the freshly built Docker image (see ``.github/workflows/image.yml``),
+so it must not depend on in-process server state. Keep it to a handful of
+sessions: creating one is rate-limited per client IP (10/hour).
+"""
+
+import json
+import os
+import re
+
+import httpx
+from httpx_ws import connect_ws
 from playwright.sync_api import expect
+
+
+def test_health_endpoint_reports_ok(server_url):
+    response = httpx.get(f"{server_url}/health", timeout=5)
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+
+def test_every_static_asset_the_app_loads_is_served(server_url):
+    """Start from / and /vportal, follow every /static/... reference and every
+    ES-module import, and require each file to be served. Catches files missing
+    from the image (.dockerignore, package data) before a deploy does."""
+    pending = {"/static/locales/en.json", "/static/locales/de.json"}
+    for path in ("/", "/vportal"):
+        response = httpx.get(f"{server_url}{path}", timeout=5)
+        assert response.status_code == 200
+        pending.update(re.findall(r"""["'](/static/[^"'?#]+)""", response.text))
+
+    served, missing = set(), []
+    while pending:
+        asset = pending.pop()
+        served.add(asset)
+        response = httpx.get(f"{server_url}{asset}", timeout=5)
+        if response.status_code != 200:
+            missing.append(asset)
+            continue
+        if asset.endswith(".js"):
+            base = asset.rsplit("/", 1)[0]
+            for rel in re.findall(r"""(?:from|import\()\s*["']\./([^"']+)["']""", response.text):
+                if f"{base}/{rel}" not in served:
+                    pending.add(f"{base}/{rel}")
+
+    assert missing == []
+    # The crawl must reach the app and the VPortal client, or it proves nothing.
+    assert {"/static/js/app.js", "/static/js/vportalClient.js", "/static/js/vportalQueries.js"} <= served
+
+
+def test_app_version_is_rendered(server_url):
+    """The build injects APP_VERSION (sha-<commit> for CI images); the page must
+    show it instead of the raw placeholder. E2E_EXPECTED_APP_VERSION pins it."""
+    html = httpx.get(server_url, timeout=5).text
+    assert "__APP_VERSION__" not in html
+    expected = os.environ.get("E2E_EXPECTED_APP_VERSION")
+    if expected:
+        version = re.search(r'<div class="app-version">\s*(.*?)\s*</div>', html).group(1)
+        assert version == expected
+
+
+def test_websocket_join_as_head_judge(server_url):
+    """Create a session over HTTP, open /ws and join as head judge: the server
+    answers with join_success and the session state."""
+    with httpx.Client(base_url=server_url, timeout=5) as client:
+        created = client.post("/api/sessions", json={"name": "Smoke WS"})
+        assert created.status_code == 200
+        code = created.json()["session_code"]
+
+        with connect_ws(f"{server_url}/ws", client) as ws:
+            ws.send_text(json.dumps({"type": "join", "session_code": code, "role": "center_judge"}))
+            reply = json.loads(ws.receive_text(timeout=5))
+
+    assert reply["type"] == "join_success"
+    assert reply["is_head"] is True
+    assert reply["session_state"]["name"] == "Smoke WS"
 
 
 def test_landing_page_loads(page, server_url):

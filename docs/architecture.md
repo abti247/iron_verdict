@@ -139,6 +139,14 @@ Optional, pull-only overlay of the current lifter on the display screen for sess
 - Cloudflare proxy (orange cloud) sits in front of Railway. SSL/TLS Full (strict), Bot Fight Mode on.
 - Domain: `iron-verdict.com` → CNAME → Railway.
 
+## Build and deployment
+
+- One Docker image (`Dockerfile`, Python 3.13 slim). The entrypoint chowns `/data` (Railway mounts volumes as root) and drops to `appuser` via `gosu`. `APP_VERSION` is baked in at build time as `sha-<commit>` and shown in the landing-page footer.
+- CI builds the image on every PR and smoke-tests the running container ([.github/workflows/image.yml](../.github/workflows/image.yml)). Commits on `main` that pass CI and the image check are pushed to `ghcr.io/abti247/iron_verdict` as `sha-<commit>` and `main`; a `vX.Y.Z` Git tag re-tags that same image without rebuilding and creates the GitHub release.
+- Railway runs a release tag of the GHCR image. Deploy and rollback are a manual change of the tag in the Railway service settings. Runbook: [docs/release.md](release.md).
+
+*Why build once, promote:* what runs at a competition is bit-identical to what was tested, and a rollback is a tag change (about a minute) instead of a local rebuild.
+
 ## Known scale flags
 
 These block multi-instance deployment. Listed for the Phase 6 AWS migration, not as immediate fixes.
