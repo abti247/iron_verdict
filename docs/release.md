@@ -14,7 +14,7 @@ Image: `ghcr.io/abti247/iron_verdict`. Tags:
 | Tag | Set by | Meaning |
 |---|---|---|
 | `sha-<7-char commit>` | Main workflow | Tested image of that commit on `main`. Never overwritten — a re-run of the Main workflow keeps the existing tag. |
-| `main` | Main workflow | Points to the `sha-<commit>` image of the latest tested commit on `main`. Not for production. |
+| `main` | Main workflow | Same digest as the `sha-<commit>` of the latest tested commit on `main`. Not for production. |
 | `vX.Y.Z` | Release workflow | Same digest as the `sha-<commit>` of the tagged commit. Production uses only these. |
 
 Versions follow SemVer with a `v` prefix and no pre-release suffix (`v0.2.0`); the 0.x major already signals pre-1.0. Older releases up to `v0.1.4-beta` kept the `-beta` suffix.
@@ -40,7 +40,7 @@ Run `/release` in a Claude session; it does the following steps with you. By han
    git tag -a vX.Y.Z origin/main -m "vX.Y.Z"
    git push origin vX.Y.Z
    ```
-4. The **Release** workflow checks the tag format, that `pyproject.toml` has the same version and that the commit is on `main`; re-tags `sha-<commit>` as `vX.Y.Z` and compares the digests; creates the GitHub release with the CHANGELOG section and the `docker pull` line. The job summary shows both digests.
+4. The **Release** workflow checks the tag format, that `pyproject.toml` has the same version and that the commit is on `main`; re-tags `sha-<commit>` as `vX.Y.Z` with [scripts/retag_image.sh](../scripts/retag_image.sh) (copies the manifest unchanged, so the digest stays identical) and compares the digests; creates the GitHub release with the CHANGELOG section and the `docker pull` line. The job summary shows both digests.
    - *`sha-<commit>` not found*: the Main workflow for that commit is not finished or failed. Wait for it to be green, then **Re-run** the Release job — do not move the tag.
 
 ## Deploy (Railway)
