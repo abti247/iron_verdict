@@ -60,14 +60,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # retag_image.sh copies the manifest bytes unchanged, so the digest stays
+      # identical; imagetools create would wrap a single-platform manifest in
+      # a new manifest list with another digest.
       - name: Tag the tested image as ${{ github.ref_name }} (no rebuild)
+        env:
+          REGISTRY_USER: ${{ github.actor }}
+          REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         run: |
           SOURCE="$IMAGE_REPO:sha-${GITHUB_SHA::7}"
           if ! SOURCE_DIGEST="$(docker buildx imagetools inspect "$SOURCE" --format '{{json .Manifest}}' | jq -re .digest)"; then
             echo "::error::$SOURCE not found. Wait until the Main workflow for this commit is green, then re-run this job."
             exit 1
           fi
-          docker buildx imagetools create --tag "$IMAGE_REPO:$TAG" "$IMAGE_REPO@$SOURCE_DIGEST"
+          scripts/retag_image.sh "$IMAGE_REPO" "$SOURCE_DIGEST" "$TAG"
           RELEASE_DIGEST="$(docker buildx imagetools inspect "$IMAGE_REPO:$TAG" --format '{{json .Manifest}}' | jq -re .digest)"
           if [ "$RELEASE_DIGEST" != "$SOURCE_DIGEST" ]; then
             echo "::error::$TAG has digest $RELEASE_DIGEST, expected $SOURCE_DIGEST"

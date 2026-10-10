@@ -31,6 +31,10 @@ jobs:
       contents: read
       packages: write
     steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: scripts
+
       - name: Download tested image
         uses: actions/download-artifact@v8
         with:
@@ -61,17 +65,21 @@ jobs:
 
       # Runs of consecutive pushes can finish out of order; only the run for
       # the current head of main may move the main tag.
-      - name: Push main (only if this commit is still the head of main)
+      # retag_image.sh keeps the digest; imagetools create would wrap the
+      # manifest in a new list with another digest.
+      - name: Point main at sha-<commit> (only if this commit is still the head of main)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REGISTRY_USER: ${{ github.actor }}
+          REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         run: |
           HEAD_SHA="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)"
           if [ "$HEAD_SHA" != "$GITHUB_SHA" ]; then
             echo "main moved on to $HEAD_SHA; leaving the main tag to its run" | tee -a "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
-          docker buildx imagetools create --tag "$IMAGE_REPO:main" "$IMAGE_REPO:sha-${GITHUB_SHA::7}"
-          echo "Pushed \`$IMAGE_REPO:main\`" >> "$GITHUB_STEP_SUMMARY"
+          scripts/retag_image.sh "$IMAGE_REPO" "sha-${GITHUB_SHA::7}" main
+          echo "Pointed \`$IMAGE_REPO:main\` at \`sha-${GITHUB_SHA::7}\`" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Record digest
         run: |
