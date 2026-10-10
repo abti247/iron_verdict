@@ -78,7 +78,12 @@ jobs:
             echo "main moved on to $HEAD_SHA; leaving the main tag to its run" | tee -a "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
-          scripts/retag_image.sh "$IMAGE_REPO" "sha-${GITHUB_SHA::7}" main
+          SHA_DIGEST="$(scripts/retag_image.sh "$IMAGE_REPO" "sha-${GITHUB_SHA::7}" main)"
+          MAIN_DIGEST="$(docker buildx imagetools inspect "$IMAGE_REPO:main" --format '{{json .Manifest}}' | jq -re .digest)"
+          if [ "$MAIN_DIGEST" != "$SHA_DIGEST" ]; then
+            echo "::error::main has digest $MAIN_DIGEST, expected $SHA_DIGEST (sha-${GITHUB_SHA::7})"
+            exit 1
+          fi
           echo "Pointed \`$IMAGE_REPO:main\` at \`sha-${GITHUB_SHA::7}\`" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Record digest

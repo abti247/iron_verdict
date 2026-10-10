@@ -29,18 +29,21 @@ accept="application/vnd.oci.image.index.v1+json,application/vnd.docker.distribut
 auth=()
 if [ -n "${REGISTRY_PASSWORD:-}" ]; then
   token="$(curl -fsS -u "${REGISTRY_USER}:${REGISTRY_PASSWORD}" \
-    "https://${registry}/token?scope=repository:${repo}:pull,push" | jq -re .token)"
+    "https://${registry}/token?service=${registry}&scope=repository:${repo}:pull,push" | jq -re .token)" \
+    || { echo "error: could not get a registry token for ${repo}" >&2; exit 1; }
   auth=(-H "Authorization: Bearer ${token}")
 fi
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
-curl -fsS "${auth[@]}" -H "Accept: ${accept}" \
-  -D "$tmp/headers" -o "$tmp/manifest" "${base}/${source_ref}"
+curl -fsS ${auth[@]+"${auth[@]}"} -H "Accept: ${accept}" \
+  -D "$tmp/headers" -o "$tmp/manifest" "${base}/${source_ref}" \
+  || { echo "error: could not fetch ${image}:${source_ref}" >&2; exit 1; }
 content_type="$(grep -i '^content-type:' "$tmp/headers" | tail -n 1 | cut -d' ' -f2- | tr -d '\r')"
 
-curl -fsS "${auth[@]}" -X PUT -H "Content-Type: ${content_type}" \
-  --data-binary @"$tmp/manifest" -o /dev/null "${base}/${new_tag}"
+curl -fsS ${auth[@]+"${auth[@]}"} -X PUT -H "Content-Type: ${content_type}" \
+  --data-binary @"$tmp/manifest" -o /dev/null "${base}/${new_tag}" \
+  || { echo "error: could not tag ${image}:${new_tag}" >&2; exit 1; }
 
 echo "sha256:$(sha256sum "$tmp/manifest" | cut -d' ' -f1)"
