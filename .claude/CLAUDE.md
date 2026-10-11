@@ -43,7 +43,7 @@ Rules:
   - Issues: if an issue has a "Zu klären" section or other open questions, get the answers before implementing the affected parts and record them in the issue so later sessions know them.
   - Pure implementation details with an obvious convention in the codebase (naming, file placement, test structure) don't need a question — but state the choice in the PR so it can be reviewed.
 - **Working an issue:** follow the skill `/work-on-issue <n>` (`.claude/skills/work-on-issue/SKILL.md`) — issue → clarification → branch → TDD → full test suite → docs → review → PR.
-- **Independent review:** before opening a PR, run the read-only agent `live-reliability-reviewer` (`.claude/agents/live-reliability-reviewer.md`) on the diff and fix its blocking and should findings. It checks the rules in this file (critical path, dropped messages, external dependencies, delays, VPortal, tests, docs).
+- **Independent review:** before opening a PR, run the read-only agent `live-reliability-reviewer` (`.claude/agents/live-reliability-reviewer.md`) on the diff and fix its blocking and should findings. It checks the rules in this file (critical path, dropped messages, external dependencies, delays, VPortal, tests, docs) and whether the solution is proportionate to the issue; `[proportionality]` findings are implemented or declined with a reason in the PR description.
 
 ## Project Structure
 - Place all application implementation files (code, modules, components) under /src directory.
