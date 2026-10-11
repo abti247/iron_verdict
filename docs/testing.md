@@ -152,7 +152,7 @@ Run with `npm test` (Vitest). Independent from pytest — both run in parallel i
 | File | Purpose |
 |---|---|
 | [tests/js/timer.test.js](tests/js/timer.test.js) | `startTimerCountdown`: tick values, expiry, auto-stop, `stopTimer`, second-call cancellation. |
-| [tests/js/voteDelivery.test.js](tests/js/voteDelivery.test.js) | Pending-vote storage (session/role scoping, corrupt data), `reconcileVote` decisions, `vote_lock` message, rejection-code → i18n key mapping, and the vote-delivery methods against a plain mock app. |
+| [tests/js/voteDelivery.test.js](tests/js/voteDelivery.test.js) | Pending-vote storage (session/role scoping, corrupt data), `reconcileVote` decisions, `vote_lock` message, rejection-code → i18n key mapping, the vote-delivery methods against a plain mock app, the in-memory fallback when `sessionStorage` writes fail, and `handleResetForNextLift` while a vote is still sending. |
 | [tests/js/i18n.test.js](tests/js/i18n.test.js) | `t()` key resolution and fallback; `resolveLanguage` priority (localStorage → navigator → default); `setLanguage` persistence; `getSupportedLanguages`. |
 
 **What is not tested:**

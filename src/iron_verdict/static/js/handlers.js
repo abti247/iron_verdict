@@ -1,5 +1,5 @@
 import { stopTimer } from './timer.js';
-import { clearPendingVote, rejectionKey } from './voteDelivery.js';
+import { rejectionKey } from './voteDelivery.js';
 
 export function handleJoinSuccess(app, message) {
     app.isHead = message.is_head;
@@ -110,7 +110,7 @@ export function handleResetForNextLift(app, message) {
     const voteWasSending = app.voteState === 'sending';
     app.resetVoting();
     if (message.lift_id != null) app.liftId = message.lift_id;
-    // A vote still unconfirmed when the lift ends was never counted — say so.
+    // A vote still unconfirmed when the lift ends may or may not have counted — tell the judge the lift moved on.
     if (voteWasSending) app.voteError = rejectionKey('lift_changed');
     stopTimer();
     app.timerDisplay = '60';
@@ -134,7 +134,7 @@ export function handleTimerReset(app, message) {
 }
 
 export function handleSessionEnded(app, message) {
-    clearPendingVote(sessionStorage);
+    app.clearPendingVote();
     alert(t('alerts.sessionEnded'));
     app.ws.close();
     app.isDemo = false;

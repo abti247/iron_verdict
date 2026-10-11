@@ -251,6 +251,17 @@ async def get_session(
     return JSONResponse(status_code=404, content={"detail": "Session not found"})
 
 
+async def _reject_vote(websocket: WebSocket, conn_id: str, session_code: str, role: str, code: str, text: str) -> None:
+    logger.info("vote_rejected", extra={
+        "conn_id": conn_id,
+        "session_code": session_code,
+        "role": "display" if role.startswith("display_") else role,
+        "code": code,
+        "reason": text,
+    })
+    await websocket.send_json({"type": "vote_rejected", "code": code, "message": text})
+
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     """WebSocket endpoint for real-time communication."""
@@ -422,7 +433,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 # Every vote_lock gets exactly one answer to the voter: vote_ack or
                 # vote_rejected. The judge UI shows "sending" until one arrives.
                 async def reject_vote(code: str, text: str) -> None:
-                    await websocket.send_json({"type": "vote_rejected", "code": code, "message": text})
+                    await _reject_vote(websocket, conn_id, session_code, role, code, text)
 
                 position = role.replace("_judge", "")
                 color = message.get("color")

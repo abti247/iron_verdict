@@ -53,7 +53,16 @@ export function rejectionKey(code) {
 }
 
 // Alpine component methods, spread into ironVerdictApp().
+// The pending vote is also kept in memory (_pendingVote) so a failing sessionStorage
+// write cannot silently lose it on reconnect; storage only adds reload survival.
 export const voteDeliveryMethods = {
+    _pendingVote: null,
+
+    clearPendingVote() {
+        this._pendingVote = null;
+        clearPendingVote(sessionStorage);
+    },
+
     lockVote() {
         if (!this.canLockIn()) return;
         const vote = {
@@ -65,6 +74,7 @@ export const voteDeliveryMethods = {
         };
         this.voteError = '';
         this.voteState = 'sending';
+        this._pendingVote = vote;
         savePendingVote(sessionStorage, vote);
         // If the socket is not open this send is dropped by websocket.js; the vote stays
         // pending and is resent from handleJoinSuccess once the connection is back.
@@ -75,7 +85,7 @@ export const voteDeliveryMethods = {
         if (message.lift_id != null && this.liftId != null && message.lift_id !== this.liftId) {
             return;  // ack for a lift this screen has already left (reset_for_next_lift arrived first)
         }
-        clearPendingVote(sessionStorage);
+        this.clearPendingVote();
         this.voteState = 'confirmed';
         this.voteError = '';
         this.selectedVote = message.color;
@@ -83,7 +93,7 @@ export const voteDeliveryMethods = {
     },
 
     applyVoteRejected(message) {
-        clearPendingVote(sessionStorage);
+        this.clearPendingVote();
         this.voteState = 'open';
         this.voteError = rejectionKey(message.code);
         if (message.code === 'lift_changed') {
@@ -94,14 +104,15 @@ export const voteDeliveryMethods = {
     },
 
     reconcileVoteAfterJoin(serverJudge) {
-        const pending = loadPendingVote(sessionStorage, this.sessionCode, this.role);
+        const pending = loadPendingVote(sessionStorage, this.sessionCode, this.role) || this._pendingVote;
         const result = reconcileVote(serverJudge, pending);
         if (result.action === 'confirmed') {
-            clearPendingVote(sessionStorage);
+            this.clearPendingVote();
             this.voteState = 'confirmed';
             this.selectedVote = result.color;
             this.selectedReason = result.reason;
         } else if (result.action === 'resend') {
+            this._pendingVote = result.vote;
             this.voteState = 'sending';
             this.selectedVote = result.vote.color;
             this.selectedReason = result.vote.reason;

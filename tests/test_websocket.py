@@ -973,3 +973,18 @@ async def test_side_judge_cannot_send_head_judge_message(session_code, role, mes
             for key in ("timer_started_at", "phase", "state", "settings", "lift_id", "timer_frozen_ms"):
                 assert after[key] == before[key], key
             assert after["judges"]["center"]["locked"] is True
+
+
+async def test_vote_rejected_logs_info(session_code, caplog):
+    async with _ws_client() as ac:
+        with caplog.at_level(logging.INFO, logger="iron_verdict"):
+            async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+                await ws.send_json({"type": "join", "session_code": session_code, "role": "left_judge"})
+                await asyncio.wait_for(ws.receive_json(), timeout=1.0)  # join_success
+                await ws.send_json({"type": "vote_lock", "color": "white", "lift_id": 99})
+                await asyncio.wait_for(ws.receive_json(), timeout=1.0)  # vote_rejected
+
+    records = [r for r in caplog.records if r.getMessage() == "vote_rejected"]
+    assert len(records) == 1
+    assert records[0].code == "lift_changed"
+    assert records[0].role == "left_judge"

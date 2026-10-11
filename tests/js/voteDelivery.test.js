@@ -175,3 +175,58 @@ describe('voteDeliveryMethods', () => {
         expect(app.selectedVote).toBe('red');
     });
 });
+
+describe('vote delivery edge cases', () => {
+    beforeEach(() => sessionStorage.clear());
+
+    it('resends from memory when sessionStorage could not store the pending vote', () => {
+        const app = makeApp({ selectedVote: 'white' });
+        const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+            throw new Error('QuotaExceededError');
+        });
+        try {
+            app.lockVote();
+        } finally {
+            setItem.mockRestore();
+        }
+        expect(loadPendingVote(sessionStorage, 'ABCD1234', 'left_judge')).toBeNull();
+        app.wsSend.mockClear();
+
+        app.reconcileVoteAfterJoin({ locked: false });
+
+        expect(app.voteState).toBe('sending');
+        expect(app.resetVoting).not.toHaveBeenCalled();
+        expect(app.wsSend).toHaveBeenCalledWith({ type: 'vote_lock', color: 'white', reason: null, lift_id: 3 });
+    });
+
+    it('reset_for_next_lift while a vote is sending reopens voting with the lift-changed message', async () => {
+        const { handleResetForNextLift } = await import('../../src/iron_verdict/static/js/handlers.js');
+        const app = makeApp({ selectedVote: 'white', voteState: 'sending', role: 'left_judge' });
+        app.resetVoting = function () {
+            this.voteState = 'open';
+            this.voteError = '';
+            this.selectedVote = null;
+            this.clearPendingVote();
+        };
+        savePendingVote(sessionStorage, vote);
+        app._pendingVote = vote;
+
+        handleResetForNextLift(app, { type: 'reset_for_next_lift', lift_id: 4 });
+
+        expect(app.voteState).toBe('open');
+        expect(app.liftId).toBe(4);
+        expect(app.voteError).toBe('judge.voteRejected.liftChanged');
+        expect(app._pendingVote).toBeNull();
+        expect(loadPendingVote(sessionStorage, 'ABCD1234', 'left_judge')).toBeNull();
+    });
+
+    it('reset_for_next_lift after a confirmed vote shows no message', async () => {
+        const { handleResetForNextLift } = await import('../../src/iron_verdict/static/js/handlers.js');
+        const app = makeApp({ voteState: 'confirmed' });
+        app.resetVoting = function () { this.voteState = 'open'; this.voteError = ''; };
+
+        handleResetForNextLift(app, { type: 'reset_for_next_lift', lift_id: 4 });
+
+        expect(app.voteError).toBe('');
+    });
+});

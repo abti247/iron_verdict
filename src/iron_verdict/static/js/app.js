@@ -2,7 +2,7 @@ import { CARD_REASONS } from './constants.js';
 import { startTimerCountdown } from './timer.js';
 import { createWebSocket } from './websocket.js';
 import { demoMethods } from './demo.js';
-import { voteDeliveryMethods, clearPendingVote } from './voteDelivery.js';
+import { voteDeliveryMethods } from './voteDelivery.js';
 import { vportalClient } from './vportalClient.js';
 import {
     handleJoinSuccess,
@@ -415,7 +415,7 @@ export function ironVerdictApp() {
             this.selectedVote = null;
             this.voteState = 'open';
             this.voteError = '';
-            clearPendingVote(sessionStorage);
+            this.clearPendingVote();
             this.resultsShown = false;
             this.selectedReason = null;
             this.showingReasonStep = false;
@@ -470,7 +470,7 @@ export function ironVerdictApp() {
 
         returnToLanding() {
             sessionStorage.removeItem('iv_session');
-            clearPendingVote(sessionStorage);
+            this.clearPendingVote();
             this.intentionalNavigation = true;
             if (this.ws) {
                 this.ws.close();
@@ -496,7 +496,7 @@ export function ironVerdictApp() {
                 this.ws.close();
             }
             this.navigateTo('role-select');
-            clearPendingVote(sessionStorage);
+            this.clearPendingVote();
             this.selectedVote = null;
             this.voteState = 'open';
             this.voteError = '';
