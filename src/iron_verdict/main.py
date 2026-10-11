@@ -452,13 +452,6 @@ async def websocket_endpoint(websocket: WebSocket):
                     await reject_vote("invalid", "Invalid lift id")
                     continue
 
-                session = session_manager.sessions.get(session_code)
-                require_reasons = session["settings"].get("require_reasons", False) if session else False
-
-                if require_reasons and color != "white" and not reason:
-                    await reject_vote("reason_required", "Reason required before locking in")
-                    continue
-
                 result = await session_manager.lock_vote(session_code, position, color, reason=reason, lift_id=lift_id)
 
                 if not result["success"]:
@@ -473,6 +466,8 @@ async def websocket_endpoint(websocket: WebSocket):
                         })
                     elif result["error"] == "Lift changed":
                         await reject_vote("lift_changed", result["error"])
+                    elif result["error"] == "Reason required":
+                        await reject_vote("reason_required", "Reason required before locking in")
                     else:
                         await reject_vote("invalid", result["error"])
                     continue

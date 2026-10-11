@@ -129,9 +129,13 @@ class SessionManager:
             lift_id: Lift the client voted for; a mismatch rejects the vote ("Lift changed").
                 None skips the check (clients from before lift_id existed).
 
+        Checks run in this order: session, position, lift, already locked,
+        mandatory reason (red/yellow/blue without reason while require_reasons is on).
+
         Returns:
-            Dict with success status and all_locked flag. "Vote already locked"
-            failures carry the stored current_vote/current_reason.
+            Dict with success status and all_locked flag. Failure errors the caller maps:
+            "Lift changed", "Reason required", and "Vote already locked" (carries the
+            stored current_vote/current_reason).
         """
         async with self._lock:
             if code not in self.sessions:
@@ -154,6 +158,11 @@ class SessionManager:
                     "current_vote": judge["current_vote"],
                     "current_reason": judge["current_reason"],
                 }
+
+            # After the lift and already-locked checks: a stale vote is "Lift changed"
+            # and a resend of a stored vote stays idempotent, even if reasons became mandatory meanwhile.
+            if session["settings"].get("require_reasons", False) and color != "white" and not reason:
+                return {"success": False, "error": "Reason required"}
 
             judge["current_vote"] = color
             judge["current_reason"] = reason

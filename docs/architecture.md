@@ -41,7 +41,7 @@ Security:
 
 - `vote_lock` — judge locks a colour (and optional reason), tagged with the `lift_id` it was cast for. Always answered to the voter with exactly one of:
   - `vote_ack` `{color, reason, lift_id}` — the vote is stored. A duplicate `vote_lock` (judge already locked) is also acked, carrying the **stored** vote: resends are idempotent and the server's vote is what the judge sees.
-  - `vote_rejected` `{code, message}` (logged as `vote_rejected`) — `code` is `lift_changed` (the `lift_id` is stale), `reason_required` (reasons are mandatory and none was given) or `invalid` (bad colour/reason/lift id, or not a judge). Nothing is stored.
+  - `vote_rejected` `{code, message}` (logged as `vote_rejected`) — `code` is `lift_changed` (the `lift_id` is stale), `reason_required` (reasons are mandatory and none was given) or `invalid` (bad colour/reason/lift id, or not a judge). Nothing is stored. `SessionManager.lock_vote` checks the lift before the mandatory reason, and the already-locked case before both. Why: a stale vote must always surface as `lift_changed` — answering `reason_required` would let the judge add a reason and turn the previous lift's colour into a vote for the new lift.
 - `settings_update` — head judge changes lift type, show-explanations, require-reasons.
 - `timer_start`, `timer_reset` — head judge controls the 60-second attempt timer.
 - `next_lift` — head judge resets state for the next attempt; broadcasts `reset_for_next_lift` with the new `lift_id`.

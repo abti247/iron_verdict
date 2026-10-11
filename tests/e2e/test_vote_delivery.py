@@ -147,6 +147,37 @@ def test_pending_vote_discarded_when_lift_changed(competition):
     expect(left.locator(".vote-error")).not_to_be_visible()
 
 
+def test_stale_vote_without_reason_is_lift_changed_when_reasons_become_mandatory(competition):
+    """Left judge votes red without a reason while offline; meanwhile the chief
+    referee advances to the next lift and then makes reasons mandatory.
+
+    After reconnecting, the queued vote belongs to the previous lift. The judge
+    sees "lift changed" (not "reason required"), the vote is open again with no
+    colour preselected and no reason step, so the old red cannot slip into the
+    new lift.
+    """
+    head, left, right, display = setup_panel(competition)
+
+    cut_network(left)
+    left.locator(".vote-btn.vote-red").click()
+    left.locator(".lock-btn").click()
+    expect(left.locator(".vote-sending-status")).to_be_visible()
+
+    head.locator(".head-grid button", has_text="Next Lift").click()  # confirm dialog auto-accepted
+    head.locator('[x-model="showExplanations"]').check()
+    head.locator('[x-model="requireReasons"]').check()
+
+    restore_network(left)
+
+    expect(left.locator(".vote-error")).to_contain_text("next lift", timeout=RECONNECT_TIMEOUT)
+    expect(left.locator(".vote-error")).not_to_contain_text("reason")
+    expect(left.locator(".vote-sending-status")).not_to_be_visible()
+    expect(left.locator(".locked-status")).not_to_be_visible()
+    expect(left.locator(".vote-btn.selected")).to_have_count(0)
+    expect(left.locator(".reason-step")).not_to_be_visible()
+    expect(left.locator(".vote-btn.vote-red")).to_be_enabled()
+
+
 def test_rejected_vote_unlocks_ui_with_message(competition):
     """Left judge votes red without a reason while offline; meanwhile the chief
     referee makes reasons mandatory.

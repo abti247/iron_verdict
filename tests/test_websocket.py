@@ -917,6 +917,38 @@ async def test_vote_lock_with_stale_lift_id_is_rejected(session_code):
     assert session_manager.sessions[session_code]["judges"]["left"]["locked"] is False
 
 
+async def test_vote_lock_with_stale_lift_id_and_missing_mandatory_reason_is_lift_changed(session_code):
+    await session_manager.reset_for_next_lift(session_code)  # lift_id -> 1
+    session_manager.sessions[session_code]["settings"]["require_reasons"] = True
+    async with _ws_client() as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+            await ws.send_json({"type": "join", "session_code": session_code, "role": "left_judge"})
+            await asyncio.wait_for(ws.receive_json(), timeout=1.0)  # join_success
+
+            await ws.send_json({"type": "vote_lock", "color": "red", "lift_id": 0})  # no reason
+            msg = await asyncio.wait_for(ws.receive_json(), timeout=1.0)
+
+            assert msg["type"] == "vote_rejected"
+            assert msg["code"] == "lift_changed"
+    assert session_manager.sessions[session_code]["judges"]["left"]["locked"] is False
+
+
+async def test_vote_lock_resend_after_reasons_made_mandatory_is_acked_with_stored_vote(session_code):
+    async with _ws_client() as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+            await ws.send_json({"type": "join", "session_code": session_code, "role": "left_judge"})
+            await asyncio.wait_for(ws.receive_json(), timeout=1.0)  # join_success
+            await ws.send_json({"type": "vote_lock", "color": "red", "lift_id": 0})
+            assert (await asyncio.wait_for(ws.receive_json(), timeout=1.0))["type"] == "vote_ack"
+
+            session_manager.sessions[session_code]["settings"]["require_reasons"] = True
+            await ws.send_json({"type": "vote_lock", "color": "red", "lift_id": 0})  # resend, no reason
+            msg = await asyncio.wait_for(ws.receive_json(), timeout=1.0)
+
+            assert msg["type"] == "vote_ack"
+            assert msg["color"] == "red"
+
+
 async def test_vote_lock_from_display_is_rejected(session_code):
     async with _ws_client() as ac:
         async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
