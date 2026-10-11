@@ -841,6 +841,34 @@ async def test_pong_message_updates_last_pong(session_code):
     assert after > before
 
 
+
+def test_heartbeat_detects_half_open_connection_within_15_seconds():
+    from iron_verdict.main import HEARTBEAT_INTERVAL_SECONDS, PONG_STALE_SECONDS
+    assert HEARTBEAT_INTERVAL_SECONDS == 5
+    assert PONG_STALE_SECONDS == 15
+
+
+async def test_heartbeat_sweep_pings_fresh_and_closes_stale_connections():
+    from unittest.mock import AsyncMock
+    from iron_verdict.main import heartbeat_sweep, PONG_STALE_SECONDS
+    from iron_verdict.connection import ConnectionManager
+
+    manager = ConnectionManager()
+    fresh, stale = AsyncMock(), AsyncMock()
+    await manager.add_connection("ABCD1234", "left_judge", fresh)
+    await manager.add_connection("ABCD1234", "display_1", stale)
+    now = time.monotonic()
+    manager._last_pong[fresh] = now - (PONG_STALE_SECONDS - 1)
+    manager._last_pong[stale] = now - (PONG_STALE_SECONDS + 1)
+
+    await heartbeat_sweep(manager, now)
+
+    fresh.send_json.assert_awaited_once_with({"type": "ping"})
+    fresh.close.assert_not_awaited()
+    stale.close.assert_awaited_once_with(code=1001)
+    stale.send_json.assert_not_awaited()
+
+
 # ---- Vote delivery (vote_ack / vote_rejected / lift_id) ----
 
 def _ws_client():
