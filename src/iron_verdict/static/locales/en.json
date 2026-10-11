@@ -66,6 +66,12 @@
   "judge": {
     "lockIn": "LOCK IN",
     "voteLocked": "Vote Locked",
+    "voteSending": "Sending…",
+    "voteRejected": {
+      "liftChanged": "The next lift has started — please vote for the current lift.",
+      "reasonRequired": "A reason is required — please choose one and lock in again.",
+      "invalid": "Your vote was not accepted by the server. Please vote again."
+    },
     "back": "back",
     "headControls": "Head Judge Controls",
     "startTimer": "Start Timer",

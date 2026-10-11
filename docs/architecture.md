@@ -39,12 +39,18 @@ Security:
 
 `GET /ws` is the single WebSocket endpoint. Message types after `join`:
 
-- `vote_lock` — judge locks a colour (and optional reason).
+- `vote_lock` — judge locks a colour (and optional reason), tagged with the `lift_id` it was cast for. Always answered to the voter with exactly one of:
+  - `vote_ack` `{color, reason, lift_id}` — the vote is stored. A duplicate `vote_lock` (judge already locked) is also acked, carrying the **stored** vote: resends are idempotent and the server's vote is what the judge sees.
+  - `vote_rejected` `{code, message}` (logged as `vote_rejected`) — `code` is `lift_changed` (the `lift_id` is stale), `reason_required` (reasons are mandatory and none was given) or `invalid` (bad colour/reason/lift id, or not a judge). Nothing is stored.
 - `settings_update` — head judge changes lift type, show-explanations, require-reasons.
 - `timer_start`, `timer_reset` — head judge controls the 60-second attempt timer.
-- `next_lift` — head judge resets state for the next attempt.
+- `next_lift` — head judge resets state for the next attempt; broadcasts `reset_for_next_lift` with the new `lift_id`.
 - `end_session_confirmed` — head judge ends the session.
 - `pong` — client reply to server-initiated heartbeat ping.
+
+Head-judge-only messages (`timer_start`, `timer_reset`, `next_lift`, `end_session_confirmed`, `settings_update`) from any other role get an `error` and leave the session unchanged — the UI only hides these buttons, the server is the actual guard.
+
+*Why `vote_ack` / `vote_rejected` instead of fire-and-forget:* the client's socket can look open while the network is gone, and `websocket.js` drops sends on a closed socket. Without an explicit answer the judge screen cannot know whether a vote counted; showing "Vote Locked" optimistically let a lost vote hang the competition with nobody seeing why. *Why `lift_id`:* a vote queued offline is resent after reconnect; if the head judge advanced meanwhile, the server would otherwise count it for the wrong lift. `lift_id` is optional in `vote_lock` so a tab still running the previous frontend during a deploy keeps working (without the stale-lift check).
 
 Per-connection rate limit: 20 messages/second via a sliding window. Exceeding it closes the connection with code 1008. Per-IP concurrent-connection cap is delegated to the edge (Cloudflare).
 
@@ -59,7 +65,7 @@ Two in-process managers, each guarded by its own `asyncio.Lock`. The two locks a
 ### `SessionManager`
 
 - Holds `self.sessions: dict[str, dict]` — domain state per session code.
-- Each session records: `name`, `kind` (`"generic" | "vportal"`, immutable after create), `judges` (left/center/right with vote, reason, locked, connected, reconnect token), `phase`, `state`, `settings`, `timer_started_at`, `timer_frozen_ms`, `last_activity`.  
+- Each session records: `name`, `kind` (`"generic" | "vportal"`, immutable after create), `judges` (left/center/right with vote, reason, locked, connected, reconnect token), `phase`, `state`, `settings`, `timer_started_at`, `timer_frozen_ms`, `lift_id` (counter, +1 on every reset for next lift; `0` for snapshots that predate it), `last_activity`.  
 *Why `kind` lives in session state:* drives whether the VPortal connect button appears on Select Role and whether the display screen starts polling. Set at create, read by every consumer via `GET /api/sessions/{code}`.
 - Generates 8-character alphanumeric session codes.
 - Owns business rules: vote-lock state machine, all-judges-locked → results computation (including the IPF rule that a disconnected non-voter blocks results), timer freeze on results, reset for next lift.
@@ -87,6 +93,7 @@ Snapshots exclude reconnect tokens — those exist only in memory and die with t
 - **Judges** receive a 32-character `reconnect_token` on first join. A new WebSocket presenting the matching `(session_code, role, token)` triple replaces the existing connection. An identity guard prevents the disconnect handler of the old socket from clobbering the new one. Tokens survive `reset_for_next_lift`.
 - **Displays** have no reconnect token. Each display join takes the next free display slot (`display_aabb1122` random suffix). Displays are interchangeable viewers, capped per session by `DISPLAY_CAP` (default 20).
 - Judge slots cap at 3 (left, center, right) and are exclusive.
+- **Votes across reconnects:** the judge screen keeps an unconfirmed vote in memory and in `sessionStorage.iv_pending_vote` (memory covers a failing storage write, storage covers a reload). After every `join_success` it reconciles with the server's snapshot of that judge: server has a vote → shown as confirmed; server has none but one is pending → resent automatically (a stale `lift_id` is rejected with `lift_changed`); neither → open. A vote shown as locked locally but unknown to the server (the lift was reset while offline) reverts to open.
 
 *Why tokens for judges but not displays:* judges have identity that must persist across reconnects — their vote, lock state, and reason are tied to a specific role. Displays are read-only viewers whose only state is "what's currently on screen", recoverable from the next broadcast. Adding tokens for displays would buy nothing and complicate slot bookkeeping for an unbounded viewer count.
 
@@ -183,6 +190,7 @@ No-build single-page application. One HTML file served by FastAPI's `StaticFiles
 | `app.js` | The single Alpine component (`ironVerdictApp`) — all reactive state and methods. |
 | `websocket.js` | WebSocket wrapper with exponential-backoff auto-reconnect. |
 | `handlers.js` | One named handler per incoming WS message type; imported by `app.js`. |
+| `voteDelivery.js` | Judge vote state machine (open → sending → confirmed), pending vote in `sessionStorage`, reconciliation after join, `vote_ack` / `vote_rejected` handling. Methods spread into the Alpine component. |
 | `timer.js` | Module-level countdown interval (`startTimerCountdown`, `stopTimer`). |
 | `constants.js` | `CARD_REASONS[liftType][color]` — arrays of i18n reason keys. |
 | `i18n.js` | Locale loading, `t()` lookup, `setLanguage()`, Alpine store integration. |
@@ -225,9 +233,10 @@ QR entry point: `?session=XXXX` lands on the landing screen with the code pre-fi
 | Storage | Key | Content | Lifetime |
 |---|---|---|---|
 | `sessionStorage` | `iv_session` | `{code}` on role-select, `{code, role, reconnect_token?}` on judge/display | Tab close |
+| `sessionStorage` | `iv_pending_vote` | `{code, role, lift_id, color, reason}` from LOCK IN until `vote_ack` / `vote_rejected` / next lift / leaving the judge screen | Tab close |
 | `localStorage` | `iron-verdict-lang` | `'en'` or `'de'` | Persistent |
 | `localStorage` | `iron-verdict:display-zoom` | Display screen zoom multiplier (0.7–1.5) | Persistent |
-| Alpine reactive state | — | `screen`, `selectedVote`, `voteLocked`, timer, etc. | Page lifetime |
+| Alpine reactive state | — | `screen`, `selectedVote`, `voteState` (`voteLocked` is derived), `voteError`, `liftId`, timer, etc. | Page lifetime |
 
 *Why `sessionStorage` (not `localStorage`) for the reconnect token:* tab-scoped lifetime matches the lifetime of a judging session. If the token survived in `localStorage`, an old token could leak into a *new* session opened in the same browser later, leading to confusing "Role already taken" failures (server rejects because the role belongs to a stale judge identity). `localStorage` is reserved for genuinely persistent preferences like language.
 

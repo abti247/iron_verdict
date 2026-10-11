@@ -1,4 +1,5 @@
 import { stopTimer } from './timer.js';
+import { rejectionKey } from './voteDelivery.js';
 
 export function handleJoinSuccess(app, message) {
     app.isHead = message.is_head;
@@ -15,15 +16,12 @@ export function handleJoinSuccess(app, message) {
         };
     }
 
-    // Restore this judge's vote state if they were already locked before reconnecting
+    app.liftId = message.session_state?.lift_id ?? null;
+
+    // Reconcile this judge's vote with the server: confirmed, resend pending, or open
     if (app.role && app.role.endsWith('_judge')) {
         const position = app.role.replace('_judge', '');
-        const myState = judges?.[position];
-        if (myState?.locked) {
-            app.voteLocked = true;
-            app.selectedVote = myState.current_vote;
-            app.selectedReason = myState.current_reason ?? null;
-        }
+        app.reconcileVoteAfterJoin(judges?.[position]);
     }
 
     // Persist reconnect token for future reconnections
@@ -109,7 +107,11 @@ export function handleShowResults(app, message) {
 
 export function handleResetForNextLift(app, message) {
     clearTimeout(app._phaseTimer1);
+    const voteWasSending = app.voteState === 'sending';
     app.resetVoting();
+    if (message.lift_id != null) app.liftId = message.lift_id;
+    // A vote still unconfirmed when the lift ends may or may not have counted — tell the judge the lift moved on.
+    if (voteWasSending) app.voteError = rejectionKey('lift_changed');
     stopTimer();
     app.timerDisplay = '60';
     app.timerExpired = false;
@@ -132,6 +134,7 @@ export function handleTimerReset(app, message) {
 }
 
 export function handleSessionEnded(app, message) {
+    app.clearPendingVote();
     alert(t('alerts.sessionEnded'));
     app.ws.close();
     app.isDemo = false;
@@ -157,4 +160,12 @@ export function handleServerRestarting(app, _message) {
 
 export function handleJudgeStatusUpdate(app, message) {
     app.judgeConnected[message.position] = message.connected;
+}
+
+export function handleVoteAck(app, message) {
+    app.applyVoteAck(message);
+}
+
+export function handleVoteRejected(app, message) {
+    app.applyVoteRejected(message);
 }

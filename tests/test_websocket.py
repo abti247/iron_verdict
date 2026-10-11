@@ -1,4 +1,5 @@
 import asyncio
+import copy
 import logging
 import time
 import pytest
@@ -189,7 +190,8 @@ async def test_vote_lock_invalid_color_returns_error(session_code):
 
             await ws.send_json({"type": "vote_lock", "color": "HACKED"})
             msg = await asyncio.wait_for(ws.receive_json(), timeout=1.0)
-            assert msg["type"] == "error"
+            assert msg["type"] == "vote_rejected"
+            assert msg["code"] == "invalid"
             assert "color" in msg["message"].lower()
 
 
@@ -203,7 +205,8 @@ async def test_vote_lock_missing_color_returns_error(session_code):
 
             await ws.send_json({"type": "vote_lock"})  # no color field
             msg = await asyncio.wait_for(ws.receive_json(), timeout=1.0)
-            assert msg["type"] == "error"
+            assert msg["type"] == "vote_rejected"
+            assert msg["code"] == "invalid"
             assert "color" in msg["message"].lower()
 
 
@@ -572,8 +575,9 @@ async def test_vote_lock_requires_reason_when_mandatory():
             await ws.send_json({"type": "join", "session_code": session_code, "role": "left_judge"})
             await ws.receive_json()  # join_success
             await ws.send_json({"type": "vote_lock", "color": "yellow"})  # no reason
-            msg = await ws.receive_json()
-            assert msg["type"] == "error"
+            msg = await asyncio.wait_for(ws.receive_json(), timeout=1.0)
+            assert msg["type"] == "vote_rejected"
+            assert msg["code"] == "reason_required"
             assert "Reason required" in msg["message"]
 
 
@@ -835,3 +839,152 @@ async def test_pong_message_updates_last_pong(session_code):
     assert before is not None
     assert after is not None
     assert after > before
+
+
+# ---- Vote delivery (vote_ack / vote_rejected / lift_id) ----
+
+def _ws_client():
+    return httpx.AsyncClient(transport=ASGIWebSocketTransport(app=app), base_url="http://test")
+
+
+async def test_vote_lock_sends_vote_ack_to_voter(session_code):
+    async with _ws_client() as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+            await ws.send_json({"type": "join", "session_code": session_code, "role": "left_judge"})
+            await asyncio.wait_for(ws.receive_json(), timeout=1.0)  # join_success
+
+            await ws.send_json({"type": "vote_lock", "color": "red", "reason": "reasons.squat.red.depth", "lift_id": 0})
+            msg = await asyncio.wait_for(ws.receive_json(), timeout=1.0)
+
+            assert msg == {
+                "type": "vote_ack",
+                "color": "red",
+                "reason": "reasons.squat.red.depth",
+                "lift_id": 0,
+            }
+
+
+async def test_vote_lock_duplicate_acks_with_stored_vote(session_code):
+    async with _ws_client() as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+            await ws.send_json({"type": "join", "session_code": session_code, "role": "left_judge"})
+            await asyncio.wait_for(ws.receive_json(), timeout=1.0)  # join_success
+            await ws.send_json({"type": "vote_lock", "color": "white"})
+            await asyncio.wait_for(ws.receive_json(), timeout=1.0)  # first vote_ack
+
+            await ws.send_json({"type": "vote_lock", "color": "red", "reason": "reasons.squat.red.depth"})
+            msg = await asyncio.wait_for(ws.receive_json(), timeout=1.0)
+
+            assert msg["type"] == "vote_ack"
+            assert msg["color"] == "white"
+            assert msg["reason"] is None
+    assert session_manager.sessions[session_code]["judges"]["left"]["current_vote"] == "white"
+
+
+async def test_vote_lock_duplicate_does_not_notify_displays_again(session_code):
+    async with _ws_client() as judge_client, _ws_client() as display_client:
+        async with httpx_ws.aconnect_ws("ws://test/ws", judge_client) as ws, \
+                   httpx_ws.aconnect_ws("ws://test/ws", display_client) as display_ws:
+            await display_ws.send_json({"type": "join", "session_code": session_code, "role": "display"})
+            await asyncio.wait_for(display_ws.receive_json(), timeout=1.0)  # join_success
+            await ws.send_json({"type": "join", "session_code": session_code, "role": "left_judge"})
+            await asyncio.wait_for(ws.receive_json(), timeout=1.0)  # join_success
+            await asyncio.wait_for(display_ws.receive_json(), timeout=1.0)  # judge_status_update
+
+            await ws.send_json({"type": "vote_lock", "color": "white"})
+            await asyncio.wait_for(ws.receive_json(), timeout=1.0)  # vote_ack
+            assert (await asyncio.wait_for(display_ws.receive_json(), timeout=1.0))["type"] == "judge_voted"
+
+            await ws.send_json({"type": "vote_lock", "color": "white"})
+            await asyncio.wait_for(ws.receive_json(), timeout=1.0)  # vote_ack
+            with pytest.raises(asyncio.TimeoutError):
+                await asyncio.wait_for(display_ws.receive_json(), timeout=0.3)
+
+
+async def test_vote_lock_with_stale_lift_id_is_rejected(session_code):
+    await session_manager.reset_for_next_lift(session_code)  # lift_id -> 1
+    async with _ws_client() as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+            await ws.send_json({"type": "join", "session_code": session_code, "role": "left_judge"})
+            join = await asyncio.wait_for(ws.receive_json(), timeout=1.0)
+            assert join["session_state"]["lift_id"] == 1
+
+            await ws.send_json({"type": "vote_lock", "color": "white", "lift_id": 0})
+            msg = await asyncio.wait_for(ws.receive_json(), timeout=1.0)
+
+            assert msg["type"] == "vote_rejected"
+            assert msg["code"] == "lift_changed"
+    assert session_manager.sessions[session_code]["judges"]["left"]["locked"] is False
+
+
+async def test_vote_lock_from_display_is_rejected(session_code):
+    async with _ws_client() as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+            await ws.send_json({"type": "join", "session_code": session_code, "role": "display"})
+            await asyncio.wait_for(ws.receive_json(), timeout=1.0)  # join_success
+
+            await ws.send_json({"type": "vote_lock", "color": "white"})
+            msg = await asyncio.wait_for(ws.receive_json(), timeout=1.0)
+
+            assert msg["type"] == "vote_rejected"
+            assert msg["code"] == "invalid"
+
+
+async def test_reset_for_next_lift_broadcasts_lift_id(session_code):
+    async with _ws_client() as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+            await ws.send_json({"type": "join", "session_code": session_code, "role": "center_judge"})
+            await asyncio.wait_for(ws.receive_json(), timeout=1.0)  # join_success
+
+            await ws.send_json({"type": "next_lift"})
+            msg = await asyncio.wait_for(ws.receive_json(), timeout=1.0)
+
+            assert msg == {"type": "reset_for_next_lift", "lift_id": 1}
+
+
+# ---- Role checks: side judges cannot send head-judge messages ----
+
+@pytest.mark.parametrize("message", [
+    {"type": "timer_start"},
+    {"type": "timer_reset"},
+    {"type": "next_lift"},
+    {"type": "end_session_confirmed"},
+    {"type": "settings_update", "showExplanations": True, "liftType": "deadlift", "requireReasons": True},
+])
+@pytest.mark.parametrize("role", ["left_judge", "right_judge"])
+async def test_side_judge_cannot_send_head_judge_message(session_code, role, message):
+    session = session_manager.sessions[session_code]
+    session["timer_started_at"] = 1234.0
+    session["judges"]["center"]["locked"] = True
+    session["judges"]["center"]["current_vote"] = "white"
+    before = copy.deepcopy(session)
+
+    async with _ws_client() as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+            await ws.send_json({"type": "join", "session_code": session_code, "role": role})
+            await asyncio.wait_for(ws.receive_json(), timeout=1.0)  # join_success
+
+            await ws.send_json(message)
+            msg = await asyncio.wait_for(ws.receive_json(), timeout=1.0)
+
+            assert msg["type"] == "error"
+            assert session_code in session_manager.sessions
+            after = session_manager.sessions[session_code]
+            for key in ("timer_started_at", "phase", "state", "settings", "lift_id", "timer_frozen_ms"):
+                assert after[key] == before[key], key
+            assert after["judges"]["center"]["locked"] is True
+
+
+async def test_vote_rejected_logs_info(session_code, caplog):
+    async with _ws_client() as ac:
+        with caplog.at_level(logging.INFO, logger="iron_verdict"):
+            async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+                await ws.send_json({"type": "join", "session_code": session_code, "role": "left_judge"})
+                await asyncio.wait_for(ws.receive_json(), timeout=1.0)  # join_success
+                await ws.send_json({"type": "vote_lock", "color": "white", "lift_id": 99})
+                await asyncio.wait_for(ws.receive_json(), timeout=1.0)  # vote_rejected
+
+    records = [r for r in caplog.records if r.getMessage() == "vote_rejected"]
+    assert len(records) == 1
+    assert records[0].code == "lift_changed"
+    assert records[0].role == "left_judge"

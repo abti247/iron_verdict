@@ -66,6 +66,7 @@ class SessionManager:
                 "timer_started_at": None,
                 "phase": "voting",
                 "timer_frozen_ms": None,
+                "lift_id": 0,
                 "settings": {
                     "show_explanations": False,
                     "lift_type": "squat",
@@ -114,7 +115,9 @@ class SessionManager:
         judge["reconnect_token"] = token
         return {"success": True, "is_head": is_head, "reconnect_token": token}
 
-    async def lock_vote(self, code: str, position: str, color: str, reason: str | None = None) -> Dict[str, Any]:
+    async def lock_vote(
+        self, code: str, position: str, color: str, reason: str | None = None, lift_id: int | None = None
+    ) -> Dict[str, Any]:
         """
         Lock in a judge's vote.
 
@@ -123,9 +126,12 @@ class SessionManager:
             position: Judge position ("left", "center", "right")
             color: Vote color ("white", "red", "blue", "yellow")
             reason: Optional reason string for a red/yellow card; None if no reason given
+            lift_id: Lift the client voted for; a mismatch rejects the vote ("Lift changed").
+                None skips the check (clients from before lift_id existed).
 
         Returns:
-            Dict with success status and all_locked flag
+            Dict with success status and all_locked flag. "Vote already locked"
+            failures carry the stored current_vote/current_reason.
         """
         async with self._lock:
             if code not in self.sessions:
@@ -136,10 +142,18 @@ class SessionManager:
             if position not in session["judges"]:
                 return {"success": False, "error": "Invalid position"}
 
+            if lift_id is not None and lift_id != session["lift_id"]:
+                return {"success": False, "error": "Lift changed"}
+
             judge = session["judges"][position]
 
             if judge["locked"]:
-                return {"success": False, "error": "Vote already locked"}
+                return {
+                    "success": False,
+                    "error": "Vote already locked",
+                    "current_vote": judge["current_vote"],
+                    "current_reason": judge["current_reason"],
+                }
 
             judge["current_vote"] = color
             judge["current_reason"] = reason
@@ -178,9 +192,10 @@ class SessionManager:
             session["timer_started_at"] = None
             session["phase"] = "voting"
             session["timer_frozen_ms"] = None
+            session["lift_id"] = session.get("lift_id", 0) + 1
             session["last_activity"] = datetime.now()
 
-            return {"success": True}
+            return {"success": True, "lift_id": session["lift_id"]}
 
     def update_settings(self, code: str, show_explanations: bool, lift_type: str, require_reasons: bool = False) -> Dict[str, Any]:
         """Update head judge display settings."""
@@ -250,6 +265,7 @@ class SessionManager:
                     judge.setdefault("reconnect_token", None)
                 s.setdefault("phase", "voting")
                 s.setdefault("timer_frozen_ms", None)
+                s.setdefault("lift_id", 0)
                 self.sessions[code] = s
             logger.info("snapshot_loaded", extra={"session_count": len(self.sessions)})
         except Exception:
