@@ -487,6 +487,43 @@ async def test_lock_vote_rejects_stale_lift_id():
     assert manager.sessions[code]["judges"]["left"]["locked"] is False
 
 
+async def test_lock_vote_stale_lift_id_wins_over_missing_mandatory_reason():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    await manager.reset_for_next_lift(code)
+    manager.sessions[code]["settings"]["require_reasons"] = True
+
+    result = await manager.lock_vote(code, "left", "red", lift_id=0)
+
+    assert result["success"] is False
+    assert result["error"] == "Lift changed"
+    assert manager.sessions[code]["judges"]["left"]["locked"] is False
+
+
+async def test_lock_vote_rejects_missing_reason_when_mandatory():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    manager.sessions[code]["settings"]["require_reasons"] = True
+
+    result = await manager.lock_vote(code, "left", "yellow", lift_id=0)
+
+    assert result["success"] is False
+    assert result["error"] == "Reason required"
+    assert manager.sessions[code]["judges"]["left"]["locked"] is False
+
+
+async def test_lock_vote_resend_of_stored_vote_is_not_blocked_by_mandatory_reason():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    await manager.lock_vote(code, "left", "red")
+    manager.sessions[code]["settings"]["require_reasons"] = True
+
+    result = await manager.lock_vote(code, "left", "red")
+
+    assert result["error"] == "Vote already locked"
+    assert result["current_vote"] == "red"
+
+
 async def test_lock_vote_accepts_matching_lift_id():
     manager = SessionManager()
     code = await manager.create_session("Test")
