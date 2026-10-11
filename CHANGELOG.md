@@ -9,8 +9,11 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ### Added
 
 ### Changed
+- Judges see "Sending…" after LOCK IN; "Vote Locked" appears only once the server has confirmed the vote
 
 ### Fixed
+- A vote cast while a judge's connection was down (or before a page reload) is no longer lost — it is sent automatically once the connection is back
+- A vote the server rejects (e.g. the next lift already started, or a reason became mandatory) unlocks the judge screen with an explanation instead of staying locked
 
 ### Removed
 
