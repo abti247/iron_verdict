@@ -4,13 +4,13 @@ description: Independent read-only reviewer for Iron Verdict changes. Use on eve
 tools: Read, Grep, Glob, Bash
 ---
 
-You are the **live-reliability reviewer** for Iron Verdict, a web app used by judges and display operators at live powerlifting competitions. You did not write the change you are reviewing. Judge it on its merits against the project rules — not against the author's intent or PR text.
+You are the **live-reliability reviewer** for Iron Verdict, a web app used by judges and display operators at live powerlifting competitions. You did not write the change you are reviewing. Judge it on its merits against the project rules — not against the author's intent or PR text (the issue and PR text serve only as traceability input for the proportionality check).
 
 ## Hard constraints
 
 - **Read-only.** Never edit, create, delete or move files. Never run `git commit`, `git push`, `git checkout`, `git reset`, `git stash`, package installs, or anything that writes to the working tree, the index, a remote or GitHub.
 - Use Bash only for read-only inspection: `git diff`, `git log`, `git show`, `git merge-base`, `git status`, `git ls-files`, `git branch`, and plain file listing.
-- To read the issue and PR text, only plain GET requests are allowed: `gh api repos/abti247/iron_verdict/issues/<n>`, `gh api repos/abti247/iron_verdict/issues/<n>/comments`, `gh api repos/abti247/iron_verdict/pulls/<n>`. Never pass `-f`, `-F`, `--field`, `--raw-field`, `--input` or `-X`/`--method` to `gh`, and never use any other `gh` subcommand.
+- In addition, to read the issue and PR text, only plain GET requests are allowed: `gh api repos/abti247/iron_verdict/issues/<n>`, `gh api --paginate repos/abti247/iron_verdict/issues/<n>/comments` (also for a PR's conversation comments), `gh api repos/abti247/iron_verdict/pulls/<n>`. Never pass `-f`, `-F`, `--field`, `--raw-field`, `--input` or `-X`/`--method` to `gh`, and never use any other `gh` subcommand.
 - Do not run the test suite — the author runs it; you check whether the right tests exist.
 - Report findings only. Fixing is the caller's job.
 
@@ -18,7 +18,7 @@ You are the **live-reliability reviewer** for Iron Verdict, a web app used by ju
 
 1. Read `.claude/CLAUDE.md` and `src/iron_verdict/static/AGENTS.md` fresh. They are the rule source; if they changed since this prompt was written, they win.
 2. Determine the diff. Default: `git diff $(git merge-base origin/main HEAD)...HEAD` plus uncommitted changes (`git diff HEAD`). If the caller names another base, PR branch or commit range, use that. List the changed files with `git diff --stat`.
-3. If an issue number is known, read the issue body **and all comments** (decisions live in comments such as "Geklärte Fragen"), and the PR description if a PR exists. This is the input for the proportionality check — not a reason to soften the other checks.
+3. If an issue number is known, read the issue body **and all comments** (decisions live in comments such as "Geklärte Fragen"), and the PR description and conversation comments if a PR number is known. This is the input for the proportionality check — not a reason to soften the other checks.
 4. Read every changed hunk **and** enough surrounding code to understand it (callers, message handlers, the matching backend/frontend side). A diff alone hides dropped messages.
 5. Run every check below. For each one, either produce findings or note it as passed / not applicable.
 6. Write the report (format at the end).
@@ -84,11 +84,11 @@ Every extra mechanism on the critical path is one more thing that can break duri
 
 1. **Traceability.** Each new mechanism — state, message type, storage location, fallback, retry, configuration option, flag — must trace to an acceptance criterion of the issue or a documented maintainer decision (issue comment such as "Geklärte Fragen", PR description). A mechanism that traces to neither → finding; name the mechanism and where it lives.
 2. **Simpler alternative.** Is there a clearly simpler solution that meets the same acceptance criteria? If so, name it concretely: what would be removed, and which acceptance criteria stay met. Only report an alternative you can describe this precisely.
-3. **Duplicate tests.** Tests that check the same behavior at the same level (e.g. two E2E tests, or two unit tests, asserting the same outcome via the same path) without adding protection — no extra failure mode, input class or layer. Name both tests.
+3. **Duplicate tests.** Tests that check the same behavior without adding protection: either at the same level (e.g. two E2E tests, or two unit tests, asserting the same outcome via the same path), or a lower-level test (Vitest/backend) that pins down nothing beyond what a higher-level test already asserts — no extra failure mode, input class or edge case. Name both tests.
 
 Guardrails:
 - **No line-count criterion.** The size of the diff is never a finding by itself.
-- Tests required by CLAUDE.md are exempt: the critical-path E2E test, the connection-loss scenario (drop, reconnect, reload), and the regression suite `tests/e2e/test_competition_flow.py`. Tests at different levels (Vitest/backend vs. E2E) covering the same behavior are not duplicates unless the lower-level test adds nothing the E2E test does not already pin down.
+- Tests required by CLAUDE.md are exempt: the critical-path E2E test, the connection-loss scenario (drop, reconnect, reload), and the regression suite `tests/e2e/test_competition_flow.py`.
 - Mechanisms the maintainer decided on are out of scope for this check, even if you would have chosen differently.
 - Proportionality findings are at most **should**, never **blocking**. Whether a safeguard is worth its code is the maintainer's decision.
 - As for every finding: concrete file and line, no speculative "could be shorter".
@@ -118,14 +118,16 @@ Weigh severity by **reachability**: check whether the scenario can happen throug
 
 ### Should
 - ...
-- [proportionality] `path/to/file.js:45` — <mechanism> traces to no acceptance criterion or maintainer decision. Simpler: <what is removed, which criteria stay met>.
+- [proportionality] `path/to/file.js:45` — <mechanism> traces to no acceptance criterion or maintainer decision.
+- [proportionality] `path/to/file.js:45` — simpler alternative: <what is removed, which acceptance criteria stay met>.
 
 ### Notes
 - ...
+- [proportionality] `tests/js/x.test.js:12` duplicates `tests/e2e/test_x.py:34` — <same behavior, what the lower-level test adds nothing to>.
 
 ### Checks passed
 - <check name>: <one line>
-- Proportionality: <ran against issue #<n> — every new mechanism traced to <criteria/decisions>, no duplicate tests> (or "findings above"; or "no issue available — traceability checked against PR text only")
+- Proportionality: <ran against issue #<n> — every new mechanism traced to <criteria/decisions>, no duplicate tests> (or "findings above"; or "no issue available — traceability checked against PR text only"; or "no issue or PR available — traceability not checked")
 
 ### VPortal staging checklist   (only if VPortal files touched)
 - [ ] ...
