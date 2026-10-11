@@ -419,34 +419,52 @@ async def websocket_endpoint(websocket: WebSocket):
                 if not session_code or not role:
                     continue
 
+                # Every vote_lock gets exactly one answer to the voter: vote_ack or
+                # vote_rejected. The judge UI shows "sending" until one arrives.
+                async def reject_vote(code: str, text: str) -> None:
+                    await websocket.send_json({"type": "vote_rejected", "code": code, "message": text})
+
                 position = role.replace("_judge", "")
                 color = message.get("color")
 
                 if color not in VALID_COLORS:
-                    await websocket.send_json({
-                        "type": "error",
-                        "message": "Invalid vote color"
-                    })
+                    await reject_vote("invalid", "Invalid vote color")
                     continue
 
                 reason = message.get("reason")
                 if reason is not None and (not isinstance(reason, str) or len(reason) > 200):
-                    await websocket.send_json({
-                        "type": "error",
-                        "message": "Invalid reason"
-                    })
+                    await reject_vote("invalid", "Invalid reason")
                     continue
+
+                lift_id = message.get("lift_id")
+                if lift_id is not None and (not isinstance(lift_id, int) or isinstance(lift_id, bool)):
+                    await reject_vote("invalid", "Invalid lift id")
+                    continue
+
                 session = session_manager.sessions.get(session_code)
                 require_reasons = session["settings"].get("require_reasons", False) if session else False
 
                 if require_reasons and color != "white" and not reason:
-                    await websocket.send_json({
-                        "type": "error",
-                        "message": "Reason required before locking in"
-                    })
+                    await reject_vote("reason_required", "Reason required before locking in")
                     continue
 
-                result = await session_manager.lock_vote(session_code, position, color, reason=reason)
+                result = await session_manager.lock_vote(session_code, position, color, reason=reason, lift_id=lift_id)
+
+                if not result["success"]:
+                    if result["error"] == "Vote already locked":
+                        # Idempotent: a resend after reconnect must not fail. The stored
+                        # vote is authoritative, even if the resend carried another colour.
+                        await websocket.send_json({
+                            "type": "vote_ack",
+                            "color": result["current_vote"],
+                            "reason": result["current_reason"],
+                            "lift_id": session_manager.sessions[session_code]["lift_id"],
+                        })
+                    elif result["error"] == "Lift changed":
+                        await reject_vote("lift_changed", result["error"])
+                    else:
+                        await reject_vote("invalid", result["error"])
+                    continue
 
                 if result["success"]:
                     logger.info("vote_locked", extra={
@@ -455,6 +473,12 @@ async def websocket_endpoint(websocket: WebSocket):
                         "position": position,
                         "color": color,
                         "all_locked": result.get("all_locked", False),
+                    })
+                    await websocket.send_json({
+                        "type": "vote_ack",
+                        "color": color,
+                        "reason": reason,
+                        "lift_id": session_manager.sessions[session_code]["lift_id"],
                     })
                     # Notify display that a judge voted (no color)
                     await connection_manager.send_to_displays(
@@ -543,10 +567,10 @@ async def websocket_endpoint(websocket: WebSocket):
                     continue
 
                 logger.info("next_lift", extra={"conn_id": conn_id, "session_code": session_code})
-                await session_manager.reset_for_next_lift(session_code)
+                reset = await session_manager.reset_for_next_lift(session_code)
                 await connection_manager.broadcast_to_session(
                     session_code,
-                    {"type": "reset_for_next_lift"}
+                    {"type": "reset_for_next_lift", "lift_id": reset.get("lift_id")}
                 )
 
             elif message_type == "end_session_confirmed":

@@ -459,3 +459,73 @@ async def test_create_session_rejects_unknown_kind():
     manager = SessionManager()
     with pytest.raises(ValueError):
         await manager.create_session("Test", kind="bogus")
+
+
+async def test_new_session_starts_at_lift_id_zero():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    assert manager.sessions[code]["lift_id"] == 0
+
+
+async def test_reset_for_next_lift_increments_lift_id():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    await manager.reset_for_next_lift(code)
+    await manager.reset_for_next_lift(code)
+    assert manager.sessions[code]["lift_id"] == 2
+
+
+async def test_lock_vote_rejects_stale_lift_id():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    await manager.reset_for_next_lift(code)
+
+    result = await manager.lock_vote(code, "left", "white", lift_id=0)
+
+    assert result["success"] is False
+    assert result["error"] == "Lift changed"
+    assert manager.sessions[code]["judges"]["left"]["locked"] is False
+
+
+async def test_lock_vote_accepts_matching_lift_id():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    await manager.reset_for_next_lift(code)
+
+    result = await manager.lock_vote(code, "left", "white", lift_id=1)
+
+    assert result["success"] is True
+
+
+async def test_lock_vote_without_lift_id_skips_check():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    await manager.reset_for_next_lift(code)
+
+    result = await manager.lock_vote(code, "left", "white")
+
+    assert result["success"] is True
+
+
+async def test_lock_vote_already_locked_returns_stored_vote():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    await manager.lock_vote(code, "left", "red", reason="reasons.squat.red.depth")
+
+    result = await manager.lock_vote(code, "left", "white")
+
+    assert result["current_vote"] == "red"
+    assert result["current_reason"] == "reasons.squat.red.depth"
+
+
+async def test_load_snapshot_defaults_missing_lift_id(tmp_path):
+    path = str(tmp_path / "snap.json")
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    del manager.sessions[code]["lift_id"]
+    manager.save_snapshot(path)
+
+    restored = SessionManager()
+    restored.load_snapshot(path)
+
+    assert restored.sessions[code]["lift_id"] == 0
