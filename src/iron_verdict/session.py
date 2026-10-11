@@ -133,8 +133,9 @@ class SessionManager:
         mandatory reason (red/yellow/blue without reason while require_reasons is on).
 
         Returns:
-            Dict with success status and all_locked flag. "Vote already locked"
-            failures carry the stored current_vote/current_reason.
+            Dict with success status and all_locked flag. Failure errors the caller maps:
+            "Lift changed", "Reason required", and "Vote already locked" (carries the
+            stored current_vote/current_reason).
         """
         async with self._lock:
             if code not in self.sessions:
