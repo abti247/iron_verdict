@@ -14,6 +14,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ### Fixed
 - A vote cast while a judge's connection was down (or before a page reload) is no longer lost — it is sent automatically once the connection is back
 - A vote the server rejects (e.g. the next lift already started, or a reason became mandatory) unlocks the judge screen with an explanation instead of staying locked
+- A vote sent for a lift that has already ended is always reported as "next lift started" and cleared, even if reasons became mandatory in the meantime — it can no longer be completed with a reason and counted for the new lift
 
 ### Removed
 
