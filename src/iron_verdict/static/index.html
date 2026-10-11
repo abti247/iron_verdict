@@ -377,13 +377,19 @@
             </div>
         </div>
 
+        <div class="vote-error" role="alert" x-show="voteError" x-text="voteError ? t(voteError) : ''"></div>
+
         <button class="lock-btn cut-corner-sm"
                 x-show="canLockIn() && !voteLocked"
                 @click="lockVote()"
                 x-text="t('judge.lockIn')">
         </button>
 
-        <div class="locked-status" x-show="voteLocked">
+        <div class="vote-sending-status" x-show="voteState === 'sending'">
+            <span x-text="t('judge.voteSending')"></span> &#8212; <span x-text="selectedVote ? t('judge.colors.' + selectedVote) : ''"></span>
+        </div>
+
+        <div class="locked-status" x-show="voteState === 'confirmed'">
             &#10003; <span x-text="t('judge.voteLocked')"></span> &#8212; <span x-text="selectedVote ? t('judge.colors.' + selectedVote) : ''"></span>
         </div>
 

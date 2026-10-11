@@ -2,6 +2,7 @@ import { CARD_REASONS } from './constants.js';
 import { startTimerCountdown } from './timer.js';
 import { createWebSocket } from './websocket.js';
 import { demoMethods } from './demo.js';
+import { voteDeliveryMethods, clearPendingVote } from './voteDelivery.js';
 import { vportalClient } from './vportalClient.js';
 import {
     handleJoinSuccess,
@@ -15,6 +16,8 @@ import {
     handleSettingsUpdate,
     handleServerRestarting,
     handleJudgeStatusUpdate,
+    handleVoteAck,
+    handleVoteRejected,
 } from './handlers.js';
 
 const DISPLAY_ZOOM_KEY = 'iron-verdict:display-zoom';
@@ -37,7 +40,10 @@ export function ironVerdictApp() {
         connectionStatus: 'disconnected',
         serverRestarting: false,
         selectedVote: null,
-        voteLocked: false,
+        voteState: 'open',  // 'open' | 'sending' | 'confirmed' — see voteDelivery.js
+        voteError: '',      // i18n key of the last vote rejection, '' if none
+        liftId: null,
+        get voteLocked() { return this.voteState !== 'open'; },
         resultsShown: false,
         timerDisplay: '60',
         timerExpired: false,
@@ -170,6 +176,7 @@ export function ironVerdictApp() {
         },
 
         ...demoMethods,
+        ...voteDeliveryMethods,
 
         navigateTo(screen) {
             if (this.screen === screen) return;
@@ -314,12 +321,15 @@ export function ironVerdictApp() {
                 settings_update:     handleSettingsUpdate,
                 server_restarting:   handleServerRestarting,
                 judge_status_update: handleJudgeStatusUpdate,
+                vote_ack:            handleVoteAck,
+                vote_rejected:       handleVoteRejected,
             };
             dispatch[message.type]?.(this, message);
         },
 
         selectVote(color) {
             if (!this.voteLocked) {
+                this.voteError = '';
                 this.selectedVote = color;
                 this.selectedReason = null;
                 this.showingReasonStep = (color !== 'white');
@@ -388,17 +398,6 @@ export function ironVerdictApp() {
             return true;
         },
 
-        lockVote() {
-            if (this.canLockIn()) {
-                this.voteLocked = true;
-                this.wsSend({
-                    type: 'vote_lock',
-                    color: this.selectedVote,
-                    reason: this.selectedVote !== 'white' ? this.selectedReason : null,
-                });
-            }
-        },
-
         saveSettings() {
             if (!this.isHead) return;
             if (this.ws && this.ws.readyState === WebSocket.OPEN) {
@@ -414,7 +413,9 @@ export function ironVerdictApp() {
         resetVoting() {
             this.cleanupReasonScroll();
             this.selectedVote = null;
-            this.voteLocked = false;
+            this.voteState = 'open';
+            this.voteError = '';
+            clearPendingVote(sessionStorage);
             this.resultsShown = false;
             this.selectedReason = null;
             this.showingReasonStep = false;
@@ -469,6 +470,7 @@ export function ironVerdictApp() {
 
         returnToLanding() {
             sessionStorage.removeItem('iv_session');
+            clearPendingVote(sessionStorage);
             this.intentionalNavigation = true;
             if (this.ws) {
                 this.ws.close();
@@ -494,8 +496,10 @@ export function ironVerdictApp() {
                 this.ws.close();
             }
             this.navigateTo('role-select');
+            clearPendingVote(sessionStorage);
             this.selectedVote = null;
-            this.voteLocked = false;
+            this.voteState = 'open';
+            this.voteError = '';
             this.resultsShown = false;
             this.selectedReason = null;
             this.cleanupReasonScroll();

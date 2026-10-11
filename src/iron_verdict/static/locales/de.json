@@ -66,6 +66,12 @@
   "judge": {
     "lockIn": "BESTÄTIGEN",
     "voteLocked": "Stimme abgegeben",
+    "voteSending": "Wird gesendet…",
+    "voteRejected": {
+      "liftChanged": "Der Haupt-KARI hat zum nächsten Versuch gewechselt – die Stimme wurde nicht gezählt. Bitte erneut abstimmen.",
+      "reasonRequired": "Ein Grund ist erforderlich – bitte Grund wählen und erneut bestätigen.",
+      "invalid": "Die Stimme wurde vom Server nicht angenommen. Bitte erneut abstimmen."
+    },
     "back": "zurück",
     "headControls": "Haupt-KARI-Steuerung",
     "startTimer": "Timer starten",

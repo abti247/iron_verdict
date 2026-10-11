@@ -177,7 +177,9 @@ class CompetitionHelper:
         if reason:
             page.locator(".reason-item", has_text=reason).click()
         page.locator(".lock-btn").click()
+        # "Vote Locked" only appears once the server acknowledged the vote.
         page.locator(".locked-status").wait_for(state="visible")
+        assert not page.locator(".vote-sending-status").is_visible()
 
     def vote_all_white(self):
         """All 3 judges vote white and lock in."""
