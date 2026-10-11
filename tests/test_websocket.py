@@ -842,7 +842,7 @@ async def test_pong_message_updates_last_pong(session_code):
 
 
 
-def test_heartbeat_detects_half_open_connection_within_15_seconds():
+def test_heartbeat_timing_constants():
     from iron_verdict.main import HEARTBEAT_INTERVAL_SECONDS, PONG_STALE_SECONDS
     assert HEARTBEAT_INTERVAL_SECONDS == 5
     assert PONG_STALE_SECONDS == 15

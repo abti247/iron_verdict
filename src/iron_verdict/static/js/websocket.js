@@ -43,7 +43,7 @@ export function createWebSocket(url, onMessage, onError, onClose, onReopen, onDr
         stopWatchdog();
         const old = ws;
         old.onmessage = old.onerror = old.onclose = old.onopen = null;
-        try { old.close(); } catch (_e) {}
+        try { old.close(); } catch (e) { console.warn('Closing abandoned WebSocket failed:', e); }
         console.log('WebSocket heartbeat lost, reconnecting now...');
         onDropped?.();
         connect();
