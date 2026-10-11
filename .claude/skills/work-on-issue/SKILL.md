@@ -62,7 +62,7 @@ All green before continuing. Keep the summary (passed/failed counts) for the PR.
 
 ## 7. Independent review
 
-Launch the `live-reliability-reviewer` agent (Agent tool, `subagent_type: live-reliability-reviewer`) on the branch diff against `origin/main`, giving it the issue number. Fix every **blocking** and **should** finding, or record in the PR why one does not apply. Re-run the reviewer after substantial fixes, and re-run the affected tests.
+Launch the `live-reliability-reviewer` agent (Agent tool, `subagent_type: live-reliability-reviewer`) on the branch diff against `origin/main`, giving it the issue number. Fix every **blocking** and **should** finding, or record in the PR why one does not apply. Findings marked `[proportionality]` (unneeded mechanisms, simpler alternatives, duplicate tests) are the maintainer's call: either implement them or decline them with a reason — both go into the PR description. Re-run the reviewer after substantial fixes, and re-run the affected tests.
 
 ## 8. Open the PR
 
@@ -73,7 +73,7 @@ Push the branch (`git push -u origin <branch>`), then open the PR against `main`
   - `Closes #$ARGUMENTS`
   - What changed and why, plus implementation choices made without asking (see step 2)
   - **Testnachweis**: commands run and pass/fail counts, new tests named
-  - Reviewer result: findings and how each was handled
+  - Reviewer result: findings and how each was handled — answer every `[proportionality]` finding explicitly (implemented, or declined with the reason)
   - If VPortal files were touched: add the `vportal` label and a checklist of what to verify in the next manual test against the BVDK staging environment (start from the reviewer's checklist)
 - Do not merge — merging needs green CI and the maintainer's approval.
 
