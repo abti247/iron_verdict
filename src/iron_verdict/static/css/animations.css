@@ -18,3 +18,16 @@
     color: var(--vote-red);
     text-shadow: 0 0 80px var(--blood-glow);
 }
+
+/* Boot screen (boot.css) */
+@keyframes boot-spin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes boot-reveal {
+    to { visibility: visible; }
+}
+
+@keyframes boot-conceal {
+    to { visibility: hidden; }
+}

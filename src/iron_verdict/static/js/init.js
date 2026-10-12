@@ -28,7 +28,15 @@ Promise.all([
     window._resolvedLang = lang;
     const s = document.createElement('script');
     s.src = '/static/vendor/alpinejs-3.14.1.min.js';
+    // Show the "could not be loaded" message now instead of after the
+    // boot.css timeout — this download failing means Alpine will never start.
+    s.onerror = () => document.documentElement.classList.add('boot-failed');
     document.head.appendChild(s);
+});
+
+// Leave the boot state (boot.css) once Alpine has rendered the first screen.
+document.addEventListener('alpine:initialized', () => {
+    document.documentElement.classList.remove('booting', 'boot-failed');
 });
 
 // Expose as global so Alpine can call ironVerdictApp()

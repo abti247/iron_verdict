@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="booting">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,12 +10,27 @@
     <link rel="stylesheet" href="/static/css/components.css">
     <link rel="stylesheet" href="/static/css/layout.css">
     <link rel="stylesheet" href="/static/css/animations.css">
+    <link rel="stylesheet" href="/static/css/boot.css">
     <script type="module" src="/static/js/init.js"></script>
     <script defer src="https://umami-production-ca4a.up.railway.app/script.js" data-website-id="aca70c7a-7634-4ae5-bffa-cc83d8764bd0"></script>
     <link rel="preload" as="script" href="/static/vendor/alpinejs-3.14.1.min.js">
     <script src="/static/vendor/qrcodejs-1.0.0.min.js"></script>
 </head>
 <body x-data="ironVerdictApp()" :class="{ 'display-mode': role === 'display' && screen === 'display' }">
+
+    <!-- Boot screen: the only thing visible until Alpine has started (see boot.css).
+         Plain markup without Alpine or i18n, because it must work without them. -->
+    <div class="boot-screen">
+        <div class="boot-loading" role="status">
+            <div class="boot-spinner"></div>
+            <p>Laden … / Loading …</p>
+        </div>
+        <div class="boot-fallback" role="alert">
+            <p>App konnte nicht geladen werden – Seite neu laden</p>
+            <p>App could not be loaded – reload the page</p>
+            <a class="boot-reload" href="">Neu laden / Reload</a>
+        </div>
+    </div>
 
     <!-- Demo Intro Screen -->
     <div class="landing-wrap" x-show="screen === 'demo-intro'" x-cloak>
@@ -254,7 +269,7 @@
     </div>
 
     <!-- VPortal Connect Modal -->
-    <div class="vportal-modal-backdrop" x-show="vportalModalOpen" @click.self="vportalModalOpen = false">
+    <div class="vportal-modal-backdrop" x-show="vportalModalOpen" x-cloak @click.self="vportalModalOpen = false">
         <div class="vportal-modal cut-corner" @click.stop>
             <div class="vportal-modal-title chrome-text" x-text="t('vportal.modalTitle')"></div>
 

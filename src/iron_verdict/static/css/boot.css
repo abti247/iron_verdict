@@ -1,0 +1,62 @@
+/* ===== BOOT SCREEN =====
+   <html class="booting"> is set in the markup and removed by init.js once
+   Alpine has started. While it is set, only .boot-screen is visible — no
+   screen or overlay can show up before Alpine has decided what to show, even
+   one that forgot x-cloak. Works without any JS. */
+.boot-screen { display: none; }
+
+html.booting body > :not(.boot-screen) { display: none; }
+
+html.booting .boot-screen {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    font-family: system-ui, sans-serif;
+    text-align: center;
+    color: var(--text-main);
+    background: var(--bg-void);
+}
+
+.boot-loading,
+.boot-fallback {
+    grid-area: 1 / 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+}
+
+.boot-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid var(--chrome-dark);
+    border-top-color: var(--blood);
+    border-radius: 50%;
+    animation: boot-spin 0.9s linear infinite;
+}
+
+/* Fallback if Alpine has not started after 10 s: replace the indicator with
+   the "could not be loaded" message. Why a delay: there is no event for
+   "Alpine will never start" (a hung request, a broken module), so a timeout
+   is the only signal; 10 s is far above a normal start on venue Wi-Fi (the
+   assets are self-hosted, a few hundred KB) yet short enough that a judge
+   does not stare at a spinner. Pure CSS, so it also fires when no JS runs
+   at all. A failed Alpine download shows it at once (.boot-failed). */
+.boot-fallback {
+    visibility: hidden;
+    animation: boot-reveal 0s linear 10s forwards;
+}
+.boot-loading { animation: boot-conceal 0s linear 10s forwards; }
+
+html.boot-failed .boot-fallback { visibility: visible; animation: none; }
+html.boot-failed .boot-loading { visibility: hidden; animation: none; }
+
+.boot-reload {
+    padding: 10px 24px;
+    border: 1px solid var(--blood);
+    color: var(--text-main);
+    background: var(--bg-raised);
+    text-decoration: none;
+}
