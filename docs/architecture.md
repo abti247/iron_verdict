@@ -189,7 +189,7 @@ No-build single-page application. One HTML file served by FastAPI's `StaticFiles
 |---|---|
 | `init.js` | Entry point: reads demo URL params before Alpine boots, loads i18n, bootstraps Alpine, dispatches `popstate` events into the screen machine. |
 | `app.js` | The single Alpine component (`ironVerdictApp`) — all reactive state and methods. |
-| `websocket.js` | WebSocket wrapper with exponential-backoff auto-reconnect and heartbeat watchdog. |
+| `websocket.js` | WebSocket wrapper with short capped-backoff auto-reconnect, immediate reconnect on `online` / `visibilitychange` / bfcache restore, and heartbeat watchdog. |
 | `handlers.js` | One named handler per incoming WS message type; imported by `app.js`. |
 | `voteDelivery.js` | Judge vote state machine (open → sending → confirmed), pending vote in `sessionStorage`, reconciliation after join, `vote_ack` / `vote_rejected` handling. Methods spread into the Alpine component. |
 | `timer.js` | Module-level countdown interval (`startTimerCountdown`, `stopTimer`). |
@@ -222,14 +222,16 @@ QR entry point: `?session=XXXX` lands on the landing screen with the code pre-fi
 
 `websocket.js` wraps the native `WebSocket` with:
 
-- Exponential-backoff reconnect: 1 s → 2 s → … → 16 s max; resets to 1 s on successful open.
+- Reconnect waits 0.5 s → 1 s → 2 s → 3 s max, each ±20 % jitter; resets to 0.5 s on successful open.
+  *Why so short instead of classic exponential backoff:* backoff protects servers with thousands of clients from a reconnect storm; a session has ~5 clients, so the trade-off favours recovery — with the old 16 s cap a judge could stay offline up to 16 s after the server was back (e.g. after a deploy). The jitter still keeps clients from hitting a restarted server in the same instant.
+- Immediate reconnect while waiting for a retry: `online` (device back on the network), `visibilitychange` to visible (tab back in front) and `pageshow` with `event.persisted` (bfcache restore) cancel the pending retry timer and connect at once. An open socket or an attempt in progress is left alone, so these never create a second socket (an open-but-dead socket is the watchdog's job). If the socket is `CLOSED` without its close event having reached the wrapper (page frozen in the bfcache), it is abandoned like a watchdog drop and replaced. The listeners are removed on `close()`.
+  *Why in the wrapper, not in `app.js`:* the earlier bfcache handler in `app.js` called `joinSession()` again, creating a second wrapper while the first one's retry timer could still fire — two sockets for one judge. One wrapper owning every reconnect trigger keeps exactly one active socket.
 - `stopped` flag prevents reconnect after intentional close (e.g. "Back to Landing").
 - Heartbeat watchdog (judges and displays alike): if no server message of any kind arrives for 15 s (3 missed pings), the wrapper abandons the socket — handlers detached, `close()` called — reports it as dropped (indicator turns "reconnecting") and connects a new socket immediately. Checked every 2.5 s, so detection takes 15–17.5 s. A gap of more than 5 s between two checks means the browser paused or throttled timers (background tab, frozen page); the watchdog then restarts its count instead of reconnecting, since incoming messages may still be queued behind the pause.
   *Why detach handlers instead of waiting for `onclose`:* on a half-open connection the close handshake can hang for a long time; the old socket's late `onclose` or messages must not trigger a second reconnect or reach the app. *Why only on the open socket:* a socket that never opens fails via `onclose` and the normal backoff, so the watchdog cannot pile up connection attempts. The display's VPortal polling is started once in `joinSession`, so a watchdog reconnect does not start it twice.
 - On reconnect, sends `join` with `reconnect_token` from `sessionStorage` if one is stored.
 - Server returns a new `reconnect_token` in `join_success`; stored in `sessionStorage.iv_session`.
 - `join_error: "Role already taken"` is suppressed when a token is stored — transient race during reconnect; the server will accept the retry with the token.
-- `pageshow` listener with `event.persisted` handles bfcache restore: if `readyState === 3` (CLOSED), rejoins automatically.
 
 ### Client-side state
 

@@ -12,6 +12,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Judges see "Sending…" after LOCK IN; "Vote Locked" appears only once the server has confirmed the vote
 
 ### Fixed
+- After a connection loss (e.g. a server restart), judges and displays retry at least every 3 seconds instead of waiting up to 16 seconds, and reconnect at once when the device is back online or the app comes back to the foreground
 - A judge or display whose connection silently stops working (e.g. the device switches Wi-Fi access points) now notices within about 15 seconds, shows "reconnecting" and reconnects, instead of looking connected for up to 70 seconds
 - A vote cast while a judge's connection was down (or before a page reload) is no longer lost — it is sent automatically once the connection is back
 - A vote the server rejects (e.g. the next lift already started, or a reason became mandatory) unlocks the judge screen with an explanation instead of staying locked
