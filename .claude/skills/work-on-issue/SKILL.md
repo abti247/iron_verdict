@@ -31,8 +31,9 @@ gh api repos/abti247/iron_verdict/issues/$ARGUMENTS/comments
 ## 3. Branch
 
 One issue per branch, never work on `main`.
-- Cloud session: use the branch the session assigns; otherwise create one from up-to-date `origin/main` (`git fetch origin main && git checkout -b <type>/<n>-<slug> origin/main`).
-- Local session: create a worktree under `.worktrees/`.
+- Name: `<type>/<n>-<slug>` — conventional-commit type, issue number, short kebab-case slug (e.g. `feat/53-reconnect-within-3s`).
+- Cloud session: ignore the branch the session assigns (`ccr-…`) — the maintainer permits this (see `.claude/CLAUDE.md`, Implementation). Create the branch from up-to-date `origin/main` (`git fetch origin main && git checkout -b <type>/<n>-<slug> origin/main`) and push there.
+- Local session: create a worktree under `.worktrees/` on a branch with that name.
 
 ## 4. Test first, then implement (TDD)
 
