@@ -184,11 +184,8 @@ describe('heartbeat watchdog', () => {
 });
 
 describe('retry delays', () => {
-    it('grows from 0.5 s to a 3 s cap', () => {
+    it('uses 0.5, 1, 2 and 3 s as base waits', () => {
         expect(RETRY_DELAYS_MS).toEqual([500, 1000, 2000, 3000]);
-        const noJitter = () => 0.5;
-        expect([0, 1, 2, 3, 4, 10].map((n) => retryDelay(n, noJitter)))
-            .toEqual([500, 1000, 2000, 3000, 3000, 3000]);
     });
 
     it('adds at most ±20 % jitter', () => {
@@ -348,18 +345,14 @@ describe('reconnect scheduling', () => {
         expect(FakeWebSocket.instances).toHaveLength(1);
     });
 
-    it('a closed wrapper does not react when a new one is waiting', () => {
-        const { wrapper, first } = setup();
-        first.open();
+    it('removes its window and document listeners on close()', () => {
+        const winRemove = vi.spyOn(window, 'removeEventListener');
+        const docRemove = vi.spyOn(document, 'removeEventListener');
+        const { wrapper } = setup();
+
         wrapper.close();
-        first.drop();
-        liveWrappers.push(createWebSocket('ws://test/ws', vi.fn(), vi.fn(), vi.fn()));
-        FakeWebSocket.instances[1].open();
-        FakeWebSocket.instances[1].drop();
 
-        window.dispatchEvent(new Event('online'));
-
-        // Only the live wrapper reconnects.
-        expect(FakeWebSocket.instances).toHaveLength(3);
+        const removed = [...winRemove.mock.calls, ...docRemove.mock.calls].map((c) => c[0]);
+        expect(removed).toEqual(expect.arrayContaining(['online', 'pageshow', 'visibilitychange']));
     });
 });

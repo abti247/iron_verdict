@@ -106,7 +106,7 @@ Requirements and caveats:
 | [test_vote_delivery.py](tests/e2e/test_vote_delivery.py) | Vote cast while offline shows "Sending…" and is delivered after reconnect; pending vote survives a reload; stale vote after Next Lift is discarded with a message (also when reasons became mandatory meanwhile — `lift_changed` wins over `reason_required`); server-rejected vote (reason became mandatory) unlocks the screen with an inline message, no alert. Cuts the network with the init-script `WebSocket` patch from [network_switch.py](tests/e2e/network_switch.py), whose on/off switch lives in `localStorage`, so it survives reloads. |
 | [test_session_stuck_states.py](tests/e2e/test_session_stuck_states.py) | Next Lift mid-vote, continue after a judge disconnects mid-vote, IPF rule via the browser, full reset of vote state. |
 | [test_connectivity_indicators.py](tests/e2e/test_connectivity_indicators.py) | L/R dots on head screen update as side judges join/disconnect/reconnect; own dot transitions connected → reconnecting → connected (uses an init script to monkey-patch `WebSocket`); `server_restarting` broadcast renders the label. |
-| [test_fast_reconnect.py](tests/e2e/test_fast_reconnect.py) | Reconnect speed: after an outage long enough for the retry wait to reach its 3 s cap, the judge is connected again within ~5 s of the network returning (vote confirmed, reload reconnects); a synthetic `online` / `visibilitychange` event right after a failed attempt connects within 1.5 s with exactly one new socket. Uses the network switch from `network_switch.py`; ~10 s per test (waits out the real retry delays). Fails against the old 16 s backoff. |
+| [test_fast_reconnect.py](tests/e2e/test_fast_reconnect.py) | Reconnect speed: after an outage long enough for the retry wait to reach its 3 s cap, the judge is connected again within ~5 s of the network returning (vote confirmed, reload reconnects); a synthetic `online` event right after a failed attempt connects within 1.5 s with exactly one new socket (`visibilitychange` / `pageshow` share the code path; Vitest only). Uses the network switch from `network_switch.py`; ~10–15 s per test (waits out the real retry delays). Fails against the old 16 s backoff. |
 | [test_heartbeat_watchdog.py](tests/e2e/test_heartbeat_watchdog.py) | Client heartbeat watchdog: an init script turns the first socket half-open (incoming messages and close event swallowed); judge and display switch to "reconnecting", reconnect on a new socket, and keep working (vote confirmed, result shown, reload). Also checks a healthy display keeps its socket for 20 s (no false reconnect). ~20–40 s per test because it waits out the real 15 s watchdog. |
 | [test_display_resilience.py](tests/e2e/test_display_resilience.py) | Display refresh recovers; mid-competition display join; two displays receive identical results. |
 | [test_end_session.py](tests/e2e/test_end_session.py) | Only head sees End Session; ending redirects all four screens; ended code unjoinable. |
@@ -131,7 +131,7 @@ Three E2E tests have latent timing/race risks documented in [docs/e2e-known-risk
 
 ## Frontend
 
-Frontend coverage comes from two sources: Vitest unit tests for pure JS modules (`timer.js`, `i18n.js`, `voteDelivery.js`, the watchdog in `websocket.js`), and the Playwright E2E suite for observable browser behaviour. Alpine components have no dedicated unit tests — they are covered only through E2E.
+Frontend coverage comes from two sources: Vitest unit tests for pure JS modules (`timer.js`, `i18n.js`, `voteDelivery.js`, the watchdog, retry schedule and reconnect triggers in `websocket.js`), and the Playwright E2E suite for observable browser behaviour. Alpine components have no dedicated unit tests — they are covered only through E2E.
 
 **What E2E tests cover:**
 
@@ -142,7 +142,7 @@ Frontend coverage comes from two sources: Vitest unit tests for pure JS modules 
 | Vote delivery — sending/confirmed states, offline vote, reload, rejection | `test_vote_delivery.py` |
 | Display — orbs, verdict, timer | `test_competition_flow.py`, `test_display_resilience.py` |
 | Connectivity indicators (L/R dots) | `test_connectivity_indicators.py` |
-| Reconnect speed — capped retry wait, `online` / `visibilitychange` trigger | `test_fast_reconnect.py` |
+| Reconnect speed — capped retry wait, `online` trigger | `test_fast_reconnect.py` |
 | Half-open connection detected by the heartbeat watchdog | `test_heartbeat_watchdog.py` |
 | Reason list scroll overflow indicator | `test_scroll_indicator.py` |
 | Session end, role protection | `test_end_session.py`, `test_role_protection.py` |
@@ -159,7 +159,7 @@ Run with `npm test` (Vitest). Independent from pytest — both run in parallel i
 |---|---|
 | [tests/js/timer.test.js](tests/js/timer.test.js) | `startTimerCountdown`: tick values, expiry, auto-stop, `stopTimer`, second-call cancellation. |
 | [tests/js/voteDelivery.test.js](tests/js/voteDelivery.test.js) | Pending-vote storage (session/role scoping, corrupt data), `reconcileVote` decisions, `vote_lock` message, rejection-code → i18n key mapping, the vote-delivery methods against a plain mock app, the in-memory fallback when `sessionStorage` writes fail, and `handleResetForNextLift` while a vote is still sending. |
-| [tests/js/websocket.test.js](tests/js/websocket.test.js) | Heartbeat watchdog in `createWebSocket` with fake timers and a fake `WebSocket`: reconnect after 15 s of silence, no reconnect while pings or other messages arrive, late events from the abandoned socket ignored, new socket watched, timer pause (background tab) restarts the count, no watchdog after `close()` or while not open. Retry schedule: `retryDelay` sequence 0.5/1/2/3 s and ±20 % jitter bounds, measured waits between failed attempts, reset after open. Reconnect triggers: `online`, `visibilitychange` (visible only) and `pageshow` (persisted only) cancel a pending retry and connect at once; open sockets and attempts in progress are left alone; a socket closed without close event (bfcache) is replaced once; no reaction after `close()`. |
+| [tests/js/websocket.test.js](tests/js/websocket.test.js) | Heartbeat watchdog in `createWebSocket` with fake timers and a fake `WebSocket`: reconnect after 15 s of silence, no reconnect while pings or other messages arrive, late events from the abandoned socket ignored, new socket watched, timer pause (background tab) restarts the count, no watchdog after `close()` or while not open. Retry schedule: base waits 0.5/1/2/3 s and ±20 % jitter bounds, measured waits between failed attempts, reset after open. Reconnect triggers: `online`, `visibilitychange` (visible only) and `pageshow` (persisted only) cancel a pending retry and connect at once; open sockets and attempts in progress are left alone; a socket closed without close event (bfcache) is replaced once; no reaction after `close()`, listeners removed on `close()`. |
 | [tests/js/i18n.test.js](tests/js/i18n.test.js) | `t()` key resolution and fallback; `resolveLanguage` priority (localStorage → navigator → default); `setLanguage` persistence; `getSupportedLanguages`. |
 
 **What is not tested:**

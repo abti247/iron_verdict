@@ -1,5 +1,6 @@
 """Fast reconnect — after a connection loss the client retries within 3 s and
-reconnects at once when the device comes back online or the tab becomes visible.
+reconnects at once when the device comes back online (``visibilitychange`` and
+``pageshow`` share that code path and are covered in ``websocket.test.js``).
 
 The judge's network is cut with the WebSocket patch from ``network_switch.py``;
 every reconnect attempt fails until the network is restored.
@@ -7,7 +8,6 @@ every reconnect attempt fails until the network is restored.
 
 import re
 
-import pytest
 from playwright.sync_api import expect
 
 from tests.e2e.network_switch import cut_network, join_with_network_switch, restore_network
@@ -64,19 +64,11 @@ def test_judge_reconnects_within_three_seconds_after_long_outage(competition):
     expect(left.locator(".judge-code .conn-dot")).to_have_class(re.compile(r"\bconnected\b"))
 
 
-@pytest.mark.parametrize(
-    "event_script",
-    [
-        "window.dispatchEvent(new Event('online'))",
-        "document.dispatchEvent(new Event('visibilitychange'))",
-    ],
-    ids=["online", "visibilitychange"],
-)
-def test_judge_reconnects_at_once_when_back_online_or_visible(competition, event_script):
+def test_judge_reconnects_at_once_when_back_online(competition):
     """Left judge is offline and the client waits ~3 s for its next retry.
 
-    The network returns and the browser reports the device online again (or the
-    tab visible again): the client skips the rest of the wait and is connected
+    The network returns and the browser reports the device online again: the
+    client skips the rest of the wait and is connected
     well before the retry would have fired. Exactly one new socket is opened,
     and the judge's vote is confirmed on it.
     """
@@ -87,7 +79,7 @@ def test_judge_reconnects_at_once_when_back_online_or_visible(competition, event
     _wait_until_waiting_at_cap(left)
     attempts = left.evaluate("window.__ivSocketCount()")
     restore_network(left)
-    left.evaluate(event_script)
+    left.evaluate("window.dispatchEvent(new Event('online'))")
 
     expect(dot).to_have_class(re.compile(r"\bconnected\b"), timeout=IMMEDIATE_MS)
     assert left.evaluate("window.__ivSocketCount()") == attempts + 1
