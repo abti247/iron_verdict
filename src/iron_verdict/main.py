@@ -89,11 +89,11 @@ class CreateSessionRequest(BaseModel):
 
 _CSP = (
     "default-src 'self'; "
-    "script-src 'self' https://cdn.jsdelivr.net https://umami-production-ca4a.up.railway.app 'unsafe-inline' 'unsafe-eval'; "
+    "script-src 'self' https://umami-production-ca4a.up.railway.app 'unsafe-inline' 'unsafe-eval'; "
     "connect-src 'self' ws: wss: https://api.web3forms.com https://umami-production-ca4a.up.railway.app; "
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+    "style-src 'self' 'unsafe-inline'; "
     "img-src 'self' data:; "
-    "font-src 'self' https://fonts.gstatic.com"
+    "font-src 'self'"
 )
 
 
