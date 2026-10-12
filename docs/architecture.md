@@ -109,7 +109,8 @@ Single `lifespan` task runs two periodic operations:
 *Why sync is acceptable today:* the snapshot is small (kilobytes — a handful of active sessions) and the write completes in single-digit milliseconds. At higher session counts the blocking write would start visibly stalling the event loop; fix is `aiofiles` or a thread-pool executor.
 - **Cleanup expired sessions** — every 30 minutes; deletes sessions with `last_activity` older than 4 hours.
 
-A server-initiated heartbeat pings WebSocket clients at a fixed interval and disconnects clients that don't reply within the timeout.
+A server-initiated heartbeat (`heartbeat_sweep`, every `HEARTBEAT_INTERVAL_SECONDS` = 5 s) pings every WebSocket client and closes (code 1001) any client without a `pong` for more than `PONG_STALE_SECONDS` = 15 s — effectively 15–20 s, since the check runs once per interval. The client runs the mirror-image watchdog (see [WebSocket client](#websocket-client)).
+*Why 5 s / 15 s:* a half-open connection — typical on venue Wi-Fi when a device switches access points — fires no close event on either side; with the former 30 s / 70 s a judge looked connected for over a minute while votes went nowhere. One ping per client every 5 s is negligible next to the 20 messages/s rate limit.
 
 ## VPortal integration
 
@@ -188,7 +189,7 @@ No-build single-page application. One HTML file served by FastAPI's `StaticFiles
 |---|---|
 | `init.js` | Entry point: reads demo URL params before Alpine boots, loads i18n, bootstraps Alpine, dispatches `popstate` events into the screen machine. |
 | `app.js` | The single Alpine component (`ironVerdictApp`) — all reactive state and methods. |
-| `websocket.js` | WebSocket wrapper with exponential-backoff auto-reconnect. |
+| `websocket.js` | WebSocket wrapper with exponential-backoff auto-reconnect and heartbeat watchdog. |
 | `handlers.js` | One named handler per incoming WS message type; imported by `app.js`. |
 | `voteDelivery.js` | Judge vote state machine (open → sending → confirmed), pending vote in `sessionStorage`, reconciliation after join, `vote_ack` / `vote_rejected` handling. Methods spread into the Alpine component. |
 | `timer.js` | Module-level countdown interval (`startTimerCountdown`, `stopTimer`). |
@@ -223,6 +224,8 @@ QR entry point: `?session=XXXX` lands on the landing screen with the code pre-fi
 
 - Exponential-backoff reconnect: 1 s → 2 s → … → 16 s max; resets to 1 s on successful open.
 - `stopped` flag prevents reconnect after intentional close (e.g. "Back to Landing").
+- Heartbeat watchdog (judges and displays alike): if no server message of any kind arrives for 15 s (3 missed pings), the wrapper abandons the socket — handlers detached, `close()` called — reports it as dropped (indicator turns "reconnecting") and connects a new socket immediately. Checked every 2.5 s, so detection takes 15–17.5 s. A gap of more than 5 s between two checks means the browser paused or throttled timers (background tab, frozen page); the watchdog then restarts its count instead of reconnecting, since incoming messages may still be queued behind the pause.
+  *Why detach handlers instead of waiting for `onclose`:* on a half-open connection the close handshake can hang for a long time; the old socket's late `onclose` or messages must not trigger a second reconnect or reach the app. *Why only on the open socket:* a socket that never opens fails via `onclose` and the normal backoff, so the watchdog cannot pile up connection attempts. The display's VPortal polling is started once in `joinSession`, so a watchdog reconnect does not start it twice.
 - On reconnect, sends `join` with `reconnect_token` from `sessionStorage` if one is stored.
 - Server returns a new `reconnect_token` in `join_success`; stored in `sessionStorage.iv_session`.
 - `join_error: "Role already taken"` is suppressed when a token is stored — transient race during reconnect; the server will accept the retry with the token.

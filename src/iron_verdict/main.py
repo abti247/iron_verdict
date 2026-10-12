@@ -24,8 +24,38 @@ from iron_verdict.logging_config import setup_logging
 logger = logging.getLogger("iron_verdict")
 
 VALID_COLORS = {"white", "red", "blue", "yellow"}
-HEARTBEAT_INTERVAL_SECONDS = 30
-PONG_STALE_SECONDS = 70
+# Short enough that a half-open connection (typical on venue Wi-Fi when a device
+# switches access points) is closed within 15–20 s; the client-side watchdog in
+# websocket.js uses the same 15 s limit (3 missed pings). One ping per client
+# every 5 s is far below the 20 messages/s rate limit.
+HEARTBEAT_INTERVAL_SECONDS = 5
+PONG_STALE_SECONDS = 15
+
+
+async def heartbeat_sweep(manager: ConnectionManager, now: float) -> None:
+    """Close connections without a pong for PONG_STALE_SECONDS; ping all others."""
+    for session_code, role, ws in await manager.get_all_connections():
+        log_role = "display" if role.startswith("display_") else role
+        last_pong = await manager.get_last_pong(ws)
+        if last_pong is not None and now - last_pong > PONG_STALE_SECONDS:
+            logger.info("heartbeat_stale_close", extra={
+                "session_code": session_code,
+                "role": log_role,
+                "seconds_since_pong": round(now - last_pong, 1),
+            })
+            try:
+                await ws.close(code=1001)
+            except Exception as exc:
+                logger.warning("heartbeat_close_failed", extra={"reason": str(exc)})
+            continue
+        try:
+            await ws.send_json({"type": "ping"})
+        except Exception as exc:
+            logger.warning("heartbeat_send_failed", extra={
+                "session_code": session_code,
+                "role": log_role,
+                "reason": str(exc),
+            })
 
 
 def _get_http_client_ip(request: Request) -> str:
@@ -131,28 +161,7 @@ async def lifespan(app: FastAPI):
     async def _heartbeat_loop():
         while True:
             await asyncio.sleep(HEARTBEAT_INTERVAL_SECONDS)
-            now = time.monotonic()
-            for session_code, role, ws in await connection_manager.get_all_connections():
-                last_pong = await connection_manager.get_last_pong(ws)
-                if last_pong is not None and now - last_pong > PONG_STALE_SECONDS:
-                    logger.info("heartbeat_stale_close", extra={
-                        "session_code": session_code,
-                        "role": "display" if role.startswith("display_") else role,
-                        "seconds_since_pong": round(now - last_pong, 1),
-                    })
-                    try:
-                        await ws.close(code=1001)
-                    except Exception as exc:
-                        logger.warning("heartbeat_close_failed", extra={"reason": str(exc)})
-                    continue
-                try:
-                    await ws.send_json({"type": "ping"})
-                except Exception as exc:
-                    logger.warning("heartbeat_send_failed", extra={
-                        "session_code": session_code,
-                        "role": "display" if role.startswith("display_") else role,
-                        "reason": str(exc),
-                    })
+            await heartbeat_sweep(connection_manager, time.monotonic())
 
     heartbeat_task = asyncio.create_task(_heartbeat_loop())
     yield
