@@ -57,7 +57,8 @@ Rules:
 
 ## Implementation
 - Local sessions: use worktrees to implement new features or fixes; create them in the project folder under .worktrees
-- Cloud sessions: a branch is sufficient, no worktree needed
+- Cloud sessions: a branch is sufficient, no worktree needed. Do not use the branch the session assigns (`ccr-…`); create `<type>/<n>-<slug>` from `origin/main` (e.g. `feat/53-reconnect-within-3s`) and push there — the maintainer permits this for every session.
+- Branch names: `<type>/<n>-<slug>` — conventional-commit type, issue number, short kebab-case slug; no further `/` levels. Without an issue: `<type>/<slug>`.
 
 ## Changelog
 - After completing a feature or fix, add one to three lines to the `[Unreleased]` section of `CHANGELOG.md` under the appropriate subsection (`Added`, `Fixed`, `Changed`, or `Removed`).
