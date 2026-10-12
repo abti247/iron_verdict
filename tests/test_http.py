@@ -61,10 +61,24 @@ def test_security_headers_on_root():
     assert "max-age=31536000" in response.headers["Strict-Transport-Security"]
     csp = response.headers["Content-Security-Policy"]
     assert "default-src 'self'" in csp
-    assert "cdn.jsdelivr.net" in csp
     assert "'unsafe-eval'" in csp  # Alpine.js requires eval for x-show/x-bind expression evaluation
-    assert "fonts.googleapis.com" in csp
-    assert "fonts.gstatic.com" in csp
+
+
+def test_csp_allows_no_cdn_or_font_hosts():
+    csp = client.get("/").headers["Content-Security-Policy"]
+    for host in ("cdn.jsdelivr.net", "fonts.googleapis.com", "fonts.gstatic.com"):
+        assert host not in csp
+
+
+def test_index_references_no_cdn_or_font_hosts():
+    html = client.get("/").text
+    for host in ("cdn.jsdelivr.net", "fonts.googleapis.com", "fonts.gstatic.com"):
+        assert host not in html
+
+
+def test_init_js_references_no_cdn():
+    assert "cdn.jsdelivr.net" not in client.get("/static/js/init.js").text
+
 
 
 def test_security_headers_on_api():

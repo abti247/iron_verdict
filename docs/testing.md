@@ -27,7 +27,6 @@ pytest --tb=short -v               # readable pass/fail
 
 - pip, npm and the Playwright browser download are cached. The browser cache key is the resolved Playwright version, because each Playwright release pins its own Chromium build.
 - When `e2e` fails (or times out — then only tests that failed before the hang have artifacts), the traces and screenshots of the failing tests are uploaded as the `playwright-traces` artifact (kept 14 days), one trace per browser context. Open a trace with `playwright show-trace <trace.zip>` or at trace.playwright.dev. Only contexts created through pytest-playwright are recorded — the `page`/`context` fixtures and `competition.new_context()`. A bare `browser.new_context()` produces no trace, so new tests must not use it (the remaining one is `test_rejoin_via_qr_keeps_connect_button_visible` in the VPortal-protected `test_vportal_integration.py`).
-- E2E tests need `cdn.jsdelivr.net` at runtime (Alpine.js and the QR library, until issue #54 ships them locally). If **every** E2E test times out waiting for the first input, check that CDN before suspecting a regression.
 - A new push to a PR cancels the still-running CI of the previous push.
 - CI records a trace for every browser context, which makes E2E runs slightly slower than a plain local `pytest tests/e2e/`. If a test flakes in CI but not locally, rerun it locally with `--tracing on` before blaming the code — the timing-sensitive tests in [docs/e2e-known-risks.md](docs/e2e-known-risks.md) are the first suspects.
 - No automatic retries. **Why:** retries hide flaky tests; a flaky test is fixed or documented in [docs/e2e-known-risks.md](docs/e2e-known-risks.md).
@@ -57,9 +56,7 @@ uv tool uninstall pytest || true
 
 Requirements and caveats:
 
-- **Network access** (Network access → Custom, keep the default package-manager list; the default list blocks both hosts):
-  - `cdn.playwright.dev` — the Chromium build pre-installed on the VM rarely matches the Playwright version pip resolves; without the download E2E tests fail with "Executable doesn't exist".
-  - `cdn.jsdelivr.net` — the app still loads Alpine.js and the QR library from this CDN (until issue #54 ships them locally); without it the landing page never renders and every E2E test times out waiting for the first input.
+- **Network access** (Network access → Custom, keep the default package-manager list): add `cdn.playwright.dev` — the Chromium build pre-installed on the VM rarely matches the Playwright version pip resolves; without the download E2E tests fail with "Executable doesn't exist". The app itself needs no external host at runtime (`test_offline_assets.py` enforces this), so no CDN has to be allowed.
 - The script runs once per environment and the result is cached for roughly seven days. After a dependency change in `pyproject.toml` or `package.json`, run `pip install -e ".[dev]"` / `npm ci` in the session (or edit the script to force a rebuild).
 - If plain `pytest` reports `ModuleNotFoundError` for a project dependency, it is the VM's standalone pytest — use `python -m pytest`.
 
@@ -98,7 +95,8 @@ Requirements and caveats:
 
 | File | Scenario |
 |---|---|
-| [test_smoke.py](tests/e2e/test_smoke.py) | Landing renders; "Create New Session" reaches the role select; `/health`; every static asset the app loads (followed from `/`, `/vportal` and ES-module imports) is served; app version rendered (`E2E_EXPECTED_APP_VERSION` pins it); WebSocket join as head judge; VPortal client modules load. Also the **container smoke test** (`image` job): must work in external mode, so no in-process state and only a few sessions (creation is rate-limited to 10/hour per IP). |
+| [test_smoke.py](tests/e2e/test_smoke.py) | Landing renders; "Create New Session" reaches the role select; `/health`; every static asset the app loads (followed from `/`, `/vportal`, ES-module imports and CSS `url()`, including the vendored libraries and fonts) is served; app version rendered (`E2E_EXPECTED_APP_VERSION` pins it); WebSocket join as head judge; VPortal client modules load. Also the **container smoke test** (`image` job): must work in external mode, so no in-process state and only a few sessions (creation is rate-limited to 10/hour per IP). |
+| [test_offline_assets.py](tests/e2e/test_offline_assets.py) | Venue without internet: every browser context aborts requests to hosts other than the test server; full competition still works (create, QR code on role select, 3 judges + display join, vote, verdict, judge reload, Next Lift, End Session), the real fonts are loaded (no fallback), and no host other than the deferred Umami analytics was even attempted. Fails if anything on the page comes from a CDN again. |
 | [test_join_invalid_code.py](tests/e2e/test_join_invalid_code.py) | Landing-screen validation — Join button enables only at 8 chars; unknown code shows inline error and blocks navigation to role-select; typing clears the error; stale QR (`?session=...`) lands on landing with the code pre-filled and the error visible. |
 | [test_competition_flow.py](tests/e2e/test_competition_flow.py) | **Regression gate.** Full lift cycle (white sweep + mixed verdict + Next Lift), required-reasons branch, timer start/reset across all four screens. |
 | [test_double_vote_prevention.py](tests/e2e/test_double_vote_prevention.py) | Locked vote survives refresh; re-voting blocked; Next Lift clears the lock. |

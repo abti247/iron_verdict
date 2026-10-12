@@ -22,8 +22,8 @@ def test_health_endpoint_reports_ok(server_url):
 
 
 def test_every_static_asset_the_app_loads_is_served(server_url):
-    """Start from / and /vportal, follow every /static/... reference and every
-    ES-module import, and require each file to be served. Catches files missing
+    """Start from / and /vportal, follow every /static/... reference, every
+    ES-module import and every CSS url(), and require each file to be served. Catches files missing
     from the image (.dockerignore, package data) before a deploy does."""
     pending = {"/static/locales/en.json", "/static/locales/de.json"}
     for path in ("/", "/vportal"):
@@ -44,10 +44,21 @@ def test_every_static_asset_the_app_loads_is_served(server_url):
             for rel in re.findall(r"""(?:from|import\()\s*["']\./([^"']+)["']""", response.text):
                 if f"{base}/{rel}" not in served:
                     pending.add(f"{base}/{rel}")
+        if asset.endswith(".css"):
+            for ref in re.findall(r"""url\(\s*["']?(/static/[^"')?#]+)""", response.text):
+                if ref not in served:
+                    pending.add(ref)
 
     assert missing == []
     # The crawl must reach the app and the VPortal client, or it proves nothing.
     assert {"/static/js/app.js", "/static/js/vportalClient.js", "/static/js/vportalQueries.js"} <= served
+    # ...and the self-hosted libraries and fonts the page needs without internet.
+    assert {
+        "/static/vendor/alpinejs-3.14.1.min.js",
+        "/static/vendor/qrcodejs-1.0.0.min.js",
+        "/static/fonts/bebas-neue-400-latin.woff2",
+        "/static/fonts/rajdhani-700-latin.woff2",
+    } <= served
 
 
 def test_app_version_is_rendered(server_url):

@@ -29,7 +29,7 @@ Served by FastAPI directly:
 Security:
 
 - Standard hardening headers: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, HSTS.
-- CSP allows `cdn.jsdelivr.net` (Alpine.js), `'unsafe-inline'` and `'unsafe-eval'` — Alpine compiles `x-show`/`x-bind` expressions at runtime via `eval`; the framework will not function without it. XSS posture is recovered structurally: the app never renders user input as HTML. The only user-controllable string written to the DOM is the session name, which is set via `x-text` (text node, not HTML).
+- CSP: scripts, styles and fonts only from `'self'` (plus the Umami analytics host for its script and beacon, and `api.web3forms.com` for the contact form). It allows `'unsafe-inline'` and `'unsafe-eval'` — Alpine compiles `x-show`/`x-bind` expressions at runtime via `eval`; the framework will not function without it. XSS posture is recovered structurally: the app never renders user input as HTML. The only user-controllable string written to the DOM is the session name, which is set via `x-text` (text node, not HTML).
 - WebSocket origin check via `ALLOWED_ORIGIN`. In-code default is `"*"` for local dev; **production overrides this via the Railway env var `ALLOWED_ORIGIN=https://iron-verdict.com`**, so the live deployment rejects cross-origin WebSocket handshakes.  
 *Why the origin check matters:* Same-Origin Policy does not apply to WebSockets — without a server-side `Origin` check, any site could open a WS to `/ws` from a victim's browser and hijack the session (Cross-Site WebSocket Hijacking).  
 *Why the permissive default:* local dev convenience.  
@@ -177,11 +177,19 @@ No-build single-page application. One HTML file served by FastAPI's `StaticFiles
 
 *Why no build step:* the app is small enough that a bundler earns nothing — no tree-shaking pay-off, no code-splitting need, no TypeScript surface to compile. The dev loop is "edit file → refresh"; CI does not need a frontend build stage; the Docker image carries no `node_modules`. Accepted cost: no minification (file sizes are already small, Cloudflare brotli-compresses on the wire), no TS, and any future move to a framework with required tooling (React, Svelte) would need to introduce the toolchain. The Vitest test runner *does* pull in `node_modules`, but only as a devDependency — it never ships to production.
 
-**CDN dependencies (integrity-checked):**
+**Vendored dependencies (served same-origin, no CDN):**
 
-- Alpine.js 3.14.1 — reactive bindings and component model.
-- QRCode.js — QR code on the role-select screen.
-- Umami Analytics — cookieless, no personal data.
+- `static/vendor/alpinejs-3.14.1.min.js` — Alpine.js (CDN build, auto-starts on load; `init.js` injects it).
+- `static/vendor/qrcodejs-1.0.0.min.js` — QRCode.js, QR code on the role-select screen.
+- `static/fonts/` + `static/css/fonts.css` — Bebas Neue and Rajdhani (400/600/700) as woff2, the same `unicode-range` subsets Google Fonts serves (latin, latin-ext, devanagari); the browser only downloads a subset a page actually uses. `font-display: swap`.
+- License files sit next to the files (`vendor/LICENSE-*`, MIT; `fonts/OFL-*.txt`, SIL OFL 1.1). Upgrading a library means replacing the file and its versioned name in `index.html` / `init.js`.
+
+*Why vendored:* everything after a judge or display opens the page is critical path, and venue Wi-Fi may have no or very slow internet. With Alpine on a CDN the page stayed invisible (`x-cloak`) when the CDN was unreachable; with Google Fonts a slow connection held up the start until the request timed out. `init.js` still waits for the four font faces before injecting Alpine, so the first render is in the right font — served locally, that wait is milliseconds. `test_offline_assets.py` runs a full competition with every foreign host blocked.
+
+**External, not on the critical path:**
+
+- Umami Analytics — cookieless, no personal data; loaded with `defer`, nothing waits for it.
+- web3forms — contact form submission only.
 
 **JS modules:**
 

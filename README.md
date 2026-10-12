@@ -82,7 +82,7 @@ Edit `docker-compose.yml` to override `ALLOWED_ORIGIN` or other environment vari
 
 ### Running locally on competition WiFi
 
-If the venue's uplink is slow or unreliable, you can host the app on your laptop and have judges/display connect over the local WiFi. Judging traffic (votes, timer, lights) then flows directly over the LAN — only optional VPortal lifter-info polling crosses the internet, and it is not on the critical path.
+If the venue's uplink is slow or unreliable, you can host the app on your laptop and have judges/display connect over the local WiFi. Judging traffic (votes, timer, lights) then flows directly over the LAN. The app ships its own JavaScript libraries and fonts, so it also runs on a local WiFi with no internet at all — only optional VPortal lifter-info polling, the anonymous usage analytics and the contact form need the internet, and none of them is on the critical path.
 
 1. Start the server on your laptop with `docker compose up` or `python run.py`. The default `HOST=0.0.0.0` already binds to all interfaces.
 2. Find your laptop's WiFi IPv4 address (`ipconfig` on Windows, `ifconfig`/`ip addr` on macOS/Linux). Example: `192.168.1.42`.
@@ -211,7 +211,7 @@ iron-verdict/
 ├── src/iron_verdict/        # FastAPI app, session/connection
 │   │                          managers, VPortal proxy
 │   └── static/              # Frontend (HTML + Alpine.js,
-│                              CSS, i18n locales, vendored JS)
+│                              CSS, fonts, i18n locales, vendored JS)
 ├── tests/                   # Backend + JS unit tests
 │   └── e2e/                 # Playwright end-to-end tests
 ├── docs/

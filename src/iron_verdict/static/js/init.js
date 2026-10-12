@@ -10,8 +10,10 @@ import { initI18n, t, setLanguage, getLanguage } from './i18n.js';
 })();
 
 // Wait for translations + custom fonts, then load Alpine. Alpine's CDN build
-// auto-starts on script load, so deferring the load itself is what guarantees
-// the first render uses the right strings in the right font.
+// (vendored, served same-origin) auto-starts on script load, so deferring the
+// load itself is what guarantees the first render uses the right strings in the
+// right font. The fonts are self-hosted, so this wait is a few milliseconds and
+// does not depend on the internet; a failed font still lets Alpine start.
 // document.fonts.load() explicitly requests each face — browsers skip loading
 // fonts for display:none elements (x-cloak), so without this we'd never trigger
 // the fetches before Alpine renders.
@@ -25,9 +27,7 @@ Promise.all([
 ]).then(([lang]) => {
     window._resolvedLang = lang;
     const s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js';
-    s.integrity = 'sha384-l8f0VcPi/M1iHPv8egOnY/15TDwqgbOR1anMIJWvU6nLRgZVLTLSaNqi/TOoT5Fh';
-    s.crossOrigin = 'anonymous';
+    s.src = '/static/vendor/alpinejs-3.14.1.min.js';
     document.head.appendChild(s);
 });
 

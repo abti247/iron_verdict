@@ -4,10 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Iron Verdict — Powerlifting Judging</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/fonts.css">
     <link rel="stylesheet" href="/static/css/variables.css">
     <link rel="stylesheet" href="/static/css/base.css">
     <link rel="stylesheet" href="/static/css/components.css">
@@ -15,12 +12,8 @@
     <link rel="stylesheet" href="/static/css/animations.css">
     <script type="module" src="/static/js/init.js"></script>
     <script defer src="https://umami-production-ca4a.up.railway.app/script.js" data-website-id="aca70c7a-7634-4ae5-bffa-cc83d8764bd0"></script>
-    <link rel="preload" as="script" href="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js" crossorigin="anonymous">
-    <script
-        src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"
-        integrity="sha384-3zSEDfvllQohrq0PHL1fOXJuC/jSOO34H46t6UQfobFOmxE5BpjjaIJY5F2/bMnU"
-        crossorigin="anonymous">
-    </script>
+    <link rel="preload" as="script" href="/static/vendor/alpinejs-3.14.1.min.js">
+    <script src="/static/vendor/qrcodejs-1.0.0.min.js"></script>
 </head>
 <body x-data="ironVerdictApp()" :class="{ 'display-mode': role === 'display' && screen === 'display' }">
 
