@@ -665,7 +665,6 @@ export function ironVerdictApp() {
             } else {
                 this.screen = 'landing';
             }
-
         }
     };
 }

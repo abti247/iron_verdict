@@ -1,66 +1,16 @@
 """Vote delivery — a vote is only shown as locked once the server confirmed it.
 
-The judge's network is cut with a WebSocket patch (see ``NETWORK_SWITCH``):
-cutting closes the open socket and points every reconnect attempt at a closed
-port, so the client sees a real connection loss and keeps retrying. The switch
-lives in ``localStorage`` so it survives a page reload.
+The judge's network is cut with the WebSocket patch from ``network_switch.py``,
+so the client sees a real connection loss and keeps retrying, also across a
+page reload.
 """
-
-import re
 
 from playwright.sync_api import expect
 
-NETWORK_SWITCH = """
-(() => {
-    const KEY = '__iv_test_offline';
-    const Orig = window.WebSocket;
-    const sockets = [];
-    function Patched(url, protocols) {
-        const offline = localStorage.getItem(KEY) === '1';
-        const ws = new Orig(offline ? 'ws://127.0.0.1:9/offline' : url, protocols);
-        sockets.push(ws);
-        return ws;
-    }
-    Patched.prototype = Orig.prototype;
-    Patched.CONNECTING = Orig.CONNECTING;
-    Patched.OPEN = Orig.OPEN;
-    Patched.CLOSING = Orig.CLOSING;
-    Patched.CLOSED = Orig.CLOSED;
-    window.WebSocket = Patched;
-    window.__ivCutNetwork = () => {
-        localStorage.setItem(KEY, '1');
-        sockets.forEach(ws => { if (ws.readyState <= Orig.OPEN) ws.close(); });
-    };
-    window.__ivRestoreNetwork = () => localStorage.removeItem(KEY);
-})();
-"""
+from tests.e2e.network_switch import cut_network, join_with_network_switch, restore_network
 
-# Backoff is 1 s, 2 s, 4 s, ... — after a short outage the next attempt lands well within this.
+# Retries wait at most 3 s (websocket.js) — generous margin for slow CI runners.
 RECONNECT_TIMEOUT = 20000
-
-
-def join_with_network_switch(competition, role):
-    ctx = competition.new_context()
-    ctx.add_init_script(NETWORK_SWITCH)
-    page = ctx.new_page()
-    page.on("dialog", lambda d: d.accept())
-    page.goto(competition.url)
-    page.locator('[x-model="joinCode"]').fill(competition.session_code)
-    page.get_by_role("button", name="Join Session").click()
-    page.locator(".role-wrap").wait_for(state="visible")
-    page.locator(".role-btn", has_text=competition.ROLE_LABELS[role]).click()
-    page.locator(".judge-wrap").wait_for(state="visible")
-    competition.pages[role] = page
-    return page
-
-
-def cut_network(page):
-    page.evaluate("window.__ivCutNetwork()")
-    expect(page.locator(".judge-code .conn-dot")).to_have_class(re.compile(r"\breconnecting\b"))
-
-
-def restore_network(page):
-    page.evaluate("window.__ivRestoreNetwork()")
 
 
 def setup_panel(competition):
