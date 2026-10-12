@@ -97,6 +97,7 @@ Requirements and caveats:
 |---|---|
 | [test_smoke.py](tests/e2e/test_smoke.py) | Landing renders; "Create New Session" reaches the role select; `/health`; every static asset the app loads (followed from `/`, `/vportal`, ES-module imports and CSS `url()`, including the vendored libraries and fonts) is served; app version rendered (`E2E_EXPECTED_APP_VERSION` pins it); WebSocket join as head judge; VPortal client modules load. Also the **container smoke test** (`image` job): must work in external mode, so no in-process state and only a few sessions (creation is rate-limited to 10/hour per IP). |
 | [test_offline_assets.py](tests/e2e/test_offline_assets.py) | Venue without internet: every browser context aborts requests to hosts other than the test server; full competition still works (create, QR code on role select, 3 judges + display join, vote, verdict, judge reload, Next Lift, End Session), the real fonts are loaded (no fallback), and no host other than the deferred Umami analytics was even attempted. Fails if anything on the page comes from a CDN again. |
+| [test_boot_loading.py](tests/e2e/test_boot_loading.py) | Boot state: holds the Alpine script request with `page.route` (no sleep) and checks that only the loading indicator is visible — never the VPortal modal or a screen — and that every rendered frame (sampled by an init script per `requestAnimationFrame`) showed either the indicator or the landing screen; aborted Alpine download shows the bilingual fallback at once and its reload link starts the app; a never-answered Alpine request shows the fallback after the 10 s CSS timeout (~10 s test); judge reload during a session shows only the indicator, then rejoins and votes. |
 | [test_join_invalid_code.py](tests/e2e/test_join_invalid_code.py) | Landing-screen validation — Join button enables only at 8 chars; unknown code shows inline error and blocks navigation to role-select; typing clears the error; stale QR (`?session=...`) lands on landing with the code pre-filled and the error visible. |
 | [test_competition_flow.py](tests/e2e/test_competition_flow.py) | **Regression gate.** Full lift cycle (white sweep + mixed verdict + Next Lift), required-reasons branch, timer start/reset across all four screens. |
 | [test_double_vote_prevention.py](tests/e2e/test_double_vote_prevention.py) | Locked vote survives refresh; re-voting blocked; Next Lift clears the lock. |
@@ -148,6 +149,7 @@ Frontend coverage comes from two sources: Vitest unit tests for pure JS modules 
 | Language switching + localStorage persistence | `test_language_switching.py` |
 | Session-code validation on landing | `test_join_invalid_code.py` |
 | Back navigation — display name click, browser back button | `test_back_navigation.py` |
+| Boot state — loading indicator, no flash of screens/modal, load-failure fallback | `test_boot_loading.py` |
 
 ## JS unit tests
 

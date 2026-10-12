@@ -186,6 +186,10 @@ No-build single-page application. One HTML file served by FastAPI's `StaticFiles
 
 *Why vendored:* everything after a judge or display opens the page is critical path, and venue Wi-Fi may have no or very slow internet. With Alpine on a CDN the page stayed invisible (`x-cloak`) when the CDN was unreachable; with Google Fonts a slow connection held up the start until the request timed out. `init.js` still waits for the four font faces before injecting Alpine, so the first render is in the right font — served locally, that wait is milliseconds. `test_offline_assets.py` runs a full competition with every foreign host blocked.
 
+**Boot sequence:** `<html class="booting">` is in the markup. `boot.css` hides every top-level element of `<body>` except `.boot-screen` (spinner, "Laden … / Loading …") while that class is set. `init.js` loads the locales and fonts, injects Alpine, and removes `booting` on `alpine:initialized`, so the first screen Alpine renders replaces the indicator in one step. If Alpine has not started after 10 s, a CSS animation delay swaps the indicator for a bilingual "could not be loaded" message with a reload link (`<a href="">`, keeps the query string); if the Alpine download fails, `init.js` sets `boot-failed` and the message shows at once. The boot screen is plain markup without Alpine or i18n.
+
+*Why a global boot state instead of `x-cloak` alone:* every new top-level element had to remember `x-cloak`; the VPortal modal did not and flashed up as a full-screen login dialog until Alpine started. The boot state hides everything regardless (`x-cloak` stays as well). *Why the fallback is pure CSS:* it also appears when no JS runs at all (e.g. `init.js` fails), where a JS timer would never fire — a silent black screen becomes an understandable message.
+
 **External, not on the critical path:**
 
 - Umami Analytics — cookieless, no personal data; loaded with `defer`, nothing waits for it.
@@ -195,7 +199,7 @@ No-build single-page application. One HTML file served by FastAPI's `StaticFiles
 
 | File | Purpose |
 |---|---|
-| `init.js` | Entry point: reads demo URL params before Alpine boots, loads i18n, bootstraps Alpine, dispatches `popstate` events into the screen machine. |
+| `init.js` | Entry point: reads demo URL params before Alpine boots, loads i18n, bootstraps Alpine, ends the boot state (see *Boot sequence*), dispatches `popstate` events into the screen machine. |
 | `app.js` | The single Alpine component (`ironVerdictApp`) — all reactive state and methods. |
 | `websocket.js` | WebSocket wrapper with short capped-backoff auto-reconnect, immediate reconnect on `online` / `visibilitychange` / bfcache restore, and heartbeat watchdog. |
 | `handlers.js` | One named handler per incoming WS message type; imported by `app.js`. |
@@ -205,7 +209,7 @@ No-build single-page application. One HTML file served by FastAPI's `StaticFiles
 | `i18n.js` | Locale loading, `t()` lookup, `setLanguage()`, Alpine store integration. |
 | `demo.js` | Demo methods spread into the Alpine component. |
 
-**CSS files:** `variables.css` (16 custom properties) → `base.css` (resets, typography) → `components.css` (buttons, inputs, orbs) → `layout.css` (per-screen wrappers) → `animations.css` (keyframes).
+**CSS files:** `variables.css` (16 custom properties) → `base.css` (resets, typography) → `components.css` (buttons, inputs, orbs) → `layout.css` (per-screen wrappers) → `animations.css` (keyframes) → `boot.css` (boot screen and fallback, see *Boot sequence*).
 
 ### Screen machine
 
