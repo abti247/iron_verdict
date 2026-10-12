@@ -3,6 +3,9 @@ import {
     createWebSocket,
     WATCHDOG_STALE_MS,
     WATCHDOG_CHECK_MS,
+    RETRY_DELAYS_MS,
+    RETRY_JITTER,
+    retryDelay,
 } from '../../src/iron_verdict/static/js/websocket.js';
 
 class FakeWebSocket {
@@ -28,6 +31,14 @@ class FakeWebSocket {
     drop() { this.readyState = FakeWebSocket.CLOSED; this.onclose?.({}); }
 }
 
+// Wrappers listen on window/document; close them after each test so a
+// leftover wrapper cannot react to the next test's events.
+let liveWrappers = [];
+afterEach(() => {
+    liveWrappers.forEach((w) => w.close());
+    liveWrappers = [];
+});
+
 function setup() {
     const cb = {
         onMessage: vi.fn(),
@@ -37,6 +48,7 @@ function setup() {
         onDropped: vi.fn(),
     };
     const wrapper = createWebSocket('ws://test/ws', cb.onMessage, cb.onError, cb.onClose, cb.onReopen, cb.onDropped);
+    liveWrappers.push(wrapper);
     return { wrapper, cb, first: FakeWebSocket.instances[0] };
 }
 
@@ -168,5 +180,179 @@ describe('heartbeat watchdog', () => {
         vi.advanceTimersByTime(WATCHDOG_STALE_MS + WATCHDOG_CHECK_MS);
         expect(second.closeCalls).toBe(0);
         expect(FakeWebSocket.instances).toHaveLength(2);
+    });
+});
+
+describe('retry delays', () => {
+    it('uses 0.5, 1, 2 and 3 s as base waits', () => {
+        expect(RETRY_DELAYS_MS).toEqual([500, 1000, 2000, 3000]);
+    });
+
+    it('adds at most ±20 % jitter', () => {
+        expect(RETRY_JITTER).toBe(0.2);
+        expect(retryDelay(3, () => 0)).toBe(2400);
+        expect(retryDelay(3, () => 0.999999)).toBeLessThanOrEqual(3600);
+        expect(retryDelay(3, () => 0.999999)).toBeGreaterThan(3590);
+        expect(retryDelay(0, () => 0)).toBe(400);
+    });
+});
+
+describe('reconnect scheduling', () => {
+    beforeEach(() => {
+        vi.useFakeTimers();
+        FakeWebSocket.instances = [];
+        vi.stubGlobal('WebSocket', FakeWebSocket);
+        vi.spyOn(Math, 'random').mockReturnValue(0.5);
+        Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
+    });
+    afterEach(() => {
+        vi.useRealTimers();
+        vi.unstubAllGlobals();
+        vi.restoreAllMocks();
+    });
+
+    // Drops the newest socket and returns how long the wrapper waited
+    // before it created the next one.
+    function dropAndMeasure() {
+        const count = FakeWebSocket.instances.length;
+        FakeWebSocket.instances[count - 1].drop();
+        let waited = 0;
+        while (FakeWebSocket.instances.length === count) {
+            vi.advanceTimersByTime(100);
+            waited += 100;
+            if (waited > 60000) throw new Error('no reconnect');
+        }
+        return waited;
+    }
+
+    it('waits 0.5, 1, 2, then at most 3 s between failed attempts', () => {
+        const { first } = setup();
+        first.open();
+
+        const waits = [];
+        for (let i = 0; i < 6; i++) waits.push(dropAndMeasure());
+
+        expect(waits).toEqual([500, 1000, 2000, 3000, 3000, 3000]);
+    });
+
+    it('starts again at 0.5 s after a successful connection', () => {
+        const { first } = setup();
+        first.open();
+        dropAndMeasure();
+        dropAndMeasure();
+        dropAndMeasure();
+
+        FakeWebSocket.instances.at(-1).open();
+
+        expect(dropAndMeasure()).toBe(500);
+    });
+
+    it.each([
+        ['online', () => window.dispatchEvent(new Event('online'))],
+        ['visibilitychange', () => document.dispatchEvent(new Event('visibilitychange'))],
+        ['pageshow from bfcache', () => {
+            const event = new Event('pageshow');
+            event.persisted = true;
+            window.dispatchEvent(event);
+        }],
+    ])('%s connects at once while waiting for a retry', (_name, fire) => {
+        const { first } = setup();
+        first.open();
+        dropAndMeasure();
+        dropAndMeasure();
+        FakeWebSocket.instances.at(-1).drop();
+        expect(FakeWebSocket.instances).toHaveLength(3);
+
+        fire();
+
+        expect(FakeWebSocket.instances).toHaveLength(4);
+        // The pending retry was cancelled: no second socket follows.
+        vi.advanceTimersByTime(10000);
+        expect(FakeWebSocket.instances).toHaveLength(4);
+    });
+
+    it('ignores a hidden tab becoming hidden', () => {
+        const { first } = setup();
+        first.open();
+        first.drop();
+        Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+
+        document.dispatchEvent(new Event('visibilitychange'));
+
+        expect(FakeWebSocket.instances).toHaveLength(1);
+    });
+
+    it('ignores a normal pageshow (not from bfcache)', () => {
+        const { first } = setup();
+        first.open();
+        first.drop();
+
+        window.dispatchEvent(new Event('pageshow'));
+
+        expect(FakeWebSocket.instances).toHaveLength(1);
+    });
+
+    it('leaves an open socket alone', () => {
+        const { first } = setup();
+        first.open();
+
+        window.dispatchEvent(new Event('online'));
+        document.dispatchEvent(new Event('visibilitychange'));
+
+        expect(first.closeCalls).toBe(0);
+        expect(FakeWebSocket.instances).toHaveLength(1);
+    });
+
+    it('leaves a connection attempt in progress alone', () => {
+        const { first } = setup();
+        first.open();
+        dropAndMeasure();
+
+        window.dispatchEvent(new Event('online'));
+
+        expect(FakeWebSocket.instances[1].closeCalls).toBe(0);
+        expect(FakeWebSocket.instances).toHaveLength(2);
+    });
+
+    it('replaces a socket that closed without a close event (page frozen in bfcache)', () => {
+        const { cb, first } = setup();
+        first.open();
+        // Closed while frozen; the close event never reached the wrapper.
+        first.readyState = FakeWebSocket.CLOSED;
+
+        const event = new Event('pageshow');
+        event.persisted = true;
+        window.dispatchEvent(event);
+
+        expect(cb.onDropped).toHaveBeenCalledTimes(1);
+        expect(FakeWebSocket.instances).toHaveLength(2);
+        // A late close event from the old socket must not add another one.
+        first.onclose?.({});
+        vi.advanceTimersByTime(10000);
+        expect(FakeWebSocket.instances).toHaveLength(2);
+    });
+
+    it('does nothing after the final close()', () => {
+        const { wrapper, first } = setup();
+        first.open();
+        wrapper.close();
+        first.drop();
+
+        window.dispatchEvent(new Event('online'));
+        document.dispatchEvent(new Event('visibilitychange'));
+        vi.advanceTimersByTime(10000);
+
+        expect(FakeWebSocket.instances).toHaveLength(1);
+    });
+
+    it('removes its window and document listeners on close()', () => {
+        const winRemove = vi.spyOn(window, 'removeEventListener');
+        const docRemove = vi.spyOn(document, 'removeEventListener');
+        const { wrapper } = setup();
+
+        wrapper.close();
+
+        const removed = [...winRemove.mock.calls, ...docRemove.mock.calls].map((c) => c[0]);
+        expect(removed).toEqual(expect.arrayContaining(['online', 'pageshow', 'visibilitychange']));
     });
 });
