@@ -15,7 +15,8 @@ export const reloadRecoveryMethods = {
         } catch (_e) {
             code = null;
         }
-        if (!code) {
+        // A session code always has 8 characters; anything else cannot be restored.
+        if (typeof code !== 'string' || code.length !== 8) {
             sessionStorage.removeItem('iv_session');
             return false;
         }
@@ -36,6 +37,11 @@ export const reloadRecoveryMethods = {
 
     cancelReconnect() {
         this.returnToLanding();
+    },
+
+    // True if an async step started during reload recovery finished after Cancel.
+    isReconnectCancelled(startedWhileReconnecting) {
+        return startedWhileReconnecting && this.screen !== 'reconnecting';
     },
 
     // The stored session no longer exists (ended or expired): back to landing with

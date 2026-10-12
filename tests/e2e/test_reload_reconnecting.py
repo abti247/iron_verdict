@@ -7,9 +7,12 @@ visible — on each MutationObserver callback and each rendered frame — so a t
 can prove that no frame ever showed the landing screen.
 """
 
+import re
+
 from playwright.sync_api import expect
 
 from tests.e2e.network_switch import NETWORK_SWITCH, join_with_network_switch
+from tests.e2e.test_vportal_integration import _connect_and_open_display
 
 RECORD_SCREENS = """
 window.__screens = [];
@@ -60,26 +63,22 @@ def _screens(page):
 
 def test_judge_reload_never_shows_landing(competition):
     """A judge reloads mid-competition: no frame shows the landing screen, the
-    judge screen comes back and the judge can still vote."""
-    head = competition.create_session_and_join_head()
+    judge screen comes back. (Voting after a reload: test_judge_reconnection.py.)"""
+    competition.create_session_and_join_head()
     left = _recorded_page(competition)
     _join(competition, left, "left_judge")
     left.locator(".judge-wrap").wait_for(state="visible")
-    competition.pages["left_judge"] = left
-    competition.join_as("right_judge")
 
     left.reload()
     left.locator(".judge-wrap").wait_for(state="visible")
 
     assert "landing" not in _screens(left), _screens(left)
-    competition.vote_all_white()
-    expect(left.locator(".locked-status")).to_be_visible()
-    expect(head.locator(".locked-status")).to_be_visible()
 
 
 def test_display_reload_never_shows_landing(competition):
-    """A display reloads: no frame shows the landing screen, results arrive."""
-    competition.join_all_judges()
+    """A display reloads: no frame shows the landing screen, the display screen
+    comes back. (Results after a reload: test_display_resilience.py.)"""
+    competition.create_session_and_join_head()
     display = _recorded_page(competition)
     _join(competition, display, "display")
     display.locator(".display-full").wait_for(state="visible")
@@ -88,8 +87,23 @@ def test_display_reload_never_shows_landing(competition):
     display.locator(".display-full").wait_for(state="visible")
 
     assert "landing" not in _screens(display), _screens(display)
-    competition.vote_all_white()
-    expect(display.locator(".verdict-stamp")).to_have_text("Good Lift")
+
+
+def test_vportal_display_reload_restarts_polling(competition, server_url, fake_vportal_url):
+    """A display connected to (fake) VPortal reloads: no frame shows the landing
+    screen or the VPortal login dialog, and the lifter overlay is filled again by
+    the polling that restarts after the rejoin."""
+    page = _recorded_page(competition)
+    _connect_and_open_display(page, server_url, fake_vportal_url)
+    corner = page.locator(".vportal-corner-left")
+    expect(corner).to_contain_text("MARIA SCHNEIDER", timeout=10000, ignore_case=True)
+
+    page.reload()
+    page.locator(".display-full").wait_for(state="visible")
+
+    expect(corner).to_contain_text("MARIA SCHNEIDER", timeout=10000, ignore_case=True)
+    assert "landing" not in _screens(page), _screens(page)
+    assert "vportalModalOpen" not in _screens(page), _screens(page)
 
 
 def test_role_select_reload_never_shows_landing(competition):
@@ -152,6 +166,35 @@ def test_cancel_reconnecting_returns_to_landing_and_forgets_session(competition)
     left.reload()
     expect(left.locator(LANDING)).to_be_visible()
     expect(left.locator(".judge-wrap")).not_to_be_visible()
+
+
+def test_cancel_during_role_select_lookup_is_not_undone(competition):
+    """Reload on role-select; the session lookup hangs (slow venue Wi-Fi, held
+    with page.route — no sleep) and the user presses Cancel. When the lookup
+    answers afterwards, the page stays on landing and the session stays forgotten."""
+    competition.create_session_and_join_head()
+    page = _recorded_page(competition)
+    _join(competition, page, None)
+
+    lookup = re.compile(r"/api/sessions/[A-Z0-9]{8}$")
+    held = []
+    page.route(lookup, lambda route: held.append(route))
+    with page.expect_request(lookup):
+        page.reload()
+    expect(page.locator(RECONNECTING)).to_be_visible()
+    assert held, "session lookup was not held"
+
+    page.locator(RECONNECTING).get_by_role("button", name="Cancel").click()
+    expect(page.locator(LANDING)).to_be_visible()
+
+    held[0].continue_()
+    # joinChecking is reset only after the lookup result has been handled.
+    page.wait_for_function("!Alpine.$data(document.body).joinChecking")
+
+    expect(page.locator(LANDING)).to_be_visible()
+    expect(page.locator(".join-error")).to_be_hidden()
+    expect(page.locator(".role-wrap")).not_to_be_visible()
+    assert page.evaluate("sessionStorage.getItem('iv_session')") is None
 
 
 def test_reload_into_ended_session_shows_landing_with_message(competition):

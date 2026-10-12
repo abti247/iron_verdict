@@ -234,8 +234,11 @@ export function ironVerdictApp() {
             if (code.length !== 8 || this.joinChecking) return;
             this.joinChecking = true;
             this.joinError = '';
+            const restoring = this.screen === 'reconnecting';
             try {
                 const res = await fetch('/api/sessions/' + code);
+                // Reload recovery cancelled while the lookup was running — the user left on purpose.
+                if (this.isReconnectCancelled(restoring)) return;
                 if (res.ok) {
                     this.sessionCode = code;
                     this.joinCode = code;
@@ -261,6 +264,7 @@ export function ironVerdictApp() {
                     this.joinError = t('landing.lookupFailed');
                 }
             } catch (_e) {
+                if (this.isReconnectCancelled(restoring)) return;
                 this.navigateTo('landing');
                 this.joinError = t('landing.lookupFailed');
             } finally {
