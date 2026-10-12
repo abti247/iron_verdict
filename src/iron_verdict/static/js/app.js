@@ -666,18 +666,6 @@ export function ironVerdictApp() {
                 this.screen = 'landing';
             }
 
-            window.addEventListener('pageshow', (event) => {
-                if (!event.persisted) return;
-                const stored = sessionStorage.getItem('iv_session');
-                if (!stored) return;
-                try {
-                    const { code, role } = JSON.parse(stored);
-                    if (code && role && this.ws && this.ws.readyState === 3) {
-                        this.joinSession(role);
-                    }
-                } catch (_e) {}
-            });
-
         }
     };
 }

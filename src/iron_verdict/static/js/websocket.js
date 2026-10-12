@@ -9,11 +9,23 @@ export const WATCHDOG_CHECK_MS = 2500;
 // so the watchdog restarts its count instead of declaring the connection dead.
 const WATCHDOG_PAUSE_MS = WATCHDOG_CHECK_MS * 2;
 
+// Wait between reconnect attempts, by attempt number (the last value repeats).
+// Short on purpose: a session has ~5 clients, so a reconnect storm is no risk,
+// while every second offline is a vote or result that does not arrive.
+// The jitter keeps clients from hitting a restarted server in the same instant.
+export const RETRY_DELAYS_MS = [500, 1000, 2000, 3000];
+export const RETRY_JITTER = 0.2;
+
+export function retryDelay(attempt, random = Math.random) {
+    const base = RETRY_DELAYS_MS[Math.min(attempt, RETRY_DELAYS_MS.length - 1)];
+    return Math.round(base * (1 + RETRY_JITTER * (2 * random() - 1)));
+}
+
 export function createWebSocket(url, onMessage, onError, onClose, onReopen, onDropped) {
     let ws;
     let stopped = false;
-    let retryDelay = 1000;
-    const MAX_DELAY = 16000;
+    let attempt = 0;
+    let retryTimer = null;
     let watchdog = null;
     let lastActivity = 0;
     let lastCheck = 0;
@@ -30,7 +42,7 @@ export function createWebSocket(url, onMessage, onError, onClose, onReopen, onDr
             const now = Date.now();
             if (now - lastCheck > WATCHDOG_PAUSE_MS) lastActivity = now;
             lastCheck = now;
-            if (now - lastActivity > WATCHDOG_STALE_MS) forceReconnect();
+            if (now - lastActivity > WATCHDOG_STALE_MS) forceReconnect('heartbeat lost');
         }, WATCHDOG_CHECK_MS);
     }
 
@@ -38,16 +50,40 @@ export function createWebSocket(url, onMessage, onError, onClose, onReopen, onDr
     // this keeps the wrapper alive. The old socket's handlers are detached first:
     // on a half-open connection its onclose may only fire much later, and must not
     // trigger a second reconnect or deliver stale messages.
-    function forceReconnect() {
+    function forceReconnect(reason) {
         if (stopped) return;
         stopWatchdog();
         const old = ws;
         old.onmessage = old.onerror = old.onclose = old.onopen = null;
         try { old.close(); } catch (e) { console.warn('Closing abandoned WebSocket failed:', e); }
-        console.log('WebSocket heartbeat lost, reconnecting now...');
+        console.log(`WebSocket ${reason}, reconnecting now...`);
         onDropped?.();
         connect();
     }
+
+    // The device is back online, the tab is visible again or the page came back
+    // from the back/forward cache: skip the rest of a pending retry wait. An open
+    // socket or a connection attempt in progress is left alone (the watchdog
+    // covers an open-but-dead socket), so this never creates a second socket.
+    function reconnectNow() {
+        if (stopped) return;
+        if (retryTimer !== null) {
+            clearTimeout(retryTimer);
+            retryTimer = null;
+            connect();
+        } else if (ws.readyState === WebSocket.CLOSED) {
+            // Closed while the page was frozen, without a close event reaching us.
+            forceReconnect('closed while the page was frozen');
+        }
+    }
+
+    const onOnline = () => reconnectNow();
+    const onVisibilityChange = () => {
+        if (document.visibilityState === 'visible') reconnectNow();
+    };
+    const onPageShow = (event) => {
+        if (event.persisted) reconnectNow();
+    };
 
     function connect() {
         ws = new WebSocket(url);
@@ -64,21 +100,23 @@ export function createWebSocket(url, onMessage, onError, onClose, onReopen, onDr
                 return;
             }
             onDropped?.();
-            console.log(`WebSocket closed, reconnecting in ${retryDelay}ms...`);
-            setTimeout(() => {
-                if (!stopped) {
-                    retryDelay = Math.min(retryDelay * 2, MAX_DELAY);
-                    connect();
-                }
-            }, retryDelay);
+            const delay = retryDelay(attempt++);
+            console.log(`WebSocket closed, reconnecting in ${delay}ms...`);
+            retryTimer = setTimeout(() => {
+                retryTimer = null;
+                if (!stopped) connect();
+            }, delay);
         };
         ws.onopen = () => {
-            retryDelay = 1000;
+            attempt = 0;
             startWatchdog();
             onReopen?.();
         };
     }
 
+    window.addEventListener('online', onOnline);
+    window.addEventListener('pageshow', onPageShow);
+    document.addEventListener('visibilitychange', onVisibilityChange);
     connect();
 
     return {
@@ -89,6 +127,11 @@ export function createWebSocket(url, onMessage, onError, onClose, onReopen, onDr
         close: () => {
             stopped = true;
             stopWatchdog();
+            clearTimeout(retryTimer);
+            retryTimer = null;
+            window.removeEventListener('online', onOnline);
+            window.removeEventListener('pageshow', onPageShow);
+            document.removeEventListener('visibilitychange', onVisibilityChange);
             ws.close();
         }
     };
