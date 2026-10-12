@@ -112,6 +112,7 @@ Requirements and caveats:
 | [test_role_protection.py](tests/e2e/test_role_protection.py) | Taken role rejected; role freed on disconnect; role switch via session-code link; head=center invariant. |
 | [test_scroll_indicator.py](tests/e2e/test_scroll_indicator.py) | `.has-overflow-bottom` class appears for bench-yellow (12 reasons), absent for bench-red (2 reasons). Reaches into Alpine via `_x_dataStack` to set `liftType`. |
 | [test_privacy.py](tests/e2e/test_privacy.py) | Privacy footer link → privacy screen → Back returns to landing. |
+| [test_reload_reconnecting.py](tests/e2e/test_reload_reconnecting.py) | Reload recovery: an init script records every screen that becomes visible (MutationObserver plus one sample per `requestAnimationFrame`); judge, display and role-select reloads never show the landing screen; a display connected to the fake VPortal reloads without the landing screen or the VPortal dialog and its lifter overlay refills (polling restarts). Reload while the network is cut (switch from [network_switch.py](tests/e2e/network_switch.py)) stays on "Connecting…" with the session code across several failed attempts, then reaches the judge screen when the network returns; Cancel goes to landing and clears `iv_session`, also when a role-select session lookup (held with `page.route`) only answers after Cancel; reopening the app after the session ended shows landing with an inline message, no popup. |
 | [test_back_navigation.py](tests/e2e/test_back_navigation.py) | Clickable display-screen session name returns to role-select; browser back navigates judge/display → role-select → landing; two-step `history.go(-2)` jump from judge tears down the WebSocket; QR-entry → back returns to landing; reload-recovery rejoin → back returns to role-select (second back → landing); reloading on role-select or after returning to it stays on role-select. |
 | [test_vportal_integration.py](tests/e2e/test_vportal_integration.py) | Full VPortal flow against the `fake_vportal_url` fixture: connect modal (federation → credentials → stage), display overlay populates from polling, token-expiry mid-session hides overlay and shows banner, three consecutive upstream failures show banner, empty active group hides overlay without banner, session-driven visibility (device that joined via plain `/` still sees the connect button when the underlying session is `kind=vportal`). |
 | [test_display_sizing.py](tests/e2e/test_display_sizing.py) | Display screen settings panel: gear/`S` key open, slider updates `--display-zoom`, reset returns to 1.0×, zoom persists across reload via `localStorage`, dismiss via Escape and click-outside. |
@@ -150,6 +151,7 @@ Frontend coverage comes from two sources: Vitest unit tests for pure JS modules 
 | Session-code validation on landing | `test_join_invalid_code.py` |
 | Back navigation — display name click, browser back button | `test_back_navigation.py` |
 | Boot state — loading indicator, no flash of screens/modal, load-failure fallback | `test_boot_loading.py` |
+| Reload recovery — "Connecting…" state, no landing flash, Cancel, ended session | `test_reload_reconnecting.py` |
 
 ## JS unit tests
 

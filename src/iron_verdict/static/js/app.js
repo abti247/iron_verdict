@@ -4,6 +4,7 @@ import { createWebSocket } from './websocket.js';
 import { demoMethods } from './demo.js';
 import { voteDeliveryMethods } from './voteDelivery.js';
 import { vportalClient } from './vportalClient.js';
+import { reloadRecoveryMethods } from './reloadRecovery.js';
 import {
     handleJoinSuccess,
     handleJoinError,
@@ -177,6 +178,7 @@ export function ironVerdictApp() {
 
         ...demoMethods,
         ...voteDeliveryMethods,
+        ...reloadRecoveryMethods,
 
         navigateTo(screen) {
             if (this.screen === screen) return;
@@ -232,8 +234,11 @@ export function ironVerdictApp() {
             if (code.length !== 8 || this.joinChecking) return;
             this.joinChecking = true;
             this.joinError = '';
+            const restoring = this.screen === 'reconnecting';
             try {
                 const res = await fetch('/api/sessions/' + code);
+                // Reload recovery cancelled while the lookup was running — the user left on purpose.
+                if (this.isReconnectCancelled(restoring)) return;
                 if (res.ok) {
                     this.sessionCode = code;
                     this.joinCode = code;
@@ -248,12 +253,19 @@ export function ironVerdictApp() {
                     sessionStorage.setItem('iv_session', JSON.stringify({ code }));
                     this.navigateTo('role-select');
                 } else if (res.status === 404 || res.status === 422) {
+                    if (this.screen === 'reconnecting') {
+                        this.failReconnectSessionGone();
+                        return;
+                    }
                     sessionStorage.removeItem('iv_session');
                     this.joinError = t('landing.sessionNotFound');
                 } else {
+                    this.navigateTo('landing');
                     this.joinError = t('landing.lookupFailed');
                 }
             } catch (_e) {
+                if (this.isReconnectCancelled(restoring)) return;
+                this.navigateTo('landing');
                 this.joinError = t('landing.lookupFailed');
             } finally {
                 this.joinChecking = false;
@@ -629,31 +641,8 @@ export function ironVerdictApp() {
                 return;
             }
 
-            // Reload recovery: rejoin previous session or return to role-select.
-            // Rehydration uses replaceState (via _navigateInPlaceNext) so the post-reload
-            // back-stack matches the pre-reload one — mobile swipe-back stays consistent.
-            const stored = sessionStorage.getItem('iv_session');
-            if (stored) {
-                try {
-                    const { code, role } = JSON.parse(stored);
-                    if (!code) {
-                        sessionStorage.removeItem('iv_session');
-                    } else if (role) {
-                        this.sessionCode = code;
-                        this.joinCode = code;
-                        this._navigateInPlaceNext = true;
-                        setTimeout(() => this.joinSession(role), 100);
-                        return;
-                    } else {
-                        this.joinCode = code;
-                        this._navigateInPlaceNext = true;
-                        setTimeout(() => this.joinExistingSession(), 0);
-                        return;
-                    }
-                } catch (_e) {
-                    sessionStorage.removeItem('iv_session');
-                }
-            }
+            // Reload recovery: rejoin the previous session or return to role-select (reloadRecovery.js).
+            if (this.restoreStoredSession()) return;
 
             const params = window._demoParams;
             if (params) {

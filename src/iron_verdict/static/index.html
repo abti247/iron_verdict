@@ -91,6 +91,20 @@
         </div>
     </div>
 
+    <!-- Reconnecting Screen: shown right after a reload while the stored session is restored (reloadRecovery.js) -->
+    <div class="landing-wrap" x-show="screen === 'reconnecting'" x-cloak>
+        <div class="landing-panel cut-corner reconnecting-panel" role="status">
+            <div class="brand-iron chrome-text">Iron Verdict</div>
+            <div class="boot-spinner"></div>
+            <div class="reconnecting-text">
+                <span x-text="t('reconnecting.connecting')"></span>
+                <span class="reconnecting-code" x-text="sessionCode"></span>
+            </div>
+            <button class="btn-blood btn-blood-ghost" @click="cancelReconnect()"
+                    x-text="t('reconnecting.cancel')"></button>
+        </div>
+    </div>
+
     <!-- Landing Screen -->
     <div class="landing-wrap" x-show="screen === 'landing'" x-cloak>
         <div class="landing-panel cut-corner">
