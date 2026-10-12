@@ -28,6 +28,7 @@ html.booting .boot-screen {
     gap: 16px;
 }
 
+/* Also used by the reconnecting screen (layout.css). */
 .boot-spinner {
     width: 40px;
     height: 40px;

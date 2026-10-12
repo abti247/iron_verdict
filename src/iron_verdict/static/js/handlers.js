@@ -66,10 +66,16 @@ export function handleJoinError(app, message) {
         }
         if (hasReconnectToken) return;
     }
+    if (app.screen === 'reconnecting' && message.message === 'Session not found') {
+        app.failReconnectSessionGone();
+        return;
+    }
     app.ws.close();
     sessionStorage.removeItem('iv_session');
     const sanitizedMessage = document.createTextNode(message.message).textContent;
     alert(`${t('alerts.joinFailed')} ${sanitizedMessage}`);
+    // A failed reload recovery must not leave the page on "Connecting…".
+    if (app.screen === 'reconnecting') app.returnToLanding();
 }
 
 export function handleError(app, message) {

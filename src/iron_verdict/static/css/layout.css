@@ -400,3 +400,31 @@
 .privacy-list li {
     margin-bottom: 8px;
 }
+
+/* ===== RECONNECTING SCREEN ===== */
+/* Shown after a reload while the stored session is restored; its spinner is the
+   boot screen's (.boot-spinner, boot.css), so boot and reconnect look alike. */
+.reconnecting-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    text-align: center;
+}
+
+.reconnecting-text {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-dim);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.reconnecting-code {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    letter-spacing: 3px;
+    color: var(--text-main);
+}
