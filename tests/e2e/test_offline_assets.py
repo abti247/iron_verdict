@@ -93,4 +93,7 @@ def test_full_competition_with_external_hosts_blocked(competition, offline):
     for p in (head, left, right, display):
         expect(p.get_by_role("button", name="Create New Session")).to_be_visible(timeout=5000)
 
+    # The analytics script is always attempted, so seeing it proves the block
+    # was active — otherwise the assertion below would prove nothing.
+    assert ALLOWED_EXTERNAL_ATTEMPTS & set(offline), "foreign-host block never applied"
     assert set(offline) <= ALLOWED_EXTERNAL_ATTEMPTS, offline

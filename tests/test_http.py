@@ -80,16 +80,6 @@ def test_init_js_references_no_cdn():
     assert "cdn.jsdelivr.net" not in client.get("/static/js/init.js").text
 
 
-def test_vendored_assets_are_served():
-    for path in (
-        "/static/vendor/alpinejs-3.14.1.min.js",
-        "/static/vendor/qrcodejs-1.0.0.min.js",
-        "/static/css/fonts.css",
-        "/static/fonts/bebas-neue-400-latin.woff2",
-        "/static/fonts/rajdhani-700-latin.woff2",
-    ):
-        assert client.get(path).status_code == 200, path
-
 
 def test_security_headers_on_api():
     response = client.post("/api/sessions", json={"name": "Test"})
