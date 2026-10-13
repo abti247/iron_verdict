@@ -42,13 +42,13 @@ def test_role_select_browser_back_returns_to_landing(competition):
     page.on("dialog", lambda d: d.accept())
     page.goto(competition.url)
 
-    page.locator('[x-model="newSessionName"]').fill("Back-Nav Test")
+    page.get_by_test_id("session-name-input").fill("Back-Nav Test")
     page.get_by_role("button", name="Create New Session").click()
     page.locator(".role-wrap").wait_for(state="visible")
 
     page.go_back()
 
-    expect(page.locator('.landing-wrap[x-show*="\'landing\'"]')).to_be_visible()
+    expect(page.get_by_test_id("landing-screen")).to_be_visible()
     expect(page.locator(".role-wrap")).not_to_be_visible()
 
 
@@ -58,7 +58,7 @@ def test_two_step_back_jump_from_judge_to_landing(competition):
 
     head.evaluate("history.go(-2)")
 
-    expect(head.locator('.landing-wrap[x-show*="\'landing\'"]')).to_be_visible()
+    expect(head.get_by_test_id("landing-screen")).to_be_visible()
     expect(head.locator(".judge-wrap")).not_to_be_visible()
 
     # Confirm the judge socket actually closed — sessionStorage cleared by returnToLanding.
@@ -79,7 +79,7 @@ def test_qr_entry_back_returns_to_landing(competition):
 
     page.go_back()
 
-    expect(page.locator('.landing-wrap[x-show*="\'landing\'"]')).to_be_visible()
+    expect(page.get_by_test_id("landing-screen")).to_be_visible()
     expect(page.locator(".role-wrap")).not_to_be_visible()
 
 
@@ -107,7 +107,7 @@ def test_reload_recovery_double_back_returns_to_landing(competition):
     head.locator(".role-wrap").wait_for(state="visible")
     head.go_back()
 
-    expect(head.locator('.landing-wrap[x-show*="\'landing\'"]')).to_be_visible()
+    expect(head.get_by_test_id("landing-screen")).to_be_visible()
     expect(head.locator(".role-wrap")).not_to_be_visible()
 
 
@@ -118,14 +118,14 @@ def test_reload_on_role_select_returns_to_role_select(competition):
     page.on("dialog", lambda d: d.accept())
     page.goto(competition.url)
 
-    page.locator('[x-model="newSessionName"]').fill("Reload-Role-Select Test")
+    page.get_by_test_id("session-name-input").fill("Reload-Role-Select Test")
     page.get_by_role("button", name="Create New Session").click()
     page.locator(".role-wrap").wait_for(state="visible")
 
     page.reload()
 
     expect(page.locator(".role-wrap")).to_be_visible()
-    expect(page.locator('.landing-wrap[x-show*="\'landing\'"]')).not_to_be_visible()
+    expect(page.get_by_test_id("landing-screen")).not_to_be_visible()
 
 
 def test_return_to_role_select_then_reload_keeps_role_select(competition):
@@ -138,7 +138,7 @@ def test_return_to_role_select_then_reload_keeps_role_select(competition):
     head.reload()
 
     expect(head.locator(".role-wrap")).to_be_visible()
-    expect(head.locator('.landing-wrap[x-show*="\'landing\'"]')).not_to_be_visible()
+    expect(head.get_by_test_id("landing-screen")).not_to_be_visible()
 
 
 def test_reload_on_judge_preserves_history_length(competition):
@@ -165,7 +165,7 @@ def test_reload_on_role_select_preserves_history_length(competition):
     page = ctx.new_page()
     page.on("dialog", lambda d: d.accept())
     page.goto(competition.url)
-    page.locator('[x-model="newSessionName"]').fill("History-Length Test")
+    page.get_by_test_id("session-name-input").fill("History-Length Test")
     page.get_by_role("button", name="Create New Session").click()
     page.locator(".role-wrap").wait_for(state="visible")
 

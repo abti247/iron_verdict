@@ -114,8 +114,8 @@ def test_stale_vote_without_reason_is_lift_changed_when_reasons_become_mandatory
     expect(left.locator(".vote-sending-status")).to_be_visible()
 
     head.locator(".head-grid button", has_text="Next Lift").click()  # confirm dialog auto-accepted
-    head.locator('[x-model="showExplanations"]').check()
-    head.locator('[x-model="requireReasons"]').check()
+    head.get_by_test_id("show-explanations-checkbox").check()
+    head.get_by_test_id("require-reasons-checkbox").check()
 
     restore_network(left)
 
@@ -142,8 +142,8 @@ def test_rejected_vote_unlocks_ui_with_message(competition):
     left.locator(".lock-btn").click()
     expect(left.locator(".vote-sending-status")).to_be_visible()
 
-    head.locator('[x-model="showExplanations"]').check()
-    head.locator('[x-model="requireReasons"]').check()
+    head.get_by_test_id("show-explanations-checkbox").check()
+    head.get_by_test_id("require-reasons-checkbox").check()
 
     dialogs = []
     left.on("dialog", lambda d: dialogs.append(d.message))

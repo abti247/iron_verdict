@@ -44,7 +44,7 @@ def join_with_network_switch(competition, role):
     page = ctx.new_page()
     page.on("dialog", lambda d: d.accept())
     page.goto(competition.url)
-    page.locator('[x-model="joinCode"]').fill(competition.session_code)
+    page.get_by_test_id("join-code-input").fill(competition.session_code)
     page.get_by_role("button", name="Join Session").click()
     page.locator(".role-wrap").wait_for(state="visible")
     page.locator(".role-btn", has_text=competition.ROLE_LABELS[role]).click()

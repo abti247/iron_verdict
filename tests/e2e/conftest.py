@@ -129,7 +129,7 @@ class CompetitionHelper:
         page.on("dialog", lambda d: d.accept())
         page.goto(self.url)
 
-        page.locator('[x-model="newSessionName"]').fill(name)
+        page.get_by_test_id("session-name-input").fill(name)
         page.get_by_role("button", name="Create New Session").click()
         page.locator(".role-wrap").wait_for(state="visible")
 
@@ -149,7 +149,7 @@ class CompetitionHelper:
         page.on("dialog", lambda d: d.accept())
         page.goto(self.url)
 
-        page.locator('[x-model="joinCode"]').fill(self.session_code)
+        page.get_by_test_id("join-code-input").fill(self.session_code)
         page.get_by_role("button", name="Join Session").click()
         page.locator(".role-wrap").wait_for(state="visible")
 

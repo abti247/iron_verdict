@@ -5,7 +5,7 @@ from playwright.sync_api import expect
 
 def _open_display(page, server_url):
     page.goto(server_url + "/")
-    page.locator('[x-model="newSessionName"]').fill("Sizing Test")
+    page.get_by_test_id("session-name-input").fill("Sizing Test")
     page.get_by_role("button", name="Create New Session").click()
     page.locator(".role-wrap").wait_for(state="visible")
     page.locator(".role-btn", has_text="Display Screen").click()

@@ -43,7 +43,7 @@ def test_multiple_displays_receive_results(competition):
     display2 = ctx.new_page()
     display2.on("dialog", lambda d: d.accept())
     display2.goto(competition.url)
-    display2.locator('[x-model="joinCode"]').fill(competition.session_code)
+    display2.get_by_test_id("join-code-input").fill(competition.session_code)
     display2.get_by_role("button", name="Join Session").click()
     display2.locator(".role-wrap").wait_for(state="visible")
     display2.locator(".role-btn", has_text="Display Screen").click()

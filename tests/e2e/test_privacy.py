@@ -26,4 +26,4 @@ def test_privacy_screen(page, server_url):
     # (multiple "Back" buttons exist across all screens in the DOM)
     privacy_screen = page.locator(".landing-wrap", has=page.locator(".privacy-list"))
     privacy_screen.locator("button", has_text="Back").click()
-    expect(page.locator('[x-model="newSessionName"]')).to_be_visible()
+    expect(page.get_by_test_id("session-name-input")).to_be_visible()
