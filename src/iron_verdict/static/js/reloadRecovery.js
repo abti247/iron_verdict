@@ -20,7 +20,7 @@ export const reloadRecoveryMethods = {
             sessionStorage.removeItem('iv_session');
             return false;
         }
-        this.sessionCode = code;
+        this.$store.session.code = code;
         this.joinCode = code;
         // Set before the first render, so no other screen is ever painted.
         this.screen = 'reconnecting';
@@ -47,7 +47,7 @@ export const reloadRecoveryMethods = {
     // The stored session no longer exists (ended or expired): back to landing with
     // an inline message instead of a popup.
     failReconnectSessionGone() {
-        const code = this.sessionCode;
+        const code = this.$store.session.code;
         this.returnToLanding();
         this.joinError = t('reconnecting.sessionGone').replace('{code}', code);
     },
