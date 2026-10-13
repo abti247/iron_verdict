@@ -15,6 +15,8 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ### Fixed
 - When the VPortal login fails, the dialog says why (VPortal not reachable, no session returned, token request rejected) instead of a bare error code, and the server log records the cause
 - If loading the VPortal stages fails after login, the dialog shows an error instead of "Loading stages…" forever
+- A VPortal-connected display that is reloaded on a bad network shows the "VPortal disconnected" banner and fills in the lifter data on its own once the network is back, instead of staying empty until the next reload
+- Switching a display to role selection and back no longer leaves extra VPortal requests running in the background
 
 ### Removed
 
