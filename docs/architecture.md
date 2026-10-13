@@ -209,7 +209,8 @@ No-build single-page application. One HTML file served by FastAPI's `StaticFiles
 | File | Purpose |
 |---|---|
 | `init.js` | Entry point: reads demo URL params before Alpine boots, loads i18n, bootstraps Alpine, ends the boot state (see *Boot sequence*), dispatches `popstate` events into the screen machine. |
-| `app.js` | The main Alpine component (`ironVerdictApp`) — all reactive state and methods except VPortal. |
+| `app.js` | The main Alpine component (`ironVerdictApp`) — screen-local state (votes, timer, display phases, forms) and all methods, including the join/leave flows that write the session store. |
+| `sessionStore.js` | Session state shared by several screens as `Alpine.store('session')`: session code, name and kind, own role, `isHead`, connection status, `serverRestarting`, judge connectivity. Data only — `app.js` and `handlers.js` write it, the markup reads `$store.session.…`. |
 | `vportalStore.js` | VPortal state and methods as `Alpine.store('vportal')`: connect button and dialog on role-select, lifter overlay and disconnected banner on the display. `app.js` only hands it session info (staging flag), starts the display overlay on a display join and stops it when the display is left; the markup reads `$store.vportal.…`. Client, translator and `fetch` are injectable for Vitest. |
 | `websocket.js` | WebSocket wrapper with short capped-backoff auto-reconnect, immediate reconnect on `online` / `visibilitychange` / bfcache restore, and heartbeat watchdog. |
 | `handlers.js` | One named handler per incoming WS message type; imported by `app.js`. |
@@ -223,7 +224,11 @@ No-build single-page application. One HTML file served by FastAPI's `StaticFiles
 | `vportalErrors.js` | Maps a failed VPortal login (status + proxy `reason` code) to the dialog message. Pure function, translator injected. |
 | `demo.js` | Demo methods spread into the Alpine component. |
 
-*Why a store for VPortal instead of its own component:* the connect button, the dialog and the display overlay sit in three separate places of the markup and share one connection, so a component scoped to one element cannot hold them. Keeping the state out of `ironVerdictApp` means a change to a screen in `app.js` cannot touch VPortal by accident. `sessionKind` stays in `ironVerdictApp` — it is a session property, sent at create. This is step 1 of splitting `app.js` ([#65](https://github.com/abti247/iron_verdict/issues/65); shared state into `Alpine.store` and one component per screen follow in [#66](https://github.com/abti247/iron_verdict/issues/66) and [#67](https://github.com/abti247/iron_verdict/issues/67)).
+*Why a store for VPortal instead of its own component:* the connect button, the dialog and the display overlay sit in three separate places of the markup and share one connection, so a component scoped to one element cannot hold them. Keeping the state out of `ironVerdictApp` means a change to a screen in `app.js` cannot touch VPortal by accident. The session kind is not VPortal state: it is a session property (sent at create, read on role-select, corrected from the server on display start) and lives in `Alpine.store('session')`.
+
+*Why a session store:* code, role, connection status and the other fields above are read by several screens; in one store it is visible what is shared, and the per-screen components that follow can read it without reaching into each other. Only data moved — the flows that set it (`joinSession`, `returnToRoleSelection`, `returnToLanding`, the join/end handlers) stay in `app.js` / `handlers.js`, together with the VPortal overlay start/stop calls they make. `isDemo` and the WebSocket (`ws`, `wsSend`) stay in `ironVerdictApp`; the socket is a connection object, not display state.
+
+Splitting `app.js`: VPortal store ([#65](https://github.com/abti247/iron_verdict/issues/65)) and session store ([#66](https://github.com/abti247/iron_verdict/issues/66)) are done; one component per screen follows in [#67](https://github.com/abti247/iron_verdict/issues/67).
 
 **CSS files:** `variables.css` (16 custom properties) → `base.css` (resets, typography) → `components.css` (buttons, inputs, orbs) → `layout.css` (per-screen wrappers) → `animations.css` (keyframes) → `boot.css` (boot screen and fallback, see *Boot sequence*).
 
@@ -273,6 +278,7 @@ QR entry point: `?session=XXXX` lands on the landing screen with the code pre-fi
 | `localStorage` | `iron-verdict-lang` | `'en'` or `'de'` | Persistent |
 | `localStorage` | `iron-verdict:display-zoom` | Display screen zoom multiplier (0.7–1.5) | Persistent |
 | Alpine reactive state | — | `screen`, `selectedVote`, `voteState` (`voteLocked` is derived), `voteError`, `liftId`, timer, etc. | Page lifetime |
+| `Alpine.store('session')` | — | Session code, name, kind, own role, `isHead`, connection status, `serverRestarting`, judge connectivity | Page lifetime |
 | `Alpine.store('vportal')` | — | VPortal connection, dialog step, stage list, current lifter on the display | Page lifetime |
 
 *Why `sessionStorage` (not `localStorage`) for the reconnect token:* tab-scoped lifetime matches the lifetime of a judging session. If the token survived in `localStorage`, an old token could leak into a *new* session opened in the same browser later, leading to confusing "Role already taken" failures (server rejects because the role belongs to a stale judge identity). `localStorage` is reserved for genuinely persistent preferences like language.
