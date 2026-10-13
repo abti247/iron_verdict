@@ -19,6 +19,9 @@
     "cancel": "Abbrechen",
     "sessionGone": "Sitzung {code} ist beendet oder abgelaufen"
   },
+  "roleTakenOver": {
+    "notice": "{role} ist inzwischen auf einem anderen Gerät angemeldet"
+  },
   "demo": {
     "guideTitle": "Demo-Anleitung",
     "intro": "Iron Verdict ermöglicht Kampfrichter:innen, den Grund für einen ungültigen Versuch auszuwählen und sofort mit Athleten, Publikum, Jury und anderen Kampfrichter:innen zu teilen. Die verfügbaren Gründe basieren auf dem technischen Regelwerk der IPF (gültig ab 01. März 2026 - Version 3).",
