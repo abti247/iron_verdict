@@ -32,6 +32,9 @@ def _allowed_hosts() -> set[str]:
     return _PRODUCTION_HOSTS
 
 
+_SESSION_COOKIE_NAMES = ("__Host-VPORTAL", "VPORTAL")
+
+
 def _base_url(host: str) -> str:
     if settings.TEST_MODE and (host.startswith("127.0.0.1") or host.startswith("localhost")):
         return f"http://{host}"
@@ -141,7 +144,7 @@ async def login(body: LoginRequest):
     # the shared client would otherwise leak cookies between operators.
     async with _make_login_client() as http:
         # Step 1: multipart-POST /account/login. Status code is intentionally
-        # not inspected — real VPortal returns a pre-auth VPORTAL cookie even
+        # not inspected — real VPortal returns a pre-auth session cookie even
         # for wrong credentials (verified at staging 2026-05-19), and the
         # actual auth check happens at /auth/token. Cookie presence is the
         # success signal for "the form was processed," not "the credentials
@@ -158,8 +161,14 @@ async def login(body: LoginRequest):
 
         # Use httpx's parsed cookies rather than splitting Set-Cookie on commas —
         # the standard cookielib parser handles commas inside expires=... correctly.
-        vportal_cookie_value = login_resp.cookies.get("VPORTAL")
-        if not vportal_cookie_value:
+        # VPortal renamed the cookie VPORTAL -> __Host-VPORTAL (seen at staging
+        # 2026-10-13, issue #101); accept both so login keeps working whenever
+        # production switches, and send it back under the name it arrived with.
+        for vportal_cookie_name in _SESSION_COOKIE_NAMES:
+            vportal_cookie_value = login_resp.cookies.get(vportal_cookie_name)
+            if vportal_cookie_value:
+                break
+        else:
             raise HTTPException(status_code=502, detail="VPortal did not return a session cookie")
 
         # Step 2: GET /auth/token with the cookie. This is where VPortal
@@ -168,7 +177,7 @@ async def login(body: LoginRequest):
         token_resp = await http.get(
             f"{base}/auth/token",
             headers={
-                "cookie": f"VPORTAL={vportal_cookie_value}",
+                "cookie": f"{vportal_cookie_name}={vportal_cookie_value}",
                 "Accept-Language": "de",
             },
         )

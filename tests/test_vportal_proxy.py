@@ -162,7 +162,9 @@ def test_login_success_returns_token_and_interval(mock_vportal, monkeypatch):
         )
 
     def token_response(request):
-        assert "VPORTAL=cookie123" in request.headers.get("cookie", "")
+        # Exact match: legacy VPORTAL must go back under its own name, not as
+        # __Host-VPORTAL (production still used VPORTAL on 2026-10-13, issue #101).
+        assert request.headers.get("cookie", "") == "VPORTAL=cookie123"
         # No top-level exp — mirrors real VPortal. exp must come from the JWT.
         return httpx.Response(200, json={"access_token": fake_jwt})
 
@@ -181,6 +183,60 @@ def test_login_success_returns_token_and_interval(mock_vportal, monkeypatch):
         assert body["fetch_interval_ms"] == 4000
     finally:
         proxy_module.settings.VPORTAL_FETCH_INTERVAL_MS = original
+
+
+def test_login_accepts_host_prefixed_session_cookie(mock_vportal):
+    # Observed at staging 2026-10-13 (issue #101): VPortal renamed its session
+    # cookie from VPORTAL to __Host-VPORTAL. The cookie must be sent back to
+    # /auth/token under the name it arrived with.
+    fake_jwt = _jwt_with_exp(9999999999)
+    token_cookie_header = {}
+
+    mock_vportal[("POST", "/account/login")] = lambda r: httpx.Response(
+        302,
+        headers={
+            "set-cookie": (
+                "__Host-VPORTAL=hostcookie; expires=Wed, 21 Oct 2099 07:28:00 GMT; "
+                "Max-Age=28800; path=/; secure; HttpOnly; SameSite=Lax"
+            ),
+            "location": "/dashboard",
+        },
+    )
+
+    def token_response(request):
+        token_cookie_header["value"] = request.headers.get("cookie", "")
+        return httpx.Response(200, json={"access_token": fake_jwt})
+
+    mock_vportal[("GET", "/auth/token")] = token_response
+
+    response = client.post(
+        "/api/vportal/login",
+        json={"host": "bvdk.vportal-online.de", "identity": "u", "credential": "p"},
+    )
+    assert response.status_code == 200
+    assert response.json()["access_token"] == fake_jwt
+    assert token_cookie_header["value"] == "__Host-VPORTAL=hostcookie"
+
+
+def test_login_wrong_credentials_with_host_prefixed_cookie_surfaces_as_401(mock_vportal):
+    mock_vportal[("POST", "/account/login")] = lambda r: httpx.Response(
+        200,
+        headers={"set-cookie": "__Host-VPORTAL=pre-auth-cookie; path=/; secure; HttpOnly"},
+    )
+    token_cookie_header = {}
+
+    def token_response(request):
+        token_cookie_header["value"] = request.headers.get("cookie", "")
+        return httpx.Response(302, headers={"location": "/login?error=1"})
+
+    mock_vportal[("GET", "/auth/token")] = token_response
+
+    response = client.post(
+        "/api/vportal/login",
+        json={"host": "bvdk.vportal-online.de", "identity": "u", "credential": "wrong"},
+    )
+    assert response.status_code == 401
+    assert token_cookie_header["value"] == "__Host-VPORTAL=pre-auth-cookie"
 
 
 def test_login_sends_multipart_form_data(mock_vportal):
