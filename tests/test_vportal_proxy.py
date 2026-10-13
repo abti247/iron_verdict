@@ -1,5 +1,6 @@
 import base64
 import json
+import logging
 
 import pytest
 import httpx
@@ -314,6 +315,91 @@ def test_graphql_propagates_5xx_as_502(mock_vportal):
         },
     )
     assert response.status_code == 502
+
+
+_GRAPHQL_BODY = {
+    "host": "bvdk.vportal-online.de",
+    "token": "x",
+    "query": "{ profile { competition { id } } }",
+    "variables": {},
+}
+
+
+def _failing_then(errors, final_response=None):
+    """Handler that raises each error in turn, then returns `final_response`.
+
+    Records every call in `.calls` so tests can assert the retry count.
+    """
+    calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        if len(calls) <= len(errors):
+            raise errors[len(calls) - 1]
+        return final_response
+
+    handler.calls = calls
+    return handler
+
+
+@pytest.mark.parametrize(
+    "error_cls",
+    [httpx.RemoteProtocolError, httpx.ConnectError, httpx.ReadTimeout, httpx.ReadError],
+)
+def test_graphql_retries_once_on_transport_error(mock_vportal, error_cls, caplog):
+    handler = _failing_then(
+        [error_cls("Server disconnected without sending a response")],
+        httpx.Response(200, json={"data": {"profile": {"competition": {"id": 7}}}}),
+    )
+    mock_vportal[("POST", "/graphql")] = handler
+
+    with caplog.at_level(logging.INFO, logger="iron_verdict"):
+        response = client.post("/api/vportal/graphql", json=_GRAPHQL_BODY)
+
+    assert response.status_code == 200
+    assert response.json() == {"data": {"profile": {"competition": {"id": 7}}}}
+    assert len(handler.calls) == 2
+    records = [r for r in caplog.records if r.getMessage() == "vportal_transport_retry"]
+    assert len(records) == 1
+    assert records[0].levelno == logging.INFO
+    assert records[0].error == error_cls.__name__
+    assert records[0].host == "bvdk.vportal-online.de"
+    assert not [r for r in caplog.records if r.getMessage() == "vportal_upstream_unreachable"]
+
+
+def test_graphql_two_transport_errors_surface_as_502_with_log(mock_vportal, caplog):
+    handler = _failing_then([
+        httpx.RemoteProtocolError("Server disconnected without sending a response"),
+        httpx.ConnectError("Connection refused"),
+    ])
+    mock_vportal[("POST", "/graphql")] = handler
+
+    with caplog.at_level(logging.WARNING, logger="iron_verdict"):
+        response = client.post("/api/vportal/graphql", json=_GRAPHQL_BODY)
+
+    assert response.status_code == 502
+    assert response.json()["detail"] == "VPortal upstream unreachable"
+    assert len(handler.calls) == 2
+    records = [r for r in caplog.records if r.getMessage() == "vportal_upstream_unreachable"]
+    assert len(records) == 1
+    assert records[0].error == "ConnectError"
+    assert records[0].host == "bvdk.vportal-online.de"
+
+
+@pytest.mark.parametrize("status", [401, 503])
+def test_graphql_does_not_retry_http_error_responses(mock_vportal, status):
+    calls = []
+
+    def handler(request):
+        calls.append(request)
+        return httpx.Response(status)
+
+    mock_vportal[("POST", "/graphql")] = handler
+
+    response = client.post("/api/vportal/graphql", json=_GRAPHQL_BODY)
+
+    assert response.status_code == (401 if status == 401 else 502)
+    assert len(calls) == 1
 
 
 def test_login_does_not_leak_cookie_jar_between_calls(mock_vportal):

@@ -202,15 +202,38 @@ async def graphql(body: GraphQLRequest):
     _validate_host(body.host)
     _validate_graphql_query(body.query)
 
-    upstream = await _http_client.post(
-        f"{_base_url(body.host)}/graphql",
-        json={"query": body.query, "variables": body.variables or {}},
-        headers={
-            "Authorization": f"Bearer {body.token}",
-            "content-type": "application/json",
-            "Accept-Language": "de",
-        },
-    )
+    # Why one retry on transport errors: the shared client pools keep-alive
+    # connections, and VPortal or a NAT/load balancer may close an idle one
+    # before the next poll reuses it (seen live 2026-05-23 as a single
+    # RemoteProtocolError between successful polls). httpx drops the dead
+    # connection, so the retry opens a fresh one. Safe because the allowlist
+    # above makes every forwarded operation a read. No delay before the retry:
+    # the failure is a stale connection, not an overloaded upstream.
+    for attempt in (1, 2):
+        try:
+            upstream = await _http_client.post(
+                f"{_base_url(body.host)}/graphql",
+                json={"query": body.query, "variables": body.variables or {}},
+                headers={
+                    "Authorization": f"Bearer {body.token}",
+                    "content-type": "application/json",
+                    "Accept-Language": "de",
+                },
+            )
+            break
+        except httpx.TransportError as exc:
+            if attempt == 2:
+                logger.warning(
+                    "vportal_upstream_unreachable",
+                    extra={"host": body.host, "error": type(exc).__name__},
+                )
+                raise HTTPException(status_code=502, detail="VPortal upstream unreachable")
+            # Logged although the retry usually succeeds: shows in the field
+            # how often and when pooled connections go stale.
+            logger.info(
+                "vportal_transport_retry",
+                extra={"host": body.host, "error": type(exc).__name__},
+            )
 
     if upstream.status_code == 401:
         raise HTTPException(status_code=401, detail="VPortal token rejected")
