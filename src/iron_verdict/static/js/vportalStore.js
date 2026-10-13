@@ -109,8 +109,9 @@ export function createVportalStore({
         },
 
         // Called when this device joins as display. Resolves with the session kind
-        // from the server, or null if the lookup failed and is not retried, or the
-        // display was left meanwhile (the caller keeps its own kind then).
+        // from the server, or null if the lookup failed and is not retried (the
+        // caller keeps its own kind then). If the display is left meanwhile it
+        // resolves with null or, during a retry wait, never settles.
         async startDisplayOverlay(sessionCode) {
             // Never two pollers: a restart replaces whatever the last start left running.
             this.stopDisplayOverlay();
@@ -175,10 +176,14 @@ export function createVportalStore({
         _startPolling(sessionCode) {
             const stored = this._pollableStored(sessionCode);
             if (!stored) return;
+            // A poll already in flight when the display is left still reports back; it must
+            // not overwrite the next run's state.
+            const run = this._displayRun;
             this._pollStop = client.pollActiveAttempt(
                 sessionCode,
                 stored.fetch_interval_ms || 3000,
                 (attempt) => {
+                    if (run !== this._displayRun) return;
                     if (attempt && attempt.__stale) {
                         return;
                     }
@@ -186,6 +191,7 @@ export function createVportalStore({
                     this.disconnectedReason = '';
                 },
                 (kind) => {
+                    if (run !== this._displayRun) return;
                     this.displayAttempt = null;
                     this.disconnectedReason = kind;
                 },

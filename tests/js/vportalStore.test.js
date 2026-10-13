@@ -270,4 +270,27 @@ describe('display overlay start and stop', () => {
         expect(stops[0]).toHaveBeenCalledTimes(1);
         expect(stops[1]).not.toHaveBeenCalled();
     });
+
+    it('ignores a late result from a poller that was already stopped', async () => {
+        const fetchFn = vi.fn().mockResolvedValue(jsonResponse({ kind: 'vportal' }));
+        const { store, client } = makeStore({ fetchFn });
+        await store.startDisplayOverlay('ABCD1234');
+        const [, , oldUpdate, oldError] = client.pollActiveAttempt.mock.calls[0];
+        await store.startDisplayOverlay('ABCD1234');
+        const [, , newUpdate] = client.pollActiveAttempt.mock.calls[1];
+        newUpdate({ firstName: 'Anna' });
+        oldUpdate({ firstName: 'Maria' });
+        oldError('upstream-unreachable');
+        expect(store.displayAttempt).toEqual({ firstName: 'Anna' });
+        expect(store.disconnectedReason).toBe('');
+    });
+
+    it('looks up once and reports no kind on a non-2xx without a VPortal login', async () => {
+        const fetchFn = vi.fn().mockResolvedValue(jsonResponse({}, false));
+        const client = fakeClient({ isConnected: vi.fn().mockReturnValue(false) });
+        const { store } = makeStore({ client, fetchFn });
+        expect(await store.startDisplayOverlay('ABCD1234')).toBeNull();
+        expect(fetchFn).toHaveBeenCalledTimes(1);
+        expect(client.pollActiveAttempt).not.toHaveBeenCalled();
+    });
 });

@@ -76,6 +76,7 @@ export function handleJoinError(app, message) {
         return;
     }
     app.ws.close();
+    app.$store.vportal.stopDisplayOverlay();
     sessionStorage.removeItem('iv_session');
     const sanitizedMessage = document.createTextNode(message.message).textContent;
     alert(`${t('alerts.joinFailed')} ${sanitizedMessage}`);
