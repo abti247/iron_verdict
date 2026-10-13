@@ -103,6 +103,10 @@ export function ironVerdictApp() {
         async vportalDoLogin() {
             this.vportalLoginError = '';
             this.vportalStageError = '';
+            // Clear a previous connect's stage list so a failed or still-running
+            // fetch never shows stale stages as selectable.
+            this.vportalStages = [];
+            this.vportalSelectedStage = '';
             const host = this._vportalHostForFederation(this.vportalFederation);
             try {
                 await vportalClient.login(this.sessionCode, host, this.vportalIdentity, this.vportalCredential);
@@ -116,7 +120,8 @@ export function ironVerdictApp() {
             // (and its error line) is already hidden.
             try {
                 this.vportalStages = await vportalClient.fetchStages(this.sessionCode);
-            } catch {
+            } catch (err) {
+                console.warn('vportal stage list failed', err);
                 this.vportalStageError = t('vportal.errorStagesFailed');
                 return;
             }

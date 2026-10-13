@@ -191,3 +191,31 @@ def test_stage_list_failure_after_login_shows_error_in_stage_step(page, server_u
         "Could not load the stages from VPortal. Cancel and connect again."
     )
     expect(stage_step.locator(".vportal-loading")).not_to_be_visible()
+
+
+def test_reconnect_with_failing_stage_list_shows_no_stale_stages(page, server_url, fake_vportal_url):
+    """Operator connects, disconnects, connects again, and the stage list now fails.
+
+    The stage step must not offer the stages from the first connect next to the
+    error — no options, confirm button disabled.
+    """
+    httpx.post(f"http://{fake_vportal_url}/_control/reset")
+    _open_credentials_step(page, server_url, fake_vportal_url)
+    page.locator(".vportal-step-credentials .vportal-next-btn").click()
+    page.locator('[x-model="vportalSelectedStage"]').select_option("STAGE-1")
+    page.locator(".vportal-step-stage .vportal-next-btn").click()
+    page.locator(".vportal-modal").wait_for(state="hidden")
+
+    page.locator(".vportal-connect-btn").click()
+    page.locator(".vportal-step-connected").get_by_role("button", name="Disconnect").click()
+    page.locator(".vportal-modal").wait_for(state="hidden")
+
+    page.route("**/api/vportal/graphql", lambda route: route.fulfill(status=502, body="Bad gateway"))
+    page.locator(".vportal-connect-btn").click()
+    page.locator(".vportal-step-federation .vportal-next-btn").click()
+    page.locator(".vportal-step-credentials .vportal-next-btn").click()
+
+    stage_step = page.locator(".vportal-step-stage")
+    expect(stage_step.locator(".vportal-error")).to_be_visible()
+    expect(stage_step.locator('[x-model="vportalSelectedStage"] option')).to_have_count(0)
+    expect(stage_step.locator(".vportal-next-btn")).to_be_disabled()
