@@ -3,8 +3,6 @@ import { startTimerCountdown } from './timer.js';
 import { createWebSocket } from './websocket.js';
 import { demoMethods } from './demo.js';
 import { voteDeliveryMethods } from './voteDelivery.js';
-import { vportalClient } from './vportalClient.js';
-import { vportalLoginErrorMessage } from './vportalErrors.js';
 import { reloadRecoveryMethods } from './reloadRecovery.js';
 import { roleTakeoverMethods, createRoleTakenTracker } from './roleTakeover.js';
 import {
@@ -74,122 +72,10 @@ export function ironVerdictApp() {
         contactMessage: '',
         contactStatus: 'idle',
         sessionKind: 'generic',
-        vportalStagingAvailable: false,
-        vportalConnected: false,
-        vportalStageName: '',
-        vportalFederationLabel: '',
-        vportalModalOpen: false,
-        vportalModalStep: 'federation',
-        vportalLoginError: '',
-        vportalStageError: '',
-        vportalFederation: 'BVDK',
-        vportalIdentity: '',
-        vportalCredential: '',
-        vportalStages: [],
-        vportalSelectedStage: '',
-        vportalDisplayAttempt: null,
-        vportalDisconnectedReason: '',
-        _vportalPollStop: null,
 
         displaySettingsOpen: false,
         displayZoom: 1,
         _displayKeydownHandler: null,
-
-        openVportalModal() {
-            this.vportalModalOpen = true;
-            this.vportalModalStep = this.vportalConnected ? 'connected' : 'federation';
-        },
-
-        async vportalDoLogin() {
-            this.vportalLoginError = '';
-            this.vportalStageError = '';
-            // Clear a previous connect's stage list so a failed or still-running
-            // fetch never shows stale stages as selectable.
-            this.vportalStages = [];
-            this.vportalSelectedStage = '';
-            const host = this._vportalHostForFederation(this.vportalFederation);
-            try {
-                await vportalClient.login(this.sessionCode, host, this.vportalIdentity, this.vportalCredential);
-            } catch (err) {
-                this.vportalLoginError = vportalLoginErrorMessage(err, t);
-                return;
-            }
-            this.vportalFederationLabel = this.vportalFederation;
-            this.vportalModalStep = 'stage';
-            // A failure here must show on the stage step: the credentials step
-            // (and its error line) is already hidden.
-            try {
-                this.vportalStages = await vportalClient.fetchStages(this.sessionCode);
-            } catch (err) {
-                console.warn('vportal stage list failed', err);
-                this.vportalStageError = t('vportal.errorStagesFailed');
-                return;
-            }
-            if (this.vportalStages.length > 0) {
-                this.vportalSelectedStage = this.vportalStages[0].id;
-            }
-        },
-
-        vportalConfirmStage() {
-            const stage = this.vportalStages.find(s => s.id === this.vportalSelectedStage);
-            vportalClient.setStage(this.sessionCode, stage.id, stage.name);
-            this.vportalStageName = stage.name;
-            this.vportalConnected = true;
-            this.vportalModalOpen = false;
-        },
-
-        vportalDisconnect() {
-            vportalClient.logout(this.sessionCode);
-            this.vportalConnected = false;
-            this.vportalStageName = '';
-            this.vportalModalOpen = false;
-        },
-
-        _vportalHostForFederation(fed) {
-            // Test-only override: any test that sets window._testVportalHost gets routed to the fake server.
-            if (window._testVportalHost) return window._testVportalHost;
-            if (fed === 'BVDK') return 'bvdk.vportal-online.de';
-            if (fed === 'OEVK') return 'oevk.vportal-online.de';
-            if (fed === 'BVDK_STAGING') return 'staging-bvdk.vportal-online.de';
-            return 'bvdk.vportal-online.de';
-        },
-
-        async _maybeStartVportalPolling() {
-            // Authoritative kind check — sessionKind in state may be stale after reload-recovery
-            // because role-select didn't run on this page lifetime.
-            try {
-                const resp = await fetch(`/api/sessions/${this.sessionCode}`);
-                if (!resp.ok) return;
-                const data = await resp.json();
-                this.sessionKind = data.kind || 'generic';
-                this.vportalStagingAvailable = !!data.staging_available;
-            } catch (_e) {
-                return;
-            }
-            if (this.sessionKind !== 'vportal') return;
-            this._startVportalPolling();
-        },
-
-        _startVportalPolling() {
-            if (!vportalClient.isConnected(this.sessionCode)) return;
-            const stored = vportalClient.getStored(this.sessionCode);
-            if (!stored?.stage_id) return;
-            this._vportalPollStop = vportalClient.pollActiveAttempt(
-                this.sessionCode,
-                stored.fetch_interval_ms || 3000,
-                (attempt) => {
-                    if (attempt && attempt.__stale) {
-                        return;
-                    }
-                    this.vportalDisplayAttempt = attempt;
-                    this.vportalDisconnectedReason = '';
-                },
-                (kind) => {
-                    this.vportalDisplayAttempt = null;
-                    this.vportalDisconnectedReason = kind;
-                },
-            );
-        },
 
         ...demoMethods,
         ...voteDeliveryMethods,
@@ -229,14 +115,7 @@ export function ironVerdictApp() {
                 const data = await response.json();
                 this.sessionCode = data.session_code;
                 this.sessionName = this.newSessionName.trim();
-                // Pick up server-side flags (staging_available) for the freshly-created session.
-                try {
-                    const lookup = await fetch(`/api/sessions/${this.sessionCode}`);
-                    if (lookup.ok) {
-                        const info = await lookup.json();
-                        this.vportalStagingAvailable = !!info.staging_available;
-                    }
-                } catch (_e) { /* swallow — modal will just hide the staging option */ }
+                await this.$store.vportal.loadStagingFlag(this.sessionCode);
                 sessionStorage.setItem('iv_session', JSON.stringify({ code: this.sessionCode }));
                 this.navigateTo('role-select');
             } catch (error) {
@@ -261,10 +140,10 @@ export function ironVerdictApp() {
                     try {
                         const data = await res.json();
                         this.sessionKind = data.kind || 'generic';
-                        this.vportalStagingAvailable = !!data.staging_available;
+                        this.$store.vportal.applySessionInfo(data);
                     } catch (_e) {
                         this.sessionKind = 'generic';
-                        this.vportalStagingAvailable = false;
+                        this.$store.vportal.applySessionInfo(null);
                     }
                     sessionStorage.setItem('iv_session', JSON.stringify({ code }));
                     this.navigateTo('role-select');
@@ -333,7 +212,9 @@ export function ironVerdictApp() {
             this.ws = wsWrapper;
             this.wsSend = (data) => wsWrapper.send(data);
             if (role === 'display') {
-                this._maybeStartVportalPolling();
+                this.$store.vportal.startDisplayOverlay(code).then((kind) => {
+                    if (kind) this.sessionKind = kind;
+                });
             }
         },
 

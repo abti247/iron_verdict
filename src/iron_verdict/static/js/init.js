@@ -1,4 +1,5 @@
 import { ironVerdictApp } from './app.js';
+import { createVportalStore } from './vportalStore.js';
 import { initI18n, t, setLanguage, getLanguage } from './i18n.js';
 
 // Read demo join params from URL before Alpine loads.
@@ -50,6 +51,7 @@ window.getLanguage = getLanguage;
 document.addEventListener('alpine:init', () => {
     // Create reactive i18n store — t() reads from this, setLanguage() writes to it
     Alpine.store('i18n', { lang: window._resolvedLang || 'en', _v: 0 });
+    Alpine.store('vportal', createVportalStore());
     Alpine.data('ironVerdictApp', ironVerdictApp);
 });
 
