@@ -57,8 +57,8 @@ def test_lift_cycle_with_required_reasons(competition):
     head, left, right = competition.join_all_judges()
     display = competition.join_as("display")
 
-    # Enable settings
-    head.get_by_test_id("show-explanations-checkbox").check()
+    # "Show reasons on display" is on by default; enable required reasons
+    expect(head.get_by_test_id("show-explanations-checkbox")).to_be_checked()
     head.get_by_test_id("require-reasons-checkbox").check()
 
     # White vote locks without reason

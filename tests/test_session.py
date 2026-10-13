@@ -169,16 +169,16 @@ async def test_create_session_initializes_settings():
     code = await manager.create_session("Test")
     session = manager.sessions[code]
     assert "settings" in session
-    assert session["settings"]["show_explanations"] is False
+    assert session["settings"]["show_explanations"] is True
     assert session["settings"]["lift_type"] == "squat"
 
 
 async def test_update_settings_stores_values():
     manager = SessionManager()
     code = await manager.create_session("Test")
-    result = manager.update_settings(code, True, "bench")
+    result = manager.update_settings(code, False, "bench")
     assert result["success"] is True
-    assert manager.sessions[code]["settings"]["show_explanations"] is True
+    assert manager.sessions[code]["settings"]["show_explanations"] is False
     assert manager.sessions[code]["settings"]["lift_type"] == "bench"
 
 
@@ -566,3 +566,15 @@ async def test_load_snapshot_defaults_missing_lift_id(tmp_path):
     restored.load_snapshot(path)
 
     assert restored.sessions[code]["lift_id"] == 0
+
+
+async def test_load_snapshot_keeps_stored_show_explanations(tmp_path):
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    manager.update_settings(code, False, "squat")
+    path = str(tmp_path / "sessions.json")
+    manager.save_snapshot(path)
+
+    restored = SessionManager()
+    restored.load_snapshot(path)
+    assert restored.sessions[code]["settings"]["show_explanations"] is False

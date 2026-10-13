@@ -35,7 +35,7 @@
     "setupStep2": "Sitzungscode an andere Kampfrichter:innen senden oder QR Code scannen",
     "setupStep3": "Sitzungscode verwenden, um einen Anzeigebildschirm einzurichten",
     "headControlsTitle": "Haupt-KARI-Steuerung",
-    "showReasonsDesc": "Gründe auf Anzeige zeigen — Gründe der Entscheidung erscheinen auf dem Anzeigebildschirm",
+    "showReasonsDesc": "Gründe auf Anzeige zeigen — Gründe der Entscheidung erscheinen auf dem Anzeigebildschirm (standardmäßig aktiviert)",
     "requireReasonsDesc": "Gründe erforderlich — Kampfrichter:innen müssen einen Grund auswählen, bevor sie bestätigen (standardmäßig optional)",
     "liftCategoryDesc": "Disziplin-Auswahl — ändert den Grundkatalog (Kniebeuge / Bankdrücken / Kreuzheben)",
     "duringTitle": "Während des Wettkampfs",

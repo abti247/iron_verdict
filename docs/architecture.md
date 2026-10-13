@@ -65,7 +65,7 @@ Two in-process managers, each guarded by its own `asyncio.Lock`. The two locks a
 ### `SessionManager`
 
 - Holds `self.sessions: dict[str, dict]` — domain state per session code.
-- Each session records: `name`, `kind` (`"generic" | "vportal"`, immutable after create), `judges` (left/center/right with vote, reason, locked, connected, reconnect token), `phase`, `state`, `settings`, `timer_started_at`, `timer_frozen_ms`, `lift_id` (counter, +1 on every reset for next lift; `0` for snapshots that predate it), `last_activity`.  
+- Each session records: `name`, `kind` (`"generic" | "vportal"`, immutable after create), `judges` (left/center/right with vote, reason, locked, connected, reconnect token), `phase`, `state`, `settings` (`show_explanations` default on, `lift_type` default squat, `require_reasons` default off; snapshots keep their stored values), `timer_started_at`, `timer_frozen_ms`, `lift_id` (counter, +1 on every reset for next lift; `0` for snapshots that predate it), `last_activity`.  
 *Why `kind` lives in session state:* drives whether the VPortal connect button appears on Select Role and whether the display screen starts polling. Set at create, read by every consumer via `GET /api/sessions/{code}`.
 - Generates 8-character alphanumeric session codes.
 - Owns business rules: vote-lock state machine, all-judges-locked → results computation (including the IPF rule that a disconnected non-voter blocks results), timer freeze on results, reset for next lift.
