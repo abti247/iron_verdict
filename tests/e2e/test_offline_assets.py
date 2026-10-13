@@ -66,7 +66,7 @@ def test_full_competition_with_external_hosts_blocked(competition, offline):
     qr_ctx = competition.new_context()
     qr_page = qr_ctx.new_page()
     qr_page.goto(competition.url)
-    qr_page.locator('[x-model="joinCode"]').fill(competition.session_code)
+    qr_page.get_by_test_id("join-code-input").fill(competition.session_code)
     qr_page.get_by_role("button", name="Join Session").click()
     qr_page.locator(".role-wrap").wait_for(state="visible")
     expect(qr_page.locator("#qrcode canvas")).to_have_count(1)

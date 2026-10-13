@@ -16,7 +16,7 @@ from tests.e2e.network_switch import cut_network, join_with_network_switch
 
 ROLE_SELECT = ".role-wrap"
 NOTICE = ".role-wrap .role-notice"
-RECONNECTING = '.landing-wrap[x-show="screen === \'reconnecting\'"]'
+RECONNECTING = "reconnecting-screen"
 # Give-up limit is 25 s from the first rejection; allow for the time A needs
 # to come back and receive it.
 GIVE_UP_TIMEOUT_MS = 40000
@@ -54,10 +54,10 @@ def test_reloaded_device_with_taken_role_shows_notice_on_role_select(competition
 
     device_a.evaluate("window.__ivRestoreNetwork()")
     device_a.reload()
-    expect(device_a.locator(RECONNECTING)).to_be_visible()
+    expect(device_a.get_by_test_id(RECONNECTING)).to_be_visible()
     # Several rejected attempts later, still within the limit: no notice yet.
     device_a.wait_for_function("window.__ivSocketCount() >= 3", timeout=10000)
-    expect(device_a.locator(RECONNECTING)).to_be_visible()
+    expect(device_a.get_by_test_id(RECONNECTING)).to_be_visible()
 
     expect(device_a.locator(NOTICE)).to_be_visible(timeout=GIVE_UP_TIMEOUT_MS)
     expect(device_a.locator(NOTICE)).to_have_text("Left Judge is now signed in on another device")
@@ -102,7 +102,7 @@ def test_role_freed_within_limit_rejoins_without_notice(competition):
     device_a.evaluate("window.__ivRestoreNetwork()")
     device_a.reload()
     device_a.wait_for_function("window.__ivSocketCount() >= 3", timeout=10000)
-    expect(device_a.locator(RECONNECTING)).to_be_visible()
+    expect(device_a.get_by_test_id(RECONNECTING)).to_be_visible()
 
     device_b.locator(".judge-code .code-link").click()
     expect(device_b.locator(ROLE_SELECT)).to_be_visible()

@@ -20,10 +20,9 @@ window.__screens = [];
     function record() {
         if (!document.body) return;
         for (const el of document.body.children) {
-            const show = el.getAttribute('x-show');
-            if (!show || el.getClientRects().length === 0) continue;
-            const m = show.match(/screen === '([^']+)'/);
-            const name = m ? m[1] : show;
+            const testId = el.getAttribute('data-testid');
+            if (!testId || el.getClientRects().length === 0) continue;
+            const name = testId.replace(/-screen$/, '');
             if (window.__screens[window.__screens.length - 1] !== name) window.__screens.push(name);
         }
     }
@@ -34,8 +33,8 @@ window.__screens = [];
 })();
 """
 
-LANDING = '.landing-wrap[x-show="screen === \'landing\'"]'
-RECONNECTING = '.landing-wrap[x-show="screen === \'reconnecting\'"]'
+LANDING = "landing-screen"
+RECONNECTING = "reconnecting-screen"
 
 
 def _recorded_page(competition, *init_scripts):
@@ -50,7 +49,7 @@ def _recorded_page(competition, *init_scripts):
 
 def _join(competition, page, role):
     page.goto(competition.url)
-    page.locator('[x-model="joinCode"]').fill(competition.session_code)
+    page.get_by_test_id("join-code-input").fill(competition.session_code)
     page.get_by_role("button", name="Join Session").click()
     page.locator(".role-wrap").wait_for(state="visible")
     if role:
@@ -103,7 +102,7 @@ def test_vportal_display_reload_restarts_polling(competition, server_url, fake_v
 
     expect(corner).to_contain_text("MARIA SCHNEIDER", timeout=10000, ignore_case=True)
     assert "landing" not in _screens(page), _screens(page)
-    assert "vportalModalOpen" not in _screens(page), _screens(page)
+    assert "vportal-modal" not in _screens(page), _screens(page)
 
 
 def test_role_select_reload_never_shows_landing(competition):
@@ -131,7 +130,7 @@ def test_reconnecting_state_shown_while_server_unreachable(competition):
     left.evaluate("window.__ivCutNetwork()")
     left.reload()
 
-    reconnecting = left.locator(RECONNECTING)
+    reconnecting = left.get_by_test_id(RECONNECTING)
     expect(reconnecting).to_be_visible()
     expect(reconnecting).to_contain_text(competition.session_code)
     # Several failed attempts later the page still waits — no fallback to landing.
@@ -156,15 +155,15 @@ def test_cancel_reconnecting_returns_to_landing_and_forgets_session(competition)
 
     left.evaluate("window.__ivCutNetwork()")
     left.reload()
-    expect(left.locator(RECONNECTING)).to_be_visible()
+    expect(left.get_by_test_id(RECONNECTING)).to_be_visible()
 
-    left.locator(RECONNECTING).get_by_role("button", name="Cancel").click()
+    left.get_by_test_id(RECONNECTING).get_by_role("button", name="Cancel").click()
 
-    expect(left.locator(LANDING)).to_be_visible()
+    expect(left.get_by_test_id(LANDING)).to_be_visible()
     assert left.evaluate("sessionStorage.getItem('iv_session')") is None
     left.evaluate("window.__ivRestoreNetwork()")
     left.reload()
-    expect(left.locator(LANDING)).to_be_visible()
+    expect(left.get_by_test_id(LANDING)).to_be_visible()
     expect(left.locator(".judge-wrap")).not_to_be_visible()
 
 
@@ -181,17 +180,17 @@ def test_cancel_during_role_select_lookup_is_not_undone(competition):
     page.route(lookup, lambda route: held.append(route))
     with page.expect_request(lookup):
         page.reload()
-    expect(page.locator(RECONNECTING)).to_be_visible()
+    expect(page.get_by_test_id(RECONNECTING)).to_be_visible()
     assert held, "session lookup was not held"
 
-    page.locator(RECONNECTING).get_by_role("button", name="Cancel").click()
-    expect(page.locator(LANDING)).to_be_visible()
+    page.get_by_test_id(RECONNECTING).get_by_role("button", name="Cancel").click()
+    expect(page.get_by_test_id(LANDING)).to_be_visible()
 
     held[0].continue_()
-    # joinChecking is reset only after the lookup result has been handled.
-    page.wait_for_function("!Alpine.$data(document.body).joinChecking")
+    # The join button reads "Checking…" until the lookup result has been handled.
+    expect(page.get_by_role("button", name="Join Session")).to_be_visible()
 
-    expect(page.locator(LANDING)).to_be_visible()
+    expect(page.get_by_test_id(LANDING)).to_be_visible()
     expect(page.locator(".join-error")).to_be_hidden()
     expect(page.locator(".role-wrap")).not_to_be_visible()
     assert page.evaluate("sessionStorage.getItem('iv_session')") is None
@@ -214,7 +213,7 @@ def test_reload_into_ended_session_shows_landing_with_message(competition):
 
     left.goto(competition.url)
 
-    expect(left.locator(LANDING)).to_be_visible()
+    expect(left.get_by_test_id(LANDING)).to_be_visible()
     expect(left.locator(".join-error")).to_contain_text("has ended or expired")
     expect(left.locator(".join-error")).to_contain_text(competition.session_code)
     assert left.evaluate("sessionStorage.getItem('iv_session')") is None
@@ -234,6 +233,6 @@ def test_reload_on_role_select_into_ended_session_shows_landing_with_message(com
 
     page.goto(competition.url)
 
-    expect(page.locator(LANDING)).to_be_visible()
+    expect(page.get_by_test_id(LANDING)).to_be_visible()
     expect(page.locator(".join-error")).to_contain_text("has ended or expired")
     assert page.evaluate("sessionStorage.getItem('iv_session')") is None

@@ -10,10 +10,7 @@ def test_scroll_indicator_shown_for_long_list(competition):
     head = competition.create_session_and_join_head()
 
     # Set lift type to bench so yellow has 12 reasons
-    head.evaluate("""() => {
-        const app = document.querySelector('[x-data]');
-        app._x_dataStack[0].liftType = 'bench';
-    }""")
+    head.get_by_test_id("lift-type-select").select_option("bench")
 
     # Select yellow vote
     head.locator(".vote-btn.vote-yellow").click()
@@ -28,10 +25,7 @@ def test_scroll_indicator_hidden_for_short_list(competition):
     """Bench red has 2 reasons — indicator should NOT appear."""
     head = competition.create_session_and_join_head()
 
-    head.evaluate("""() => {
-        const app = document.querySelector('[x-data]');
-        app._x_dataStack[0].liftType = 'bench';
-    }""")
+    head.get_by_test_id("lift-type-select").select_option("bench")
 
     # Select red vote (only 2 reasons)
     head.locator(".vote-btn.vote-red").click()

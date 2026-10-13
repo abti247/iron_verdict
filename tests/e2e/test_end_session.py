@@ -44,7 +44,7 @@ def test_session_gone_after_end(competition):
     page = ctx.new_page()
     page.goto(competition.url)
 
-    page.locator('[x-model="joinCode"]').fill(code)
+    page.get_by_test_id("join-code-input").fill(code)
     page.get_by_role("button", name="Join Session").click()
 
     # Lookup returns 404 → inline error shown, no navigation to role-select

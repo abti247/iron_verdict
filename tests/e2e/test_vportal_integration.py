@@ -8,7 +8,7 @@ from playwright.sync_api import expect
 
 def test_full_connect_flow_shows_lifter_on_display(page, server_url, fake_vportal_url):
     page.goto(server_url + "/vportal")
-    page.locator('[x-model="newSessionName"]').fill("VP Test")
+    page.get_by_test_id("session-name-input").fill("VP Test")
     page.get_by_role("button", name="Create New Session").click()
     page.locator(".role-wrap").wait_for(state="visible")
 
@@ -18,17 +18,17 @@ def test_full_connect_flow_shows_lifter_on_display(page, server_url, fake_vporta
 
     # Step 1: Inject the fake VPortal URL as a global test override; pick any federation.
     page.evaluate(f"() => {{ window._testVportalHost = '{fake_vportal_url}'; }}")
-    page.locator('[x-model="vportalFederation"]').select_option("BVDK")
+    page.get_by_test_id("vportal-federation-select").select_option("BVDK")
     page.locator(".vportal-step-federation .vportal-next-btn").click()
 
     # Step 2: Credentials
-    page.locator('[x-model="vportalIdentity"]').fill("u")
-    page.locator('[x-model="vportalCredential"]').fill("p")
+    page.get_by_test_id("vportal-identity-input").fill("u")
+    page.get_by_test_id("vportal-credential-input").fill("p")
     page.locator(".vportal-step-credentials .vportal-next-btn").click()
 
     # Step 3: Stage picker
     page.locator(".vportal-step-stage").wait_for(state="visible")
-    page.locator('[x-model="vportalSelectedStage"]').select_option("STAGE-1")
+    page.get_by_test_id("vportal-stage-select").select_option("STAGE-1")
     page.locator(".vportal-step-stage .vportal-next-btn").click()
 
     # Modal closes
@@ -50,18 +50,18 @@ def _connect_and_open_display(page, server_url, fake_vportal_url):
     httpx.post(f"http://{fake_vportal_url}/_control/reset")
     httpx.post(f"http://{fake_vportal_url}/_control/restore_attempt")
     page.goto(server_url + "/vportal")
-    page.locator('[x-model="newSessionName"]').fill("VP Test")
+    page.get_by_test_id("session-name-input").fill("VP Test")
     page.get_by_role("button", name="Create New Session").click()
     page.locator(".role-wrap").wait_for(state="visible")
     page.locator(".vportal-connect-btn").click()
     page.evaluate(f"() => {{ window._testVportalHost = '{fake_vportal_url}'; }}")
-    page.locator('[x-model="vportalFederation"]').select_option("BVDK")
+    page.get_by_test_id("vportal-federation-select").select_option("BVDK")
     page.locator(".vportal-step-federation .vportal-next-btn").click()
-    page.locator('[x-model="vportalIdentity"]').fill("u")
-    page.locator('[x-model="vportalCredential"]').fill("p")
+    page.get_by_test_id("vportal-identity-input").fill("u")
+    page.get_by_test_id("vportal-credential-input").fill("p")
     page.locator(".vportal-step-credentials .vportal-next-btn").click()
     page.locator(".vportal-step-stage").wait_for(state="visible")
-    page.locator('[x-model="vportalSelectedStage"]').select_option("STAGE-1")
+    page.get_by_test_id("vportal-stage-select").select_option("STAGE-1")
     page.locator(".vportal-step-stage .vportal-next-btn").click()
     page.locator(".role-btn", has_text="Display Screen").click()
     page.locator(".display-full").wait_for(state="visible")
@@ -103,7 +103,7 @@ def test_rejoin_via_qr_keeps_connect_button_visible(browser, server_url, fake_vp
     ctx_a = browser.new_context(locale="en-US")
     page_a = ctx_a.new_page()
     page_a.goto(server_url + "/vportal")
-    page_a.locator('[x-model="newSessionName"]').fill("Rejoin Test")
+    page_a.get_by_test_id("session-name-input").fill("Rejoin Test")
     page_a.get_by_role("button", name="Create New Session").click()
     page_a.locator(".role-wrap").wait_for(state="visible")
     session_code = page_a.locator(".session-tag .code").text_content()
@@ -112,7 +112,7 @@ def test_rejoin_via_qr_keeps_connect_button_visible(browser, server_url, fake_vp
     ctx_b = browser.new_context(locale="en-US")
     page_b = ctx_b.new_page()
     page_b.goto(server_url + "/")
-    page_b.locator('[x-model="joinCode"]').fill(session_code)
+    page_b.get_by_test_id("join-code-input").fill(session_code)
     page_b.get_by_role("button", name="Join Session").click()
     page_b.locator(".role-wrap").wait_for(state="visible")
 
@@ -127,15 +127,15 @@ def test_rejoin_via_qr_keeps_connect_button_visible(browser, server_url, fake_vp
 def _open_credentials_step(page, server_url, vportal_host):
     """Helper: create a VPortal session and fill the login form against `vportal_host`."""
     page.goto(server_url + "/vportal")
-    page.locator('[x-model="newSessionName"]').fill("VP Error Test")
+    page.get_by_test_id("session-name-input").fill("VP Error Test")
     page.get_by_role("button", name="Create New Session").click()
     page.locator(".role-wrap").wait_for(state="visible")
     page.locator(".vportal-connect-btn").click()
     page.evaluate(f"() => {{ window._testVportalHost = '{vportal_host}'; }}")
-    page.locator('[x-model="vportalFederation"]').select_option("BVDK")
+    page.get_by_test_id("vportal-federation-select").select_option("BVDK")
     page.locator(".vportal-step-federation .vportal-next-btn").click()
-    page.locator('[x-model="vportalIdentity"]').fill("u")
-    page.locator('[x-model="vportalCredential"]').fill("p")
+    page.get_by_test_id("vportal-identity-input").fill("u")
+    page.get_by_test_id("vportal-credential-input").fill("p")
 
 
 def test_login_with_vportal_unreachable_shows_cause_in_dialog(page, server_url, fake_vportal_url):
@@ -202,7 +202,7 @@ def test_reconnect_with_failing_stage_list_shows_no_stale_stages(page, server_ur
     httpx.post(f"http://{fake_vportal_url}/_control/reset")
     _open_credentials_step(page, server_url, fake_vportal_url)
     page.locator(".vportal-step-credentials .vportal-next-btn").click()
-    page.locator('[x-model="vportalSelectedStage"]').select_option("STAGE-1")
+    page.get_by_test_id("vportal-stage-select").select_option("STAGE-1")
     page.locator(".vportal-step-stage .vportal-next-btn").click()
     page.locator(".vportal-modal").wait_for(state="hidden")
 
@@ -217,5 +217,5 @@ def test_reconnect_with_failing_stage_list_shows_no_stale_stages(page, server_ur
 
     stage_step = page.locator(".vportal-step-stage")
     expect(stage_step.locator(".vportal-error")).to_be_visible()
-    expect(stage_step.locator('[x-model="vportalSelectedStage"] option')).to_have_count(0)
+    expect(stage_step.get_by_test_id("vportal-stage-select").locator("option")).to_have_count(0)
     expect(stage_step.locator(".vportal-next-btn")).to_be_disabled()

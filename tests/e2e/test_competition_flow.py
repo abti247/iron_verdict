@@ -58,8 +58,8 @@ def test_lift_cycle_with_required_reasons(competition):
     display = competition.join_as("display")
 
     # Enable settings
-    head.locator('[x-model="showExplanations"]').check()
-    head.locator('[x-model="requireReasons"]').check()
+    head.get_by_test_id("show-explanations-checkbox").check()
+    head.get_by_test_id("require-reasons-checkbox").check()
 
     # White vote locks without reason
     competition.vote_and_lock(head, "white")
