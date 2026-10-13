@@ -68,7 +68,7 @@ class SessionManager:
                 "timer_frozen_ms": None,
                 "lift_id": 0,
                 "settings": {
-                    "show_explanations": False,
+                    "show_explanations": True,
                     "lift_type": "squat",
                     "require_reasons": False,
                 },

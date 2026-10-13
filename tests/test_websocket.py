@@ -99,6 +99,22 @@ async def test_show_results_includes_settings(session_code):
             assert show_results["liftType"] == "bench"
 
 
+async def test_settings_update_without_show_explanations_defaults_to_true(session_code):
+    session_manager.update_settings(session_code, False, "squat")
+    async with httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+            await ws.send_json({"type": "join", "session_code": session_code, "role": "center_judge"})
+            await ws.receive_json()  # join_success
+
+            await ws.send_json({"type": "settings_update", "liftType": "bench"})
+            msg = await asyncio.wait_for(ws.receive_json(), timeout=1.0)
+            assert msg["type"] == "settings_update"
+            assert msg["showExplanations"] is True
+            assert session_manager.sessions[session_code]["settings"]["show_explanations"] is True
+
+
 async def test_settings_update_invalid_lift_type_returns_error(session_code):
     async with httpx.AsyncClient(
         transport=ASGIWebSocketTransport(app=app), base_url="http://test"

@@ -634,7 +634,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     continue
                 result = session_manager.update_settings(
                     session_code,
-                    message.get("showExplanations", False),
+                    message.get("showExplanations", True),
                     message.get("liftType", "squat"),
                     require_reasons=message.get("requireReasons", False),
                 )
