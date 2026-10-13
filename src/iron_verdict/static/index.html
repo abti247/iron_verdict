@@ -33,7 +33,7 @@
     </div>
 
     <!-- Demo Intro Screen -->
-    <div class="landing-wrap" x-show="screen === 'demo-intro'" x-cloak>
+    <div class="landing-wrap" data-testid="demo-intro-screen" x-show="screen === 'demo-intro'" x-cloak>
         <div class="landing-panel cut-corner landing-panel--demo">
 
             <div class="brand-iron chrome-text">Iron Verdict</div>
@@ -92,7 +92,7 @@
     </div>
 
     <!-- Reconnecting Screen: shown right after a reload while the stored session is restored (reloadRecovery.js) -->
-    <div class="landing-wrap" x-show="screen === 'reconnecting'" x-cloak>
+    <div class="landing-wrap" data-testid="reconnecting-screen" x-show="screen === 'reconnecting'" x-cloak>
         <div class="landing-panel cut-corner reconnecting-panel" role="status">
             <div class="brand-iron chrome-text">Iron Verdict</div>
             <div class="boot-spinner"></div>
@@ -106,14 +106,14 @@
     </div>
 
     <!-- Landing Screen -->
-    <div class="landing-wrap" x-show="screen === 'landing'" x-cloak>
+    <div class="landing-wrap" data-testid="landing-screen" x-show="screen === 'landing'" x-cloak>
         <div class="landing-panel cut-corner">
             <div class="brand-iron chrome-text">Iron Verdict</div>
             <div class="brand-verdict-sub" x-text="t('landing.subtitle')"></div>
 
             <div class="form-stack">
                 <input class="chrome-input" :placeholder="t('landing.placeholder.sessionName')"
-                       x-model="newSessionName" @keyup.enter="createSession()">
+                       data-testid="session-name-input" x-model="newSessionName" @keyup.enter="createSession()">
                 <button class="btn-blood btn-blood-primary cut-corner-sm"
                         @click="createSession()" :disabled="!newSessionName.trim()"
                         x-text="t('landing.createSession')">
@@ -122,7 +122,7 @@
                 <div class="slash-divider" x-text="t('landing.or')"></div>
 
                 <input class="chrome-input" :placeholder="t('landing.placeholder.sessionCode')"
-                       x-model="joinCode"
+                       data-testid="join-code-input" x-model="joinCode"
                        @input="joinError = ''"
                        @keyup.enter="joinExistingSession()">
                 <button class="btn-blood btn-blood-secondary cut-corner-sm"
@@ -167,7 +167,7 @@
     </div>
 
     <!-- Contact Screen -->
-    <div class="landing-wrap" x-show="screen === 'contact'" x-cloak>
+    <div class="landing-wrap" data-testid="contact-screen" x-show="screen === 'contact'" x-cloak>
         <div class="landing-panel cut-corner">
             <div class="brand-iron chrome-text" x-text="t('contact.title')"></div>
             <div class="brand-verdict-sub">Iron Verdict</div>
@@ -212,7 +212,7 @@
     </div>
 
     <!-- Privacy Screen -->
-    <div class="landing-wrap" x-show="screen === 'privacy'" x-cloak>
+    <div class="landing-wrap" data-testid="privacy-screen" x-show="screen === 'privacy'" x-cloak>
         <div class="landing-panel cut-corner">
             <div class="brand-iron chrome-text" x-text="t('privacy.title')"></div>
             <div class="brand-verdict-sub">Iron Verdict</div>
@@ -234,7 +234,7 @@
     </div>
 
     <!-- Role Selection Screen -->
-    <div class="role-wrap" x-show="screen === 'role-select'" x-cloak>
+    <div class="role-wrap" data-testid="role-select-screen" x-show="screen === 'role-select'" x-cloak>
         <div class="role-panel cut-corner">
             <div class="role-heading chrome-text" x-text="t('roles.heading')"></div>
             <div class="session-tag">
@@ -285,14 +285,14 @@
     </div>
 
     <!-- VPortal Connect Modal -->
-    <div class="vportal-modal-backdrop" x-show="vportalModalOpen" x-cloak @click.self="vportalModalOpen = false">
+    <div class="vportal-modal-backdrop" data-testid="vportal-modal" x-show="vportalModalOpen" x-cloak @click.self="vportalModalOpen = false">
         <div class="vportal-modal cut-corner" @click.stop>
             <div class="vportal-modal-title chrome-text" x-text="t('vportal.modalTitle')"></div>
 
             <!-- Step 1: Federation -->
             <div class="vportal-step-federation" x-show="vportalModalStep === 'federation'">
                 <label class="vportal-label" x-text="t('vportal.federationLabel')"></label>
-                <select class="chrome-input" x-model="vportalFederation">
+                <select class="chrome-input" data-testid="vportal-federation-select" x-model="vportalFederation">
                     <option value="BVDK" x-text="t('vportal.federationBvdk')"></option>
                     <option value="OEVK" x-text="t('vportal.federationOevk')"></option>
                     <template x-if="vportalStagingAvailable">
@@ -308,9 +308,9 @@
             <!-- Step 2: Credentials -->
             <div class="vportal-step-credentials" x-show="vportalModalStep === 'credentials'">
                 <label class="vportal-label" x-text="t('vportal.usernameLabel')"></label>
-                <input class="chrome-input" type="text" x-model="vportalIdentity" autocomplete="username">
+                <input class="chrome-input" type="text" data-testid="vportal-identity-input" x-model="vportalIdentity" autocomplete="username">
                 <label class="vportal-label" x-text="t('vportal.passwordLabel')"></label>
-                <input class="chrome-input" type="password" x-model="vportalCredential" autocomplete="current-password">
+                <input class="chrome-input" type="password" data-testid="vportal-credential-input" x-model="vportalCredential" autocomplete="current-password">
                 <div class="vportal-error" x-show="vportalLoginError" x-text="vportalLoginError"></div>
                 <div class="vportal-btn-row">
                     <button class="btn-blood btn-blood-ghost" @click="vportalModalStep = 'federation'">←</button>
@@ -321,7 +321,7 @@
             <!-- Step 3: Stage picker -->
             <div class="vportal-step-stage" x-show="vportalModalStep === 'stage'">
                 <label class="vportal-label" x-text="t('vportal.stageLabel')"></label>
-                <select class="chrome-input" x-model="vportalSelectedStage" :disabled="vportalStages.length === 0">
+                <select class="chrome-input" data-testid="vportal-stage-select" x-model="vportalSelectedStage" :disabled="vportalStages.length === 0">
                     <template x-for="stage in vportalStages" :key="stage.id">
                         <option :value="stage.id" x-text="stage.name"></option>
                     </template>
@@ -350,7 +350,7 @@
     </div>
 
     <!-- Judge Screen -->
-    <div class="judge-wrap" x-show="screen === 'judge'" x-cloak>
+    <div class="judge-wrap" data-testid="judge-screen" x-show="screen === 'judge'" x-cloak>
         <div class="judge-bar">
             <div class="judge-role-label" x-text="getRoleDisplayName()"></div>
             <div class="judge-timer" :class="timerExpired && 'expired'" x-text="timerDisplay"></div>
@@ -438,14 +438,14 @@
             </div>
             <div class="settings-bar">
                 <label>
-                    <input type="checkbox" x-model="showExplanations" @change="saveSettings()">
+                    <input type="checkbox" data-testid="show-explanations-checkbox" x-model="showExplanations" @change="saveSettings()">
                     <span x-text="t('judge.settings.showReasons')"></span>
                 </label>
                 <label>
-                    <input type="checkbox" x-model="requireReasons" @change="saveSettings()">
+                    <input type="checkbox" data-testid="require-reasons-checkbox" x-model="requireReasons" @change="saveSettings()">
                     <span x-text="t('judge.settings.requireReasons')"></span>
                 </label>
-                <select x-model="liftType" @change="saveSettings()">
+                <select data-testid="lift-type-select" x-model="liftType" @change="saveSettings()">
                     <option value="squat" x-text="t('liftTypes.squat')"></option>
                     <option value="bench" x-text="t('liftTypes.bench')"></option>
                     <option value="deadlift" x-text="t('liftTypes.deadlift')"></option>
@@ -480,7 +480,7 @@
     </div>
 
     <!-- Display Screen: shows sessionName only — sessionCode intentionally omitted (C3) -->
-    <div class="display-full" x-show="screen === 'display'" x-cloak
+    <div class="display-full" data-testid="display-screen" x-show="screen === 'display'" x-cloak
          :style="`--display-zoom: ${displayZoom || 1}`">
         <div class="display-tag">
             <span class="conn-dot" :class="connectionStatus"></span>
