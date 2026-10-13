@@ -3,8 +3,6 @@
 // result state live in Alpine.store('judge'); this component only holds the
 // reason-list scroll hint.
 
-import { CARD_REASONS } from '../constants.js';
-
 export function judgeScreen(conn) {
     return {
         reasonListOverflows: false,
@@ -35,9 +33,7 @@ export function judgeScreen(conn) {
         },
 
         getJudgeReasons() {
-            const liftType = this.$store.settings.liftType || 'squat';
-            const reasonIds = CARD_REASONS[liftType]?.[this.$store.judge.selectedVote] || [];
-            return reasonIds.map(id => ({ id, label: t(id) }));
+            return this.$store.judge.reasonIds().map(id => ({ id, label: t(id) }));
         },
 
         initReasonScrollIndicator() {

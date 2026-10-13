@@ -4,6 +4,7 @@
 // reads it and calls its vote methods. Delivery (open → sending → confirmed) is in
 // voteDelivery.js.
 
+import { CARD_REASONS } from './constants.js';
 import { createVoteDeliveryMethods } from './voteDelivery.js';
 
 const NO_VOTES = () => ({ left: null, center: null, right: null });
@@ -40,6 +41,12 @@ export function createJudgeStore({ session, settings, send, storage = sessionSto
         goBackToColorStep() {
             this.showingReasonStep = false;
             this.selectedReason = null;
+        },
+
+        // i18n keys of the reasons offered for the selected colour and the session's lift type.
+        reasonIds() {
+            const liftType = settings.liftType || 'squat';
+            return CARD_REASONS[liftType]?.[this.selectedVote] || [];
         },
 
         canLockIn() {

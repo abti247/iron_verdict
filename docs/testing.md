@@ -135,7 +135,7 @@ Three E2E tests have latent timing/race risks documented in [docs/e2e-known-risk
 
 ## Frontend
 
-Frontend coverage comes from two sources: Vitest unit tests for pure JS modules (`timer.js`, `i18n.js`, `voteDelivery.js`, `vportalErrors.js`, `vportalStore.js`, `sessionStore.js`, the watchdog, retry schedule and reconnect triggers in `websocket.js`), and the Playwright E2E suite for observable browser behaviour. Alpine components have no dedicated unit tests (the VPortal store is tested as a plain object with a mocked client) — they are covered only through E2E.
+Frontend coverage comes from two sources: Vitest unit tests for plain JS modules (`timer.js`, `i18n.js`, `voteDelivery.js` with the judge store, `vportalErrors.js`, `vportalStore.js`, `sessionStore.js`, `connection.js` with real nav/judge/display/timer/settings stores, the watchdog, retry schedule and reconnect triggers in `websocket.js`), and the Playwright E2E suite for observable browser behaviour. Stores and the connection are tested as plain objects with injected fakes; the screen components (`js/screens/`) have no dedicated unit tests and are covered only through E2E.
 
 **What E2E tests cover:**
 
