@@ -269,10 +269,10 @@
             <template x-if="sessionKind === 'vportal'">
                 <div class="vportal-connect-wrap">
                     <button class="vportal-connect-btn cut-corner-sm"
-                            :class="{ 'connected': vportalConnected }"
-                            @click="openVportalModal()"
-                            x-text="vportalConnected
-                                ? (t('vportal.connectedTo') + ' ' + vportalFederationLabel + ' · ' + (vportalStageName || ''))
+                            :class="{ 'connected': $store.vportal.connected }"
+                            @click="$store.vportal.openModal()"
+                            x-text="$store.vportal.connected
+                                ? (t('vportal.connectedTo') + ' ' + $store.vportal.federationLabel + ' · ' + ($store.vportal.stageName || ''))
                                 : t('vportal.connectButton')"></button>
                 </div>
             </template>
@@ -285,65 +285,65 @@
     </div>
 
     <!-- VPortal Connect Modal -->
-    <div class="vportal-modal-backdrop" data-testid="vportal-modal" x-show="vportalModalOpen" x-cloak @click.self="vportalModalOpen = false">
+    <div class="vportal-modal-backdrop" data-testid="vportal-modal" x-show="$store.vportal.modalOpen" x-cloak @click.self="$store.vportal.modalOpen = false">
         <div class="vportal-modal cut-corner" @click.stop>
             <div class="vportal-modal-title chrome-text" x-text="t('vportal.modalTitle')"></div>
 
             <!-- Step 1: Federation -->
-            <div class="vportal-step-federation" x-show="vportalModalStep === 'federation'">
+            <div class="vportal-step-federation" x-show="$store.vportal.modalStep === 'federation'">
                 <label class="vportal-label" x-text="t('vportal.federationLabel')"></label>
-                <select class="chrome-input" data-testid="vportal-federation-select" x-model="vportalFederation">
+                <select class="chrome-input" data-testid="vportal-federation-select" x-model="$store.vportal.federation">
                     <option value="BVDK" x-text="t('vportal.federationBvdk')"></option>
                     <option value="OEVK" x-text="t('vportal.federationOevk')"></option>
-                    <template x-if="vportalStagingAvailable">
+                    <template x-if="$store.vportal.stagingAvailable">
                         <option value="BVDK_STAGING" x-text="t('vportal.federationBvdkStaging')"></option>
                     </template>
                 </select>
                 <div class="vportal-btn-row">
-                    <button class="btn-blood btn-blood-ghost" @click="vportalModalOpen = false" x-text="t('vportal.cancelButton')"></button>
-                    <button class="btn-blood btn-blood-primary vportal-next-btn" @click="vportalModalStep = 'credentials'">→</button>
+                    <button class="btn-blood btn-blood-ghost" @click="$store.vportal.modalOpen = false" x-text="t('vportal.cancelButton')"></button>
+                    <button class="btn-blood btn-blood-primary vportal-next-btn" @click="$store.vportal.modalStep = 'credentials'">→</button>
                 </div>
             </div>
 
             <!-- Step 2: Credentials -->
-            <div class="vportal-step-credentials" x-show="vportalModalStep === 'credentials'">
+            <div class="vportal-step-credentials" x-show="$store.vportal.modalStep === 'credentials'">
                 <label class="vportal-label" x-text="t('vportal.usernameLabel')"></label>
-                <input class="chrome-input" type="text" data-testid="vportal-identity-input" x-model="vportalIdentity" autocomplete="username">
+                <input class="chrome-input" type="text" data-testid="vportal-identity-input" x-model="$store.vportal.identity" autocomplete="username">
                 <label class="vportal-label" x-text="t('vportal.passwordLabel')"></label>
-                <input class="chrome-input" type="password" data-testid="vportal-credential-input" x-model="vportalCredential" autocomplete="current-password">
-                <div class="vportal-error" x-show="vportalLoginError" x-text="vportalLoginError"></div>
+                <input class="chrome-input" type="password" data-testid="vportal-credential-input" x-model="$store.vportal.credential" autocomplete="current-password">
+                <div class="vportal-error" x-show="$store.vportal.loginError" x-text="$store.vportal.loginError"></div>
                 <div class="vportal-btn-row">
-                    <button class="btn-blood btn-blood-ghost" @click="vportalModalStep = 'federation'">←</button>
-                    <button class="btn-blood btn-blood-primary vportal-next-btn" @click="vportalDoLogin()" :disabled="!vportalIdentity || !vportalCredential" x-text="t('vportal.loginButton')"></button>
+                    <button class="btn-blood btn-blood-ghost" @click="$store.vportal.modalStep = 'federation'">←</button>
+                    <button class="btn-blood btn-blood-primary vportal-next-btn" @click="$store.vportal.doLogin(sessionCode)" :disabled="!$store.vportal.identity || !$store.vportal.credential" x-text="t('vportal.loginButton')"></button>
                 </div>
             </div>
 
             <!-- Step 3: Stage picker -->
-            <div class="vportal-step-stage" x-show="vportalModalStep === 'stage'">
+            <div class="vportal-step-stage" x-show="$store.vportal.modalStep === 'stage'">
                 <label class="vportal-label" x-text="t('vportal.stageLabel')"></label>
-                <select class="chrome-input" data-testid="vportal-stage-select" x-model="vportalSelectedStage" :disabled="vportalStages.length === 0">
-                    <template x-for="stage in vportalStages" :key="stage.id">
+                <select class="chrome-input" data-testid="vportal-stage-select" x-model="$store.vportal.selectedStage" :disabled="$store.vportal.stages.length === 0">
+                    <template x-for="stage in $store.vportal.stages" :key="stage.id">
                         <option :value="stage.id" x-text="stage.name"></option>
                     </template>
                 </select>
-                <div class="vportal-loading" x-show="vportalStages.length === 0 && !vportalStageError" x-text="t('vportal.loadingStages')"></div>
-                <div class="vportal-error" x-show="vportalStageError" x-text="vportalStageError"></div>
+                <div class="vportal-loading" x-show="$store.vportal.stages.length === 0 && !$store.vportal.stageError" x-text="t('vportal.loadingStages')"></div>
+                <div class="vportal-error" x-show="$store.vportal.stageError" x-text="$store.vportal.stageError"></div>
                 <div class="vportal-btn-row">
-                    <button class="btn-blood btn-blood-ghost" @click="vportalModalOpen = false" x-text="t('vportal.cancelButton')"></button>
-                    <button class="btn-blood btn-blood-primary vportal-next-btn" @click="vportalConfirmStage()" :disabled="!vportalSelectedStage" x-text="t('vportal.stageSelectButton')"></button>
+                    <button class="btn-blood btn-blood-ghost" @click="$store.vportal.modalOpen = false" x-text="t('vportal.cancelButton')"></button>
+                    <button class="btn-blood btn-blood-primary vportal-next-btn" @click="$store.vportal.confirmStage(sessionCode)" :disabled="!$store.vportal.selectedStage" x-text="t('vportal.stageSelectButton')"></button>
                 </div>
             </div>
 
             <!-- Step 4: Connected (when re-opened on already-connected session) -->
-            <div class="vportal-step-connected" x-show="vportalModalStep === 'connected'">
+            <div class="vportal-step-connected" x-show="$store.vportal.modalStep === 'connected'">
                 <p>
                     <span x-text="t('vportal.connectedTo')"></span>
-                    <strong x-text="vportalFederationLabel"></strong>
-                    · <strong x-text="vportalStageName"></strong>
+                    <strong x-text="$store.vportal.federationLabel"></strong>
+                    · <strong x-text="$store.vportal.stageName"></strong>
                 </p>
                 <div class="vportal-btn-row">
-                    <button class="btn-blood btn-blood-ghost" @click="vportalModalOpen = false" x-text="t('vportal.cancelButton')"></button>
-                    <button class="btn-blood btn-blood-primary" @click="vportalDisconnect()" x-text="t('vportal.disconnectButton')"></button>
+                    <button class="btn-blood btn-blood-ghost" @click="$store.vportal.modalOpen = false" x-text="t('vportal.cancelButton')"></button>
+                    <button class="btn-blood btn-blood-primary" @click="$store.vportal.disconnect(sessionCode)" x-text="t('vportal.disconnectButton')"></button>
                 </div>
             </div>
         </div>
@@ -522,22 +522,22 @@
 
         <div class="display-status" x-text="displayStatus || (displayPhase === 'idle' ? t('display.waiting') : '')"></div>
 
-        <div class="vportal-corner vportal-corner-left" x-show="vportalDisplayAttempt">
-            <div class="vportal-corner-name" x-text="vportalDisplayAttempt?.firstName + ' ' + vportalDisplayAttempt?.lastName"></div>
+        <div class="vportal-corner vportal-corner-left" x-show="$store.vportal.displayAttempt">
+            <div class="vportal-corner-name" x-text="$store.vportal.displayAttempt?.firstName + ' ' + $store.vportal.displayAttempt?.lastName"></div>
             <div class="vportal-corner-meta">
-                <span x-text="vportalDisplayAttempt?.club"></span> ·
-                <span x-text="vportalDisplayAttempt?.bodyWeightCategory"></span> ·
-                <span x-text="vportalDisplayAttempt?.ageCategory"></span>
+                <span x-text="$store.vportal.displayAttempt?.club"></span> ·
+                <span x-text="$store.vportal.displayAttempt?.bodyWeightCategory"></span> ·
+                <span x-text="$store.vportal.displayAttempt?.ageCategory"></span>
             </div>
         </div>
-        <div class="vportal-corner vportal-corner-right" x-show="vportalDisplayAttempt">
+        <div class="vportal-corner vportal-corner-right" x-show="$store.vportal.displayAttempt">
             <div class="vportal-corner-disc">
-                <span x-text="vportalDisplayAttempt?.discipline"></span> ·
-                <span x-text="t('vportal.attemptShort') + ' ' + vportalDisplayAttempt?.attempt"></span>
+                <span x-text="$store.vportal.displayAttempt?.discipline"></span> ·
+                <span x-text="t('vportal.attemptShort') + ' ' + $store.vportal.displayAttempt?.attempt"></span>
             </div>
-            <div class="vportal-corner-weight" x-text="vportalDisplayAttempt?.weight + ' KG'"></div>
+            <div class="vportal-corner-weight" x-text="$store.vportal.displayAttempt?.weight + ' KG'"></div>
         </div>
-        <div class="vportal-disconnected-banner" x-show="vportalDisconnectedReason"
+        <div class="vportal-disconnected-banner" x-show="$store.vportal.disconnectedReason"
              x-text="t('vportal.disconnectedBanner')"></div>
 
         <!-- Display settings: gear + panel -->

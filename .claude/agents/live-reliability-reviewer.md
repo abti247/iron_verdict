@@ -53,9 +53,12 @@ Protected files:
 - `src/iron_verdict/vportal_proxy.py`
 - `src/iron_verdict/static/js/vportalClient.js`
 - `src/iron_verdict/static/js/vportalQueries.js`
+- `src/iron_verdict/static/js/vportalStore.js`
 - VPortal parts of `src/iron_verdict/static/index.html` and `src/iron_verdict/static/js/app.js`
 - `tests/e2e/fake_vportal.py`
 - `tests/e2e/test_vportal_integration.py`
+- `tests/e2e/test_vportal_store.py`
+- `tests/js/vportalStore.test.js`
 - `tests/test_vportal_proxy.py`
 - `docs/vportal-fake-server-fidelity.md`
 
