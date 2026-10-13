@@ -346,18 +346,25 @@ def _failing_then(errors, final_response=None):
     "error_cls",
     [httpx.RemoteProtocolError, httpx.ConnectError, httpx.ReadTimeout, httpx.ReadError],
 )
-def test_graphql_retries_once_on_transport_error(mock_vportal, error_cls):
+def test_graphql_retries_once_on_transport_error(mock_vportal, error_cls, caplog):
     handler = _failing_then(
         [error_cls("Server disconnected without sending a response")],
         httpx.Response(200, json={"data": {"profile": {"competition": {"id": 7}}}}),
     )
     mock_vportal[("POST", "/graphql")] = handler
 
-    response = client.post("/api/vportal/graphql", json=_GRAPHQL_BODY)
+    with caplog.at_level(logging.INFO, logger="iron_verdict"):
+        response = client.post("/api/vportal/graphql", json=_GRAPHQL_BODY)
 
     assert response.status_code == 200
     assert response.json() == {"data": {"profile": {"competition": {"id": 7}}}}
     assert len(handler.calls) == 2
+    records = [r for r in caplog.records if r.getMessage() == "vportal_transport_retry"]
+    assert len(records) == 1
+    assert records[0].levelno == logging.INFO
+    assert records[0].error == error_cls.__name__
+    assert records[0].host == "bvdk.vportal-online.de"
+    assert not [r for r in caplog.records if r.getMessage() == "vportal_upstream_unreachable"]
 
 
 def test_graphql_two_transport_errors_surface_as_502_with_log(mock_vportal, caplog):

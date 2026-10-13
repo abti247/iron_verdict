@@ -228,6 +228,12 @@ async def graphql(body: GraphQLRequest):
                     extra={"host": body.host, "error": type(exc).__name__},
                 )
                 raise HTTPException(status_code=502, detail="VPortal upstream unreachable")
+            # Logged although the retry usually succeeds: shows in the field
+            # how often and when pooled connections go stale.
+            logger.info(
+                "vportal_transport_retry",
+                extra={"host": body.host, "error": type(exc).__name__},
+            )
 
     if upstream.status_code == 401:
         raise HTTPException(status_code=401, detail="VPortal token rejected")
