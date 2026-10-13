@@ -38,14 +38,14 @@ async def test_settings_update_stored_in_session(session_code):
 
             await ws.send_json({
                 "type": "settings_update",
-                "showExplanations": True,
+                "showExplanations": False,
                 "liftType": "deadlift"
             })
             # Give the server a moment to process
             await asyncio.sleep(0.1)
             # Check session state directly
             session = session_manager.sessions[session_code]
-            assert session["settings"]["show_explanations"] is True
+            assert session["settings"]["show_explanations"] is False
             assert session["settings"]["lift_type"] == "deadlift"
 
 
@@ -161,7 +161,7 @@ async def test_settings_update_broadcasts_to_all_clients(session_code):
             # Head judge sends settings_update
             await center_ws.send_json({
                 "type": "settings_update",
-                "showExplanations": True,
+                "showExplanations": False,
                 "liftType": "bench",
                 "requireReasons": True
             })
@@ -177,12 +177,12 @@ async def test_settings_update_broadcasts_to_all_clients(session_code):
             msg_right = await collect_until_settings_update(right_ws)
 
             assert msg_left["type"] == "settings_update"
-            assert msg_left["showExplanations"] is True
+            assert msg_left["showExplanations"] is False
             assert msg_left["liftType"] == "bench"
             assert msg_left["requireReasons"] is True
 
             assert msg_right["type"] == "settings_update"
-            assert msg_right["showExplanations"] is True
+            assert msg_right["showExplanations"] is False
             assert msg_right["liftType"] == "bench"
             assert msg_right["requireReasons"] is True
 

@@ -176,9 +176,9 @@ async def test_create_session_initializes_settings():
 async def test_update_settings_stores_values():
     manager = SessionManager()
     code = await manager.create_session("Test")
-    result = manager.update_settings(code, True, "bench")
+    result = manager.update_settings(code, False, "bench")
     assert result["success"] is True
-    assert manager.sessions[code]["settings"]["show_explanations"] is True
+    assert manager.sessions[code]["settings"]["show_explanations"] is False
     assert manager.sessions[code]["settings"]["lift_type"] == "bench"
 
 
