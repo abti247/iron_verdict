@@ -109,7 +109,7 @@ export function createVportalStore({
         // Called when this device joins as display. Returns the session kind from
         // the server, or null if the lookup failed (the caller keeps its own).
         async startDisplayOverlay(sessionCode) {
-            // Authoritative kind check — sessionKind in state may be stale after reload-recovery
+            // Authoritative kind check — the caller's session kind may be stale after reload-recovery
             // because role-select didn't run on this page lifetime.
             let kind;
             try {

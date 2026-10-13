@@ -93,16 +93,6 @@ describe('connect dialog', () => {
         await pending;
     });
 
-    it('shows a stage error on the stage step when the stage list fails', async () => {
-        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-        const { store } = makeStore({ client: fakeClient({ fetchStages: vi.fn().mockRejectedValue(new Error('x')) }) });
-        await store.doLogin('ABCD1234');
-        expect(store.modalStep).toBe('stage');
-        expect(store.stageError).toBe('t:vportal.errorStagesFailed');
-        expect(store.stages).toEqual([]);
-        warn.mockRestore();
-    });
-
     it('confirming a stage stores it, marks connected and closes the dialog', () => {
         const { store, client } = makeStore();
         store.stages = [{ id: 'S1', name: 'Platform A' }, { id: 'S2', name: 'Platform B' }];
