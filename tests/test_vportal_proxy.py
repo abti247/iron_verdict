@@ -409,6 +409,37 @@ def test_login_wrong_credentials_surfaces_as_401(mock_vportal):
     assert "credentials" in response.json()["detail"].lower()
 
 
+@pytest.mark.parametrize("token_status", [302, 401, 403])
+def test_login_token_rejection_logs_statuses_without_secrets(mock_vportal, caplog, token_status):
+    # Issue #100: a missing role may look exactly like a wrong password (302 to
+    # the login page). The dialog stays "check username and password", but the
+    # log keeps the statuses and redirect target to tell the two apart.
+    mock_vportal[("POST", "/account/login")] = lambda r: httpx.Response(
+        302,
+        headers={"set-cookie": "VPORTAL=session-cookie-value; Path=/", "location": "/dashboard"},
+    )
+    mock_vportal[("GET", "/auth/token")] = lambda r: httpx.Response(
+        token_status, headers={"location": "/login?error=1"}, text="secret-body"
+    )
+
+    with caplog.at_level(logging.INFO, logger="iron_verdict"):
+        response = client.post("/api/vportal/login", json=_LOGIN_BODY)
+
+    assert response.status_code == 401
+    records = [r for r in caplog.records if r.getMessage() == "vportal_login_rejected"]
+    assert len(records) == 1
+    record = records[0]
+    assert record.levelno == logging.INFO
+    assert record.host == "bvdk.vportal-online.de"
+    assert record.login_status == 302
+    assert record.login_location == "/dashboard"
+    assert record.cookie_names == ["VPORTAL"]
+    assert record.token_status == token_status
+    assert record.token_location == "/login?error=1"
+    assert not _login_failed_records(caplog)
+    _assert_no_secrets_logged(caplog, "session-cookie-value", "secret-body")
+
+
 def test_login_token_redirect_surfaces_as_401(mock_vportal):
     # Real VPortal returns 302 (redirect to /login) when /auth/token gets a
     # pre-auth cookie that can't be exchanged. httpx with follow_redirects=False

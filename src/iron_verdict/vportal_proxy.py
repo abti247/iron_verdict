@@ -232,6 +232,10 @@ async def login(body: LoginRequest):
         # the pre-auth cookie can't be exchanged — verified at staging
         # 2026-05-19. 401/403 covered for defensive completeness.
         if token_resp.status_code in (302, 401, 403):
+            # Info, not warning: usually just a mistyped password. Logged because
+            # a missing role may look the same to us (issue #100); the redirect
+            # target is what tells the two apart.
+            logger.info("vportal_login_rejected", extra={"host": body.host, **token_log})
             raise HTTPException(status_code=401, detail="Invalid VPortal credentials")
         if token_resp.status_code != 200:
             raise _login_failed(
