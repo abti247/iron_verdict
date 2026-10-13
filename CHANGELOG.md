@@ -10,6 +10,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Changed
 - German texts say "Plattform" instead of "Bühne", as is usual in powerlifting
+- "Show reasons on display" is now on in new sessions; the chief referee can switch it off. Sessions that were already running keep their setting
 
 ### Fixed
 - When the VPortal login fails, the dialog says why (VPortal not reachable, no session returned, token request rejected) instead of a bare error code, and the server log records the cause

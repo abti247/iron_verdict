@@ -35,7 +35,7 @@
     "setupStep2": "Send the session code to other judges or scan QR code",
     "setupStep3": "Use the session code to set up a Display Screen",
     "headControlsTitle": "Head Judge Controls",
-    "showReasonsDesc": "Show reasons on display — ruling reasons appear on the display screen",
+    "showReasonsDesc": "Show reasons on display — ruling reasons appear on the display screen (enabled by default)",
     "requireReasonsDesc": "Require reasons — judges must choose a reason before locking in (optional by default)",
     "liftCategoryDesc": "Lift category dropdown — changes the reason catalogue (Squat / Bench / Deadlift)",
     "duringTitle": "During Competition",
