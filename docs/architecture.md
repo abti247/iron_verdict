@@ -132,6 +132,9 @@ Optional, pull-only overlay of the current lifter on the display screen for sess
 
 **Failure isolation.** Every VPortal failure path — wrong credentials, expired token, upstream 5xx, unreachable network, empty active group, missing stage — leaves the core judging functionality (lights, timer, votes, verdict, WebSocket layer) fully operational. The overlay is strictly additive: corners hide, an unobtrusive banner may appear, and the rest of the display continues to render.
 
+**Upstream errors on `/graphql`.** The proxy maps VPortal failures to explicit statuses so an upstream problem never looks like an Iron Verdict bug (500): 401 → 401 (`token-expired` in the client); 5xx → 502 "VPortal upstream error"; a transport error (connection closed without response, connect error, timeout, reset) is retried **once**, immediately, and only a second failure returns 502 "VPortal upstream unreachable" plus a `vportal_upstream_unreachable` warning log (`host`, `error` class). HTTP error responses are never retried. The login path has no retry.  
+*Why retry transport errors:* the shared `httpx.AsyncClient` pools keep-alive connections; VPortal or a NAT/load balancer can close an idle one just before the next poll reuses it (seen live 2026-05-23 as a single `RemoteProtocolError` between successful polls). httpx discards the dead connection, so the retry runs on a fresh one and the display never notices. Safe because the operation allowlist makes every forwarded call a read. *Why no delay before the retry:* the cause is a stale connection, not an overloaded upstream. Accepted cost: if VPortal hangs, a request takes up to two client timeouts (2 × 5 s) before the 502.
+
 **Configuration env vars** (in addition to the existing surface — `HOST`, `PORT`, `SESSION_TIMEOUT_HOURS`, etc.):
 
 | Var | Default | Effect |

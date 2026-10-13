@@ -12,6 +12,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Judges see "Sending…" after LOCK IN; "Vote Locked" appears only once the server has confirmed the vote
 
 ### Fixed
+- A single dropped connection to VPortal no longer interrupts the lifter overlay; if VPortal stays unreachable, the server reports it as an upstream error (502) instead of an internal error (500)
 - After a page reload, judges and displays see "Connecting to session …" with a Cancel button until their screen is back — the start page no longer flashes up; if the session has ended meanwhile, the start page says so instead of showing a popup
 - While the app is loading, only a loading indicator is shown — the VPortal login dialog and other screens no longer flash up; if the app cannot start, a message with a reload button appears after 10 seconds instead of a blank screen
 - The app starts and runs a full competition on venue Wi-Fi without internet, and no longer waits for slow external servers on start — scripts and fonts are served by the app itself
