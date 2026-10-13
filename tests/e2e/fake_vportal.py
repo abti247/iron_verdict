@@ -56,10 +56,15 @@ async def login(
     # 302 + Set-Cookie + Location stress-tests two things at once:
     # status-code tolerance in the proxy (referee ignores the code) and
     # Set-Cookie parsing of the comma inside expires=...
+    # Cookie name and attributes mirror staging as of 2026-10-13 (__Host-VPORTAL,
+    # previously VPORTAL) — see docs/vportal-fake-server-fidelity.md.
     return Response(
         status_code=302,
         headers={
-            "set-cookie": "VPORTAL=fake-cookie; expires=Wed, 21 Oct 2099 07:28:00 GMT; Path=/; HttpOnly",
+            "set-cookie": (
+                "__Host-VPORTAL=fake-cookie; expires=Wed, 21 Oct 2099 07:28:00 GMT; "
+                "Max-Age=28800; path=/; secure; HttpOnly; SameSite=Lax"
+            ),
             "location": "/dashboard",
         },
     )
@@ -67,7 +72,7 @@ async def login(
 
 @app.get("/auth/token")
 async def token(request: Request):
-    if "VPORTAL=fake-cookie" not in request.headers.get("cookie", ""):
+    if request.cookies.get("__Host-VPORTAL") != "fake-cookie":
         return Response(status_code=401)
     # No top-level exp — mirrors real VPortal; the proxy must decode the JWT.
     return JSONResponse({"access_token": FAKE_JWT})

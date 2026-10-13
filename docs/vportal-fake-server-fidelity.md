@@ -1,6 +1,6 @@
 # Fake VPortal Server — Fidelity Assessment
 
-**Date:** 2026-05-19 — originally written pre-staging, updated after the referee cross-check and the 2026-05-19 staging visit.
+**Date:** 2026-05-19 — originally written pre-staging, updated after the referee cross-check and the 2026-05-19 staging visit; cookie-name update 2026-10-13 (issue #101).
 **Context:** End-to-end tests for the VPortal integration run against [`tests/e2e/fake_vportal.py`](../tests/e2e/fake_vportal.py), a small FastAPI app that mimics the subset of VPortal that Iron Verdict consumes. This document captures the pre-staging risk assessment and how each risk was resolved against real production-shape behavior.
 
 **Companion reference:** the BVDK referee project at `github.com/franknitschke/referee` — specifically `server/vportal/vportalHelper.js`, `queries.js`, and `getCompetitionData.js`. The fake server and proxy were modeled after referee, and the worktree was cross-checked against it during implementation.
@@ -17,7 +17,7 @@ The remaining ~5% covers the items in ["What we deliberately do not test"](#what
 |---|---|
 | Auth flow shape (form-POST `/account/login` → `Set-Cookie: VPORTAL=…` → GET `/auth/token` with cookie → JSON with `access_token`) | ✅ Worked end-to-end |
 | Login status code | Real VPortal returns **302** (not 200) on success — proxy correctly ignores status and reads cookie |
-| Cookie name | `VPORTAL` confirmed |
+| Cookie name | `VPORTAL` confirmed — renamed to `__Host-VPORTAL` on staging by 2026-10-13, see [Cookie name](#cookie-name-vportal--__host-vportal---updated-2026-10-13) |
 | `Authorization: Bearer <jwt>` for GraphQL | Works as expected |
 | `exp` location | Real VPortal returns **no top-level `exp`** in `/auth/token`; `exp` lives inside the JWT payload — proxy decodes it correctly |
 | GraphQL response shapes for `competitionGroupList`, `competitionStageList`, `competitionAthleteAttemptList` | All field paths in [`vportalClient.fetchActiveAttempt`](../src/iron_verdict/static/js/vportalClient.js) match production output verbatim |
@@ -25,11 +25,25 @@ The remaining ~5% covers the items in ["What we deliberately do not test"](#what
 
 ## Pre-staging risks identified and how each was resolved
 
-### Cookie name `VPORTAL` — **✅ Resolved**
+### Cookie name `VPORTAL` → `__Host-VPORTAL` — **✅ Updated 2026-10-13**
 
 Pre-staging concern: spec hardcoded `"VPORTAL=" in part` for cookie extraction without referee confirmation.
 
-Resolution: confirmed in referee (`server/vportal/vportalHelper.js` does `cookieHeader.find(el => el.includes('VPORTAL'))`) and observed at staging — the `Set-Cookie` header from real VPortal does use `VPORTAL=` as the cookie name.
+Resolution (2026-05-19): confirmed in referee (`server/vportal/vportalHelper.js` does `cookieHeader.find(el => el.includes('VPORTAL'))`) and observed at staging — the `Set-Cookie` header from real VPortal did use `VPORTAL=` as the cookie name.
+
+Update (2026-10-13, issue #101): login via Iron Verdict against `staging-bvdk.vportal-online.de` failed with 502 "VPortal did not return a session cookie". The maintainer's browser DevTools capture (screenshot, 2026-10-13) of a direct login on staging showed:
+
+```
+POST /account/login → 302 Found
+Location: /dashboard
+Set-Cookie: __Host-VPORTAL=<value>; expires=…; Max-Age=28800; path=/; secure; HttpOnly; SameSite=Lax
+```
+
+The session cookie is now named **`__Host-VPORTAL`**; `GET /auth/token` with it still returns JSON with `access_token` (checked in the same browser session). Production (`bvdk`/`oevk`) is expected to follow when VPortal rolls the release out there.
+
+- **Proxy:** accepts both `__Host-VPORTAL` (preferred) and `VPORTAL`, and sends the cookie to `/auth/token` under the name it arrived with — works regardless of when production switches.
+- **Fake server:** now emits the staging header verbatim in shape (`__Host-VPORTAL`, `Max-Age`, `secure`, `SameSite=Lax`, comma inside `expires=` kept) and `/auth/token` only accepts the cookie under the name `__Host-VPORTAL`. The E2E suite therefore exercises the new name; the legacy `VPORTAL` name stays covered by the backend tests in `tests/test_vportal_proxy.py`.
+- **Not changed:** the login form is still sent as `multipart/form-data` without `submit=`, although the staging browser sends `application/x-www-form-urlencoded` with `submit=`. Maintainer decision (2026-10-13): multipart is proven against production by referee; change one thing at a time. The next manual staging test confirms whether multipart is still accepted.
 
 ### Set-Cookie parsing fragility (comma in `expires=`) — **✅ Resolved**
 
@@ -41,7 +55,7 @@ Resolution: replaced the hand-rolled splitter with `login_resp.cookies.get("VPOR
 
 Pre-staging concern: the proxy treated non-200 / non-302 login responses as failure, but referee never inspects the login status code; real VPortal might 302 on success.
 
-Resolution: dropped the status-code short-circuit entirely. The proxy now only checks for the presence of a `VPORTAL` cookie in the login response — matching referee's behavior. Confirmed at staging: real VPortal returns **302 + cookie + `Location`**, and our proxy handles it correctly.
+Resolution: dropped the status-code short-circuit entirely. The proxy now only checks for the presence of a session cookie (`VPORTAL`, since 2026-10-13 also `__Host-VPORTAL`) in the login response — matching referee's behavior. Confirmed at staging: real VPortal returns **302 + cookie + `Location`**, and our proxy handles it correctly.
 
 ### GraphQL error envelopes — **✅ Mostly resolved**
 
@@ -93,7 +107,7 @@ Resolution: implemented `_extract_jwt_exp` in the proxy — base64url-decode the
 
 Open browser DevTools → Network while stepping through the flow. The items below were all confirmed at the 2026-05-19 staging visit; keep capturing them at future runs to detect drift if VPortal changes its responses:
 
-1. The raw `Set-Cookie` header value from `/account/login`.
+1. The raw `Set-Cookie` header value from `/account/login` (was: `VPORTAL=…` on 2026-05-19, `__Host-VPORTAL=…` on 2026-10-13).
 2. The HTTP status code on `/account/login` on success (was: 302 at staging).
 3. The full JSON body of `/auth/token` (was: `{access_token: "..."}` only, no top-level `exp`).
 4. The full JSON body of one `/graphql` call. Field paths the normalizer reads: `data.competitionAthleteAttemptList.competitionAthleteAttempts[0].{attempt, discipline, weight, competitionAthlete.{firstName, lastName, club.name, bodyWeightCategory.name, ageCategory.name}}`.
