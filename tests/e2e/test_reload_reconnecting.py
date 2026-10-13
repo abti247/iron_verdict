@@ -102,7 +102,7 @@ def test_vportal_display_reload_restarts_polling(competition, server_url, fake_v
 
     expect(corner).to_contain_text("MARIA SCHNEIDER", timeout=10000, ignore_case=True)
     assert "landing" not in _screens(page), _screens(page)
-    assert "vportalModalOpen" not in _screens(page), _screens(page)
+    assert "vportal-modal" not in _screens(page), _screens(page)
 
 
 def test_role_select_reload_never_shows_landing(competition):
@@ -187,8 +187,8 @@ def test_cancel_during_role_select_lookup_is_not_undone(competition):
     expect(page.get_by_test_id(LANDING)).to_be_visible()
 
     held[0].continue_()
-    # joinChecking is reset only after the lookup result has been handled.
-    page.wait_for_function("!Alpine.$data(document.body).joinChecking")
+    # The join button reads "Checking…" until the lookup result has been handled.
+    expect(page.get_by_role("button", name="Join Session")).to_be_visible()
 
     expect(page.get_by_test_id(LANDING)).to_be_visible()
     expect(page.locator(".join-error")).to_be_hidden()
