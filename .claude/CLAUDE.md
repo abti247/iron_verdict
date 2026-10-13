@@ -25,7 +25,10 @@ Protected files:
 - `src/iron_verdict/static/js/vportalClient.js`
 - `src/iron_verdict/static/js/vportalQueries.js`
 - `src/iron_verdict/static/js/vportalStore.js`
-- VPortal parts of `src/iron_verdict/static/index.html` and `src/iron_verdict/static/js/app.js`
+- VPortal parts of `src/iron_verdict/static/index.html`, `src/iron_verdict/static/js/app.js` (vportal store registration) and `src/iron_verdict/static/js/screens/landingScreen.js` (staging flag)
+- `src/iron_verdict/static/js/connection.js` (starts and stops the VPortal display overlay on every join/leave path)
+- VPortal calls in `src/iron_verdict/static/js/handlers.js` (overlay stop on session end and final join error)
+- `tests/js/connection.test.js` (overlay start/stop on every join/leave path)
 - `tests/e2e/fake_vportal.py`
 - `tests/e2e/test_vportal_integration.py`
 - `tests/e2e/test_vportal_store.py`
