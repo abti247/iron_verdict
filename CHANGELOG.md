@@ -9,8 +9,11 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ### Added
 
 ### Changed
+- German texts say "Plattform" instead of "Bühne", as is usual in powerlifting
 
 ### Fixed
+- When the VPortal login fails, the dialog says why (VPortal not reachable, no session returned, token request rejected) instead of a bare error code, and the server log records the cause
+- If loading the VPortal stages fails after login, the dialog shows an error instead of "Loading stages…" forever
 
 ### Removed
 

@@ -4,6 +4,7 @@ import { createWebSocket } from './websocket.js';
 import { demoMethods } from './demo.js';
 import { voteDeliveryMethods } from './voteDelivery.js';
 import { vportalClient } from './vportalClient.js';
+import { vportalLoginErrorMessage } from './vportalErrors.js';
 import { reloadRecoveryMethods } from './reloadRecovery.js';
 import { roleTakeoverMethods, createRoleTakenTracker } from './roleTakeover.js';
 import {
@@ -80,6 +81,7 @@ export function ironVerdictApp() {
         vportalModalOpen: false,
         vportalModalStep: 'federation',
         vportalLoginError: '',
+        vportalStageError: '',
         vportalFederation: 'BVDK',
         vportalIdentity: '',
         vportalCredential: '',
@@ -100,21 +102,31 @@ export function ironVerdictApp() {
 
         async vportalDoLogin() {
             this.vportalLoginError = '';
+            this.vportalStageError = '';
+            // Clear a previous connect's stage list so a failed or still-running
+            // fetch never shows stale stages as selectable.
+            this.vportalStages = [];
+            this.vportalSelectedStage = '';
             const host = this._vportalHostForFederation(this.vportalFederation);
             try {
                 await vportalClient.login(this.sessionCode, host, this.vportalIdentity, this.vportalCredential);
-                this.vportalFederationLabel = this.vportalFederation;
-                this.vportalModalStep = 'stage';
-                this.vportalStages = await vportalClient.fetchStages(this.sessionCode);
-                if (this.vportalStages.length > 0) {
-                    this.vportalSelectedStage = this.vportalStages[0].id;
-                }
             } catch (err) {
-                if (err.status === 401) {
-                    this.vportalLoginError = t('vportal.loginFailed');
-                } else {
-                    this.vportalLoginError = 'Error: ' + (err.message || 'unknown');
-                }
+                this.vportalLoginError = vportalLoginErrorMessage(err, t);
+                return;
+            }
+            this.vportalFederationLabel = this.vportalFederation;
+            this.vportalModalStep = 'stage';
+            // A failure here must show on the stage step: the credentials step
+            // (and its error line) is already hidden.
+            try {
+                this.vportalStages = await vportalClient.fetchStages(this.sessionCode);
+            } catch (err) {
+                console.warn('vportal stage list failed', err);
+                this.vportalStageError = t('vportal.errorStagesFailed');
+                return;
+            }
+            if (this.vportalStages.length > 0) {
+                this.vportalSelectedStage = this.vportalStages[0].id;
             }
         },
 

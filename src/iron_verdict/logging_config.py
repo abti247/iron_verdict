@@ -7,7 +7,10 @@ _EXTRA_FIELDS = (
     "session_code", "role", "client_ip", "color",
     "position", "all_locked", "reason", "origin", "conn_id",
     # VPortal integration — proxy diagnostics
-    "kind", "host", "first_field", "upstream_status",
+    "kind", "host", "first_field", "upstream_status", "error",
+    # VPortal login failures — statuses, headers and cookie *names* only
+    "login_status", "login_location", "cookie_names",
+    "token_status", "token_location", "content_type", "upstream_path",
     # VPortal integration — config-time diagnostics
     "raw", "requested", "clamped_to",
 )

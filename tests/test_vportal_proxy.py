@@ -7,6 +7,7 @@ import httpx
 from fastapi.testclient import TestClient
 from iron_verdict.main import app
 from iron_verdict import vportal_proxy as proxy_module
+from iron_verdict.logging_config import JsonFormatter
 
 client = TestClient(app)
 
@@ -264,19 +265,128 @@ def test_login_sends_multipart_form_data(mock_vportal):
     assert b"credential" in captured["body"]
 
 
-def test_login_no_cookie_returned_surfaces_as_502(mock_vportal):
-    # Defensive case: if /account/login ever returns no Set-Cookie at all,
-    # surface that as 502 with a distinct error message.
+_LOGIN_BODY = {"host": "bvdk.vportal-online.de", "identity": "secret-user", "credential": "secret-pass"}
+
+
+def _login_failed_records(caplog):
+    return [r for r in caplog.records if r.getMessage() == "vportal_login_failed"]
+
+
+def _assert_no_secrets_logged(caplog, *secrets):
+    # Format through the production JSON formatter so the check covers exactly
+    # what reaches the server log, extras included.
+    formatter = JsonFormatter()
+    output = "\n".join(formatter.format(r) for r in caplog.records)
+    for secret in ("secret-user", "secret-pass", *secrets):
+        assert secret not in output
+
+
+# Why 424 and not 502 for upstream failures on /login (issue #100): Cloudflare
+# replaces the body of origin 502 responses with its own error page, so the
+# reason never reached the dialog. A non-5xx status passes through unchanged.
+
+def test_login_no_cookie_returned_surfaces_as_424_with_reason_and_log(mock_vportal, caplog):
     mock_vportal[("POST", "/account/login")] = lambda r: httpx.Response(
-        401, json={"error": "invalid_credentials"}
+        302,
+        headers=[
+            ("location", "/account/login?error=1"),
+            ("set-cookie", "OTHER=other-cookie-value; Path=/"),
+        ],
+        text="<html>secret-body</html>",
     )
 
-    response = client.post(
-        "/api/vportal/login",
-        json={"host": "bvdk.vportal-online.de", "identity": "u", "credential": "wrong"},
+    with caplog.at_level(logging.WARNING, logger="iron_verdict"):
+        response = client.post("/api/vportal/login", json=_LOGIN_BODY)
+
+    assert response.status_code == 424
+    assert response.json()["detail"] == {"reason": "no_session_cookie"}
+    records = _login_failed_records(caplog)
+    assert len(records) == 1
+    record = records[0]
+    assert record.levelno == logging.WARNING
+    assert record.reason == "no_session_cookie"
+    assert record.host == "bvdk.vportal-online.de"
+    assert record.login_status == 302
+    assert record.login_location == "/account/login?error=1"
+    assert record.cookie_names == ["OTHER"]
+    _assert_no_secrets_logged(caplog, "other-cookie-value", "secret-body")
+
+
+def test_login_token_exchange_failure_surfaces_as_424_with_upstream_status(mock_vportal, caplog):
+    mock_vportal[("POST", "/account/login")] = lambda r: httpx.Response(
+        200, headers={"set-cookie": "__Host-VPORTAL=session-cookie-value; Path=/"}
     )
-    assert response.status_code == 502
-    assert "cookie" in response.json()["detail"].lower()
+    mock_vportal[("GET", "/auth/token")] = lambda r: httpx.Response(
+        500, text="secret-body", headers={"location": "/oops"}
+    )
+
+    with caplog.at_level(logging.WARNING, logger="iron_verdict"):
+        response = client.post("/api/vportal/login", json=_LOGIN_BODY)
+
+    assert response.status_code == 424
+    assert response.json()["detail"] == {"reason": "token_exchange_failed", "upstream_status": 500}
+    records = _login_failed_records(caplog)
+    assert len(records) == 1
+    record = records[0]
+    assert record.reason == "token_exchange_failed"
+    assert record.login_status == 200
+    assert record.cookie_names == ["__Host-VPORTAL"]
+    assert record.token_status == 500
+    assert record.token_location == "/oops"
+    _assert_no_secrets_logged(caplog, "session-cookie-value", "secret-body")
+
+
+@pytest.mark.parametrize(
+    "token_response",
+    [
+        httpx.Response(200, json={"token_type": "bearer"}),
+        httpx.Response(200, json=["not", "an", "object"]),
+        httpx.Response(200, text="<html>secret-body</html>", headers={"content-type": "text/html"}),
+    ],
+    ids=["no-access-token", "json-array", "html"],
+)
+def test_login_token_response_without_access_token_surfaces_as_424(mock_vportal, caplog, token_response):
+    mock_vportal[("POST", "/account/login")] = lambda r: httpx.Response(
+        200, headers={"set-cookie": "VPORTAL=session-cookie-value; Path=/"}
+    )
+    mock_vportal[("GET", "/auth/token")] = lambda r: token_response
+
+    with caplog.at_level(logging.WARNING, logger="iron_verdict"):
+        response = client.post("/api/vportal/login", json=_LOGIN_BODY)
+
+    assert response.status_code == 424
+    assert response.json()["detail"] == {"reason": "missing_access_token"}
+    records = _login_failed_records(caplog)
+    assert len(records) == 1
+    assert records[0].reason == "missing_access_token"
+    assert records[0].token_status == 200
+    assert records[0].content_type == token_response.headers.get("content-type")
+    _assert_no_secrets_logged(caplog, "session-cookie-value", "secret-body")
+
+
+@pytest.mark.parametrize("failing_path", ["/account/login", "/auth/token"])
+@pytest.mark.parametrize("error_cls", [httpx.ConnectError, httpx.ReadTimeout])
+def test_login_transport_error_surfaces_as_424_unreachable(mock_vportal, caplog, failing_path, error_cls):
+    def fail(request):
+        raise error_cls("boom")
+
+    mock_vportal[("POST", "/account/login")] = (
+        fail if failing_path == "/account/login"
+        else lambda r: httpx.Response(200, headers={"set-cookie": "VPORTAL=session-cookie-value; Path=/"})
+    )
+    mock_vportal[("GET", "/auth/token")] = fail
+
+    with caplog.at_level(logging.WARNING, logger="iron_verdict"):
+        response = client.post("/api/vportal/login", json=_LOGIN_BODY)
+
+    assert response.status_code == 424
+    assert response.json()["detail"] == {"reason": "unreachable"}
+    records = _login_failed_records(caplog)
+    assert len(records) == 1
+    assert records[0].reason == "unreachable"
+    assert records[0].error == error_cls.__name__
+    assert records[0].upstream_path == failing_path
+    _assert_no_secrets_logged(caplog, "session-cookie-value")
 
 
 def test_login_wrong_credentials_surfaces_as_401(mock_vportal):
@@ -297,6 +407,37 @@ def test_login_wrong_credentials_surfaces_as_401(mock_vportal):
     )
     assert response.status_code == 401
     assert "credentials" in response.json()["detail"].lower()
+
+
+@pytest.mark.parametrize("token_status", [302, 401, 403])
+def test_login_token_rejection_logs_statuses_without_secrets(mock_vportal, caplog, token_status):
+    # Issue #100: a missing role may look exactly like a wrong password (302 to
+    # the login page). The dialog stays "check username and password", but the
+    # log keeps the statuses and redirect target to tell the two apart.
+    mock_vportal[("POST", "/account/login")] = lambda r: httpx.Response(
+        302,
+        headers={"set-cookie": "VPORTAL=session-cookie-value; Path=/", "location": "/dashboard"},
+    )
+    mock_vportal[("GET", "/auth/token")] = lambda r: httpx.Response(
+        token_status, headers={"location": "/login?error=1"}, text="secret-body"
+    )
+
+    with caplog.at_level(logging.INFO, logger="iron_verdict"):
+        response = client.post("/api/vportal/login", json=_LOGIN_BODY)
+
+    assert response.status_code == 401
+    records = [r for r in caplog.records if r.getMessage() == "vportal_login_rejected"]
+    assert len(records) == 1
+    record = records[0]
+    assert record.levelno == logging.INFO
+    assert record.host == "bvdk.vportal-online.de"
+    assert record.login_status == 302
+    assert record.login_location == "/dashboard"
+    assert record.cookie_names == ["VPORTAL"]
+    assert record.token_status == token_status
+    assert record.token_location == "/login?error=1"
+    assert not _login_failed_records(caplog)
+    _assert_no_secrets_logged(caplog, "session-cookie-value", "secret-body")
 
 
 def test_login_token_redirect_surfaces_as_401(mock_vportal):
@@ -495,7 +636,7 @@ def test_login_does_not_leak_cookie_jar_between_calls(mock_vportal):
 
     # Second login: bad creds. With per-login client (the fix), no prior cookie
     # leaks into the outbound request; the upstream returns 401 with no cookie;
-    # the proxy raises 502. Without the fix, the jar would carry VPORTAL=A-cookie
+    # the proxy raises 424. Without the fix, the jar would carry VPORTAL=A-cookie
     # to the upstream and the response would refresh-and-return a valid cookie.
     r2 = client.post(
         "/api/vportal/login",
@@ -506,4 +647,4 @@ def test_login_does_not_leak_cookie_jar_between_calls(mock_vportal):
         "Second login leaked a cookie from the first login's jar: "
         f"{second_login_request_cookies['value']!r}"
     )
-    assert r2.status_code == 502
+    assert r2.status_code == 424
