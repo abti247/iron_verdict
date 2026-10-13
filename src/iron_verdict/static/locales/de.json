@@ -160,21 +160,21 @@
         "incompleteLift": "Unvollständiger Versuch",
         "skippedSignal": "Signal übersprungen",
         "buttocksUp": "Gesäß angehoben",
-        "headUp": "Kopf angehoben",
+        "headShouldersUp": "Kopf/Schultern angehoben",
         "feetUp": "Füße angehoben",
         "sinkingAfterMotionless": "Einsinken nach Stillstand",
-        "upperBodyThrust": "Oberkörperschwung",
+        "upperBodyThrust": "Oberkörperstoß",
         "spotterContact": "Helferkontakt",
-        "shoulderHandMovement": "Schulter-/Handbewegung",
-        "feetTouchedBenchOrSupports": "Füße berühren Bank oder Stützen",
-        "deliberateBarContactWithRackSupports": "Absichtlicher Hantelkontakt mit Hantelständern",
+        "handMovement": "Handbewegung",
+        "feetTouchedBench": "Füße berühren Bank",
+        "barContactWithRackSupports": "Hantelkontakt mit Hantelständern",
         "technicalNonCompliance": "Technischer Regelverstoß"
       }
     },
     "deadlift": {
       "red": {
         "softKnees": "Knie nicht gestreckt",
-        "shouldersNotBack": "Schultern nicht zurück",
+        "shouldersNotBehindBar": "Schultern nicht hinter Hantel",
         "failureToStandErect": "Kein aufrechter Stand"
       },
       "blue": {
