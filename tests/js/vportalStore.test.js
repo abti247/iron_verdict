@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createVportalStore } from '../../src/iron_verdict/static/js/vportalStore.js';
 
 const t = (key) => `t:${key}`;
@@ -156,12 +156,6 @@ describe('display overlay', () => {
         expect(client.pollActiveAttempt).not.toHaveBeenCalled();
     });
 
-    it('does not poll and reports no kind when the session lookup fails', async () => {
-        const { store, client } = makeStore({ fetchFn: vi.fn().mockResolvedValue(jsonResponse({}, false)) });
-        expect(await store.startDisplayOverlay('ABCD1234')).toBeNull();
-        expect(client.pollActiveAttempt).not.toHaveBeenCalled();
-    });
-
     it('does not poll when this device has no VPortal stage', async () => {
         const fetchFn = vi.fn().mockResolvedValue(jsonResponse({ kind: 'vportal' }));
         const client = fakeClient({ getStored: vi.fn().mockReturnValue({}) });
@@ -188,5 +182,92 @@ describe('display overlay', () => {
         onUpdate({ firstName: 'Anna' });
         expect(store.displayAttempt).toEqual({ firstName: 'Anna' });
         expect(store.disconnectedReason).toBe('');
+    });
+});
+
+describe('display overlay start and stop', () => {
+    afterEach(() => { vi.useRealTimers(); });
+
+    it('retries a failed session lookup on a VPortal-connected device and shows the banner meanwhile', async () => {
+        vi.useFakeTimers();
+        const fetchFn = vi.fn()
+            .mockRejectedValueOnce(new Error('offline'))
+            .mockResolvedValueOnce(jsonResponse({}, false))
+            .mockResolvedValue(jsonResponse({ kind: 'vportal' }));
+        const { store, client } = makeStore({ fetchFn });
+        const started = store.startDisplayOverlay('ABCD1234');
+
+        await vi.advanceTimersByTimeAsync(0);
+        expect(store.disconnectedReason).toBe('session-lookup-failed');
+        expect(client.pollActiveAttempt).not.toHaveBeenCalled();
+
+        await vi.advanceTimersByTimeAsync(2500);
+        expect(fetchFn).toHaveBeenCalledTimes(2);
+        expect(client.pollActiveAttempt).not.toHaveBeenCalled();
+
+        await vi.advanceTimersByTimeAsync(2500);
+        expect(fetchFn).toHaveBeenCalledTimes(3);
+        expect(await started).toBe('vportal');
+        expect(client.pollActiveAttempt).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not retry the lookup on a device without a VPortal login', async () => {
+        vi.useFakeTimers();
+        const fetchFn = vi.fn().mockRejectedValue(new Error('offline'));
+        const client = fakeClient({ isConnected: vi.fn().mockReturnValue(false) });
+        const { store } = makeStore({ client, fetchFn });
+        expect(await store.startDisplayOverlay('ABCD1234')).toBeNull();
+        await vi.advanceTimersByTimeAsync(10000);
+        expect(fetchFn).toHaveBeenCalledTimes(1);
+        expect(store.disconnectedReason).toBe('');
+    });
+
+    it('stops retrying the lookup once the display is left', async () => {
+        vi.useFakeTimers();
+        const fetchFn = vi.fn().mockRejectedValue(new Error('offline'));
+        const { store, client } = makeStore({ fetchFn });
+        store.startDisplayOverlay('ABCD1234');
+        await vi.advanceTimersByTimeAsync(0);
+        store.stopDisplayOverlay();
+        expect(store.disconnectedReason).toBe('');
+        fetchFn.mockResolvedValue(jsonResponse({ kind: 'vportal' }));
+        await vi.advanceTimersByTimeAsync(10000);
+        expect(fetchFn).toHaveBeenCalledTimes(1);
+        expect(client.pollActiveAttempt).not.toHaveBeenCalled();
+    });
+
+    it('does not start polling when the display is left while the lookup is still running', async () => {
+        let resolveLookup;
+        const fetchFn = vi.fn().mockReturnValue(new Promise(r => { resolveLookup = r; }));
+        const { store, client } = makeStore({ fetchFn });
+        const started = store.startDisplayOverlay('ABCD1234');
+        store.stopDisplayOverlay();
+        resolveLookup(jsonResponse({ kind: 'vportal' }));
+        expect(await started).toBeNull();
+        expect(client.pollActiveAttempt).not.toHaveBeenCalled();
+    });
+
+    it('leaving the display stops the poller and clears the overlay', async () => {
+        const stop = vi.fn();
+        const fetchFn = vi.fn().mockResolvedValue(jsonResponse({ kind: 'vportal' }));
+        const { store, client } = makeStore({ client: fakeClient({ pollActiveAttempt: vi.fn().mockReturnValue(stop) }), fetchFn });
+        await store.startDisplayOverlay('ABCD1234');
+        const [, , onUpdate] = client.pollActiveAttempt.mock.calls[0];
+        onUpdate({ firstName: 'Maria' });
+        store.stopDisplayOverlay();
+        expect(stop).toHaveBeenCalledTimes(1);
+        expect(store.displayAttempt).toBeNull();
+    });
+
+    it('starting the display again stops the previous poller, so only one runs', async () => {
+        const stops = [vi.fn(), vi.fn()];
+        const pollActiveAttempt = vi.fn().mockReturnValueOnce(stops[0]).mockReturnValueOnce(stops[1]);
+        const fetchFn = vi.fn().mockResolvedValue(jsonResponse({ kind: 'vportal' }));
+        const { store } = makeStore({ client: fakeClient({ pollActiveAttempt }), fetchFn });
+        await store.startDisplayOverlay('ABCD1234');
+        await store.startDisplayOverlay('ABCD1234');
+        expect(pollActiveAttempt).toHaveBeenCalledTimes(2);
+        expect(stops[0]).toHaveBeenCalledTimes(1);
+        expect(stops[1]).not.toHaveBeenCalled();
     });
 });

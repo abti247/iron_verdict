@@ -146,6 +146,7 @@ export function handleTimerReset(app, message) {
 
 export function handleSessionEnded(app, message) {
     app.clearPendingVote();
+    app.$store.vportal.stopDisplayOverlay();
     alert(t('alerts.sessionEnded'));
     app.ws.close();
     app.isDemo = false;

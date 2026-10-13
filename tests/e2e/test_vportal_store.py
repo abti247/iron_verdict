@@ -70,3 +70,62 @@ def test_display_connection_loss_keeps_overlay_and_recovers(competition, server_
     page.locator(".display-full").wait_for(state="visible")
     expect(corner).to_contain_text("MARIA SCHNEIDER", timeout=10000, ignore_case=True)
     expect(page.locator(".vportal-disconnected-banner")).to_be_hidden()
+
+
+def test_display_reload_with_failing_session_lookup_recovers_without_reload(competition, server_url, fake_vportal_url):
+    """VPortal-connected display is reloaded while the session lookup
+    (GET /api/sessions/{code}) fails at the network level → the display rejoins
+    and shows the "VPortal disconnected" banner instead of silently empty
+    corners → the lookup works again → without another reload the banner goes
+    away and the lifter overlay appears (issue #112)."""
+    page = competition.new_context().new_page()
+    _connect_and_open_display(page, server_url, fake_vportal_url)
+    corner = page.locator(".vportal-corner-left")
+    banner = page.locator(".vportal-disconnected-banner")
+    expect(corner).to_contain_text("MARIA SCHNEIDER", timeout=10000, ignore_case=True)
+
+    page.route("**/api/sessions/*", lambda route: route.abort())
+    page.reload()
+    page.locator(".display-full").wait_for(state="visible")
+    expect(banner).to_be_visible(timeout=10000)
+    expect(corner).to_be_hidden()
+    expect(page.locator(".display-tag .conn-dot")).to_have_class(re.compile(r"\bconnected\b"), timeout=10000)
+
+    page.unroute("**/api/sessions/*")
+    expect(corner).to_contain_text("MARIA SCHNEIDER", timeout=10000, ignore_case=True)
+    expect(banner).to_be_hidden()
+
+
+def test_display_role_select_round_trips_leave_one_poller(competition, server_url, fake_vportal_url):
+    """VPortal-connected display → role-select → display → role-select →
+    display. On role-select no VPortal polling runs; back on the display exactly
+    one poller runs. Measured by counting poll ticks (one active-group query
+    each): with the 3 s interval one poller makes at most 3 in 6.5 s, while the
+    two leftover pollers of the old behavior would at least double that. Fixed
+    waits are unavoidable here because the test measures a request rate."""
+    page = competition.new_context().new_page()
+    _connect_and_open_display(page, server_url, fake_vportal_url)
+    corner = page.locator(".vportal-corner-left")
+    expect(corner).to_contain_text("MARIA SCHNEIDER", timeout=10000, ignore_case=True)
+
+    polls = []
+    page.on(
+        "request",
+        lambda req: polls.append(req.url)
+        if "/api/vportal/graphql" in req.url and "competitionGroupList" in (req.post_data or "")
+        else None,
+    )
+
+    for _ in range(2):
+        page.go_back()
+        page.locator(".role-wrap").wait_for(state="visible")
+        polls.clear()
+        page.wait_for_timeout(3500)
+        assert polls == [], "VPortal polling must stop when the display is left"
+        page.locator(".role-btn", has_text="Display Screen").click()
+        page.locator(".display-full").wait_for(state="visible")
+        expect(corner).to_contain_text("MARIA SCHNEIDER", timeout=10000, ignore_case=True)
+
+    polls.clear()
+    page.wait_for_timeout(6500)
+    assert 1 <= len(polls) <= 3, f"expected one poller, saw {len(polls)} poll ticks in 6.5 s"
