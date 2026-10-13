@@ -38,17 +38,10 @@ export function roleTakenNotice(t, role) {
     return t('roleTakenOver.notice').replace('{role}', label);
 }
 
-export const roleTakeoverMethods = {
-    // Give up rejoining: role-select of the same session (drops the reconnect token
-    // and closes the socket) with a notice naming the position.
-    failRoleTakenOver() {
-        const role = this.$store.session.role;
-        this.returnToRoleSelection();
-        this.roleTakenOver = role;
-    },
-
-    // Rendered on each language change, so the notice follows the language toggle.
-    roleTakenOverNotice() {
-        return this.roleTakenOver ? roleTakenNotice(t, this.roleTakenOver) : '';
-    },
-};
+// Give up rejoining: role-select of the same session (drops the reconnect token
+// and closes the socket) with a notice naming the position. `c`: the connection.
+export function failRoleTakenOver(c) {
+    const role = c.session.role;
+    c.returnToRoleSelection();
+    c.session.roleTakenOver = role;
+}

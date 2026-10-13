@@ -1,6 +1,4 @@
-import { ironVerdictApp } from './app.js';
-import { createVportalStore } from './vportalStore.js';
-import { createSessionStore } from './sessionStore.js';
+import { registerApp } from './app.js';
 import { initI18n, t, setLanguage, getLanguage } from './i18n.js';
 
 // Read demo join params from URL before Alpine loads.
@@ -41,40 +39,21 @@ document.addEventListener('alpine:initialized', () => {
     document.documentElement.classList.remove('booting', 'boot-failed');
 });
 
-// Expose as global so Alpine can call ironVerdictApp()
-window.ironVerdictApp = ironVerdictApp;
-
 // Expose t, setLanguage, getLanguage as globals for Alpine template expressions
 window.t = t;
 window.setLanguage = setLanguage;
 window.getLanguage = getLanguage;
 
+let app = null;  // the connection, once Alpine has started (app.js)
+
 document.addEventListener('alpine:init', () => {
-    // Create reactive i18n store — t() reads from this, setLanguage() writes to it
-    Alpine.store('i18n', { lang: window._resolvedLang || 'en', _v: 0 });
-    Alpine.store('session', createSessionStore());
-    Alpine.store('vportal', createVportalStore());
-    Alpine.data('ironVerdictApp', ironVerdictApp);
+    const demoParams = window._demoParams;
+    window._demoParams = null;
+    app = registerApp(Alpine, { lang: window._resolvedLang || 'en', demoParams });
 });
 
 // Handle browser back button — navigate within the screen machine.
 window.addEventListener('popstate', (event) => {
-    const appElement = document.querySelector('[x-data]');
-    if (!appElement || !window.Alpine) return;
-    const app = Alpine.$data(appElement);
     if (!app) return;
-
-    const target = event.state?.screen ?? 'landing';
-    app._handlingPopstate = true;
-    try {
-        if (target === 'role-select') {
-            app.returnToRoleSelection();
-        } else if (target === 'landing') {
-            app.returnToLanding();
-        } else {
-            app.screen = target;
-        }
-    } finally {
-        app._handlingPopstate = false;
-    }
+    app.followHistory(event.state?.screen ?? 'landing');
 });

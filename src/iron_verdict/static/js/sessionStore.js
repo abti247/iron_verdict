@@ -1,7 +1,7 @@
 // Session state shared by several screens, registered as Alpine.store('session'):
-// which session this device is in, in which role, and how its connection stands.
-// Data only — the join/leave flows that write it stay in app.js and handlers.js.
-// Screen-local state (votes, timer, display phases) stays in ironVerdictApp.
+// which session this device is in, in which role, how its connection stands, and
+// the landing form that picks the session. Data only — connection.js and the
+// landing screen write it.
 
 export function createSessionStore() {
     return {
@@ -10,8 +10,16 @@ export function createSessionStore() {
         kind: 'generic',  // 'generic' | 'vportal' — set at create/lookup, corrected on display start
         role: '',
         isHead: false,
+        isDemo: false,  // joined from a demo window (?code=…&demo=<role>)
         connectionStatus: 'disconnected',  // 'disconnected' | 'reconnecting' | 'connected'
         serverRestarting: false,
         judgeConnected: { left: false, center: false, right: false },
+        roleTakenOver: '',  // role whose position another device took; shows the role-select notice
+        // Landing form. Kept here, not in the landing component: the landing screen is
+        // removed from the DOM when left, and reload recovery and the leave flows write it.
+        newSessionName: '',
+        joinCode: '',
+        joinError: '',
+        joinChecking: false,
     };
 }

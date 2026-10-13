@@ -16,7 +16,7 @@
     <link rel="preload" as="script" href="/static/vendor/alpinejs-3.14.1.min.js">
     <script src="/static/vendor/qrcodejs-1.0.0.min.js"></script>
 </head>
-<body x-data="ironVerdictApp()" :class="{ 'display-mode': $store.session.role === 'display' && screen === 'display' }">
+<body x-data :class="{ 'display-mode': $store.session.role === 'display' && $store.nav.screen === 'display' }">
 
     <!-- Boot screen: the only thing visible until Alpine has started (see boot.css).
          Plain markup without Alpine or i18n, because it must work without them. -->
@@ -33,7 +33,8 @@
     </div>
 
     <!-- Demo Intro Screen -->
-    <div class="landing-wrap" data-testid="demo-intro-screen" x-show="screen === 'demo-intro'" x-cloak>
+    <template x-if="$store.nav.screen === 'demo-intro'">
+    <div class="landing-wrap" data-testid="demo-intro-screen" x-data="demoIntroScreen">
         <div class="landing-panel cut-corner landing-panel--demo">
 
             <div class="brand-iron chrome-text">Iron Verdict</div>
@@ -83,16 +84,18 @@
             <div x-show="demoRunning" class="demo-running-msg" x-text="t('demo.demoRunning')"></div>
 
             <div class="btn-row">
-                <button class="btn-blood btn-blood-ghost" @click="returnToLandingFromDemo()">
+                <button class="btn-blood btn-blood-ghost" @click="$store.nav.navigateTo('landing')">
                     &larr; <span x-text="t('demo.backToStart')"></span>
                 </button>
             </div>
 
         </div>
     </div>
+    </template>
 
     <!-- Reconnecting Screen: shown right after a reload while the stored session is restored (reloadRecovery.js) -->
-    <div class="landing-wrap" data-testid="reconnecting-screen" x-show="screen === 'reconnecting'" x-cloak>
+    <template x-if="$store.nav.screen === 'reconnecting'">
+    <div class="landing-wrap" data-testid="reconnecting-screen" x-data="reconnectingScreen">
         <div class="landing-panel cut-corner reconnecting-panel" role="status">
             <div class="brand-iron chrome-text">Iron Verdict</div>
             <div class="boot-spinner"></div>
@@ -104,42 +107,44 @@
                     x-text="t('reconnecting.cancel')"></button>
         </div>
     </div>
+    </template>
 
     <!-- Landing Screen -->
-    <div class="landing-wrap" data-testid="landing-screen" x-show="screen === 'landing'" x-cloak>
+    <template x-if="$store.nav.screen === 'landing'">
+    <div class="landing-wrap" data-testid="landing-screen" x-data="landingScreen">
         <div class="landing-panel cut-corner">
             <div class="brand-iron chrome-text">Iron Verdict</div>
             <div class="brand-verdict-sub" x-text="t('landing.subtitle')"></div>
 
             <div class="form-stack">
                 <input class="chrome-input" :placeholder="t('landing.placeholder.sessionName')"
-                       data-testid="session-name-input" x-model="newSessionName" @keyup.enter="createSession()">
+                       data-testid="session-name-input" x-model="$store.session.newSessionName" @keyup.enter="createSession()">
                 <button class="btn-blood btn-blood-primary cut-corner-sm"
-                        @click="createSession()" :disabled="!newSessionName.trim()"
+                        @click="createSession()" :disabled="!$store.session.newSessionName.trim()"
                         x-text="t('landing.createSession')">
                 </button>
 
                 <div class="slash-divider" x-text="t('landing.or')"></div>
 
                 <input class="chrome-input" :placeholder="t('landing.placeholder.sessionCode')"
-                       data-testid="join-code-input" x-model="joinCode"
-                       @input="joinError = ''"
+                       data-testid="join-code-input" x-model="$store.session.joinCode"
+                       @input="$store.session.joinError = ''"
                        @keyup.enter="joinExistingSession()">
                 <button class="btn-blood btn-blood-secondary cut-corner-sm"
                         @click="joinExistingSession()"
-                        :disabled="joinCode.trim().length !== 8 || joinChecking"
-                        x-text="joinChecking ? t('landing.checking') : t('landing.joinSession')">
+                        :disabled="$store.session.joinCode.trim().length !== 8 || $store.session.joinChecking"
+                        x-text="$store.session.joinChecking ? t('landing.checking') : t('landing.joinSession')">
                 </button>
-                <div class="join-error" x-show="joinError" x-cloak x-text="joinError"></div>
+                <div class="join-error" x-show="$store.session.joinError" x-cloak x-text="$store.session.joinError"></div>
             </div>
 
             <div class="btn-row">
-                <button class="btn-blood btn-blood-ghost" @click="startDemo()" x-text="t('landing.startDemo')">
+                <button class="btn-blood btn-blood-ghost" @click="$store.nav.navigateTo('demo-intro')" x-text="t('landing.startDemo')">
                 </button>
             </div>
 
             <div class="btn-row--sm">
-                <button class="btn-blood btn-blood-ghost" @click="goToContact()" x-text="t('landing.contact')">
+                <button class="btn-blood btn-blood-ghost" @click="$store.nav.navigateTo('contact')" x-text="t('landing.contact')">
                 </button>
             </div>
 
@@ -161,13 +166,15 @@
             </div>
 
             <div class="privacy-footer">
-                <span class="privacy-link" @click="navigateTo('privacy')" x-text="t('privacy.link')"></span>
+                <span class="privacy-link" @click="$store.nav.navigateTo('privacy')" x-text="t('privacy.link')"></span>
             </div>
         </div>
     </div>
+    </template>
 
     <!-- Contact Screen -->
-    <div class="landing-wrap" data-testid="contact-screen" x-show="screen === 'contact'" x-cloak>
+    <template x-if="$store.nav.screen === 'contact'">
+    <div class="landing-wrap" data-testid="contact-screen" x-data="contactScreen">
         <div class="landing-panel cut-corner">
             <div class="brand-iron chrome-text" x-text="t('contact.title')"></div>
             <div class="brand-verdict-sub">Iron Verdict</div>
@@ -204,15 +211,17 @@
             </form>
 
             <div class="btn-row">
-                <button class="btn-blood btn-blood-ghost" @click="navigateTo('landing')">
+                <button class="btn-blood btn-blood-ghost" @click="$store.nav.navigateTo('landing')">
                     &larr; <span x-text="t('contact.back')"></span>
                 </button>
             </div>
         </div>
     </div>
+    </template>
 
     <!-- Privacy Screen -->
-    <div class="landing-wrap" data-testid="privacy-screen" x-show="screen === 'privacy'" x-cloak>
+    <template x-if="$store.nav.screen === 'privacy'">
+    <div class="landing-wrap" data-testid="privacy-screen">
         <div class="landing-panel cut-corner">
             <div class="brand-iron chrome-text" x-text="t('privacy.title')"></div>
             <div class="brand-verdict-sub">Iron Verdict</div>
@@ -226,15 +235,16 @@
             </ul>
 
             <div class="btn-row">
-                <button class="btn-blood btn-blood-ghost" @click="navigateTo('landing')">
+                <button class="btn-blood btn-blood-ghost" @click="$store.nav.navigateTo('landing')">
                     &larr; <span x-text="t('privacy.back')"></span>
                 </button>
             </div>
         </div>
     </div>
+    </template>
 
     <!-- Role Selection Screen -->
-    <div class="role-wrap" data-testid="role-select-screen" x-show="screen === 'role-select'" x-cloak>
+    <div class="role-wrap" data-testid="role-select-screen" x-data="roleSelectScreen" x-show="$store.nav.screen === 'role-select'" x-cloak>
         <div class="role-panel cut-corner">
             <div class="role-heading chrome-text" x-text="t('roles.heading')"></div>
             <div class="session-tag">
@@ -242,7 +252,7 @@
             </div>
 
             <div class="role-qr-wrap">
-                <div id="qrcode"></div>
+                <div id="qrcode" x-ref="qrcode"></div>
             </div>
 
             <div class="lang-toggle">
@@ -254,7 +264,7 @@
                 </template>
             </div>
 
-            <div class="role-notice" role="alert" x-show="roleTakenOver" x-cloak x-text="roleTakenOverNotice()"></div>
+            <div class="role-notice" role="alert" x-show="$store.session.roleTakenOver" x-cloak x-text="roleTakenOverNotice()"></div>
 
             <div class="role-grid">
                 <button class="role-btn cut-corner-sm" @click="joinSession('left_judge')" x-text="t('roles.left')">
@@ -350,10 +360,10 @@
     </div>
 
     <!-- Judge Screen -->
-    <div class="judge-wrap" data-testid="judge-screen" x-show="screen === 'judge'" x-cloak>
+    <div class="judge-wrap" data-testid="judge-screen" x-data="judgeScreen" x-show="$store.nav.screen === 'judge'" x-cloak>
         <div class="judge-bar">
             <div class="judge-role-label" x-text="getRoleDisplayName()"></div>
-            <div class="judge-timer" :class="timerExpired && 'expired'" x-text="timerDisplay"></div>
+            <div class="judge-timer" :class="$store.timer.expired && 'expired'" x-text="$store.timer.display"></div>
             <div class="judge-code">
                 <span class="conn-dot" :class="$store.session.connectionStatus"></span>
                 <span class="conn-label" x-show="$store.session.serverRestarting" x-text="t('connection.serverRestarting')"></span>
@@ -361,40 +371,40 @@
             </div>
         </div>
 
-        <div class="vote-grid" x-show="!showingReasonStep" :style="voteLocked ? 'opacity:0.35;pointer-events:none' : ''">
+        <div class="vote-grid" x-show="!$store.judge.showingReasonStep" :style="$store.judge.voteLocked ? 'opacity:0.35;pointer-events:none' : ''">
             <button class="vote-btn vote-white cut-corner-sm"
-                    :class="selectedVote === 'white' && 'selected'"
-                    @click="selectVote('white')" :disabled="voteLocked"
+                    :class="$store.judge.selectedVote === 'white' && 'selected'"
+                    @click="$store.judge.selectVote('white')" :disabled="$store.judge.voteLocked"
                     x-text="t('judge.colors.white')">
             </button>
             <button class="vote-btn vote-red cut-corner-sm"
-                    :class="selectedVote === 'red' && 'selected'"
-                    @click="selectVote('red')" :disabled="voteLocked"
+                    :class="$store.judge.selectedVote === 'red' && 'selected'"
+                    @click="$store.judge.selectVote('red')" :disabled="$store.judge.voteLocked"
                     x-text="t('judge.colors.red')">
             </button>
             <button class="vote-btn vote-blue cut-corner-sm"
-                    :class="selectedVote === 'blue' && 'selected'"
-                    @click="selectVote('blue')" :disabled="voteLocked"
+                    :class="$store.judge.selectedVote === 'blue' && 'selected'"
+                    @click="$store.judge.selectVote('blue')" :disabled="$store.judge.voteLocked"
                     x-text="t('judge.colors.blue')">
             </button>
             <button class="vote-btn vote-yellow cut-corner-sm"
-                    :class="selectedVote === 'yellow' && 'selected'"
-                    @click="selectVote('yellow')" :disabled="voteLocked"
+                    :class="$store.judge.selectedVote === 'yellow' && 'selected'"
+                    @click="$store.judge.selectVote('yellow')" :disabled="$store.judge.voteLocked"
                     x-text="t('judge.colors.yellow')">
             </button>
         </div>
 
-        <div class="reason-step" x-show="showingReasonStep && !voteLocked">
+        <div class="reason-step" x-show="$store.judge.showingReasonStep && !$store.judge.voteLocked">
             <div class="reason-step-header">
-                <button class="back-btn" @click="goBackToColorStep()">&#8592; <span x-text="t('judge.back')"></span></button>
-                <span class="reason-step-color" :class="selectedVote" x-text="selectedVote ? t('judge.colors.' + selectedVote) : ''"></span>
+                <button class="back-btn" @click="$store.judge.goBackToColorStep()">&#8592; <span x-text="t('judge.back')"></span></button>
+                <span class="reason-step-color" :class="$store.judge.selectedVote" x-text="$store.judge.selectedVote ? t('judge.colors.' + $store.judge.selectedVote) : ''"></span>
             </div>
             <div class="reason-list-wrap" :class="{ 'has-overflow-bottom': reasonListOverflows }">
                 <div class="reason-list" x-ref="reasonList">
                     <template x-for="reason in getJudgeReasons()" :key="reason.id">
                         <div class="reason-item"
-                             :class="{ selected: selectedReason === reason.id }"
-                             @click="selectReason(reason.id)"
+                             :class="{ selected: $store.judge.selectedReason === reason.id }"
+                             @click="$store.judge.selectReason(reason.id)"
                              x-text="reason.label">
                         </div>
                     </template>
@@ -402,20 +412,20 @@
             </div>
         </div>
 
-        <div class="vote-error" role="alert" x-show="voteError" x-text="voteError ? t(voteError) : ''"></div>
+        <div class="vote-error" role="alert" x-show="$store.judge.voteError" x-text="$store.judge.voteError ? t($store.judge.voteError) : ''"></div>
 
         <button class="lock-btn cut-corner-sm"
-                x-show="canLockIn() && !voteLocked"
-                @click="lockVote()"
+                x-show="$store.judge.canLockIn() && !$store.judge.voteLocked"
+                @click="$store.judge.lockVote()"
                 x-text="t('judge.lockIn')">
         </button>
 
-        <div class="vote-sending-status" x-show="voteState === 'sending'">
-            <span x-text="t('judge.voteSending')"></span> &#8212; <span x-text="selectedVote ? t('judge.colors.' + selectedVote) : ''"></span>
+        <div class="vote-sending-status" x-show="$store.judge.voteState === 'sending'">
+            <span x-text="t('judge.voteSending')"></span> &#8212; <span x-text="$store.judge.selectedVote ? t('judge.colors.' + $store.judge.selectedVote) : ''"></span>
         </div>
 
-        <div class="locked-status" x-show="voteState === 'confirmed'">
-            &#10003; <span x-text="t('judge.voteLocked')"></span> &#8212; <span x-text="selectedVote ? t('judge.colors.' + selectedVote) : ''"></span>
+        <div class="locked-status" x-show="$store.judge.voteState === 'confirmed'">
+            &#10003; <span x-text="t('judge.voteLocked')"></span> &#8212; <span x-text="$store.judge.selectedVote ? t('judge.colors.' + $store.judge.selectedVote) : ''"></span>
         </div>
 
         <div class="head-section" x-show="$store.session.isHead">
@@ -438,14 +448,14 @@
             </div>
             <div class="settings-bar">
                 <label>
-                    <input type="checkbox" data-testid="show-explanations-checkbox" x-model="showExplanations" @change="saveSettings()">
+                    <input type="checkbox" data-testid="show-explanations-checkbox" x-model="$store.settings.showExplanations" @change="saveSettings()">
                     <span x-text="t('judge.settings.showReasons')"></span>
                 </label>
                 <label>
-                    <input type="checkbox" data-testid="require-reasons-checkbox" x-model="requireReasons" @change="saveSettings()">
+                    <input type="checkbox" data-testid="require-reasons-checkbox" x-model="$store.settings.requireReasons" @change="saveSettings()">
                     <span x-text="t('judge.settings.requireReasons')"></span>
                 </label>
-                <select data-testid="lift-type-select" x-model="liftType" @change="saveSettings()">
+                <select data-testid="lift-type-select" x-model="$store.settings.liftType" @change="saveSettings()">
                     <option value="squat" x-text="t('liftTypes.squat')"></option>
                     <option value="bench" x-text="t('liftTypes.bench')"></option>
                     <option value="deadlift" x-text="t('liftTypes.deadlift')"></option>
@@ -454,73 +464,73 @@
         </div>
 
         <!-- Judge Results Panel -->
-        <div class="head-section" x-show="resultsShown">
+        <div class="head-section" x-show="$store.judge.resultsShown">
             <div class="head-title" x-text="t('judge.results')"></div>
             <div class="judge-results-orbs">
                 <div class="judge-result-orb-wrap">
-                    <div class="display-orb display-orb--sm" :class="judgeResultVotes.left"></div>
+                    <div class="display-orb display-orb--sm" :class="$store.judge.resultVotes.left"></div>
                     <div class="display-orb-reason"
-                         x-show="judgeResultReasons.left"
-                         x-text="judgeResultReasons.left"></div>
+                         x-show="$store.judge.resultReasons.left"
+                         x-text="$store.judge.resultReasons.left"></div>
                 </div>
                 <div class="judge-result-orb-wrap">
-                    <div class="display-orb display-orb--sm" :class="judgeResultVotes.center"></div>
+                    <div class="display-orb display-orb--sm" :class="$store.judge.resultVotes.center"></div>
                     <div class="display-orb-reason"
-                         x-show="judgeResultReasons.center"
-                         x-text="judgeResultReasons.center"></div>
+                         x-show="$store.judge.resultReasons.center"
+                         x-text="$store.judge.resultReasons.center"></div>
                 </div>
                 <div class="judge-result-orb-wrap">
-                    <div class="display-orb display-orb--sm" :class="judgeResultVotes.right"></div>
+                    <div class="display-orb display-orb--sm" :class="$store.judge.resultVotes.right"></div>
                     <div class="display-orb-reason"
-                         x-show="judgeResultReasons.right"
-                         x-text="judgeResultReasons.right"></div>
+                         x-show="$store.judge.resultReasons.right"
+                         x-text="$store.judge.resultReasons.right"></div>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Display Screen: shows sessionName only — sessionCode intentionally omitted (C3) -->
-    <div class="display-full" data-testid="display-screen" x-show="screen === 'display'" x-cloak
+    <div class="display-full" data-testid="display-screen" x-data="displayScreen" x-show="$store.nav.screen === 'display'" x-cloak
          :style="`--display-zoom: ${displayZoom || 1}`">
         <div class="display-tag">
             <span class="conn-dot" :class="$store.session.connectionStatus"></span>
             <span class="conn-label" x-show="$store.session.serverRestarting" x-text="t('connection.serverRestarting')"></span>
-            <span class="code-link" x-show="!isDemo" @click="returnToRoleSelection()" x-text="$store.session.name"></span>
-            <span x-show="isDemo">DEMO</span>
+            <span class="code-link" x-show="!$store.session.isDemo" @click="returnToRoleSelection()" x-text="$store.session.name"></span>
+            <span x-show="$store.session.isDemo">DEMO</span>
         </div>
 
-        <div class="display-timer-big" :class="timerExpired && 'expired'" x-text="timerDisplay"></div>
+        <div class="display-timer-big" :class="$store.timer.expired && 'expired'" x-text="$store.timer.display"></div>
 
         <!-- Vote orbs with reasons -->
-        <div class="display-lights" x-show="displayPhase === 'votes' || displayPhase === 'idle'">
+        <div class="display-lights" x-show="$store.display.phase === 'votes' || $store.display.phase === 'idle'">
             <div class="display-orb-wrap">
-                <div class="display-orb" :class="displayVotes.left"></div>
+                <div class="display-orb" :class="$store.display.votes.left"></div>
                 <div class="display-orb-reason"
-                     x-show="displayShowExplanations && displayVotes.left && displayVotes.left !== 'white' && displayReasons.left"
-                     x-text="displayReasons.left"></div>
+                     x-show="$store.display.showExplanations && $store.display.votes.left && $store.display.votes.left !== 'white' && $store.display.reasons.left"
+                     x-text="$store.display.reasons.left"></div>
             </div>
             <div class="display-orb-wrap">
-                <div class="display-orb" :class="displayVotes.center"></div>
+                <div class="display-orb" :class="$store.display.votes.center"></div>
                 <div class="display-orb-reason"
-                     x-show="displayShowExplanations && displayVotes.center && displayVotes.center !== 'white' && displayReasons.center"
-                     x-text="displayReasons.center"></div>
+                     x-show="$store.display.showExplanations && $store.display.votes.center && $store.display.votes.center !== 'white' && $store.display.reasons.center"
+                     x-text="$store.display.reasons.center"></div>
             </div>
             <div class="display-orb-wrap">
-                <div class="display-orb" :class="displayVotes.right"></div>
+                <div class="display-orb" :class="$store.display.votes.right"></div>
                 <div class="display-orb-reason"
-                     x-show="displayShowExplanations && displayVotes.right && displayVotes.right !== 'white' && displayReasons.right"
-                     x-text="displayReasons.right"></div>
+                     x-show="$store.display.showExplanations && $store.display.votes.right && $store.display.votes.right !== 'white' && $store.display.reasons.right"
+                     x-text="$store.display.reasons.right"></div>
             </div>
         </div>
 
         <!-- Verdict shown alongside orbs; always in layout to prevent orbs from shifting -->
-        <div class="display-verdict-inline" :style="displayPhase !== 'votes' ? 'visibility:hidden' : ''">
+        <div class="display-verdict-inline" :style="$store.display.phase !== 'votes' ? 'visibility:hidden' : ''">
             <div class="verdict-stamp"
-                 :class="isValidLift() ? 'valid' : 'invalid'"
-                 x-text="isValidLift() ? t('verdict.goodLift') : t('verdict.noLift')"></div>
+                 :class="$store.display.isValidLift() ? 'valid' : 'invalid'"
+                 x-text="$store.display.isValidLift() ? t('verdict.goodLift') : t('verdict.noLift')"></div>
         </div>
 
-        <div class="display-status" x-text="displayStatus || (displayPhase === 'idle' ? t('display.waiting') : '')"></div>
+        <div class="display-status" x-text="$store.display.phase === 'idle' ? t('display.waiting') : ''"></div>
 
         <div class="vportal-corner vportal-corner-left" x-show="$store.vportal.displayAttempt">
             <div class="vportal-corner-name" x-text="$store.vportal.displayAttempt?.firstName + ' ' + $store.vportal.displayAttempt?.lastName"></div>
