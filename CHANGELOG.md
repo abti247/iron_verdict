@@ -9,6 +9,15 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ### Added
 
 ### Changed
+
+### Fixed
+
+### Removed
+
+
+## [0.2.1] - 2026-10-13
+
+### Changed
 - Judges see "Sending…" after LOCK IN; "Vote Locked" appears only once the server has confirmed the vote
 
 ### Fixed
@@ -24,8 +33,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - A vote the server rejects (e.g. the next lift already started, or a reason became mandatory) unlocks the judge screen with an explanation instead of staying locked
 - A vote sent for a lift that has already ended is always reported as "next lift started" and cleared, even if reasons became mandatory in the meantime — it can no longer be completed with a reason and counted for the new lift
 
-### Removed
-
+[0.2.1]: https://github.com/abti247/iron_verdict/compare/v0.2.0...v0.2.1
 
 ## [0.2.0] - 2026-10-11
 
