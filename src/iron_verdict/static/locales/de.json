@@ -210,6 +210,13 @@
     "cancelButton": "Abbrechen",
     "disconnectButton": "Trennen",
     "loginFailed": "Anmeldung fehlgeschlagen – Benutzername oder Passwort prüfen.",
+    "errorNoSession": "VPortal hat keine Sitzung zurückgegeben. Erneut versuchen; falls es weiter fehlschlägt, den Zugang direkt auf der VPortal-Website prüfen.",
+    "errorTokenExchange": "VPortal hat die Token-Anfrage abgelehnt (Status {status}). Später erneut versuchen.",
+    "errorMissingToken": "VPortal hat kein Zugriffstoken zurückgegeben. Später erneut versuchen.",
+    "errorUnreachable": "VPortal ist nicht erreichbar. Internetverbindung prüfen und erneut versuchen.",
+    "errorServerConnection": "Keine Verbindung zum Iron-Verdict-Server. Internetverbindung prüfen und erneut versuchen.",
+    "errorUnexpected": "VPortal antwortet unerwartet (HTTP {status}). Später erneut versuchen.",
+    "errorStagesFailed": "Die Wettkampfstufen konnten nicht von VPortal geladen werden. Abbrechen und neu verbinden.",
     "loadingStages": "Bühnen werden geladen…",
     "disconnectedBanner": "VPortal getrennt – auf Rollenauswahl erneut verbinden.",
     "attemptShort": "Vers"

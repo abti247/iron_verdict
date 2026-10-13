@@ -210,6 +210,13 @@
     "cancelButton": "Cancel",
     "disconnectButton": "Disconnect",
     "loginFailed": "Login failed — check username and password.",
+    "errorNoSession": "VPortal did not return a session. Try again; if it keeps failing, check the account directly on the VPortal website.",
+    "errorTokenExchange": "VPortal rejected the token request (status {status}). Try again later.",
+    "errorMissingToken": "VPortal did not return an access token. Try again later.",
+    "errorUnreachable": "VPortal is not reachable. Check the internet connection and try again.",
+    "errorServerConnection": "No connection to the Iron Verdict server. Check the internet connection and try again.",
+    "errorUnexpected": "VPortal responded unexpectedly (HTTP {status}). Try again later.",
+    "errorStagesFailed": "Could not load the stages from VPortal. Cancel and connect again.",
     "loadingStages": "Loading stages…",
     "disconnectedBanner": "VPortal disconnected — open Select Role to reconnect.",
     "attemptShort": "Att"

@@ -326,7 +326,8 @@
                         <option :value="stage.id" x-text="stage.name"></option>
                     </template>
                 </select>
-                <div class="vportal-loading" x-show="vportalStages.length === 0" x-text="t('vportal.loadingStages')"></div>
+                <div class="vportal-loading" x-show="vportalStages.length === 0 && !vportalStageError" x-text="t('vportal.loadingStages')"></div>
+                <div class="vportal-error" x-show="vportalStageError" x-text="vportalStageError"></div>
                 <div class="vportal-btn-row">
                     <button class="btn-blood btn-blood-ghost" @click="vportalModalOpen = false" x-text="t('vportal.cancelButton')"></button>
                     <button class="btn-blood btn-blood-primary vportal-next-btn" @click="vportalConfirmStage()" :disabled="!vportalSelectedStage" x-text="t('vportal.stageSelectButton')"></button>

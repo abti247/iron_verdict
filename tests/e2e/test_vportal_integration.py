@@ -1,5 +1,7 @@
 """End-to-end VPortal flow against the fake VPortal server."""
 
+import socket
+
 import httpx
 from playwright.sync_api import expect
 
@@ -120,3 +122,72 @@ def test_rejoin_via_qr_keeps_connect_button_visible(browser, server_url, fake_vp
 
     ctx_a.close()
     ctx_b.close()
+
+
+def _open_credentials_step(page, server_url, vportal_host):
+    """Helper: create a VPortal session and fill the login form against `vportal_host`."""
+    page.goto(server_url + "/vportal")
+    page.locator('[x-model="newSessionName"]').fill("VP Error Test")
+    page.get_by_role("button", name="Create New Session").click()
+    page.locator(".role-wrap").wait_for(state="visible")
+    page.locator(".vportal-connect-btn").click()
+    page.evaluate(f"() => {{ window._testVportalHost = '{vportal_host}'; }}")
+    page.locator('[x-model="vportalFederation"]').select_option("BVDK")
+    page.locator(".vportal-step-federation .vportal-next-btn").click()
+    page.locator('[x-model="vportalIdentity"]').fill("u")
+    page.locator('[x-model="vportalCredential"]').fill("p")
+
+
+def test_login_with_vportal_unreachable_shows_cause_in_dialog(page, server_url, fake_vportal_url):
+    """VPortal host refuses connections (venue network or VPortal down).
+
+    The operator presses "Log in" and the dialog must say that VPortal is not
+    reachable — not a raw proxy status — and stay on the credentials step.
+    """
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(("127.0.0.1", 0))
+        closed_port = s.getsockname()[1]
+    _open_credentials_step(page, server_url, f"127.0.0.1:{closed_port}")
+    page.locator(".vportal-step-credentials .vportal-next-btn").click()
+
+    error = page.locator(".vportal-step-credentials .vportal-error")
+    expect(error).to_have_text("VPortal is not reachable. Check the internet connection and try again.")
+    expect(page.locator(".vportal-step-credentials")).to_be_visible()
+
+
+def test_login_without_session_cookie_shows_cause_in_dialog(page, server_url, fake_vportal_url):
+    """VPortal answers the login form without a session cookie (seen at staging, issue #100).
+
+    The proxy reports this as 424 (Cloudflare would replace a 502 body); the
+    dialog must name the cause instead of "vportal-proxy-error:502".
+    """
+    httpx.post(f"http://{fake_vportal_url}/_control/unreachable")
+    try:
+        _open_credentials_step(page, server_url, fake_vportal_url)
+        page.locator(".vportal-step-credentials .vportal-next-btn").click()
+        expect(page.locator(".vportal-step-credentials .vportal-error")).to_have_text(
+            "VPortal did not return a session. Try again; if it keeps failing, "
+            "check the account directly on the VPortal website."
+        )
+    finally:
+        httpx.post(f"http://{fake_vportal_url}/_control/reset")
+
+
+def test_stage_list_failure_after_login_shows_error_in_stage_step(page, server_url, fake_vportal_url):
+    """Login succeeds but loading the stage list fails (VPortal or venue network hiccup).
+
+    Previously the error landed on the hidden credentials step and the stage
+    step showed "Loading stages…" forever. Now the stage step shows the error
+    and no longer claims to be loading.
+    """
+    httpx.post(f"http://{fake_vportal_url}/_control/reset")
+    page.route("**/api/vportal/graphql", lambda route: route.fulfill(status=502, body="Bad gateway"))
+    _open_credentials_step(page, server_url, fake_vportal_url)
+    page.locator(".vportal-step-credentials .vportal-next-btn").click()
+
+    stage_step = page.locator(".vportal-step-stage")
+    expect(stage_step).to_be_visible()
+    expect(stage_step.locator(".vportal-error")).to_have_text(
+        "Could not load the stages from VPortal. Cancel and connect again."
+    )
+    expect(stage_step.locator(".vportal-loading")).not_to_be_visible()
