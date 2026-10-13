@@ -1,6 +1,6 @@
 # Fake VPortal Server — Fidelity Assessment
 
-**Date:** 2026-05-19 — originally written pre-staging, updated after the referee cross-check and the 2026-05-19 staging visit; cookie-name update 2026-10-13 (issue #101).
+**Date:** 2026-05-19 — originally written pre-staging, updated after the referee cross-check and the 2026-05-19 staging visit; cookie-name update and staging re-verification with v0.2.1 on 2026-10-13 (issue #101).
 **Context:** End-to-end tests for the VPortal integration run against [`tests/e2e/fake_vportal.py`](../tests/e2e/fake_vportal.py), a small FastAPI app that mimics the subset of VPortal that Iron Verdict consumes. This document captures the pre-staging risk assessment and how each risk was resolved against real production-shape behavior.
 
 **Companion reference:** the BVDK referee project at `github.com/franknitschke/referee` — specifically `server/vportal/vportalHelper.js`, `queries.js`, and `getCompetitionData.js`. The fake server and proxy were modeled after referee, and the worktree was cross-checked against it during implementation.
@@ -43,7 +43,14 @@ The session cookie is now named **`__Host-VPORTAL`**; `GET /auth/token` with it 
 
 - **Proxy:** accepts both `__Host-VPORTAL` (preferred) and `VPORTAL`, and sends the cookie to `/auth/token` under the name it arrived with — works regardless of when production switches.
 - **Fake server:** now emits the staging header verbatim in shape (`__Host-VPORTAL`, `Max-Age`, `secure`, `SameSite=Lax`, comma inside `expires=` kept) and `/auth/token` only accepts the cookie under the name `__Host-VPORTAL`. The E2E suite therefore exercises the new name; the legacy `VPORTAL` name stays covered by the backend tests in `tests/test_vportal_proxy.py`.
-- **Not changed:** the login form is still sent as `multipart/form-data` without `submit=`, although the staging browser sends `application/x-www-form-urlencoded` with `submit=`. Maintainer decision (2026-10-13): multipart is proven against production by referee; change one thing at a time. The next manual staging test confirms whether multipart is still accepted.
+- **Not changed:** the login form is still sent as `multipart/form-data` without `submit=`, although the staging browser sends `application/x-www-form-urlencoded` with `submit=`. Maintainer decision (2026-10-13): multipart is proven against production by referee; change one thing at a time. **Confirmed 2026-10-13:** staging still accepts the multipart form (see verification below).
+
+**Staging verification 2026-10-13 (v0.2.1, by the maintainer against `staging-bvdk.vportal-online.de`):**
+- Login with a valid account succeeds (`__Host-VPORTAL` cookie accepted and exchanged at `/auth/token`; multipart form accepted).
+- The display overlay shows the current lifter's data from polling.
+- Wrong password → the modal shows "Anmeldung fehlgeschlagen – Benutzername oder Passwort prüfen." — the modal message for the proxy's 401, not the 502 error; the two-step rejection pattern still holds with the new cookie name.
+- Valid login, disconnect, then wrong password → same failure message; no session carried over from the first login.
+- Not verified: production (`bvdk`/`oevk`) — still unknown whether it already sends `__Host-VPORTAL`; the `VPORTAL` fallback is covered by backend tests only.
 
 ### Set-Cookie parsing fragility (comma in `expires=`) — **✅ Resolved**
 
