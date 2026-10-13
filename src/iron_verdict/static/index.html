@@ -254,6 +254,8 @@
                 </template>
             </div>
 
+            <div class="role-notice" role="alert" x-show="roleTakenOver" x-cloak x-text="roleTakenOverNotice()"></div>
+
             <div class="role-grid">
                 <button class="role-btn cut-corner-sm" @click="joinSession('left_judge')" x-text="t('roles.left')">
                 </button>

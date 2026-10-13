@@ -3,6 +3,7 @@ import { rejectionKey } from './voteDelivery.js';
 
 export function handleJoinSuccess(app, message) {
     app.isHead = message.is_head;
+    app._roleTaken.reset();
     app.sessionName = message.session_state?.name || '';
     app.navigateTo(app.role === 'display' ? 'display' : 'judge');
 
@@ -56,15 +57,19 @@ export function handleJoinSuccess(app, message) {
 
 export function handleJoinError(app, message) {
     if (message.message === 'Role already taken') {
-        // Only suppress if we have a stored reconnect token — this is a transient race
-        // during reconnection (the server will accept the retry with the matching token).
-        // A new user with no token must see the error.
+        // With a stored reconnect token the rejection may be a short race during
+        // reconnection: retry silently until the give-up limit, then the position counts
+        // as taken by another device (roleTakeover.js). A new user with no token must
+        // see the error.
         let hasReconnectToken = false;
         const stored = sessionStorage.getItem('iv_session');
         if (stored) {
             try { hasReconnectToken = !!JSON.parse(stored).reconnect_token; } catch (_e) {}
         }
-        if (hasReconnectToken) return;
+        if (hasReconnectToken) {
+            if (app._roleTaken.rejectedShouldGiveUp()) app.failRoleTakenOver();
+            return;
+        }
     }
     if (app.screen === 'reconnecting' && message.message === 'Session not found') {
         app.failReconnectSessionGone();

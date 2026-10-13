@@ -5,6 +5,7 @@ import { demoMethods } from './demo.js';
 import { voteDeliveryMethods } from './voteDelivery.js';
 import { vportalClient } from './vportalClient.js';
 import { reloadRecoveryMethods } from './reloadRecovery.js';
+import { roleTakeoverMethods, createRoleTakenTracker } from './roleTakeover.js';
 import {
     handleJoinSuccess,
     handleJoinError,
@@ -34,6 +35,8 @@ export function ironVerdictApp() {
         joinCode: '',
         joinError: '',
         joinChecking: false,
+        roleTakenOver: '',  // role whose position another device took; shows the role-select notice
+        _roleTaken: createRoleTakenTracker(),  // "Role already taken" streak, see roleTakeover.js
         role: '',
         isHead: false,
         ws: null,
@@ -179,6 +182,7 @@ export function ironVerdictApp() {
         ...demoMethods,
         ...voteDeliveryMethods,
         ...reloadRecoveryMethods,
+        ...roleTakeoverMethods,
 
         navigateTo(screen) {
             if (this.screen === screen) return;
@@ -274,6 +278,8 @@ export function ironVerdictApp() {
 
         joinSession(role) {
             this.role = role;
+            this.roleTakenOver = '';
+            this._roleTaken.reset();
             const code = this.sessionCode || this.joinCode;
             this.sessionCode = code;
             const sessionEntry = { code, role };
@@ -494,6 +500,7 @@ export function ironVerdictApp() {
             this.sessionName = '';
             this.newSessionName = '';
             this.joinError = '';
+            this.roleTakenOver = '';
         },
 
         returnToRoleSelection() {

@@ -206,6 +206,7 @@ No-build single-page application. One HTML file served by FastAPI's `StaticFiles
 | `app.js` | The single Alpine component (`ironVerdictApp`) — all reactive state and methods. |
 | `websocket.js` | WebSocket wrapper with short capped-backoff auto-reconnect, immediate reconnect on `online` / `visibilitychange` / bfcache restore, and heartbeat watchdog. |
 | `handlers.js` | One named handler per incoming WS message type; imported by `app.js`. |
+| `roleTakeover.js` | Gives up rejoining after 25 s of "Role already taken" with a stale token: role-select with a "position signed in on another device" notice. Methods spread into the Alpine component. |
 | `reloadRecovery.js` | Reload recovery: restores the session stored in `sessionStorage.iv_session` behind the reconnecting screen, Cancel, and the "session ended or expired" fallback to landing. Methods spread into the Alpine component. |
 | `voteDelivery.js` | Judge vote state machine (open → sending → confirmed), pending vote in `sessionStorage`, reconciliation after join, `vote_ack` / `vote_rejected` handling. Methods spread into the Alpine component. |
 | `timer.js` | Module-level countdown interval (`startTimerCountdown`, `stopTimer`). |
@@ -221,6 +222,7 @@ The `screen` string drives visibility via Alpine `x-show`. The URL stays at `/`;
 
 ```
 (reload) reconnecting → judge / display / role-select   (failure or Cancel → landing)
+judge / reconnecting → role-select with notice           (position taken by another device, see roleTakeover.js)
 landing → role-select → judge
                      → display
 demo-intro → (opens 4 pop-up windows)
@@ -248,7 +250,8 @@ QR entry point: `?session=XXXX` lands on the landing screen with the code pre-fi
   *Why detach handlers instead of waiting for `onclose`:* on a half-open connection the close handshake can hang for a long time; the old socket's late `onclose` or messages must not trigger a second reconnect or reach the app. *Why only on the open socket:* a socket that never opens fails via `onclose` and the normal backoff, so the watchdog cannot pile up connection attempts. The display's VPortal polling is started once in `joinSession`, so a watchdog reconnect does not start it twice.
 - On reconnect, sends `join` with `reconnect_token` from `sessionStorage` if one is stored.
 - Server returns a new `reconnect_token` in `join_success`; stored in `sessionStorage.iv_session`.
-- `join_error: "Role already taken"` is suppressed when a token is stored — transient race during reconnect; the server will accept the retry with the token.
+- `join_error: "Role already taken"` with a stored token means the token no longer matches (a matching token always takes the slot). It is retried silently for up to 25 s from the first rejection in a row (`roleTakeover.js`); after that the position counts as taken by another device: `returnToRoleSelection()` (socket closed, token dropped, `iv_session` back to `{code}`) with an inline notice naming the position. A `join_success` resets the streak. Applies to the reconnecting screen after a reload and to a judge screen that lost its connection.
+  *Why retry at all:* if `join_success` with the new token is lost on a connection that dies, the server still counts that dead connection as connected until the heartbeat closes it (≤ ~20 s: 15 s without pong, swept every 5 s) and rejects the retry with the old token. *Why the client decides, not the server:* both cases are a token mismatch, so the server cannot tell them apart either. *Why 25 s:* the ~20 s worst case plus margin; the limit is checked on each rejection, it adds no wait.
 
 ### Client-side state
 

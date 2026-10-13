@@ -19,6 +19,9 @@
     "cancel": "Cancel",
     "sessionGone": "Session {code} has ended or expired"
   },
+  "roleTakenOver": {
+    "notice": "{role} is now signed in on another device"
+  },
   "demo": {
     "guideTitle": "Demo Guide",
     "intro": "Iron Verdict allows judges to pick the reason for an invalid lift, shared instantly with athletes, audience, jury, and fellow judges. Available reasons are based on the IPF technical rulebook (effective date 01 March 2026 - version 3).",
