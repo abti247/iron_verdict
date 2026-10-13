@@ -214,7 +214,7 @@ export function ironVerdictApp() {
             if (role === 'display') {
                 this.$store.vportal.startDisplayOverlay(code).then((kind) => {
                     if (kind) this.sessionKind = kind;
-                });
+                }).catch((err) => console.warn('VPortal display overlay failed to start', err));
             }
         },
 
@@ -381,6 +381,7 @@ export function ironVerdictApp() {
 
         returnToLanding() {
             sessionStorage.removeItem('iv_session');
+            this.$store.vportal.stopDisplayOverlay();
             this.clearPendingVote();
             this.intentionalNavigation = true;
             if (this.ws) {
@@ -397,6 +398,7 @@ export function ironVerdictApp() {
         },
 
         returnToRoleSelection() {
+            this.$store.vportal.stopDisplayOverlay();
             // Downgrade to a code-only entry so a reload on role-select returns here.
             if (this.sessionCode) {
                 sessionStorage.setItem('iv_session', JSON.stringify({ code: this.sessionCode }));

@@ -30,6 +30,8 @@ export function createVportalStore({
         displayAttempt: null,
         disconnectedReason: '',
         _pollStop: null,
+        _retryTimer: null,
+        _displayRun: 0,  // bumped on every stop; a lookup from an older run must not start a poller
 
         openModal() {
             this.modalOpen = true;
@@ -106,33 +108,82 @@ export function createVportalStore({
             } catch (_e) { /* swallow — modal will just hide the staging option */ }
         },
 
-        // Called when this device joins as display. Returns the session kind from
-        // the server, or null if the lookup failed (the caller keeps its own).
+        // Called when this device joins as display. Resolves with the session kind
+        // from the server, or null if the lookup failed and is not retried (the
+        // caller keeps its own kind then). If the display is left meanwhile it
+        // resolves with null or, during a retry wait, never settles.
         async startDisplayOverlay(sessionCode) {
-            // Authoritative kind check — the caller's session kind may be stale after reload-recovery
-            // because role-select didn't run on this page lifetime.
-            let kind;
+            // Never two pollers: a restart replaces whatever the last start left running.
+            this.stopDisplayOverlay();
+            const run = this._displayRun;
+            for (;;) {
+                // Authoritative kind check — the caller's session kind may be stale after reload-recovery
+                // because role-select didn't run on this page lifetime.
+                const data = await this._lookupSession(sessionCode);
+                if (run !== this._displayRun) return null;
+                if (data) {
+                    const kind = data.kind || 'generic';
+                    this.stagingAvailable = !!data.staging_available;
+                    if (kind === 'vportal') this._startPolling(sessionCode);
+                    else this.disconnectedReason = '';
+                    return kind;
+                }
+                // Without its own VPortal login this device never polls, so there is nothing to retry for.
+                const stored = this._pollableStored(sessionCode);
+                if (!stored) return null;
+                // Show the real state: the lifter data is missing until the lookup succeeds.
+                this.displayAttempt = null;
+                this.disconnectedReason = 'session-lookup-failed';
+                // Retry interval, not an artificial delay: the same pace as the VPortal
+                // polling this lookup unlocks, so a reloaded display on a flaky network
+                // recovers without a second reload and without hammering our server.
+                await new Promise((resolve) => {
+                    this._retryTimer = setTimeout(resolve, stored.fetch_interval_ms || 3000);
+                });
+                if (run !== this._displayRun) return null;
+            }
+        },
+
+        // Called when this device leaves the display (role-select, landing, session end).
+        stopDisplayOverlay() {
+            this._displayRun += 1;
+            clearTimeout(this._retryTimer);
+            this._retryTimer = null;
+            if (this._pollStop) this._pollStop();
+            this._pollStop = null;
+            this.displayAttempt = null;
+            this.disconnectedReason = '';
+        },
+
+        // Session lookup result (`GET /api/sessions/{code}`), or null on a network error or non-2xx.
+        async _lookupSession(sessionCode) {
             try {
                 const resp = await fetchFn(`/api/sessions/${sessionCode}`);
                 if (!resp.ok) return null;
-                const data = await resp.json();
-                kind = data.kind || 'generic';
-                this.stagingAvailable = !!data.staging_available;
+                return await resp.json();
             } catch (_e) {
                 return null;
             }
-            if (kind === 'vportal') this._startPolling(sessionCode);
-            return kind;
+        },
+
+        // This device's stored VPortal login if it can poll (logged in, stage chosen), else null.
+        _pollableStored(sessionCode) {
+            if (!client.isConnected(sessionCode)) return null;
+            const stored = client.getStored(sessionCode);
+            return stored?.stage_id ? stored : null;
         },
 
         _startPolling(sessionCode) {
-            if (!client.isConnected(sessionCode)) return;
-            const stored = client.getStored(sessionCode);
-            if (!stored?.stage_id) return;
+            const stored = this._pollableStored(sessionCode);
+            if (!stored) return;
+            // A poll already in flight when the display is left still reports back; it must
+            // not overwrite the next run's state.
+            const run = this._displayRun;
             this._pollStop = client.pollActiveAttempt(
                 sessionCode,
                 stored.fetch_interval_ms || 3000,
                 (attempt) => {
+                    if (run !== this._displayRun) return;
                     if (attempt && attempt.__stale) {
                         return;
                     }
@@ -140,6 +191,7 @@ export function createVportalStore({
                     this.disconnectedReason = '';
                 },
                 (kind) => {
+                    if (run !== this._displayRun) return;
                     this.displayAttempt = null;
                     this.disconnectedReason = kind;
                 },
