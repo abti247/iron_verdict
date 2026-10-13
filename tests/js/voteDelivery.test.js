@@ -71,8 +71,7 @@ describe('message helpers', () => {
 function makeApp(overrides = {}) {
     return {
         ...voteDeliveryMethods,
-        sessionCode: 'ABCD1234',
-        role: 'left_judge',
+        $store: { session: { code: 'ABCD1234', role: 'left_judge' } },
         liftId: 3,
         selectedVote: null,
         selectedReason: null,
@@ -201,7 +200,7 @@ describe('vote delivery edge cases', () => {
 
     it('reset_for_next_lift while a vote is sending reopens voting with the lift-changed message', async () => {
         const { handleResetForNextLift } = await import('../../src/iron_verdict/static/js/handlers.js');
-        const app = makeApp({ selectedVote: 'white', voteState: 'sending', role: 'left_judge' });
+        const app = makeApp({ selectedVote: 'white', voteState: 'sending' });
         app.resetVoting = function () {
             this.voteState = 'open';
             this.voteError = '';

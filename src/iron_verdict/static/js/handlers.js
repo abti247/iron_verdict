@@ -2,15 +2,16 @@ import { stopTimer } from './timer.js';
 import { rejectionKey } from './voteDelivery.js';
 
 export function handleJoinSuccess(app, message) {
-    app.isHead = message.is_head;
+    const session = app.$store.session;
+    session.isHead = message.is_head;
     app._roleTaken.reset();
-    app.sessionName = message.session_state?.name || '';
-    app.navigateTo(app.role === 'display' ? 'display' : 'judge');
+    session.name = message.session_state?.name || '';
+    app.navigateTo(session.role === 'display' ? 'display' : 'judge');
 
     // Initialize live connectivity state from session snapshot
     const judges = message.session_state?.judges;
     if (judges) {
-        app.judgeConnected = {
+        session.judgeConnected = {
             left: judges.left?.connected ?? false,
             center: judges.center?.connected ?? false,
             right: judges.right?.connected ?? false,
@@ -20,8 +21,8 @@ export function handleJoinSuccess(app, message) {
     app.liftId = message.session_state?.lift_id ?? null;
 
     // Reconcile this judge's vote with the server: confirmed, resend pending, or open
-    if (app.role && app.role.endsWith('_judge')) {
-        const position = app.role.replace('_judge', '');
+    if (session.role && session.role.endsWith('_judge')) {
+        const position = session.role.replace('_judge', '');
         app.reconcileVoteAfterJoin(judges?.[position]);
     }
 
@@ -45,7 +46,7 @@ export function handleJoinSuccess(app, message) {
         if (settings.show_explanations !== undefined) app.showExplanations = settings.show_explanations;
         if (settings.require_reasons !== undefined) app.requireReasons = settings.require_reasons;
     }
-    if (app.isHead) {
+    if (session.isHead) {
         // Broadcast the server-restored settings to all currently connected clients.
         app.saveSettings();
     }
@@ -102,7 +103,7 @@ export function handleShowResults(app, message) {
         center: rawReasons.center ? t(rawReasons.center) : null,
         right: rawReasons.right ? t(rawReasons.right) : null,
     };
-    if (app.role === 'display') {
+    if (app.$store.session.role === 'display') {
         clearTimeout(app._phaseTimer1);
         app.displayVotes = app.judgeResultVotes;
         app.displayReasons = {
@@ -127,7 +128,7 @@ export function handleResetForNextLift(app, message) {
     stopTimer();
     app.timerDisplay = '60';
     app.timerExpired = false;
-    if (app.role === 'display') {
+    if (app.$store.session.role === 'display') {
         app.displayVotes = { left: null, center: null, right: null };
         app.displayReasons = { left: null, center: null, right: null };
         app.displayPhase = 'idle';
@@ -168,11 +169,11 @@ export function handleSettingsUpdate(app, message) {
 }
 
 export function handleServerRestarting(app, _message) {
-    app.serverRestarting = true;
+    app.$store.session.serverRestarting = true;
 }
 
 export function handleJudgeStatusUpdate(app, message) {
-    app.judgeConnected[message.position] = message.connected;
+    app.$store.session.judgeConnected[message.position] = message.connected;
 }
 
 export function handleVoteAck(app, message) {

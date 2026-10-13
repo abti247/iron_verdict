@@ -26,8 +26,6 @@ const DISPLAY_ZOOM_KEY = 'iron-verdict:display-zoom';
 export function ironVerdictApp() {
     return {
         screen: 'landing',
-        sessionCode: '',
-        sessionName: '',
         newSessionName: '',
         isDemo: false,
         demoRunning: false,
@@ -36,12 +34,8 @@ export function ironVerdictApp() {
         joinChecking: false,
         roleTakenOver: '',  // role whose position another device took; shows the role-select notice
         _roleTaken: createRoleTakenTracker(),  // "Role already taken" streak, see roleTakeover.js
-        role: '',
-        isHead: false,
         ws: null,
         wsSend: null,
-        connectionStatus: 'disconnected',
-        serverRestarting: false,
         selectedVote: null,
         voteState: 'open',  // 'open' | 'sending' | 'confirmed' — see voteDelivery.js
         voteError: '',      // i18n key of the last vote rejection, '' if none
@@ -66,12 +60,10 @@ export function ironVerdictApp() {
         _phaseTimer1: null,
         judgeResultVotes: { left: null, center: null, right: null },
         judgeResultReasons: { left: null, center: null, right: null },
-        judgeConnected: { left: false, center: false, right: false },
         contactName: '',
         contactEmail: '',
         contactMessage: '',
         contactStatus: 'idle',
-        sessionKind: 'generic',
 
         displaySettingsOpen: false,
         displayZoom: 1,
@@ -98,14 +90,15 @@ export function ironVerdictApp() {
         },
 
         async createSession() {
+            const session = this.$store.session;
             try {
-                this.sessionKind = this._initialPathname === '/vportal' ? 'vportal' : 'generic';
+                session.kind = this._initialPathname === '/vportal' ? 'vportal' : 'generic';
                 const response = await fetch('/api/sessions', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         name: this.newSessionName.trim(),
-                        kind: this.sessionKind,
+                        kind: session.kind,
                     })
                 });
                 if (!response.ok) {
@@ -113,10 +106,10 @@ export function ironVerdictApp() {
                     return;
                 }
                 const data = await response.json();
-                this.sessionCode = data.session_code;
-                this.sessionName = this.newSessionName.trim();
-                await this.$store.vportal.loadStagingFlag(this.sessionCode);
-                sessionStorage.setItem('iv_session', JSON.stringify({ code: this.sessionCode }));
+                session.code = data.session_code;
+                session.name = this.newSessionName.trim();
+                await this.$store.vportal.loadStagingFlag(session.code);
+                sessionStorage.setItem('iv_session', JSON.stringify({ code: session.code }));
                 this.navigateTo('role-select');
             } catch (error) {
                 alert(t('alerts.createError'));
@@ -135,14 +128,14 @@ export function ironVerdictApp() {
                 // Reload recovery cancelled while the lookup was running — the user left on purpose.
                 if (this.isReconnectCancelled(restoring)) return;
                 if (res.ok) {
-                    this.sessionCode = code;
+                    this.$store.session.code = code;
                     this.joinCode = code;
                     try {
                         const data = await res.json();
-                        this.sessionKind = data.kind || 'generic';
+                        this.$store.session.kind = data.kind || 'generic';
                         this.$store.vportal.applySessionInfo(data);
                     } catch (_e) {
-                        this.sessionKind = 'generic';
+                        this.$store.session.kind = 'generic';
                         this.$store.vportal.applySessionInfo(null);
                     }
                     sessionStorage.setItem('iv_session', JSON.stringify({ code }));
@@ -168,11 +161,12 @@ export function ironVerdictApp() {
         },
 
         joinSession(role) {
-            this.role = role;
+            const session = this.$store.session;
+            session.role = role;
             this.roleTakenOver = '';
             this._roleTaken.reset();
-            const code = this.sessionCode || this.joinCode;
-            this.sessionCode = code;
+            const code = session.code || this.joinCode;
+            session.code = code;
             const sessionEntry = { code, role };
             const existingSession = sessionStorage.getItem('iv_session');
             if (existingSession) {
@@ -184,7 +178,7 @@ export function ironVerdictApp() {
                 } catch (_e) {}
             }
             sessionStorage.setItem('iv_session', JSON.stringify(sessionEntry));
-            this.connectionStatus = 'reconnecting';
+            session.connectionStatus = 'reconnecting';
 
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const url = `${protocol}//${window.location.host}/ws`;
@@ -195,8 +189,8 @@ export function ironVerdictApp() {
                 (error) => console.error('WebSocket error:', error),
                 () => {},
                 () => {
-                    this.connectionStatus = 'connected';
-                    this.serverRestarting = false;
+                    session.connectionStatus = 'connected';
+                    session.serverRestarting = false;
                     let reconnectToken = null;
                     const stored = sessionStorage.getItem('iv_session');
                     if (stored) {
@@ -206,14 +200,14 @@ export function ironVerdictApp() {
                     if (reconnectToken) joinMsg.reconnect_token = reconnectToken;
                     this.wsSend(joinMsg);
                 },
-                () => { this.connectionStatus = 'reconnecting'; }
+                () => { session.connectionStatus = 'reconnecting'; }
             );
 
             this.ws = wsWrapper;
             this.wsSend = (data) => wsWrapper.send(data);
             if (role === 'display') {
                 this.$store.vportal.startDisplayOverlay(code).then((kind) => {
-                    if (kind) this.sessionKind = kind;
+                    if (kind) session.kind = kind;
                 }).catch((err) => console.warn('VPortal display overlay failed to start', err));
             }
         },
@@ -310,7 +304,7 @@ export function ironVerdictApp() {
         },
 
         saveSettings() {
-            if (!this.isHead) return;
+            if (!this.$store.session.isHead) return;
             if (this.ws && this.ws.readyState === WebSocket.OPEN) {
                 this.wsSend({
                     type: 'settings_update',
@@ -367,10 +361,11 @@ export function ironVerdictApp() {
         },
 
         getRoleDisplayName() {
-            if (this.role === 'center_judge') return t('roles.chiefReferee');
+            const session = this.$store.session;
+            if (session.role === 'center_judge') return t('roles.chiefReferee');
             const positionMap = { 'left_judge': 'left', 'right_judge': 'right' };
-            const pos = positionMap[this.role];
-            if (!pos) return this.role;
+            const pos = positionMap[session.role];
+            if (!pos) return session.role;
             return t('roles.' + pos);
         },
 
@@ -388,10 +383,10 @@ export function ironVerdictApp() {
                 this.ws.close();
             }
             this.navigateTo('landing');
-            this.sessionCode = '';
+            this.$store.session.code = '';
             this.joinCode = '';
             this.isDemo = false;
-            this.sessionName = '';
+            this.$store.session.name = '';
             this.newSessionName = '';
             this.joinError = '';
             this.roleTakenOver = '';
@@ -400,8 +395,8 @@ export function ironVerdictApp() {
         returnToRoleSelection() {
             this.$store.vportal.stopDisplayOverlay();
             // Downgrade to a code-only entry so a reload on role-select returns here.
-            if (this.sessionCode) {
-                sessionStorage.setItem('iv_session', JSON.stringify({ code: this.sessionCode }));
+            if (this.$store.session.code) {
+                sessionStorage.setItem('iv_session', JSON.stringify({ code: this.$store.session.code }));
             } else {
                 sessionStorage.removeItem('iv_session');
             }
@@ -426,9 +421,9 @@ export function ironVerdictApp() {
 
         generateQrCode() {
             const el = document.getElementById('qrcode');
-            if (!el || !this.sessionCode) return;
+            if (!el || !this.$store.session.code) return;
             while (el.firstChild) el.removeChild(el.firstChild);
-            const url = window.location.origin + '/?session=' + this.sessionCode;
+            const url = window.location.origin + '/?session=' + this.$store.session.code;
             new QRCode(el, {
                 text: url,
                 width: 200,
@@ -524,7 +519,7 @@ export function ironVerdictApp() {
             this._installDisplayKeyHandler();
 
             this.$watch('screen', (value) => {
-                if (value === 'role-select' && this.sessionCode) {
+                if (value === 'role-select' && this.$store.session.code) {
                     setTimeout(() => this.generateQrCode(), 50);
                 }
             });
@@ -549,7 +544,7 @@ export function ironVerdictApp() {
             const params = window._demoParams;
             if (params) {
                 window._demoParams = null;
-                this.sessionCode = params.code;
+                this.$store.session.code = params.code;
                 this.joinCode = params.code;
                 this.isDemo = true;
                 setTimeout(() => this.joinSession(params.demo), 100);

@@ -42,7 +42,7 @@ export const roleTakeoverMethods = {
     // Give up rejoining: role-select of the same session (drops the reconnect token
     // and closes the socket) with a notice naming the position.
     failRoleTakenOver() {
-        const role = this.role;
+        const role = this.$store.session.role;
         this.returnToRoleSelection();
         this.roleTakenOver = role;
     },

@@ -66,8 +66,8 @@ export const voteDeliveryMethods = {
     lockVote() {
         if (!this.canLockIn()) return;
         const vote = {
-            code: this.sessionCode,
-            role: this.role,
+            code: this.$store.session.code,
+            role: this.$store.session.role,
             lift_id: this.liftId,
             color: this.selectedVote,
             reason: this.selectedVote !== 'white' ? this.selectedReason : null,
@@ -104,7 +104,7 @@ export const voteDeliveryMethods = {
     },
 
     reconcileVoteAfterJoin(serverJudge) {
-        const pending = loadPendingVote(sessionStorage, this.sessionCode, this.role) || this._pendingVote;
+        const pending = loadPendingVote(sessionStorage, this.$store.session.code, this.$store.session.role) || this._pendingVote;
         const result = reconcileVote(serverJudge, pending);
         if (result.action === 'confirmed') {
             this.clearPendingVote();

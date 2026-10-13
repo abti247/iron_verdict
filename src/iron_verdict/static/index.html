@@ -16,7 +16,7 @@
     <link rel="preload" as="script" href="/static/vendor/alpinejs-3.14.1.min.js">
     <script src="/static/vendor/qrcodejs-1.0.0.min.js"></script>
 </head>
-<body x-data="ironVerdictApp()" :class="{ 'display-mode': role === 'display' && screen === 'display' }">
+<body x-data="ironVerdictApp()" :class="{ 'display-mode': $store.session.role === 'display' && screen === 'display' }">
 
     <!-- Boot screen: the only thing visible until Alpine has started (see boot.css).
          Plain markup without Alpine or i18n, because it must work without them. -->
@@ -98,7 +98,7 @@
             <div class="boot-spinner"></div>
             <div class="reconnecting-text">
                 <span x-text="t('reconnecting.connecting')"></span>
-                <span class="reconnecting-code" x-text="sessionCode"></span>
+                <span class="reconnecting-code" x-text="$store.session.code"></span>
             </div>
             <button class="btn-blood btn-blood-ghost" @click="cancelReconnect()"
                     x-text="t('reconnecting.cancel')"></button>
@@ -238,7 +238,7 @@
         <div class="role-panel cut-corner">
             <div class="role-heading chrome-text" x-text="t('roles.heading')"></div>
             <div class="session-tag">
-                <span x-text="t('roles.session')"></span> <span class="code" x-text="sessionCode"></span>
+                <span x-text="t('roles.session')"></span> <span class="code" x-text="$store.session.code"></span>
             </div>
 
             <div class="role-qr-wrap">
@@ -266,7 +266,7 @@
                 <button class="role-btn role-display-btn cut-corner-sm" @click="joinSession('display')" x-text="t('roles.display')">
                 </button>
             </div>
-            <template x-if="sessionKind === 'vportal'">
+            <template x-if="$store.session.kind === 'vportal'">
                 <div class="vportal-connect-wrap">
                     <button class="vportal-connect-btn cut-corner-sm"
                             :class="{ 'connected': $store.vportal.connected }"
@@ -314,7 +314,7 @@
                 <div class="vportal-error" x-show="$store.vportal.loginError" x-text="$store.vportal.loginError"></div>
                 <div class="vportal-btn-row">
                     <button class="btn-blood btn-blood-ghost" @click="$store.vportal.modalStep = 'federation'">←</button>
-                    <button class="btn-blood btn-blood-primary vportal-next-btn" @click="$store.vportal.doLogin(sessionCode)" :disabled="!$store.vportal.identity || !$store.vportal.credential" x-text="t('vportal.loginButton')"></button>
+                    <button class="btn-blood btn-blood-primary vportal-next-btn" @click="$store.vportal.doLogin($store.session.code)" :disabled="!$store.vportal.identity || !$store.vportal.credential" x-text="t('vportal.loginButton')"></button>
                 </div>
             </div>
 
@@ -330,7 +330,7 @@
                 <div class="vportal-error" x-show="$store.vportal.stageError" x-text="$store.vportal.stageError"></div>
                 <div class="vportal-btn-row">
                     <button class="btn-blood btn-blood-ghost" @click="$store.vportal.modalOpen = false" x-text="t('vportal.cancelButton')"></button>
-                    <button class="btn-blood btn-blood-primary vportal-next-btn" @click="$store.vportal.confirmStage(sessionCode)" :disabled="!$store.vportal.selectedStage" x-text="t('vportal.stageSelectButton')"></button>
+                    <button class="btn-blood btn-blood-primary vportal-next-btn" @click="$store.vportal.confirmStage($store.session.code)" :disabled="!$store.vportal.selectedStage" x-text="t('vportal.stageSelectButton')"></button>
                 </div>
             </div>
 
@@ -343,7 +343,7 @@
                 </p>
                 <div class="vportal-btn-row">
                     <button class="btn-blood btn-blood-ghost" @click="$store.vportal.modalOpen = false" x-text="t('vportal.cancelButton')"></button>
-                    <button class="btn-blood btn-blood-primary" @click="$store.vportal.disconnect(sessionCode)" x-text="t('vportal.disconnectButton')"></button>
+                    <button class="btn-blood btn-blood-primary" @click="$store.vportal.disconnect($store.session.code)" x-text="t('vportal.disconnectButton')"></button>
                 </div>
             </div>
         </div>
@@ -355,9 +355,9 @@
             <div class="judge-role-label" x-text="getRoleDisplayName()"></div>
             <div class="judge-timer" :class="timerExpired && 'expired'" x-text="timerDisplay"></div>
             <div class="judge-code">
-                <span class="conn-dot" :class="connectionStatus"></span>
-                <span class="conn-label" x-show="serverRestarting" x-text="t('connection.serverRestarting')"></span>
-                <span class="code-link" @click="returnToRoleSelection()" x-text="sessionCode"></span>
+                <span class="conn-dot" :class="$store.session.connectionStatus"></span>
+                <span class="conn-label" x-show="$store.session.serverRestarting" x-text="t('connection.serverRestarting')"></span>
+                <span class="code-link" @click="returnToRoleSelection()" x-text="$store.session.code"></span>
             </div>
         </div>
 
@@ -418,12 +418,12 @@
             &#10003; <span x-text="t('judge.voteLocked')"></span> &#8212; <span x-text="selectedVote ? t('judge.colors.' + selectedVote) : ''"></span>
         </div>
 
-        <div class="head-section" x-show="isHead">
+        <div class="head-section" x-show="$store.session.isHead">
             <div class="head-title-row">
                 <div class="head-title" x-text="t('judge.headControls')"></div>
                 <div class="judge-connectivity-bar">
-                    <span class="connectivity-dot" :class="judgeConnected.left ? 'status-connected' : 'status-disconnected'" x-text="t('judge.connectivity.L')"></span>
-                    <span class="connectivity-dot" :class="judgeConnected.right ? 'status-connected' : 'status-disconnected'" x-text="t('judge.connectivity.R')"></span>
+                    <span class="connectivity-dot" :class="$store.session.judgeConnected.left ? 'status-connected' : 'status-disconnected'" x-text="t('judge.connectivity.L')"></span>
+                    <span class="connectivity-dot" :class="$store.session.judgeConnected.right ? 'status-connected' : 'status-disconnected'" x-text="t('judge.connectivity.R')"></span>
                 </div>
             </div>
             <div class="head-grid">
@@ -483,9 +483,9 @@
     <div class="display-full" data-testid="display-screen" x-show="screen === 'display'" x-cloak
          :style="`--display-zoom: ${displayZoom || 1}`">
         <div class="display-tag">
-            <span class="conn-dot" :class="connectionStatus"></span>
-            <span class="conn-label" x-show="serverRestarting" x-text="t('connection.serverRestarting')"></span>
-            <span class="code-link" x-show="!isDemo" @click="returnToRoleSelection()" x-text="sessionName"></span>
+            <span class="conn-dot" :class="$store.session.connectionStatus"></span>
+            <span class="conn-label" x-show="$store.session.serverRestarting" x-text="t('connection.serverRestarting')"></span>
+            <span class="code-link" x-show="!isDemo" @click="returnToRoleSelection()" x-text="$store.session.name"></span>
             <span x-show="isDemo">DEMO</span>
         </div>
 
