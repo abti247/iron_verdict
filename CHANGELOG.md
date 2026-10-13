@@ -12,7 +12,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Judges see "Sending…" after LOCK IN; "Vote Locked" appears only once the server has confirmed the vote
 
 ### Fixed
-- VPortal login works again after VPortal renamed its session cookie (login failed with an error on BVDK staging); logins against VPortal instances not yet updated keep working
+- VPortal login works again on BVDK staging (it failed with an error after a VPortal update) and keeps working on BVDK and ÖVK production when they receive the same update
 - A judge device whose position was taken by another device while it was offline no longer keeps trying to reconnect forever — after about 25 seconds it shows the role selection with a notice that the position is signed in elsewhere
 - A single dropped connection to VPortal no longer interrupts the lifter overlay; if VPortal stays unreachable, the server reports it as an upstream error (502) instead of an internal error (500)
 - After a page reload, judges and displays see "Connecting to session …" with a Cancel button until their screen is back — the start page no longer flashes up; if the session has ended meanwhile, the start page says so instead of showing a popup
