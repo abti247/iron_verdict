@@ -6,8 +6,10 @@ import {
     reconcileVote,
     voteLockMessage,
     rejectionKey,
-    voteDeliveryMethods,
 } from '../../src/iron_verdict/static/js/voteDelivery.js';
+import { createJudgeStore } from '../../src/iron_verdict/static/js/judgeStore.js';
+import { createTimerStore } from '../../src/iron_verdict/static/js/timer.js';
+import { handleResetForNextLift } from '../../src/iron_verdict/static/js/handlers.js';
 
 const vote = { code: 'ABCD1234', role: 'left_judge', lift_id: 3, color: 'red', reason: 'reasons.squat.red.depth' };
 
@@ -68,25 +70,22 @@ describe('message helpers', () => {
     });
 });
 
+// The judge store with its vote delivery methods, as the judge screen uses it.
 function makeApp(overrides = {}) {
-    return {
-        ...voteDeliveryMethods,
-        $store: { session: { code: 'ABCD1234', role: 'left_judge' } },
-        liftId: 3,
-        selectedVote: null,
-        selectedReason: null,
-        showingReasonStep: false,
-        requireReasons: false,
-        voteState: 'open',
-        voteError: '',
-        wsSend: vi.fn(),
-        resetVoting: vi.fn(),
-        canLockIn() { return !!this.selectedVote && this.voteState === 'open'; },
-        ...overrides,
-    };
+    const send = vi.fn();
+    const app = createJudgeStore({
+        session: { code: 'ABCD1234', role: 'left_judge' },
+        settings: { requireReasons: false },
+        send,
+        storage: sessionStorage,
+    });
+    Object.assign(app, { liftId: 3, ...overrides });
+    app.send = send;
+    vi.spyOn(app, 'resetVoting');
+    return app;
 }
 
-describe('voteDeliveryMethods', () => {
+describe('judge store vote delivery', () => {
     beforeEach(() => sessionStorage.clear());
 
     it('lockVote goes to sending, stores the vote and sends it', () => {
@@ -94,7 +93,7 @@ describe('voteDeliveryMethods', () => {
         app.lockVote();
         expect(app.voteState).toBe('sending');
         expect(app.voteError).toBe('');
-        expect(app.wsSend).toHaveBeenCalledWith({ type: 'vote_lock', color: 'white', reason: null, lift_id: 3 });
+        expect(app.send).toHaveBeenCalledWith({ type: 'vote_lock', color: 'white', reason: null, lift_id: 3 });
         expect(loadPendingVote(sessionStorage, 'ABCD1234', 'left_judge')).toMatchObject({ color: 'white', lift_id: 3 });
     });
 
@@ -102,7 +101,7 @@ describe('voteDeliveryMethods', () => {
         const app = makeApp();
         app.lockVote();
         expect(app.voteState).toBe('open');
-        expect(app.wsSend).not.toHaveBeenCalled();
+        expect(app.send).not.toHaveBeenCalled();
     });
 
     it('vote_ack confirms and clears the pending vote', () => {
@@ -149,7 +148,7 @@ describe('voteDeliveryMethods', () => {
         app.reconcileVoteAfterJoin({ locked: false });
         expect(app.voteState).toBe('sending');
         expect(app.selectedVote).toBe('red');
-        expect(app.wsSend).toHaveBeenCalledWith(voteLockMessage(vote));
+        expect(app.send).toHaveBeenCalledWith(voteLockMessage(vote));
     });
 
     it('after join, confirms the vote the server has', () => {
@@ -157,7 +156,7 @@ describe('voteDeliveryMethods', () => {
         savePendingVote(sessionStorage, vote);
         app.reconcileVoteAfterJoin({ locked: true, current_vote: 'red', current_reason: null });
         expect(app.voteState).toBe('confirmed');
-        expect(app.wsSend).not.toHaveBeenCalled();
+        expect(app.send).not.toHaveBeenCalled();
         expect(loadPendingVote(sessionStorage, 'ABCD1234', 'left_judge')).toBeNull();
     });
 
@@ -189,28 +188,25 @@ describe('vote delivery edge cases', () => {
             setItem.mockRestore();
         }
         expect(loadPendingVote(sessionStorage, 'ABCD1234', 'left_judge')).toBeNull();
-        app.wsSend.mockClear();
+        app.send.mockClear();
 
         app.reconcileVoteAfterJoin({ locked: false });
 
         expect(app.voteState).toBe('sending');
         expect(app.resetVoting).not.toHaveBeenCalled();
-        expect(app.wsSend).toHaveBeenCalledWith({ type: 'vote_lock', color: 'white', reason: null, lift_id: 3 });
+        expect(app.send).toHaveBeenCalledWith({ type: 'vote_lock', color: 'white', reason: null, lift_id: 3 });
     });
 
-    it('reset_for_next_lift while a vote is sending reopens voting with the lift-changed message', async () => {
-        const { handleResetForNextLift } = await import('../../src/iron_verdict/static/js/handlers.js');
+    function connectionFor(judge) {
+        return { judge, timer: createTimerStore(), session: { role: 'left_judge' } };
+    }
+
+    it('reset_for_next_lift while a vote is sending reopens voting with the lift-changed message', () => {
         const app = makeApp({ selectedVote: 'white', voteState: 'sending' });
-        app.resetVoting = function () {
-            this.voteState = 'open';
-            this.voteError = '';
-            this.selectedVote = null;
-            this.clearPendingVote();
-        };
         savePendingVote(sessionStorage, vote);
         app._pendingVote = vote;
 
-        handleResetForNextLift(app, { type: 'reset_for_next_lift', lift_id: 4 });
+        handleResetForNextLift(connectionFor(app), { type: 'reset_for_next_lift', lift_id: 4 });
 
         expect(app.voteState).toBe('open');
         expect(app.liftId).toBe(4);
@@ -219,12 +215,10 @@ describe('vote delivery edge cases', () => {
         expect(loadPendingVote(sessionStorage, 'ABCD1234', 'left_judge')).toBeNull();
     });
 
-    it('reset_for_next_lift after a confirmed vote shows no message', async () => {
-        const { handleResetForNextLift } = await import('../../src/iron_verdict/static/js/handlers.js');
+    it('reset_for_next_lift after a confirmed vote shows no message', () => {
         const app = makeApp({ voteState: 'confirmed' });
-        app.resetVoting = function () { this.voteState = 'open'; this.voteError = ''; };
 
-        handleResetForNextLift(app, { type: 'reset_for_next_lift', lift_id: 4 });
+        handleResetForNextLift(connectionFor(app), { type: 'reset_for_next_lift', lift_id: 4 });
 
         expect(app.voteError).toBe('');
     });

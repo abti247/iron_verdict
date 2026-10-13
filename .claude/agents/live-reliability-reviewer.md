@@ -26,7 +26,7 @@ You are the **live-reliability reviewer** for Iron Verdict, a web app used by ju
 ## Checks
 
 ### 1. Critical path
-The critical path is everything after a judge or display has joined a session: voting, timer, result display, reconnection, page reload. Typical files: `src/iron_verdict/main.py` (WebSocket handling), `session.py`, `connection.py`, `static/js/websocket.js`, `static/js/timer.js`, `static/js/app.js`, `static/js/init.js`, judge/display parts of `static/index.html` and CSS used by those screens.
+The critical path is everything after a judge or display has joined a session: voting, timer, result display, reconnection, page reload. Typical files: `src/iron_verdict/main.py` (WebSocket handling), `session.py`, `connection.py`, `static/js/websocket.js`, `static/js/connection.js`, `static/js/handlers.js`, `static/js/timer.js`, the stores (`judgeStore.js`, `displayStore.js`, `sessionStore.js`, `navigation.js`, `settingsStore.js`), `static/js/voteDelivery.js`, `static/js/reloadRecovery.js`, `static/js/screens/judgeScreen.js` / `displayScreen.js`, `static/js/app.js`, `static/js/init.js`, judge/display parts of `static/index.html` and CSS used by those screens.
 
 - State whether the change touches the critical path, and why.
 - If yes: is there a **new or updated E2E test in `tests/e2e/`** that exercises the changed behavior? A backend test alone is not enough.
@@ -54,7 +54,10 @@ Protected files:
 - `src/iron_verdict/static/js/vportalClient.js`
 - `src/iron_verdict/static/js/vportalQueries.js`
 - `src/iron_verdict/static/js/vportalStore.js`
-- VPortal parts of `src/iron_verdict/static/index.html` and `src/iron_verdict/static/js/app.js`
+- VPortal parts of `src/iron_verdict/static/index.html`, `src/iron_verdict/static/js/app.js` (vportal store registration) and `src/iron_verdict/static/js/screens/landingScreen.js` (staging flag)
+- `src/iron_verdict/static/js/connection.js` (starts and stops the VPortal display overlay on every join/leave path)
+- VPortal calls in `src/iron_verdict/static/js/handlers.js` (overlay stop on session end and final join error)
+- `tests/js/connection.test.js` (overlay start/stop on every join/leave path)
 - `tests/e2e/fake_vportal.py`
 - `tests/e2e/test_vportal_integration.py`
 - `tests/e2e/test_vportal_store.py`

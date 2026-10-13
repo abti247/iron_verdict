@@ -14,13 +14,22 @@ src/iron_verdict/static/
 │   ├── layout.css      # Screen-level layouts (landing, role-select, judge, display)
 │   └── animations.css  # Keyframes and transition classes
 ├── js/
-│   ├── constants.js    # Static data (CARD_REASONS, role name mappings)
+│   ├── init.js         # Entry point: demo params, boot (i18n, fonts, Alpine), popstate → connection
+│   ├── app.js          # Bootstrap: registers stores and screen components with Alpine, starts the app
+│   ├── connection.js   # The one WebSocket owner: join/leave flows, reload recovery start, message dispatch
+│   ├── handlers.js     # One handler per incoming WS message type — writes the stores
+│   ├── navigation.js   # Alpine.store('nav') — current screen and browser history
+│   ├── sessionStore.js # Alpine.store('session') — code, role, connection, landing form
+│   ├── judgeStore.js   # Alpine.store('judge') — vote and result of the judge screen
+│   ├── displayStore.js # Alpine.store('display') — lights, reasons, verdict of the display
+│   ├── settingsStore.js# Alpine.store('settings') — lift type, show/require reasons
+│   ├── timer.js        # Countdown interval and Alpine.store('timer')
+│   ├── vportalStore.js # Alpine.store('vportal') — connect dialog and display overlay
 │   ├── websocket.js    # WebSocket connection, send/receive, reconnection
-│   ├── timer.js        # Timer countdown logic (startTimerCountdown, stopTimer)
-│   ├── app.js          # Alpine.js component (ironVerdictApp) — imports from above modules
-│   ├── vportalStore.js # VPortal state as Alpine.store('vportal') — connect dialog and display overlay
-│   ├── sessionStore.js # Shared session state as Alpine.store('session') — code, role, connection
-│   └── init.js         # Demo param detection, popstate handler, Alpine bootstrap
+│   ├── constants.js    # Static data (CARD_REASONS, role name mappings)
+│   ├── …               # Helpers: voteDelivery, reloadRecovery, roleTakeover, i18n, vportal*
+│   └── screens/        # One Alpine component per screen (landing, contact, demoIntro,
+│                       # reconnecting, roleSelect, judge, display)
 ```
 
 ## Rules
@@ -38,7 +47,10 @@ src/iron_verdict/static/
 
 ### JavaScript
 - Use ES modules (`export`/`import`) for all JS files. The entry point (`init.js`) is loaded with `<script type="module">`.
-- Alpine.js component data (`ironVerdictApp`) lives in `app.js` and imports helpers from other modules. VPortal state lives in `vportalStore.js` (`Alpine.store('vportal')`), state shared by several screens (session code, name, kind, role, `isHead`, connection status, judge connectivity) in `sessionStore.js` (`Alpine.store('session')`) — never in `ironVerdictApp`.
+- One Alpine component per screen in `js/screens/`, registered in `app.js` and placed on the screen's root element in `index.html`. A component holds only UI state of its screen (zoom, open panel, scroll hint, a form shown only there).
+- State the server drives or several screens read lives in a store (`session`, `nav`, `judge`, `display`, `timer`, `settings`, `vportal`) — never in a screen component. Incoming messages reach it through `handlers.js`, never through browser events: a screen that is not in the DOM (`x-if`) would miss them.
+- The WebSocket and the join/leave flows belong to `connection.js` only. Screens call its functions; they never open a socket or start/stop the VPortal overlay themselves.
+- `<template x-if>` for screens without state that must survive (landing, contact, privacy, demo intro, reconnecting); `x-show` for role-select, judge and display. `data-testid` goes on the element inside the template.
 - WebSocket message handling (`handleMessage`) should dispatch to named handler functions, not be a single long if/else chain.
 - All static data (card reasons, role mappings, display names) belongs in `constants.js`, not inline in component logic.
 - Never manipulate DOM directly (`document.body.classList`, `document.querySelector`) inside Alpine components — use Alpine's reactive bindings (`:class`, `x-bind`) instead.
@@ -47,7 +59,6 @@ src/iron_verdict/static/
 - **Split by concern, not by line count.** A file is too big when it mixes responsibilities (e.g. VPortal state, timer and vote handling in one component) or when you can no longer name its single purpose in one sentence — not when it crosses a number.
 - **~200 lines is a review signal, not a limit.** When a file grows past it, check whether it still has one concern. If yes, leave it; if no, split along the concern boundary. Never trim or squash code just to get under a number.
 - Prefer many small, focused files over few large ones when the split follows a real boundary; a split that scatters one concern across files is worse than a long file.
-- **Known exception:** `js/app.js` mixes several concerns (all screens, shared state) in one Alpine component. It is being split by the refactoring issues [#65](https://github.com/abti247/iron_verdict/issues/65) (VPortal state into `Alpine.store('vportal')`, done), [#66](https://github.com/abti247/iron_verdict/issues/66) (shared state into `Alpine.store('session')`, done) and [#67](https://github.com/abti247/iron_verdict/issues/67) (one component per screen). Until then: do not grow `app.js` further — put new logic in a new module and import it.
 
 ### Adding New Features
 - New UI components get their own CSS class in `components.css` (or a new CSS file if the component is complex).

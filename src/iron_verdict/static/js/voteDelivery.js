@@ -52,76 +52,77 @@ export function rejectionKey(code) {
     return REJECTION_KEYS[code] || REJECTION_KEYS.invalid;
 }
 
-// Alpine component methods, spread into ironVerdictApp().
+// Vote delivery methods of the judge store (judgeStore.js); `this` is the store.
+// session: the session store (code, role); send: sends a message over the socket.
 // The pending vote is also kept in memory (_pendingVote) so a failing sessionStorage
 // write cannot silently lose it on reconnect; storage only adds reload survival.
-export const voteDeliveryMethods = {
-    _pendingVote: null,
+export function createVoteDeliveryMethods({ session, send, storage = sessionStorage }) {
+    return {
+        clearPendingVote() {
+            this._pendingVote = null;
+            clearPendingVote(storage);
+        },
 
-    clearPendingVote() {
-        this._pendingVote = null;
-        clearPendingVote(sessionStorage);
-    },
+        lockVote() {
+            if (!this.canLockIn()) return;
+            const vote = {
+                code: session.code,
+                role: session.role,
+                lift_id: this.liftId,
+                color: this.selectedVote,
+                reason: this.selectedVote !== 'white' ? this.selectedReason : null,
+            };
+            this.voteError = '';
+            this.voteState = 'sending';
+            this._pendingVote = vote;
+            savePendingVote(storage, vote);
+            // If the socket is not open this send is dropped by websocket.js; the vote stays
+            // pending and is resent from handleJoinSuccess once the connection is back.
+            send(voteLockMessage(vote));
+        },
 
-    lockVote() {
-        if (!this.canLockIn()) return;
-        const vote = {
-            code: this.$store.session.code,
-            role: this.$store.session.role,
-            lift_id: this.liftId,
-            color: this.selectedVote,
-            reason: this.selectedVote !== 'white' ? this.selectedReason : null,
-        };
-        this.voteError = '';
-        this.voteState = 'sending';
-        this._pendingVote = vote;
-        savePendingVote(sessionStorage, vote);
-        // If the socket is not open this send is dropped by websocket.js; the vote stays
-        // pending and is resent from handleJoinSuccess once the connection is back.
-        this.wsSend(voteLockMessage(vote));
-    },
-
-    applyVoteAck(message) {
-        if (message.lift_id != null && this.liftId != null && message.lift_id !== this.liftId) {
-            return;  // ack for a lift this screen has already left (reset_for_next_lift arrived first)
-        }
-        this.clearPendingVote();
-        this.voteState = 'confirmed';
-        this.voteError = '';
-        this.selectedVote = message.color;
-        this.selectedReason = message.reason ?? null;
-    },
-
-    applyVoteRejected(message) {
-        this.clearPendingVote();
-        this.voteState = 'open';
-        this.voteError = rejectionKey(message.code);
-        if (message.code === 'lift_changed') {
-            this.selectedVote = null;
-            this.selectedReason = null;
-            this.showingReasonStep = false;
-        }
-    },
-
-    reconcileVoteAfterJoin(serverJudge) {
-        const pending = loadPendingVote(sessionStorage, this.$store.session.code, this.$store.session.role) || this._pendingVote;
-        const result = reconcileVote(serverJudge, pending);
-        if (result.action === 'confirmed') {
+        applyVoteAck(message) {
+            if (message.lift_id != null && this.liftId != null && message.lift_id !== this.liftId) {
+                return;  // ack for a lift this screen has already left (reset_for_next_lift arrived first)
+            }
             this.clearPendingVote();
             this.voteState = 'confirmed';
-            this.selectedVote = result.color;
-            this.selectedReason = result.reason;
-        } else if (result.action === 'resend') {
-            this._pendingVote = result.vote;
-            this.voteState = 'sending';
-            this.selectedVote = result.vote.color;
-            this.selectedReason = result.vote.reason;
-            this.showingReasonStep = result.vote.color !== 'white';
-            this.wsSend(voteLockMessage(result.vote));
-        } else if (this.voteState !== 'open') {
-            // Locally locked but unknown to the server: the lift was reset while this
-            // screen was offline. Show the open state the server actually has.
-            this.resetVoting();
-        }
-    },
-};
+            this.voteError = '';
+            this.selectedVote = message.color;
+            this.selectedReason = message.reason ?? null;
+        },
+
+        applyVoteRejected(message) {
+            this.clearPendingVote();
+            this.voteState = 'open';
+            this.voteError = rejectionKey(message.code);
+            if (message.code === 'lift_changed') {
+                this.selectedVote = null;
+                this.selectedReason = null;
+                this.showingReasonStep = false;
+            }
+        },
+
+        reconcileVoteAfterJoin(serverJudge) {
+            const pending = loadPendingVote(storage, session.code, session.role) || this._pendingVote;
+            const result = reconcileVote(serverJudge, pending);
+            if (result.action === 'confirmed') {
+                this.clearPendingVote();
+                this.voteState = 'confirmed';
+                this.selectedVote = result.color;
+                this.selectedReason = result.reason;
+            } else if (result.action === 'resend') {
+                this._pendingVote = result.vote;
+                this.voteState = 'sending';
+                this.selectedVote = result.vote.color;
+                this.selectedReason = result.vote.reason;
+                this.showingReasonStep = result.vote.color !== 'white';
+                send(voteLockMessage(result.vote));
+            } else if (this.voteState !== 'open') {
+                // Locally locked but unknown to the server: the lift was reset while this
+                // screen was offline. Show the open state the server actually has.
+                this.resetVoting();
+            }
+        },
+    };
+}

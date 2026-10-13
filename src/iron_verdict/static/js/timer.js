@@ -22,3 +22,31 @@ export function stopTimer() {
         timerInterval = null;
     }
 }
+
+// The countdown shown on the judge and display screens, registered as
+// Alpine.store('timer'). Started, frozen and reset by connection.js from server messages.
+export function createTimerStore() {
+    return {
+        display: '60',
+        expired: false,
+
+        start(ms) {
+            startTimerCountdown(ms, (seconds, expired) => {
+                this.display = seconds;
+                this.expired = expired;
+            });
+        },
+
+        // Results are in: stop counting and show the time the server froze.
+        freeze(frozenMs) {
+            stopTimer();
+            if (frozenMs != null) this.display = String(Math.ceil(frozenMs / 1000));
+        },
+
+        reset() {
+            stopTimer();
+            this.display = '60';
+            this.expired = false;
+        },
+    };
+}

@@ -4,51 +4,47 @@
 // lookup leaves it for the judge, display or role-select screen; a session that
 // no longer exists leads to the landing screen with an inline message.
 
-export const reloadRecoveryMethods = {
-    // Called from init(). Returns true if a stored session is being restored.
-    restoreStoredSession() {
-        const stored = sessionStorage.getItem('iv_session');
-        if (!stored) return false;
-        let code, role;
-        try {
-            ({ code, role } = JSON.parse(stored));
-        } catch (_e) {
-            code = null;
-        }
-        // A session code always has 8 characters; anything else cannot be restored.
-        if (typeof code !== 'string' || code.length !== 8) {
-            sessionStorage.removeItem('iv_session');
-            return false;
-        }
-        this.$store.session.code = code;
-        this.joinCode = code;
-        // Set before the first render, so no other screen is ever painted.
-        this.screen = 'reconnecting';
-        // The next screen change replaces the history entry instead of pushing one,
-        // so the back-stack keeps the depth it had before the reload (mobile swipe-back).
-        this._navigateInPlaceNext = true;
-        if (role) {
-            this.joinSession(role);
-        } else {
-            this.joinExistingSession();
-        }
-        return true;
-    },
+// `c` is the connection (connection.js): its stores, storage and flows.
 
-    cancelReconnect() {
-        this.returnToLanding();
-    },
+// Called on start. Returns true if a stored session is being restored.
+export function restoreStoredSession(c) {
+    const stored = c.storage.getItem('iv_session');
+    if (!stored) return false;
+    let code, role;
+    try {
+        ({ code, role } = JSON.parse(stored));
+    } catch (_e) {
+        code = null;
+    }
+    // A session code always has 8 characters; anything else cannot be restored.
+    if (typeof code !== 'string' || code.length !== 8) {
+        c.storage.removeItem('iv_session');
+        return false;
+    }
+    c.session.code = code;
+    c.session.joinCode = code;
+    // Set before the first render, so no other screen is ever painted.
+    c.nav.screen = 'reconnecting';
+    // The next screen change replaces the history entry instead of pushing one,
+    // so the back-stack keeps the depth it had before the reload (mobile swipe-back).
+    c.nav.navigateInPlaceNext = true;
+    if (role) {
+        c.joinSession(role);
+    } else {
+        c.lookupSession();
+    }
+    return true;
+}
 
-    // True if an async step started during reload recovery finished after Cancel.
-    isReconnectCancelled(startedWhileReconnecting) {
-        return startedWhileReconnecting && this.screen !== 'reconnecting';
-    },
+// True if an async step started during reload recovery finished after Cancel.
+export function isReconnectCancelled(c, startedWhileReconnecting) {
+    return startedWhileReconnecting && c.nav.screen !== 'reconnecting';
+}
 
-    // The stored session no longer exists (ended or expired): back to landing with
-    // an inline message instead of a popup.
-    failReconnectSessionGone() {
-        const code = this.$store.session.code;
-        this.returnToLanding();
-        this.joinError = t('reconnecting.sessionGone').replace('{code}', code);
-    },
-};
+// The stored session no longer exists (ended or expired): back to landing with
+// an inline message instead of a popup.
+export function failReconnectSessionGone(c) {
+    const code = c.session.code;
+    c.returnToLanding();
+    c.session.joinError = c.t('reconnecting.sessionGone').replace('{code}', code);
+}
