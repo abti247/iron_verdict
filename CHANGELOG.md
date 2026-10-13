@@ -11,6 +11,8 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ### Changed
 
 ### Fixed
+- When the VPortal login fails, the dialog says why (VPortal not reachable, no session returned, token request rejected) instead of a bare error code, and the server log records the cause
+- If loading the VPortal stages fails after login, the dialog shows an error instead of "Loading stages…" forever
 
 ### Removed
 
