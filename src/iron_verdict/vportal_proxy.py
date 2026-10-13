@@ -135,6 +135,26 @@ class GraphQLRequest(BaseModel):
     variables: dict | None = None
 
 
+# Why 424 for upstream failures on /login (issue #100): Cloudflare in front of
+# the deployment replaces the body of an origin 502 with its own error page, so
+# the reason never reached the operator's dialog. A non-5xx status passes
+# through unchanged. `reason` is a fixed code the frontend maps to a message.
+_LOGIN_UPSTREAM_FAILED = 424
+
+
+def _login_failed(host: str, reason: str, *, detail_extra: dict | None = None, **log_fields) -> HTTPException:
+    """Log one structured warning for a failed login and build the HTTP error.
+
+    Callers pass only statuses, header values and cookie *names* — never cookie
+    values, credentials or response bodies.
+    """
+    logger.warning("vportal_login_failed", extra={"reason": reason, "host": host, **log_fields})
+    return HTTPException(
+        status_code=_LOGIN_UPSTREAM_FAILED,
+        detail={"reason": reason, **(detail_extra or {})},
+    )
+
+
 @router.post("/login")
 async def login(body: LoginRequest):
     _validate_host(body.host)
@@ -149,15 +169,27 @@ async def login(body: LoginRequest):
         # actual auth check happens at /auth/token. Cookie presence is the
         # success signal for "the form was processed," not "the credentials
         # were valid."
-        login_resp = await http.post(
-            f"{base}/account/login",
-            files={
-                "identity": (None, body.identity),
-                "credential": (None, body.credential),
-            },
-            headers={"Accept-Language": "de"},
-            follow_redirects=False,
-        )
+        try:
+            login_resp = await http.post(
+                f"{base}/account/login",
+                files={
+                    "identity": (None, body.identity),
+                    "credential": (None, body.credential),
+                },
+                headers={"Accept-Language": "de"},
+                follow_redirects=False,
+            )
+        except httpx.TransportError as exc:
+            raise _login_failed(
+                body.host, "unreachable",
+                upstream_path="/account/login", error=type(exc).__name__,
+            )
+
+        login_log = {
+            "login_status": login_resp.status_code,
+            "login_location": login_resp.headers.get("location"),
+            "cookie_names": sorted(login_resp.cookies.keys()),
+        }
 
         # Use httpx's parsed cookies rather than splitting Set-Cookie on commas —
         # the standard cookielib parser handles commas inside expires=... correctly.
@@ -169,18 +201,32 @@ async def login(body: LoginRequest):
             if vportal_cookie_value:
                 break
         else:
-            raise HTTPException(status_code=502, detail="VPortal did not return a session cookie")
+            raise _login_failed(body.host, "no_session_cookie", **login_log)
 
         # Step 2: GET /auth/token with the cookie. This is where VPortal
         # validates the underlying credentials — a pre-auth cookie issued
         # for wrong credentials gets rejected here with 401/403.
-        token_resp = await http.get(
-            f"{base}/auth/token",
-            headers={
-                "cookie": f"{vportal_cookie_name}={vportal_cookie_value}",
-                "Accept-Language": "de",
-            },
-        )
+        try:
+            token_resp = await http.get(
+                f"{base}/auth/token",
+                headers={
+                    "cookie": f"{vportal_cookie_name}={vportal_cookie_value}",
+                    "Accept-Language": "de",
+                },
+            )
+        except httpx.TransportError as exc:
+            raise _login_failed(
+                body.host, "unreachable",
+                upstream_path="/auth/token", error=type(exc).__name__, **login_log,
+            )
+
+        token_log = {
+            **login_log,
+            "token_status": token_resp.status_code,
+            "token_location": token_resp.headers.get("location"),
+            "content_type": token_resp.headers.get("content-type"),
+        }
+
         # Treat redirects and 4xx-class statuses on /auth/token as auth
         # failures. Real VPortal returns 302 (redirect back to /login) when
         # the pre-auth cookie can't be exchanged — verified at staging
@@ -188,16 +234,18 @@ async def login(body: LoginRequest):
         if token_resp.status_code in (302, 401, 403):
             raise HTTPException(status_code=401, detail="Invalid VPortal credentials")
         if token_resp.status_code != 200:
-            logger.warning(
-                "vportal_token_exchange_failed",
-                extra={"upstream_status": token_resp.status_code},
+            raise _login_failed(
+                body.host, "token_exchange_failed",
+                detail_extra={"upstream_status": token_resp.status_code}, **token_log,
             )
-            raise HTTPException(status_code=502, detail="VPortal token exchange failed")
 
-        token_payload = token_resp.json()
-        access_token = token_payload.get("access_token")
+        try:
+            token_payload = token_resp.json()
+        except ValueError:
+            token_payload = None
+        access_token = token_payload.get("access_token") if isinstance(token_payload, dict) else None
         if not access_token:
-            raise HTTPException(status_code=502, detail="VPortal token response missing access_token")
+            raise _login_failed(body.host, "missing_access_token", **token_log)
 
         return {
             "access_token": access_token,

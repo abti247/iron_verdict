@@ -60,3 +60,32 @@ def test_json_formatter_includes_vportal_fields():
     assert parsed["host"] == "staging-bvdk.vportal-online.de"
     assert parsed["kind"] == "vportal"
     assert parsed["first_field"] == "secretAdminQuery"
+
+
+def test_json_formatter_includes_vportal_login_failure_fields():
+    # Why: issue #100 — a failed VPortal login must leave enough context in the
+    # server log to find the cause without staging access.
+    formatter = JsonFormatter()
+    record = logging.LogRecord(
+        name="iron_verdict", level=logging.WARNING, pathname="", lineno=0,
+        msg="vportal_login_failed", args=(), exc_info=None,
+    )
+    record.reason = "token_exchange_failed"
+    record.login_status = 302
+    record.login_location = "/dashboard"
+    record.cookie_names = ["__Host-VPORTAL"]
+    record.token_status = 500
+    record.token_location = None
+    record.content_type = "text/html"
+    record.upstream_path = "/auth/token"
+    record.error = "ConnectError"
+    parsed = json.loads(formatter.format(record))
+    assert parsed["reason"] == "token_exchange_failed"
+    assert parsed["login_status"] == 302
+    assert parsed["login_location"] == "/dashboard"
+    assert parsed["cookie_names"] == ["__Host-VPORTAL"]
+    assert parsed["token_status"] == 500
+    assert parsed["token_location"] is None
+    assert parsed["content_type"] == "text/html"
+    assert parsed["upstream_path"] == "/auth/token"
+    assert parsed["error"] == "ConnectError"
