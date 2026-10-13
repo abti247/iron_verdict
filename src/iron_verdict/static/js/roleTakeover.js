@@ -42,8 +42,13 @@ export const roleTakeoverMethods = {
     // Give up rejoining: role-select of the same session (drops the reconnect token
     // and closes the socket) with a notice naming the position.
     failRoleTakenOver() {
-        const notice = roleTakenNotice(t, this.role);
+        const role = this.role;
         this.returnToRoleSelection();
-        this.roleNotice = notice;
+        this.roleTakenOver = role;
+    },
+
+    // Rendered on each language change, so the notice follows the language toggle.
+    roleTakenOverNotice() {
+        return this.roleTakenOver ? roleTakenNotice(t, this.roleTakenOver) : '';
     },
 };

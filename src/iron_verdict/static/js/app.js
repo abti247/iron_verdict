@@ -35,7 +35,7 @@ export function ironVerdictApp() {
         joinCode: '',
         joinError: '',
         joinChecking: false,
-        roleNotice: '',     // role-select notice, e.g. position taken by another device
+        roleTakenOver: '',  // role whose position another device took; shows the role-select notice
         _roleTaken: createRoleTakenTracker(),  // "Role already taken" streak, see roleTakeover.js
         role: '',
         isHead: false,
@@ -278,7 +278,7 @@ export function ironVerdictApp() {
 
         joinSession(role) {
             this.role = role;
-            this.roleNotice = '';
+            this.roleTakenOver = '';
             this._roleTaken.reset();
             const code = this.sessionCode || this.joinCode;
             this.sessionCode = code;
@@ -500,7 +500,7 @@ export function ironVerdictApp() {
             this.sessionName = '';
             this.newSessionName = '';
             this.joinError = '';
-            this.roleNotice = '';
+            this.roleTakenOver = '';
         },
 
         returnToRoleSelection() {

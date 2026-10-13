@@ -62,10 +62,13 @@ def test_reloaded_device_with_taken_role_shows_notice_on_role_select(competition
     expect(device_a.locator(NOTICE)).to_be_visible(timeout=GIVE_UP_TIMEOUT_MS)
     expect(device_a.locator(NOTICE)).to_have_text("Left Judge is now signed in on another device")
     expect(device_a.locator(".role-wrap .session-tag .code")).to_have_text(competition.session_code)
+    device_a.locator(".lang-toggle-btn", has_text="DE").click()
+    expect(device_a.locator(NOTICE)).to_have_text("KARI Links ist inzwischen auf einem anderen Gerät angemeldet")
     assert _stored_session(device_a) == {"code": competition.session_code}
     assert dialogs == []
 
-    # The retry loop has ended: no further connection attempts.
+    # The retry loop has ended: no further connection attempts. While it ran, a
+    # rejected attempt was retried every ~0.5 s, so 2 s would show several.
     sockets = device_a.evaluate("window.__ivSocketCount()")
     device_a.wait_for_timeout(2000)
     assert device_a.evaluate("window.__ivSocketCount()") == sockets

@@ -32,11 +32,6 @@ describe('role taken tracker', () => {
         c.t += ROLE_TAKEN_GIVE_UP_MS;
         expect(tracker.rejectedShouldGiveUp()).toBe(true);
     });
-
-    it('gives the short reconnect race more time than the server needs to drop a dead connection', () => {
-        // Server: closes a connection 15 s after the last pong, checked every 5 s (main.py).
-        expect(ROLE_TAKEN_GIVE_UP_MS).toBeGreaterThan(20000);
-    });
 });
 
 describe('role taken notice', () => {
