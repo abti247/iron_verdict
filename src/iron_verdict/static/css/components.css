@@ -386,17 +386,23 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
    on Windows/Linux downloads its hyphenation dictionaries on demand (#114).
    The judge results row pads half a gap on both sides so its outer reasons
    stay on screen; the display row does not, `.display-full` padding covers
-   it there and the row stays narrow enough for portrait displays. */
+   it there and the row stays narrow enough for portrait displays.
+   The wrap reserves light + card + three lines of reason, so the lights do
+   not move when a reason appears either; a longer reason still grows it. */
 .display-orb-wrap {
+    --orb-size: calc(clamp(38px, 19.2vmin, 224px) * var(--display-zoom, 1));
+    --orb-reason-size: calc(clamp(13px, 3.52vmin, 41px) * var(--display-zoom, 1));
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 1rem;
-    width: calc(clamp(38px, 19.2vmin, 224px) * var(--display-zoom, 1));
+    width: var(--orb-size);
+    /* light + card (20 % of the light) + 2 gaps + 3 reason lines */
+    min-height: calc(var(--orb-size) * 1.2 + 2rem + 3 * 1.3 * var(--orb-reason-size));
 }
 
 .display-orb-reason {
-    font-size: calc(clamp(13px, 3.52vmin, 41px) * var(--display-zoom, 1));
+    font-size: var(--orb-reason-size);
     color: rgba(255, 255, 255, 0.85);
     text-align: center;
     width: min-content;
@@ -447,15 +453,30 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     border-color: #DC2626;
     box-shadow: 0 0 50px rgba(220,38,38,0.4), 0 0 100px rgba(220,38,38,0.15);
 }
-.display-orb.blue {
-    background: radial-gradient(circle at 35% 35%, #3B82F6, #1E3A8A);
-    border-color: #2563EB;
-    box-shadow: 0 0 50px rgba(59,130,246,0.4), 0 0 100px rgba(59,130,246,0.15);
+
+/* Card under a red light: the colour of the judge's card (#115). Always in the
+   layout (hidden without a card), so neither the lights nor the reason move
+   when it appears. 40 % × 20 % of the light, scales with it and the zoom. */
+.display-orb-card {
+    width: 40%;
+    aspect-ratio: 2 / 1;
+    border-radius: calc(4px * var(--display-zoom, 1));
+    visibility: hidden;
 }
-.display-orb.yellow {
-    background: radial-gradient(circle at 35% 35%, #FBBF24, #78350F);
-    border-color: #EAB308;
-    box-shadow: 0 0 50px rgba(251,191,36,0.4), 0 0 100px rgba(251,191,36,0.15);
+.display-orb-card.red {
+    visibility: visible;
+    background: var(--vote-red);
+    box-shadow: 0 0 24px rgba(220,38,38,0.35);
+}
+.display-orb-card.blue {
+    visibility: visible;
+    background: var(--vote-blue);
+    box-shadow: 0 0 24px rgba(59,130,246,0.35);
+}
+.display-orb-card.yellow {
+    visibility: visible;
+    background: var(--vote-yellow);
+    box-shadow: 0 0 24px rgba(251,191,36,0.35);
 }
 
 /* ===== JUDGE RESULTS PANEL ===== */
@@ -479,6 +500,12 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     height: 54px;
 }
 
+/* Larger relative to the small light, so the card stays readable on phones. */
+.judge-result-orb-wrap .display-orb-card {
+    width: 27px;  /* 50 % of .display-orb--sm */
+    border-radius: 3px;
+}
+
 /* ===== VERDICT ===== */
 .display-status {
     font-family: 'Rajdhani', sans-serif;
@@ -487,6 +514,10 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     letter-spacing: calc(clamp(2px, 0.4vmin, 8px) * var(--display-zoom, 1));
     text-transform: uppercase;
     color: var(--text-dim);
+    /* Keeps its line when "Waiting…" is cleared, so the lights do not move
+       when the result arrives. */
+    line-height: 1.2;
+    min-height: 1.2em;
 }
 
 .display-verdict {

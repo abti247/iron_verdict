@@ -5,7 +5,8 @@ from playwright.sync_api import expect
 
 
 def test_full_lift_cycle(competition):
-    """Create → 3 judges join → all vote white → results → next lift → vote again."""
+    """Create → 3 judges join → all vote white → results → next lift → vote again
+    (one blue vote: red light with blue card on the display) → end session."""
     head, left, right = competition.join_all_judges()
     display = competition.join_as("display")
 
@@ -38,11 +39,18 @@ def test_full_lift_cycle(competition):
 
     # -- Round 2: mixed votes ------------------------------------------------
     competition.vote_and_lock(head, "white")
-    competition.vote_and_lock(left, "red")
+    competition.vote_and_lock(left, "blue")
     competition.vote_and_lock(right, "white")
 
-    # 2 white + 1 red = "Good Lift" (majority white)
+    # 2 white + 1 blue = "Good Lift" (majority white)
     expect(display.locator(".verdict-stamp")).to_have_text("Good Lift")
+
+    # Blue vote: red light with a blue card below; no card under white lights
+    left_wrap, center_wrap = display.locator(".display-full .display-orb-wrap").all()[:2]
+    expect(left_wrap.locator(".display-orb")).to_have_class(re.compile(r"\bred\b"))
+    expect(left_wrap.locator(".display-orb-card")).to_have_class(re.compile(r"\bblue\b"))
+    expect(left_wrap.locator(".display-orb-card")).to_be_visible()
+    expect(center_wrap.locator(".display-orb-card")).to_be_hidden()
 
     # -- End Session ---------------------------------------------------------
     head.get_by_role("button", name="End Session").click()

@@ -2,6 +2,8 @@
 // Alpine.store('display'). Written by connection.js from show_results and
 // reset_for_next_lift; the display screen only reads it.
 
+import { lightColor, cardColor } from './voteLight.js';
+
 const NO_VOTES = () => ({ left: null, center: null, right: null });
 
 export function createDisplayStore() {
@@ -25,6 +27,10 @@ export function createDisplayStore() {
             this.reasons = NO_VOTES();
             this.phase = 'idle';
         },
+
+        // CSS classes of the light and the card under it at a position.
+        lightClass(pos) { return lightColor(this.votes[pos]); },
+        cardClass(pos) { return cardColor(this.votes[pos]); },
 
         isValidLift() {
             const whiteCount = Object.values(this.votes).filter(c => c === 'white').length;
