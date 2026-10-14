@@ -272,7 +272,6 @@
     grid-template-columns: repeat(3, 1fr);
     justify-items: center;
     column-gap: var(--orb-reason-gap);
-    padding: 0 calc(var(--orb-reason-gap) / 2);
 }
 
 /* ===== RESPONSIVE ===== */

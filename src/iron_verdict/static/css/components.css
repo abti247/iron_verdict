@@ -382,8 +382,10 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
    the wrap symmetrically: at least light-wide, as wide as its longest word,
    at most half the column gap into the neighbour's side. A word wider than
    that breaks without a hyphen — no `hyphens: auto`, Chrome on Windows/Linux
-   downloads its hyphenation dictionaries on demand (#114). The rows pad half
-   a gap on both sides so the outer reasons stay inside them. */
+   downloads its hyphenation dictionaries on demand (#114). The judge results
+   row pads half a gap on both sides so its outer reasons stay on screen; the
+   display row does not, `.display-full` padding covers it there and the row
+   stays narrow enough for portrait displays. */
 .display-orb-wrap {
     display: flex;
     flex-direction: column;

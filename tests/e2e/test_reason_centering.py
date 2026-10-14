@@ -2,8 +2,8 @@
 
 Each check measures every light/reason pair: the centre of the rendered text
 must sit under the centre of the light, no text may overflow its box, a box
-may reach at most half the gap towards its neighbour nor leave the row or the
-screen, and the lights must not move when reasons appear.
+may reach at most half the gap towards its neighbour nor leave the screen
+(judge: the results row), and the lights must not move when reasons appear.
 """
 
 import json
@@ -16,11 +16,13 @@ LOCALES = Path(__file__).resolve().parents[2] / "src" / "iron_verdict" / "static
 # Display: the lights row; judge: the small results panel.
 DISPLAY = ".display-lights"
 JUDGE = ".judge-results-orbs"
+# What a reason box must stay inside of: the display screen, the results row.
+BOUNDS = {DISPLAY: ".display-full", JUDGE: JUDGE}
 
-MEASURE_JS = """(container) => {
+MEASURE_JS = """([container, bounds]) => {
     const root = document.querySelector(container);
     const gap = parseFloat(getComputedStyle(root).columnGap);
-    const row = root.getBoundingClientRect();
+    const row = document.querySelector(bounds).getBoundingClientRect();
     return [...root.children].map((wrap) => {
         const orb = wrap.querySelector('.display-orb').getBoundingClientRect();
         const el = wrap.querySelector('.display-orb-reason');
@@ -68,7 +70,7 @@ def _all_reasons():
 
 
 def _assert_centered(page, container, orb_centers_before=None):
-    pairs = page.evaluate(MEASURE_JS, container)
+    pairs = page.evaluate(MEASURE_JS, [container, BOUNDS[container]])
     for pair in pairs:
         if "reason" not in pair:
             continue
@@ -90,7 +92,7 @@ def _assert_centered(page, container, orb_centers_before=None):
 
 
 def _orb_centers(page, container):
-    return [p["orbCenter"] for p in page.evaluate(MEASURE_JS, container)]
+    return [p["orbCenter"] for p in page.evaluate(MEASURE_JS, [container, BOUNDS[container]])]
 
 
 def _sweep(page, container, store_js):
@@ -103,9 +105,9 @@ def _sweep(page, container, store_js):
         batch = (labels[i:i + 3] + labels[:3])[:3]
         page.evaluate(store_js, batch)
         page.wait_for_function(
-            "([c, n]) => [...document.querySelectorAll(c + ' .display-orb-reason')]"
-            ".filter(el => getComputedStyle(el).display !== 'none' && el.textContent).length === n",
-            arg=[container, 3],
+            "([c, texts]) => JSON.stringify([...document.querySelectorAll(c + ' .display-orb-reason')]"
+            ".map(el => getComputedStyle(el).display !== 'none' && el.textContent)) === JSON.stringify(texts)",
+            arg=[container, batch],
         )
         _assert_centered(page, container, before)
 
