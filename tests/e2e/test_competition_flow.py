@@ -32,8 +32,8 @@ def test_full_lift_cycle(competition):
         expect(p.locator(".locked-status")).not_to_be_visible()
         expect(p.locator(".vote-btn.vote-white")).to_be_enabled()
 
-    # Display resets — verdict parent uses visibility:hidden (not display:none)
-    expect(display.locator(".display-verdict-inline")).to_have_css(
+    # Display resets — verdict uses visibility:hidden (not display:none)
+    expect(display.locator(".verdict-stamp")).to_have_css(
         "visibility", "hidden"
     )
 

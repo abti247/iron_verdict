@@ -141,3 +141,53 @@ def test_light_and_card_survive_display_reload_and_reconnect(competition):
         "center": ("white", None, False),
         "right": ("red", "red", False),
     })
+
+
+def resize(page, width, height):
+    """Resize and wait until the lights' size transition (0.3 s) has finished."""
+    page.set_viewport_size({"width": width, "height": height})
+    page.wait_for_function(
+        "document.getAnimations().every(a => !(a instanceof CSSTransition) || a.playState === 'finished')"
+    )
+
+
+def vertical_bounds(page):
+    return page.evaluate("""() => {
+        const timer = document.querySelector('.display-timer-big').getBoundingClientRect();
+        const verdict = document.querySelector('.display-verdict-inline').getBoundingClientRect();
+        return [timer.top, verdict.bottom, window.innerHeight];
+    }""")
+
+
+def test_display_fits_screen_at_max_zoom(competition):
+    """The space kept free for card and reason must not push the timer or the
+    verdict off screen: on 1920×1080, 1366×768 and 1280×720 at the largest zoom
+    (1.5, restored from the display settings after a reload), timer and verdict
+    stay inside the screen while waiting and with a result (card + reason), and
+    the lights do not move when the result arrives.
+    """
+    head, left, right = competition.join_all_judges()
+    display = competition.join_as("display")
+    display.evaluate("localStorage.setItem('iron-verdict:display-zoom', '1.5')")
+    display.reload()
+    display.locator(".display-full").wait_for(state="visible")
+    expect(display.locator(".display-full")).to_have_attribute("style", re.compile(r"--display-zoom: 1\.5"))
+
+    viewports = ((1920, 1080), (1366, 768), (1280, 720))
+    idle_tops = {}
+    for width, height in viewports:
+        resize(display, width, height)
+        timer_top, verdict_bottom, inner = vertical_bounds(display)
+        assert timer_top >= 0 and verdict_bottom <= inner, (width, height, timer_top, verdict_bottom)
+        idle_tops[(width, height)] = orb_tops(display, DISPLAY_WRAPS)
+
+    vote(head, "white")
+    vote(left, "blue", with_reason=True)
+    vote(right, "yellow")
+    expect(display.locator(".verdict-stamp")).to_have_text("No Lift")
+
+    for width, height in viewports:
+        resize(display, width, height)
+        timer_top, verdict_bottom, inner = vertical_bounds(display)
+        assert timer_top >= 0 and verdict_bottom <= inner, (width, height, timer_top, verdict_bottom)
+        assert orb_tops(display, DISPLAY_WRAPS) == idle_tops[(width, height)], (width, height)

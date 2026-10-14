@@ -535,14 +535,15 @@
             </div>
         </div>
 
-        <!-- Verdict shown alongside orbs; always in layout to prevent orbs from shifting -->
-        <div class="display-verdict-inline" :style="$store.display.phase !== 'votes' ? 'visibility:hidden' : ''">
+        <!-- Verdict and "Waiting…" share one slot; the verdict is always in layout
+             (hidden while idle) so the orbs never shift -->
+        <div class="display-verdict-inline">
             <div class="verdict-stamp"
+                 :style="$store.display.phase !== 'votes' ? 'visibility:hidden' : ''"
                  :class="$store.display.isValidLift() ? 'valid' : 'invalid'"
                  x-text="$store.display.isValidLift() ? t('verdict.goodLift') : t('verdict.noLift')"></div>
+            <div class="display-status" x-show="$store.display.phase === 'idle'" x-text="t('display.waiting')"></div>
         </div>
-
-        <div class="display-status" x-text="$store.display.phase === 'idle' ? t('display.waiting') : ''"></div>
 
         <div class="vportal-corner vportal-corner-left" x-show="$store.vportal.displayAttempt">
             <div class="vportal-corner-name" x-text="$store.vportal.displayAttempt?.firstName + ' ' + $store.vportal.displayAttempt?.lastName"></div>
