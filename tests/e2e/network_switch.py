@@ -48,14 +48,15 @@ def join_with_network_switch(competition, role):
     page.get_by_role("button", name="Join Session").click()
     page.locator(".role-wrap").wait_for(state="visible")
     page.locator(".role-btn", has_text=competition.ROLE_LABELS[role]).click()
-    page.locator(".judge-wrap").wait_for(state="visible")
+    page.locator(".display-full" if role == "display" else ".judge-wrap").wait_for(state="visible")
     competition.pages[role] = page
     return page
 
 
-def cut_network(page):
+def cut_network(page, conn_dot=".judge-code .conn-dot"):
+    """Cut the page's socket; pass ``conn_dot=".display-tag .conn-dot"`` for a display."""
     page.evaluate("window.__ivCutNetwork()")
-    expect(page.locator(".judge-code .conn-dot")).to_have_class(re.compile(r"\breconnecting\b"))
+    expect(page.locator(conn_dot)).to_have_class(re.compile(r"\breconnecting\b"))
 
 
 def restore_network(page):

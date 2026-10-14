@@ -226,8 +226,8 @@
     background:
         radial-gradient(circle at 50% 80%, rgba(185,28,28,0.06) 0%, transparent 50%),
         var(--bg-void);
-    padding: 40px;
-    gap: 36px;
+    padding: 12px 40px;
+    gap: 12px;
     position: relative;
     overflow: hidden;
 }
@@ -262,6 +262,9 @@
     font-size: calc(clamp(51px, 24vmin, 288px) * var(--display-zoom, 1));
     color: var(--text-chrome);
     line-height: 1;
+    /* Digits only: trims the empty descender space under them; the screen
+       height is tight at high zoom (#115). */
+    margin-bottom: -0.15em;
     font-variant-numeric: tabular-nums;
     text-shadow: 0 0 60px rgba(255,255,255,0.03);
 }

@@ -6,6 +6,7 @@
 
 import { CARD_REASONS } from './constants.js';
 import { createVoteDeliveryMethods } from './voteDelivery.js';
+import { lightColor, cardColor } from './voteLight.js';
 
 const NO_VOTES = () => ({ left: null, center: null, right: null });
 
@@ -67,6 +68,10 @@ export function createJudgeStore({ session, settings, send, storage = sessionSto
             this.resultVotes = NO_VOTES();
             this.resultReasons = NO_VOTES();
         },
+
+        // CSS classes of the result light and the card under it at a position.
+        resultLightClass(pos) { return lightColor(this.resultVotes[pos]); },
+        resultCardClass(pos) { return cardColor(this.resultVotes[pos]); },
 
         showResults(votes, reasons) {
             this.resultsShown = true;
