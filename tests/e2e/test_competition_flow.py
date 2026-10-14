@@ -10,6 +10,10 @@ def test_full_lift_cycle(competition):
     head, left, right = competition.join_all_judges()
     display = competition.join_as("display")
 
+    # Waiting text sits in the verdict's slot until the result arrives
+    expect(display.locator(".display-status")).to_have_text("Waiting for judges...")
+    expect(display.locator(".display-status")).to_be_visible()
+
     # -- Round 1: all white --------------------------------------------------
     competition.vote_all_white()
 
@@ -22,6 +26,7 @@ def test_full_lift_cycle(competition):
         expect(orb).to_have_class(re.compile(r"\bwhite\b"))
     expect(display.locator(".verdict-stamp")).to_have_text("Good Lift")
     expect(display.locator(".verdict-stamp")).to_have_class(re.compile(r"\bvalid\b"))
+    expect(display.locator(".display-status")).to_be_hidden()
 
     # -- Next Lift ------------------------------------------------------------
     head.get_by_role("button", name="Next Lift").click()
@@ -36,6 +41,7 @@ def test_full_lift_cycle(competition):
     expect(display.locator(".verdict-stamp")).to_have_css(
         "visibility", "hidden"
     )
+    expect(display.locator(".display-status")).to_be_visible()
 
     # -- Round 2: mixed votes ------------------------------------------------
     competition.vote_and_lock(head, "white")

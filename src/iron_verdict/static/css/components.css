@@ -387,7 +387,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
    The judge results row pads half a gap on both sides so its outer reasons
    stay on screen; the display row does not, `.display-full` padding covers
    it there and the row stays narrow enough for portrait displays.
-   The wrap reserves light + card + three lines of reason, so the lights do
+   The wrap reserves light + card + two lines of reason, so the lights do
    not move when a reason appears either; a longer reason still grows it. */
 .display-orb-wrap {
     --orb-size: calc(clamp(38px, 19.2vmin, 224px) * var(--display-zoom, 1));

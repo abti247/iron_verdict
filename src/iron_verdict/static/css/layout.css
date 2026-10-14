@@ -189,9 +189,6 @@
     font-size: 60px;
     color: var(--text-chrome);
     line-height: 1;
-    /* Digits only: trims the empty descender space under them; the screen
-       height is tight at high zoom (#115). */
-    margin-bottom: -0.15em;
     font-variant-numeric: tabular-nums;
 }
 
