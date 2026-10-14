@@ -7,6 +7,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Legal notice (Impressum) with contact address and e-mail; the footer link on the start page is now "Privacy & Legal Notice" ("Datenschutz & Impressum")
 
 ### Changed
 - Lights on the display and in the judges' results are only white or red; under a red light a card in the judge's colour (red, blue, yellow), with the reason text below it as before
