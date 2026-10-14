@@ -416,6 +416,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     height: 0;
     overflow: hidden;
     visibility: hidden;
+    -webkit-hyphens: none;  /* Safari < 17 */
     hyphens: none;
 }
 
