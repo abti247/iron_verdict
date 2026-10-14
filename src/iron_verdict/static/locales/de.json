@@ -134,59 +134,59 @@
       },
       "blue": {
         "softKnees": "Knie nicht gestreckt",
-        "downwardMovement": "Abwärtsbewegung"
+        "downwardMovement": "Abwärts\u00adbewegung"
       },
       "yellow": {
-        "incompleteLift": "Unvollständiger Versuch",
-        "skippedSignal": "Signal übersprungen",
-        "footMovement": "Fußbewegung",
-        "droppedBar": "Hantel abgeworfen",
+        "incompleteLift": "Unvoll\u00adständiger Versuch",
+        "skippedSignal": "Signal über\u00adsprungen",
+        "footMovement": "Fuß\u00adbewegung",
+        "droppedBar": "Hantel ab\u00adgeworfen",
         "supportingContactOnLegs": "Abstützen an den Beinen",
-        "spotterContact": "Helferkontakt",
-        "technicalNonCompliance": "Technischer Regelverstoß"
+        "spotterContact": "Helfer\u00adkontakt",
+        "technicalNonCompliance": "Tech\u00adnischer Regel\u00adverstoß"
       }
     },
     "bench": {
       "red": {
-        "elbowDepth": "Ellenbogentiefe",
-        "noChestContact": "Kein Brustkontakt"
+        "elbowDepth": "Ellen\u00adbogen\u00adtiefe",
+        "noChestContact": "Kein Brust\u00adkontakt"
       },
       "blue": {
-        "downwardMovement": "Abwärtsbewegung",
+        "downwardMovement": "Abwärts\u00adbewegung",
         "armsNotLockedAtCompletion": "Arme nicht gestreckt bei Abschluss",
         "armsNotLockedBeforeStart": "Arme nicht gestreckt vor Start"
       },
       "yellow": {
-        "incompleteLift": "Unvollständiger Versuch",
-        "skippedSignal": "Signal übersprungen",
+        "incompleteLift": "Unvoll\u00adständiger Versuch",
+        "skippedSignal": "Signal über\u00adsprungen",
         "buttocksUp": "Gesäß angehoben",
         "headShouldersUp": "Kopf/Schultern angehoben",
         "feetUp": "Füße angehoben",
-        "sinkingAfterMotionless": "Einsinken nach Stillstand",
-        "upperBodyThrust": "Oberkörperstoß",
-        "spotterContact": "Helferkontakt",
-        "handMovement": "Handbewegung",
+        "sinkingAfterMotionless": "Einsinken nach Still\u00adstand",
+        "upperBodyThrust": "Ober\u00adkörper\u00adstoß",
+        "spotterContact": "Helfer\u00adkontakt",
+        "handMovement": "Hand\u00adbewegung",
         "feetTouchedBench": "Füße berühren Bank",
-        "barContactWithRackSupports": "Hantelkontakt mit Hantelständern",
-        "technicalNonCompliance": "Technischer Regelverstoß"
+        "barContactWithRackSupports": "Hantel\u00adkontakt mit Hantel\u00adständern",
+        "technicalNonCompliance": "Tech\u00adnischer Regel\u00adverstoß"
       }
     },
     "deadlift": {
       "red": {
         "softKnees": "Knie nicht gestreckt",
         "shouldersNotBehindBar": "Schultern nicht hinter Hantel",
-        "failureToStandErect": "Kein aufrechter Stand"
+        "failureToStandErect": "Kein auf\u00adrechter Stand"
       },
       "blue": {
-        "hitching": "Unterstützung am Oberschenkel",
-        "downwardMovement": "Abwärtsbewegung"
+        "hitching": "Unter\u00adstützung am Ober\u00adschenkel",
+        "downwardMovement": "Abwärts\u00adbewegung"
       },
       "yellow": {
-        "incompleteLift": "Unvollständiger Versuch",
+        "incompleteLift": "Unvoll\u00adständiger Versuch",
         "droppedBar": "Hantel fallen gelassen",
-        "skippedSignal": "Signal übersprungen",
-        "footMovement": "Fußbewegung",
-        "technicalNonCompliance": "Technischer Regelverstoß"
+        "skippedSignal": "Signal über\u00adsprungen",
+        "footMovement": "Fuß\u00adbewegung",
+        "technicalNonCompliance": "Tech\u00adnischer Regel\u00adverstoß"
       }
     }
   },

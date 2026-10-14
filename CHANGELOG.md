@@ -14,7 +14,8 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Bench press and deadlift reasons follow the rulebook wording: "Upper body thrust", "Bar contact with rack supports", "Feet touched bench", "Shoulders not behind bar", and "Head / Shoulders up" and "Hand movement" are now separate reasons (same in German). A reason picked in a session that was running during the update may be shown once as an internal name
 
 ### Fixed
-- Reasons under the lights stay centred under their light also for long (German) words, on the display and in the judge's results; on the display they now grow and shrink with the screen size and zoom like the lights, and on phones the judge's results use a smaller font so long words fit
+- Reasons under the lights stay centred under their light also for long (German) words, on the display and in the judge's results; on the display they now grow and shrink with the screen size and zoom like the lights
+- Long German reasons that do not fit on one line break at a sensible point with a hyphen ("Hantel-ständern") instead of running past their light; on phones the judge's results use a slightly smaller font
 - When the VPortal login fails, the dialog says why (VPortal not reachable, no session returned, token request rejected) instead of a bare error code, and the server log records the cause
 - If loading the VPortal stages fails after login, the dialog shows an error instead of "Loading stages…" forever
 - A VPortal-connected display that is reloaded on a bad network shows the "VPortal disconnected" banner and fills in the lifter data on its own once the network is back, instead of staying empty until the next reload

@@ -191,11 +191,13 @@ def test_every_reason_centered_on_display(competition):
         _sweep(display, DISPLAY, SHOW_ON_DISPLAY)
 
 
-def test_every_reason_centered_in_judge_results_on_phone(competition):
+def test_every_reason_centered_in_judge_results_on_phones(competition):
     """All reasons of all disciplines in German and English are shown in the
-    judge's results panel on a 375 px wide phone, three at a time. Every
-    reason is centred under its light, fits its box and stays within half the
-    gap to its neighbour."""
+    judge's results panel on 320, 375 and 412 px wide phones, three at a time.
+    Every reason is centred under its light, fits its box, stays within half
+    the gap to its neighbour, and long German words break only at their soft
+    hyphens (so a new long reason without one fails here)."""
     head = competition.create_session_and_join_head()
-    head.set_viewport_size({"width": 375, "height": 667})
-    _sweep(head, JUDGE, SHOW_ON_JUDGE)
+    for width in (320, 375, 412):
+        head.set_viewport_size({"width": width, "height": 800})
+        _sweep(head, JUDGE, SHOW_ON_JUDGE)

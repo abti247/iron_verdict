@@ -381,11 +381,12 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
    reason appears. The reason is centred by the column flexbox and overflows
    the wrap symmetrically: at least light-wide, as wide as its longest word,
    at most half the column gap into the neighbour's side. A word wider than
-   that breaks without a hyphen — no `hyphens: auto`, Chrome on Windows/Linux
-   downloads its hyphenation dictionaries on demand (#114). The judge results
-   row pads half a gap on both sides so its outer reasons stay on screen; the
-   display row does not, `.display-full` padding covers it there and the row
-   stays narrow enough for portrait displays. */
+   that breaks at its soft hyphens (U+00AD, set by hand in the locale files),
+   or as a last resort anywhere without a hyphen. No `hyphens: auto`: Chrome
+   on Windows/Linux downloads its hyphenation dictionaries on demand (#114).
+   The judge results row pads half a gap on both sides so its outer reasons
+   stay on screen; the display row does not, `.display-full` padding covers
+   it there and the row stays narrow enough for portrait displays. */
 .display-orb-wrap {
     display: flex;
     flex-direction: column;
@@ -407,8 +408,9 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 
 .judge-results-orbs .display-orb-reason {
-    /* Shrinks on phones so the longest words fit their narrow column (#114). */
-    font-size: clamp(12px, 3.6vw, 1.29rem);
+    /* Shrinks a little on phones; long German words break at the soft
+       hyphens in de.json (#114). */
+    font-size: clamp(16px, 4.4vw, 1.29rem);
     min-width: min(144px, 100% + var(--orb-reason-gap));
 }
 
