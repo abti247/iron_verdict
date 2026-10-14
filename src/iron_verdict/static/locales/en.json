@@ -160,21 +160,21 @@
         "incompleteLift": "Incomplete lift",
         "skippedSignal": "Skipped signal",
         "buttocksUp": "Buttocks up",
-        "headUp": "Head up",
+        "headShouldersUp": "Head / Shoulders up",
         "feetUp": "Feet up",
         "sinkingAfterMotionless": "Sinking after motionless",
-        "upperBodyThrust": "Upper Body thrust",
+        "upperBodyThrust": "Upper body thrust",
         "spotterContact": "Spotter contact",
-        "shoulderHandMovement": "Shoulder / Hand movement",
-        "feetTouchedBenchOrSupports": "Feet touched bench or supports",
-        "deliberateBarContactWithRackSupports": "Deliberate bar contact with rack supports",
+        "handMovement": "Hand movement",
+        "feetTouchedBench": "Feet touched bench",
+        "barContactWithRackSupports": "Bar contact with rack supports",
         "technicalNonCompliance": "Technical Non-compliance"
       }
     },
     "deadlift": {
       "red": {
         "softKnees": "Soft knees",
-        "shouldersNotBack": "Shoulders not back",
+        "shouldersNotBehindBar": "Shoulders not behind bar",
         "failureToStandErect": "Failure to stand erect"
       },
       "blue": {

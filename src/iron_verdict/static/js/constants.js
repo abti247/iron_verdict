@@ -31,21 +31,21 @@ export const CARD_REASONS = {
             "reasons.bench.yellow.incompleteLift",
             "reasons.bench.yellow.skippedSignal",
             "reasons.bench.yellow.buttocksUp",
-            "reasons.bench.yellow.headUp",
+            "reasons.bench.yellow.headShouldersUp",
+            "reasons.bench.yellow.handMovement",
             "reasons.bench.yellow.feetUp",
             "reasons.bench.yellow.sinkingAfterMotionless",
             "reasons.bench.yellow.spotterContact",
-            "reasons.bench.yellow.shoulderHandMovement",
             "reasons.bench.yellow.upperBodyThrust",
-            "reasons.bench.yellow.feetTouchedBenchOrSupports",
-            "reasons.bench.yellow.deliberateBarContactWithRackSupports",
+            "reasons.bench.yellow.feetTouchedBench",
+            "reasons.bench.yellow.barContactWithRackSupports",
             "reasons.bench.yellow.technicalNonCompliance"
         ]
     },
     deadlift: {
         red: [
             "reasons.deadlift.red.softKnees",
-            "reasons.deadlift.red.shouldersNotBack",
+            "reasons.deadlift.red.shouldersNotBehindBar",
             "reasons.deadlift.red.failureToStandErect"
         ],
         blue: [

@@ -112,6 +112,7 @@ Requirements and caveats:
 | [test_display_resilience.py](tests/e2e/test_display_resilience.py) | Display refresh recovers; mid-competition display join; two displays receive identical results. |
 | [test_end_session.py](tests/e2e/test_end_session.py) | Only head sees End Session; ending redirects all four screens; ended code unjoinable. |
 | [test_role_protection.py](tests/e2e/test_role_protection.py) | Taken role rejected; role freed on disconnect; role switch via session-code link; head=center invariant. |
+| [test_reason_catalog.py](tests/e2e/test_reason_catalog.py) | Rulebook wording of the reason catalog (issue #98): German UI (language stored in `localStorage`, then reload) — bench yellow offers "Kopf/Schultern angehoben" and "Handbewegung" separately and the shortened texts, the chosen reason appears verbatim on the display; deadlift red offers "Shoulders not behind bar" / "Schultern nicht hinter Hantel" and it locks in. |
 | [test_scroll_indicator.py](tests/e2e/test_scroll_indicator.py) | `.has-overflow-bottom` class appears for bench-yellow (12 reasons), absent for bench-red (2 reasons). The head judge picks "Bench" in the settings select. |
 | [test_privacy.py](tests/e2e/test_privacy.py) | Privacy footer link → privacy screen → Back returns to landing. |
 | [test_role_taken_over.py](tests/e2e/test_role_taken_over.py) | Position taken by another device: device A (network switch) goes offline, device B takes "Left". A — after a reload, and on its live judge screen without reload — shows role-select with the notice after the 25 s give-up limit (follows the language toggle, no popup, token dropped, no further connection attempts) while B stays connected and votes. Counter-case: B leaves within the limit and A rejoins silently. The give-up tests wait the real 25 s. |
@@ -135,7 +136,7 @@ Three E2E tests have latent timing/race risks documented in [docs/e2e-known-risk
 
 ## Frontend
 
-Frontend coverage comes from two sources: Vitest unit tests for plain JS modules (`timer.js`, `i18n.js`, `voteDelivery.js` with the judge store, `vportalErrors.js`, `vportalStore.js`, `sessionStore.js`, `connection.js` with real nav/judge/display/timer/settings stores, the watchdog, retry schedule and reconnect triggers in `websocket.js`), and the Playwright E2E suite for observable browser behaviour. Stores and the connection are tested as plain objects with injected fakes; the screen components (`js/screens/`) have no dedicated unit tests and are covered only through E2E.
+Frontend coverage comes from two sources: Vitest unit tests for plain JS modules (`timer.js`, `i18n.js`, the reason catalog in `constants.js` against both locale files, `voteDelivery.js` with the judge store, `vportalErrors.js`, `vportalStore.js`, `sessionStore.js`, `connection.js` with real nav/judge/display/timer/settings stores, the watchdog, retry schedule and reconnect triggers in `websocket.js`), and the Playwright E2E suite for observable browser behaviour. Stores and the connection are tested as plain objects with injected fakes; the screen components (`js/screens/`) have no dedicated unit tests and are covered only through E2E.
 
 **What E2E tests cover:**
 
@@ -149,6 +150,7 @@ Frontend coverage comes from two sources: Vitest unit tests for plain JS modules
 | Reconnect speed — capped retry wait, `online` trigger | `test_fast_reconnect.py` |
 | Half-open connection detected by the heartbeat watchdog | `test_heartbeat_watchdog.py` |
 | Reason list scroll overflow indicator | `test_scroll_indicator.py` |
+| Reason catalog wording per lift type (judge list + display, German and English) | `test_reason_catalog.py` |
 | Session end, role protection | `test_end_session.py`, `test_role_protection.py` |
 | requireReasons lock-block + white-vote bypass | `test_require_reasons.py` |
 | Language switching + localStorage persistence | `test_language_switching.py` |
@@ -172,6 +174,7 @@ Run with `npm test` (Vitest). Independent from pytest — both run in parallel i
 | [tests/js/sessionStore.test.js](tests/js/sessionStore.test.js) | Session store defaults (no session, no role, disconnected, no judge connected, empty landing form) and that each store gets its own judge-connectivity object. |
 | [tests/js/connection.test.js](tests/js/connection.test.js) | `createConnection` with real stores, a fake socket factory and history: join sends `join` with the stored reconnect token on open, VPortal display overlay starts only for the display; every way out (role-select, landing, `session_ended`, final `join_error`, back button) stops the overlay and closes the socket; messages reach the right stores (`show_results`, `reset_for_next_lift`, `settings_update`, `ping`), an unknown type is logged; session lookup found / 404; reload recovery rejoins behind *reconnecting* and replaces the history entry. |
 | [tests/js/vportalStore.test.js](tests/js/vportalStore.test.js) | VPortal store with a mocked `vportalClient` and `fetch`: dialog opens on the federation or connected step, login uses the federation's host (or `window._testVportalHost`) and preselects the first stage, a login failure shows its error on the credentials step (stage-list failure: E2E in `test_vportal_integration.py`), stale stages cleared before a new login, confirm stage / disconnect, staging flag from the session lookup, display overlay polls only for `kind=vportal` with a stored stage, stale ticks keep the lifter, errors show the banner and the next attempt clears it; a failed session lookup is retried at the polling interval with the banner shown (only with a stored VPortal login), leaving the display stops poller and retry (also while a lookup is in flight), and a restart stops the previous poller. |
+| [tests/js/reasonCatalog.test.js](tests/js/reasonCatalog.test.js) | Every reason key in `CARD_REASONS` has a text in `en.json` and `de.json` (a missing key would be shown raw on the display); bench yellow lists buttocks, head/shoulders and hand movement in rulebook order. |
 | [tests/js/i18n.test.js](tests/js/i18n.test.js) | `t()` key resolution and fallback; `resolveLanguage` priority (localStorage → navigator → default); `setLanguage` persistence; `getSupportedLanguages`. |
 
 **What is not tested:**
