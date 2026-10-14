@@ -377,25 +377,37 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 
 /* ===== DISPLAY ORBS ===== */
+/* Each wrap is exactly as wide as its light, so the lights never move when a
+   reason appears. The reason is centred by the column flexbox and overflows
+   the wrap symmetrically: at least light-wide, as wide as its longest word,
+   at most half the column gap into the neighbour's side. A word wider than
+   that breaks without a hyphen — no `hyphens: auto`, Chrome on Windows/Linux
+   downloads its hyphenation dictionaries on demand (#114). The rows pad half
+   a gap on both sides so the outer reasons stay inside them. */
 .display-orb-wrap {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 1rem;
+    width: calc(clamp(38px, 19.2vmin, 224px) * var(--display-zoom, 1));
 }
 
 .display-orb-reason {
-    font-size: 2.38rem;
+    font-size: calc(clamp(13px, 3.52vmin, 41px) * var(--display-zoom, 1));
     color: rgba(255, 255, 255, 0.85);
     text-align: center;
-    max-width: 240px;
+    width: min-content;
+    min-width: 100%;
+    max-width: calc(100% + var(--orb-reason-gap));
+    overflow-wrap: break-word;
     line-height: 1.3;
     font-weight: 500;
 }
 
 .judge-results-orbs .display-orb-reason {
-    font-size: 1.29rem;
-    max-width: 144px;
+    /* Shrinks on phones so the longest words fit their narrow column (#114). */
+    font-size: clamp(12px, 3.6vw, 1.29rem);
+    min-width: min(144px, 100% + var(--orb-reason-gap));
 }
 
 .display-orb {
@@ -431,11 +443,11 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* ===== JUDGE RESULTS PANEL ===== */
 .judge-results-orbs {
+    --orb-reason-gap: 2rem;
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    justify-items: center;
-    column-gap: 2rem;
-    padding: 4px 0 8px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    column-gap: var(--orb-reason-gap);
+    padding: 4px calc(var(--orb-reason-gap) / 2) 8px;
 }
 
 .judge-result-orb-wrap {

@@ -267,10 +267,12 @@
 }
 
 .display-lights {
+    --orb-reason-gap: 8rem;
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     justify-items: center;
-    column-gap: 8rem;
+    column-gap: var(--orb-reason-gap);
+    padding: 0 calc(var(--orb-reason-gap) / 2);
 }
 
 /* ===== RESPONSIVE ===== */
