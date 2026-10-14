@@ -223,9 +223,10 @@
     <template x-if="$store.nav.screen === 'privacy'">
     <div class="landing-wrap" data-testid="privacy-screen">
         <div class="landing-panel cut-corner">
-            <div class="brand-iron chrome-text" x-text="t('privacy.title')"></div>
+            <div class="brand-iron brand-iron--legal chrome-text" x-text="t('privacy.title')"></div>
             <div class="brand-verdict-sub">Iron Verdict</div>
 
+            <h2 class="legal-heading" x-text="t('privacy.privacyHeading')"></h2>
             <ul class="privacy-list">
                 <li x-text="t('privacy.serverLogs')"></li>
                 <li x-text="t('privacy.session')"></li>
@@ -233,6 +234,21 @@
                 <li x-text="t('privacy.analytics')"></li>
                 <li x-text="t('privacy.cookies')"></li>
             </ul>
+
+            <h2 class="legal-heading" x-text="t('privacy.legalHeading')"></h2>
+            <div class="legal-notice" data-testid="legal-notice">
+                <p>
+                    Alexander Becela<br>
+                    c/o POSTFLEX PFX-294-418<br>
+                    Emsdettener Straße 10<br>
+                    48268 Greven
+                </p>
+                <p x-text="t('privacy.noParcels')"></p>
+                <p>
+                    <span x-text="t('privacy.email')"></span>:
+                    <a href="mailto:iron.verdict.judging@gmail.com">iron.verdict.judging@gmail.com</a>
+                </p>
+            </div>
 
             <div class="btn-row">
                 <button class="btn-blood btn-blood-ghost" @click="$store.nav.navigateTo('landing')">

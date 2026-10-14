@@ -380,6 +380,12 @@
 }
 
 /* ===== PRIVACY SCREEN ===== */
+/* Smaller title: "Datenschutz & Impressum" must fit a phone-width panel. */
+.brand-iron--legal {
+    font-size: 40px;
+    letter-spacing: 4px;
+}
+
 .privacy-footer {
     text-align: center;
     margin-top: 10px;
@@ -412,6 +418,37 @@
 
 .privacy-list li {
     margin-bottom: 8px;
+}
+
+.legal-heading {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    margin: 20px 0 0;
+}
+
+.legal-notice {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-dim);
+    line-height: 1.6;
+    margin: 10px 0 20px;
+}
+
+.legal-notice p {
+    margin: 0 0 10px;
+}
+
+.legal-heading + .privacy-list {
+    margin-top: 10px;
+}
+
+.legal-notice a {
+    color: inherit;
 }
 
 /* ===== RECONNECTING SCREEN ===== */

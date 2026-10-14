@@ -224,7 +224,7 @@ No-build single-page application. One HTML file served by FastAPI's `StaticFiles
 | `reloadRecovery.js` | Reload recovery: restores the session stored in `sessionStorage.iv_session` behind the reconnecting screen, and the "session ended or expired" fallback to landing. Called by the connection. |
 | `vportalStore.js` | VPortal state and methods as `Alpine.store('vportal')`: connect button and dialog on role-select, lifter overlay and disconnected banner on the display. The connection starts the display overlay on a display join and stops it on every way out of the display; the landing screen hands it the staging flag. Client, translator and `fetch` are injectable for Vitest. |
 | `websocket.js` | WebSocket wrapper with short capped-backoff auto-reconnect, immediate reconnect on `online` / `visibilitychange` / bfcache restore, and heartbeat watchdog. |
-| `screens/landingScreen.js` | Landing: create a session, look one up by code, links to demo, contact, privacy. |
+| `screens/landingScreen.js` | Landing: create a session, look one up by code, links to demo, contact, privacy & legal notice. |
 | `screens/contactScreen.js` | Contact form (web3forms). |
 | `screens/demoIntroScreen.js` | Demo intro: opens a demo session in four windows. |
 | `screens/reconnectingScreen.js` | "Connecting…" after a reload; Cancel. |
