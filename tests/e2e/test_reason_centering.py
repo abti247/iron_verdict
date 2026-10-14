@@ -1,7 +1,8 @@
 """Reasons under the lights stay centred, also for long words (issue #114).
 
 Each check measures every light/reason pair: the centre of the rendered text
-must sit under the centre of the light, no text may overflow its box, a box
+must sit under the centre of the light, no text may overflow its box, no word
+may break mid-word or at a soft hyphen when it would fit unbroken, a box
 may reach at most half the gap towards its neighbour nor leave the screen
 (judge: the results row), and the lights must not move when reasons appear.
 """
@@ -36,6 +37,12 @@ MEASURE_JS = """([container, bounds]) => {
         el.style.overflowWrap = 'normal';
         const wordOverflow = el.scrollWidth - el.clientWidth;
         el.style.overflowWrap = '';
+        // Would the words fit unbroken? Then a soft-hyphen break is needless.
+        const lines = el.offsetHeight;
+        el.style.hyphens = 'none';
+        const fitsUnhyphenated = el.scrollWidth <= el.clientWidth;
+        const needlessHyphen = fitsUnhyphenated && el.offsetHeight < lines;
+        el.style.hyphens = '';
         return {
             reason: el.textContent,
             gap,
@@ -49,6 +56,7 @@ MEASURE_JS = """([container, bounds]) => {
             textCenter: text.left + text.width / 2,
             overflow: el.scrollWidth - el.clientWidth,
             wordOverflow,
+            needlessHyphen,
             columnLeft: wrap.getBoundingClientRect().left,
             columnRight: wrap.getBoundingClientRect().right,
             rowLeft: Math.max(row.left, 0),
@@ -78,6 +86,7 @@ def _assert_centered(page, container, orb_centers_before=None):
         assert abs(pair["textCenter"] - pair["orbCenter"]) <= 1.5, f"{name} off-centre: {pair}"
         assert pair["overflow"] <= 0, f"{name} overflows its box: {pair}"
         assert pair["wordOverflow"] <= 0, f"{name} breaks mid-word: {pair}"
+        assert not pair["needlessHyphen"], f"{name} hyphenates a word that fits: {pair}"
         assert pair["textLeft"] >= pair["boxLeft"] - 0.5, f"{name} text outside box: {pair}"
         assert pair["textRight"] <= pair["boxRight"] + 0.5, f"{name} text outside box: {pair}"
         half_gap = pair["gap"] / 2

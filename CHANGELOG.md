@@ -15,7 +15,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 - Reasons under the lights stay centred under their light also for long (German) words, on the display and in the judge's results; on the display they now grow and shrink with the screen size and zoom like the lights
-- Long German reasons that do not fit on one line break at a sensible point with a hyphen ("Hantel-ständern") instead of running past their light; on phones the judge's results use a slightly smaller font
+- Long German words in reasons that do not fit next to their light break at a sensible point with a hyphen ("Hantel-ständern") instead of running past it; on phones the judge's results use a slightly smaller font
 - When the VPortal login fails, the dialog says why (VPortal not reachable, no session returned, token request rejected) instead of a bare error code, and the server log records the cause
 - If loading the VPortal stages fails after login, the dialog shows an error instead of "Loading stages…" forever
 - A VPortal-connected display that is reloaded on a bad network shows the "VPortal disconnected" banner and fills in the lifter data on its own once the network is back, instead of staying empty until the next reload

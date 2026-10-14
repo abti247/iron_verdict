@@ -471,19 +471,22 @@
                     <div class="display-orb display-orb--sm" :class="$store.judge.resultVotes.left"></div>
                     <div class="display-orb-reason"
                          x-show="$store.judge.resultReasons.left"
-                         x-text="$store.judge.resultReasons.left"></div>
+                         x-text="$store.judge.resultReasons.left"
+                         :data-reason="$store.judge.resultReasons.left"></div>
                 </div>
                 <div class="judge-result-orb-wrap">
                     <div class="display-orb display-orb--sm" :class="$store.judge.resultVotes.center"></div>
                     <div class="display-orb-reason"
                          x-show="$store.judge.resultReasons.center"
-                         x-text="$store.judge.resultReasons.center"></div>
+                         x-text="$store.judge.resultReasons.center"
+                         :data-reason="$store.judge.resultReasons.center"></div>
                 </div>
                 <div class="judge-result-orb-wrap">
                     <div class="display-orb display-orb--sm" :class="$store.judge.resultVotes.right"></div>
                     <div class="display-orb-reason"
                          x-show="$store.judge.resultReasons.right"
-                         x-text="$store.judge.resultReasons.right"></div>
+                         x-text="$store.judge.resultReasons.right"
+                         :data-reason="$store.judge.resultReasons.right"></div>
                 </div>
             </div>
         </div>
@@ -507,19 +510,22 @@
                 <div class="display-orb" :class="$store.display.votes.left"></div>
                 <div class="display-orb-reason"
                      x-show="$store.display.showExplanations && $store.display.votes.left && $store.display.votes.left !== 'white' && $store.display.reasons.left"
-                     x-text="$store.display.reasons.left"></div>
+                     x-text="$store.display.reasons.left"
+                     :data-reason="$store.display.reasons.left"></div>
             </div>
             <div class="display-orb-wrap">
                 <div class="display-orb" :class="$store.display.votes.center"></div>
                 <div class="display-orb-reason"
                      x-show="$store.display.showExplanations && $store.display.votes.center && $store.display.votes.center !== 'white' && $store.display.reasons.center"
-                     x-text="$store.display.reasons.center"></div>
+                     x-text="$store.display.reasons.center"
+                     :data-reason="$store.display.reasons.center"></div>
             </div>
             <div class="display-orb-wrap">
                 <div class="display-orb" :class="$store.display.votes.right"></div>
                 <div class="display-orb-reason"
                      x-show="$store.display.showExplanations && $store.display.votes.right && $store.display.votes.right !== 'white' && $store.display.reasons.right"
-                     x-text="$store.display.reasons.right"></div>
+                     x-text="$store.display.reasons.right"
+                     :data-reason="$store.display.reasons.right"></div>
             </div>
         </div>
 

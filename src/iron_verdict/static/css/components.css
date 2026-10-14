@@ -407,6 +407,18 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     font-weight: 500;
 }
 
+/* Invisible, unhyphenated copy of the reason (from `data-reason`) that sets
+   the box's min-content to the longest whole word: soft hyphens would
+   otherwise count as break points and break words that fit (#114). */
+.display-orb-reason::after {
+    content: attr(data-reason);
+    display: block;
+    height: 0;
+    overflow: hidden;
+    visibility: hidden;
+    hyphens: none;
+}
+
 .judge-results-orbs .display-orb-reason {
     /* Shrinks a little on phones; long German words break at the soft
        hyphens in de.json (#114). */
