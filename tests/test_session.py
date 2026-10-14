@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 import tempfile
@@ -578,3 +579,108 @@ async def test_load_snapshot_keeps_stored_show_explanations(tmp_path):
     restored = SessionManager()
     restored.load_snapshot(path)
     assert restored.sessions[code]["settings"]["show_explanations"] is False
+
+
+async def test_save_snapshot_if_changed_skips_unchanged_state(tmp_path):
+    path = str(tmp_path / "sessions.json")
+    manager = SessionManager()
+    await manager.create_session("Test")
+    assert await manager.save_snapshot_if_changed(path) is True
+    os.remove(path)
+
+    assert await manager.save_snapshot_if_changed(path) is False
+    assert not os.path.exists(path)
+
+
+async def test_save_snapshot_if_changed_writes_after_mutation(tmp_path):
+    path = str(tmp_path / "sessions.json")
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    await manager.save_snapshot_if_changed(path)
+
+    await manager.lock_vote(code, "left", "white")
+
+    assert await manager.save_snapshot_if_changed(path) is True
+    with open(path) as f:
+        assert json.load(f)[code]["judges"]["left"]["current_vote"] == "white"
+
+
+async def test_save_snapshot_if_changed_writes_empty_once_after_last_session_deleted(tmp_path):
+    path = str(tmp_path / "sessions.json")
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    await manager.save_snapshot_if_changed(path)
+
+    manager.delete_session(code)
+
+    assert await manager.save_snapshot_if_changed(path) is True
+    with open(path) as f:
+        assert json.load(f) == {}
+    assert await manager.save_snapshot_if_changed(path) is False
+
+
+async def test_save_snapshot_if_changed_writes_in_thread(tmp_path, monkeypatch):
+    import iron_verdict.session as session_module
+
+    path = str(tmp_path / "sessions.json")
+    manager = SessionManager()
+    await manager.create_session("Test")
+    calls = []
+    real_to_thread = asyncio.to_thread
+
+    async def recording_to_thread(func, *args, **kwargs):
+        calls.append(func)
+        return await real_to_thread(func, *args, **kwargs)
+
+    monkeypatch.setattr(session_module.asyncio, "to_thread", recording_to_thread)
+
+    await manager.save_snapshot_if_changed(path)
+
+    assert len(calls) == 1
+    assert os.path.exists(path)
+
+
+async def test_save_snapshot_if_changed_skips_fresh_start_without_sessions(tmp_path):
+    path = str(tmp_path / "sessions.json")
+    manager = SessionManager()
+    manager.load_snapshot(path)
+
+    assert await manager.save_snapshot_if_changed(path) is False
+    assert not os.path.exists(path)
+
+
+async def test_save_snapshot_if_changed_skips_right_after_restore(tmp_path):
+    path = str(tmp_path / "sessions.json")
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    manager.join_session(code, "left_judge")
+    manager.save_snapshot(path)
+
+    restored = SessionManager()
+    restored.load_snapshot(path)
+
+    assert await restored.save_snapshot_if_changed(path) is False
+    assert code in restored.sessions
+
+
+async def test_save_snapshot_if_changed_skips_after_unconditional_save(tmp_path):
+    path = str(tmp_path / "sessions.json")
+    manager = SessionManager()
+    await manager.create_session("Test")
+    manager.save_snapshot(path)
+
+    assert await manager.save_snapshot_if_changed(path) is False
+
+
+async def test_snapshot_written_in_thread_restores_sessions(tmp_path):
+    path = str(tmp_path / "sessions.json")
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    await manager.lock_vote(code, "center", "red")
+    await manager.save_snapshot_if_changed(path)
+
+    restored = SessionManager()
+    restored.load_snapshot(path)
+
+    assert restored.sessions[code]["judges"]["center"]["current_vote"] == "red"
+    assert restored.sessions[code]["last_activity"] == manager.sessions[code]["last_activity"]

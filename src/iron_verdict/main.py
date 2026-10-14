@@ -151,7 +151,7 @@ async def lifespan(app: FastAPI):
         while True:
             await asyncio.sleep(60)
             elapsed += 60
-            session_manager.save_snapshot(settings.SNAPSHOT_PATH)
+            await session_manager.save_snapshot_if_changed(settings.SNAPSHOT_PATH)
             if elapsed >= 30 * 60:
                 elapsed = 0
                 session_manager.cleanup_expired(settings.SESSION_TIMEOUT_HOURS)
