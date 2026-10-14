@@ -636,7 +636,7 @@ async def test_save_snapshot_if_changed_writes_in_thread(tmp_path, monkeypatch):
 
     await manager.save_snapshot_if_changed(path)
 
-    assert len(calls) == 1
+    assert calls == [manager._write_snapshot]
     assert os.path.exists(path)
 
 
@@ -684,3 +684,60 @@ async def test_snapshot_written_in_thread_restores_sessions(tmp_path):
 
     assert restored.sessions[code]["judges"]["center"]["current_vote"] == "red"
     assert restored.sessions[code]["last_activity"] == manager.sessions[code]["last_activity"]
+
+
+def _ticks(n):
+    """Fake sleep for cleanup_loop: returns n times, then stops the loop."""
+    calls = {"count": 0}
+
+    async def sleep(_seconds):
+        calls["count"] += 1
+        if calls["count"] > n:
+            raise asyncio.CancelledError
+
+    return sleep
+
+
+async def test_cleanup_loop_saves_changed_snapshot_in_thread_and_skips_idle_ticks(tmp_path, monkeypatch):
+    from iron_verdict.main import cleanup_loop
+    import iron_verdict.session as session_module
+
+    path = str(tmp_path / "sessions.json")
+    manager = SessionManager()
+    await manager.create_session("Test")
+    writes = []
+    real_to_thread = asyncio.to_thread
+
+    async def recording_to_thread(func, *args, **kwargs):
+        writes.append(func)
+        return await real_to_thread(func, *args, **kwargs)
+
+    monkeypatch.setattr(session_module.asyncio, "to_thread", recording_to_thread)
+    monkeypatch.setattr(manager, "save_snapshot", lambda _path: pytest.fail("sync save in loop"))
+
+    with pytest.raises(asyncio.CancelledError):
+        await cleanup_loop(manager, path, 4, sleep=_ticks(3))
+
+    assert writes == [manager._write_snapshot]
+    assert os.path.exists(path)
+
+
+def test_save_snapshot_waits_for_in_flight_write(tmp_path):
+    import threading
+
+    path = str(tmp_path / "sessions.json")
+    manager = SessionManager()
+    manager._write_lock.acquire()
+    shutdown = threading.Thread(target=manager.save_snapshot, args=(path,))
+    try:
+        shutdown.start()
+        shutdown.join(timeout=0.2)
+        assert shutdown.is_alive()
+        assert not os.path.exists(path)
+    finally:
+        manager._write_lock.release()
+    shutdown.join(timeout=5)
+
+    assert not shutdown.is_alive()
+    with open(path) as f:
+        assert json.load(f) == {}

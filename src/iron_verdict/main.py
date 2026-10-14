@@ -58,6 +58,18 @@ async def heartbeat_sweep(manager: ConnectionManager, now: float) -> None:
             })
 
 
+async def cleanup_loop(manager: SessionManager, snapshot_path: str, timeout_hours: int, sleep=asyncio.sleep) -> None:
+    """Every minute save the snapshot if it changed (off the event loop); every 30 minutes expire sessions."""
+    elapsed = 0
+    while True:
+        await sleep(60)
+        elapsed += 60
+        await manager.save_snapshot_if_changed(snapshot_path)
+        if elapsed >= 30 * 60:
+            elapsed = 0
+            manager.cleanup_expired(timeout_hours)
+
+
 def _get_http_client_ip(request: Request) -> str:
     fwd = request.headers.get("x-forwarded-for")
     return fwd.split(",")[0].strip() if fwd else (request.client.host if request.client else "unknown")
@@ -146,17 +158,9 @@ async def lifespan(app: FastAPI):
         except (NotImplementedError, OSError):
             pass  # Windows or non-main thread
 
-    async def _cleanup_loop():
-        elapsed = 0
-        while True:
-            await asyncio.sleep(60)
-            elapsed += 60
-            await session_manager.save_snapshot_if_changed(settings.SNAPSHOT_PATH)
-            if elapsed >= 30 * 60:
-                elapsed = 0
-                session_manager.cleanup_expired(settings.SESSION_TIMEOUT_HOURS)
-
-    task = asyncio.create_task(_cleanup_loop())
+    task = asyncio.create_task(
+        cleanup_loop(session_manager, settings.SNAPSHOT_PATH, settings.SESSION_TIMEOUT_HOURS)
+    )
 
     async def _heartbeat_loop():
         while True:
