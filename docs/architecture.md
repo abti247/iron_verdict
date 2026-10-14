@@ -314,6 +314,9 @@ Reason keys in `constants.js` are i18n keys. They double as the identifier sent 
 
 The display screen has a single interactive control: a low-contrast gear icon (top-left) and `S` keyboard shortcut, both of which open a small overlay with a 0.7×–1.5× zoom slider. The slider writes to `--display-zoom` on the display root; every responsive size on the display multiplies through that variable. Selection persists to `localStorage` as `iron-verdict:display-zoom`.
 
+**Reasons under the lights.** Each light's column is exactly as wide as the light, so the lights stay put when reasons appear. The reason text is centred under its light by the column flexbox: at least light-wide, as wide as its longest word, and at most half the gap into the neighbour's side; a word wider than that breaks without a hyphen. On the display its font size scales with `vmin` and `--display-zoom` like the lights; in the judge's results panel it shrinks with the viewport width on phones.
+*Why no `hyphens: auto`:* Chrome on Windows/Linux downloads hyphenation dictionaries on demand — an external runtime dependency that venue Wi-Fi may block, so hyphenation would silently differ between devices.
+
 *Why a low-contrast gear plus a keyboard shortcut:* the display is mixed-deployment — sometimes the operator knows the app, sometimes a volunteer is at the keyboard. A faint gear is invisible at projector distance but discoverable on the operator laptop; `S` exists as the power-user path. There is no other interactive control on the display screen, so a single conventional dismiss model (`Escape`, click-outside) suffices.
 
 *Why per-browser localStorage:* the same laptop typically goes to the same venue, so the setting should outlive a session. A new laptop re-tunes once. Server-side per-session storage would add a new API surface for a per-device UI preference — out of proportion with the value.
