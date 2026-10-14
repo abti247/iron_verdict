@@ -216,6 +216,7 @@ No-build single-page application. One HTML file served by FastAPI's `StaticFiles
 | `navigation.js` | `Alpine.store('nav')`: current `screen`, `navigateTo()` with its history entries, the entry pathname, the popstate / navigate-in-place flags (see *Screen machine*). |
 | `judgeStore.js` | `Alpine.store('judge')`: the judge's selection and vote state, `liftId`, the lift's result for the judge screen; vote methods from `voteDelivery.js`. |
 | `displayStore.js` | `Alpine.store('display')`: phase, lights, reasons and verdict of the display. |
+| `voteLight.js` | Vote → light colour (`white` / `red`) and card colour (`red` / `blue` / `yellow`, none for white); used by the display and judge stores. |
 | `settingsStore.js` | `Alpine.store('settings')`: lift type, show reasons, require reasons. |
 | `timer.js` | Module-level countdown interval (`startTimerCountdown`, `stopTimer`) and `Alpine.store('timer')` (shown time, expired; start / freeze / reset). |
 | `voteDelivery.js` | Judge vote state machine (open → sending → confirmed), pending vote in `sessionStorage`, reconciliation after join, `vote_ack` / `vote_rejected` handling; methods of the judge store. |
@@ -317,6 +318,13 @@ The display screen has a single interactive control: a low-contrast gear icon (t
 *Why a low-contrast gear plus a keyboard shortcut:* the display is mixed-deployment — sometimes the operator knows the app, sometimes a volunteer is at the keyboard. A faint gear is invisible at projector distance but discoverable on the operator laptop; `S` exists as the power-user path. There is no other interactive control on the display screen, so a single conventional dismiss model (`Escape`, click-outside) suffices.
 
 *Why per-browser localStorage:* the same laptop typically goes to the same venue, so the setting should outlive a session. A new laptop re-tunes once. Server-side per-session storage would add a new API surface for a per-device UI preference — out of proportion with the value.
+
+### Lights and cards
+
+A light shows only the verdict of one judge: white (valid) or red (invalid). The colour the judge picked for an invalid vote (red, blue, yellow) is shown as a card under the red light — display 40 % × 20 % of the light (scales with it and `--display-zoom`), judge results panel 50 % × 25 %. Vote, protocol and server keep the four colours; only the rendering maps them (`voteLight.js`). The card is shown regardless of "Show reasons on display", which hides only the text.
+*Why white/red plus card:* the classic referee-light convention; four light colours confused spectators (#115).
+
+**Lights never move on the display.** The card is always in the layout (`visibility: hidden` without a card), each light's column reserves light + card + three reason lines (`min-height` on `.display-orb-wrap`), and the status line under the verdict keeps its height when "Waiting…" is cleared. The display content is vertically centred, so any height change would otherwise shift the lights. A reason longer than three lines still grows the column.
 
 ### Reasons under the lights
 

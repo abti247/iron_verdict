@@ -9,6 +9,8 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ### Added
 
 ### Changed
+- Lights on the display and in the judges' results are only white (good) or red (no good); under a red light a small card in the judge's colour (red, blue, yellow) shows the reason category, with the reason text below it as before. The judges' vote buttons are unchanged
+- The lights on the display stay in place when the result, a card or a reason appears
 - German texts say "Plattform" instead of "Bühne", as is usual in powerlifting
 - "Show reasons on display" is now on in new sessions; the head judge can switch it off. Sessions that were already running keep their setting
 - Bench press and deadlift reasons follow the rulebook wording: "Upper body thrust", "Bar contact with rack supports", "Feet touched bench", "Shoulders not behind bar", and "Head / Shoulders up" and "Hand movement" are now separate reasons (same in German). A reason picked in a session that was running during the update may be shown once as an internal name
