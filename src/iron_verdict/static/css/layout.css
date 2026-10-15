@@ -300,6 +300,11 @@
     line-height: 1.6;
 }
 
+.demo-guide-link {
+    color: inherit;
+    text-decoration: underline;
+}
+
 .demo-guide-heading {
     font-family: 'Bebas Neue', sans-serif;
     font-size: 18px;

@@ -40,14 +40,16 @@
             <div class="brand-iron chrome-text">Iron Verdict</div>
             <div class="brand-verdict-sub" x-text="t('demo.guideTitle')"></div>
 
-            <p class="demo-guide-text" x-text="t('demo.intro')"></p>
+            <p class="demo-guide-text">
+                <span x-text="t('demo.introBeforeLink')"></span><a class="demo-guide-link" :href="t('demo.rulebookUrl')" target="_blank" rel="noopener noreferrer" x-text="t('demo.rulebookLink')"></a><span x-text="t('demo.introAfterLink')"></span>
+            </p>
 
             <div class="demo-guide-heading" x-text="t('demo.whyTitle')"></div>
             <ul class="demo-guide-list">
-                <li><span class="text-em">Athletes</span> — <span x-text="t('demo.athletes')"></span></li>
-                <li><span class="text-em">Audience</span> — <span x-text="t('demo.audience')"></span></li>
-                <li><span class="text-em">Judges</span> — <span x-text="t('demo.judges')"></span></li>
-                <li><span class="text-em">Jury</span> — <span x-text="t('demo.jury')"></span></li>
+                <li><span class="text-em" x-text="t('demo.athletesTerm')"></span> — <span x-text="t('demo.athletes')"></span></li>
+                <li><span class="text-em" x-text="t('demo.audienceTerm')"></span> — <span x-text="t('demo.audience')"></span></li>
+                <li><span class="text-em" x-text="t('demo.judgesTerm')"></span> — <span x-text="t('demo.judges')"></span></li>
+                <li><span class="text-em" x-text="t('demo.juryTerm')"></span> — <span x-text="t('demo.jury')"></span></li>
             </ul>
 
             <div class="demo-guide-heading" x-text="t('demo.setupTitle')"></div>
