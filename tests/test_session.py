@@ -722,6 +722,92 @@ async def test_cleanup_loop_saves_changed_snapshot_in_thread_and_skips_idle_tick
     assert os.path.exists(path)
 
 
+async def test_cleanup_loop_logs_failed_snapshot_write_and_retries_next_tick(tmp_path, monkeypatch, caplog):
+    import logging
+    from iron_verdict.main import cleanup_loop
+
+    path = str(tmp_path / "sessions.json")
+    manager = SessionManager()
+    await manager.create_session("Test")
+    real_write = manager._write_snapshot
+    calls = {"count": 0}
+
+    def failing_once_write(*args):
+        calls["count"] += 1
+        if calls["count"] == 1:
+            raise OSError("No space left on device")
+        real_write(*args)
+
+    monkeypatch.setattr(manager, "_write_snapshot", failing_once_write)
+
+    with caplog.at_level(logging.ERROR, logger="iron_verdict"):
+        with pytest.raises(asyncio.CancelledError):
+            await cleanup_loop(manager, path, 4, sleep=_ticks(2))
+
+    assert calls["count"] == 2
+    assert os.path.exists(path)
+    failures = [r for r in caplog.records if r.getMessage() == "snapshot_save_failed"]
+    assert len(failures) == 1
+    assert failures[0].exc_info[0] is OSError
+
+
+async def test_cleanup_loop_keeps_running_after_cleanup_expired_fails(tmp_path, monkeypatch, caplog):
+    import logging
+    from iron_verdict.main import cleanup_loop
+
+    manager = SessionManager()
+    cleanups = []
+
+    def failing_cleanup(hours):
+        cleanups.append(hours)
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(manager, "cleanup_expired", failing_cleanup)
+
+    with caplog.at_level(logging.ERROR, logger="iron_verdict"):
+        with pytest.raises(asyncio.CancelledError):
+            await cleanup_loop(manager, str(tmp_path / "sessions.json"), 4, sleep=_ticks(60))
+
+    assert cleanups == [4, 4]
+    assert [r.getMessage() for r in caplog.records].count("session_cleanup_failed") == 2
+
+
+async def test_lifespan_shutdown_completes_after_failed_snapshot_write(tmp_path, monkeypatch):
+    import functools
+    import iron_verdict.main as main_module
+
+    path = str(tmp_path / "sessions.json")
+    manager = SessionManager()
+    real_write = manager._write_snapshot
+    loop = asyncio.get_running_loop()
+    failed = asyncio.Event()
+    calls = {"count": 0}
+
+    def failing_once_write(*args):
+        calls["count"] += 1
+        if calls["count"] == 1:
+            loop.call_soon_threadsafe(failed.set)
+            raise OSError("Read-only file system")
+        real_write(*args)
+
+    async def fast_sleep(_seconds):
+        await asyncio.sleep(0)
+
+    monkeypatch.setattr(manager, "_write_snapshot", failing_once_write)
+    monkeypatch.setattr(main_module, "session_manager", manager)
+    monkeypatch.setattr(main_module.settings, "SNAPSHOT_PATH", path)
+    monkeypatch.setattr(main_module, "cleanup_loop", functools.partial(main_module.cleanup_loop, sleep=fast_sleep))
+
+    async with main_module.lifespan(main_module.app):
+        await manager.create_session("Changed after startup load")
+        await asyncio.wait_for(failed.wait(), timeout=5)
+        await asyncio.sleep(0.05)  # let the loop task get past the failed write before shutdown
+
+    # The fallback shutdown save ran: the snapshot on disk holds the session.
+    with open(path, encoding="utf-8") as f:
+        assert list(json.load(f)) == list(manager.sessions)
+
+
 def test_save_snapshot_waits_for_in_flight_write(tmp_path):
     import threading
 

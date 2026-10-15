@@ -59,15 +59,25 @@ async def heartbeat_sweep(manager: ConnectionManager, now: float) -> None:
 
 
 async def cleanup_loop(manager: SessionManager, snapshot_path: str, timeout_hours: int, sleep=asyncio.sleep) -> None:
-    """Every minute save the snapshot if it changed (off the event loop); every 30 minutes expire sessions."""
+    """Every minute save the snapshot if it changed (off the event loop); every 30 minutes expire sessions.
+
+    Failures are logged and the loop keeps running: a failed write leaves the last
+    written snapshot unchanged, so the next tick retries it.
+    """
     elapsed = 0
     while True:
         await sleep(60)
         elapsed += 60
-        await manager.save_snapshot_if_changed(snapshot_path)
+        try:
+            await manager.save_snapshot_if_changed(snapshot_path)
+        except Exception:
+            logger.exception("snapshot_save_failed")
         if elapsed >= 30 * 60:
             elapsed = 0
-            manager.cleanup_expired(timeout_hours)
+            try:
+                manager.cleanup_expired(timeout_hours)
+            except Exception:
+                logger.exception("session_cleanup_failed")
 
 
 def _get_http_client_ip(request: Request) -> str:
