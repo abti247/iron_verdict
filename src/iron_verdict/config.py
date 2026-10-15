@@ -29,12 +29,30 @@ def _read_fetch_interval() -> int:
     return value
 
 
+def require_allowed_origin(value: str) -> str:
+    """Refuse to start without an explicit ALLOWED_ORIGIN.
+
+    Why: a missing value used to fall back to "*", so a new deployment that
+    forgot the variable silently accepted WebSockets from any site (CSWSH).
+    An explicit "*" stays valid for local/LAN use.
+    """
+    if not value:
+        logger.error("allowed_origin_missing")
+        raise RuntimeError(
+            "ALLOWED_ORIGIN is not set. Set it to the app's public origin "
+            "(e.g. https://iron-verdict.com), or explicitly to '*' for local/LAN use."
+        )
+    logger.info("allowed_origin_configured", extra={"allowed_origin": value})
+    return value
+
+
 class Settings:
     HOST: str = os.getenv("HOST", "0.0.0.0")
     PORT: int = int(os.getenv("PORT", "8000"))
     SESSION_TIMEOUT_HOURS: int = int(os.getenv("SESSION_TIMEOUT_HOURS", "4"))
     DISPLAY_CAP: int = int(os.getenv("DISPLAY_CAP", "20"))
-    ALLOWED_ORIGIN: str = os.getenv("ALLOWED_ORIGIN", "*")
+    # Empty means "not set"; startup refuses it (see require_allowed_origin).
+    ALLOWED_ORIGIN: str = os.getenv("ALLOWED_ORIGIN", "").strip()
     APP_VERSION: str = os.getenv("APP_VERSION", "dev")
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
     SNAPSHOT_PATH: str = os.getenv("SNAPSHOT_PATH", "/data/sessions.json")

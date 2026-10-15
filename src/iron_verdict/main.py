@@ -2,7 +2,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, Path
 from pydantic import BaseModel, field_validator
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
-from iron_verdict.config import settings
+from iron_verdict.config import require_allowed_origin, settings
 from iron_verdict.session import SessionManager
 from iron_verdict.connection import ConnectionManager
 from iron_verdict.vportal_proxy import router as vportal_router
@@ -127,6 +127,7 @@ connection_manager = ConnectionManager()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     setup_logging(settings.LOG_LEVEL)
+    require_allowed_origin(settings.ALLOWED_ORIGIN)
     session_manager.load_snapshot(settings.SNAPSHOT_PATH)
 
     loop = asyncio.get_running_loop()

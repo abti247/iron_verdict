@@ -63,6 +63,7 @@ jobs:
           docker run -d --name iron-verdict
           -p 8000:8000
           -v iron-verdict-data:/data
+          -e ALLOWED_ORIGIN=http://127.0.0.1:8000
           "$IMAGE"
 
       # Poll instead of a fixed sleep: continue as soon as /health answers,

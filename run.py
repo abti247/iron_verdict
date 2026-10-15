@@ -3,6 +3,7 @@
 Iron Verdict application runner.
 """
 import os
+import sys
 import uvicorn
 from iron_verdict.config import settings
 
@@ -27,3 +28,7 @@ if __name__ == "__main__":
         server = uvicorn.Server(config)
         app.state.uvicorn_server = server
         asyncio.run(server.serve())
+        # uvicorn returns normally when startup fails (e.g. ALLOWED_ORIGIN
+        # missing); exit non-zero so the platform marks the deploy as failed.
+        if not server.started:
+            sys.exit(3)

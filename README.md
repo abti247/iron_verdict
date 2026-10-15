@@ -65,8 +65,10 @@ On Windows PowerShell, replace `./data` with `${PWD}/data`.
 
 For local development without persistence:
 ```bash
-docker run -p 8000:8000 iron_verdict
+docker run -p 8000:8000 -e ALLOWED_ORIGIN='*' iron_verdict
 ```
+
+The container refuses to start if `ALLOWED_ORIGIN` is not set — see [Configuration](#configuration).
 
 For all available environment variables see [Configuration](#configuration).
 
@@ -84,7 +86,7 @@ Edit `docker-compose.yml` to override `ALLOWED_ORIGIN` or other environment vari
 
 If the venue's uplink is slow or unreliable, you can host the app on your laptop and have judges/display connect over the local WiFi. Judging traffic (votes, timer, lights) then flows directly over the LAN. The app ships its own JavaScript libraries and fonts, so it also runs on a local WiFi with no internet at all — only optional VPortal lifter-info polling, the anonymous usage analytics and the contact form need the internet, and none of them is on the critical path.
 
-1. Start the server on your laptop with `docker compose up` or `python run.py`. The default `HOST=0.0.0.0` already binds to all interfaces.
+1. Start the server on your laptop with `docker compose up` or `python run.py` (for `python run.py`, copy `.env.example` to `.env` or set `ALLOWED_ORIGIN=*`). The default `HOST=0.0.0.0` already binds to all interfaces.
 2. Find your laptop's WiFi IPv4 address (`ipconfig` on Windows, `ifconfig`/`ip addr` on macOS/Linux). Example: `192.168.1.42`.
 3. **Open the app on the laptop using that LAN IP, not `localhost`** — i.e. `http://192.168.1.42:8000`. The QR code on the Select Role screen is generated from whatever URL you loaded, so creating the session via `localhost` would produce a QR that no other device can reach.
 4. Allow inbound TCP port 8000 in your OS firewall on the **Private** network profile. On Windows, the first run typically triggers a prompt.
@@ -92,7 +94,7 @@ If the venue's uplink is slow or unreliable, you can host the app on your laptop
 
 Tips:
 - Reserve your laptop's IP in the router's DHCP settings so a mid-event lease change can't break shared QR codes.
-- The default `ALLOWED_ORIGIN=*` is fine for LAN use; do not expose this configuration to the public internet.
+- `ALLOWED_ORIGIN=*` (as set in `docker-compose.yml` and `.env.example`) is fine for LAN use; do not expose this configuration to the public internet.
 
 ### Railway
 
@@ -100,7 +102,7 @@ Production runs the image built and tested by CI, not a build from source:
 
 1. Create a service from the Docker image `ghcr.io/abti247/iron_verdict:vX.Y.Z` (a release tag from GitHub → Releases).
 2. Add a **Volume** mounted at `/data` (Railway dashboard → Storage).
-3. Set the `ALLOWED_ORIGIN` environment variable to your Railway-assigned domain.
+3. Set the `ALLOWED_ORIGIN` environment variable to your Railway-assigned domain (e.g. `https://iron-verdict.up.railway.app`). It is required: without it the app logs `allowed_origin_missing` and does not start. The startup log shows the value in use (`allowed_origin_configured`).
 
 All other settings default to sensible production values. Deploying a new version or rolling back means changing the image tag in the service's **Source Image** setting — see [docs/release.md](docs/release.md) for release, deploy and rollback.
 
@@ -176,13 +178,13 @@ pytest tests/e2e/
 
 ## Configuration
 
-All settings are optional and have defaults suitable for local development.
+All settings except `ALLOWED_ORIGIN` are optional and have defaults suitable for local development.
 
 | Variable | Default | Description |
 |---|---|---|
 | `HOST` | `0.0.0.0` | Host to bind to |
 | `PORT` | `8000` | Port to listen on |
-| `ALLOWED_ORIGIN` | `*` | CORS/WebSocket allowed origin — set to your domain in production |
+| `ALLOWED_ORIGIN` | **required** | WebSocket allowed origin, e.g. `https://your-domain.com`. Set it explicitly to `*` only for local/LAN use. If it is unset or empty, the app logs an error and refuses to start |
 | `SESSION_TIMEOUT_HOURS` | `4` | Hours of inactivity before a session expires |
 | `DISPLAY_CAP` | `20` | Maximum number of display connections per session |
 | `SNAPSHOT_PATH` | `/data/sessions.json` | Path for session persistence snapshot — mount `/data` as a volume to survive restarts |

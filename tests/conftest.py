@@ -1,3 +1,10 @@
+import os
+
+# The app refuses to start without ALLOWED_ORIGIN (#60). Tests run the app
+# in-process (TestClient, the e2e uvicorn server) as a local deployment would.
+os.environ["ALLOWED_ORIGIN"] = "*"
+
+
 def pytest_collection_modifyitems(config, items):
     # Why: pytest-playwright's session-scoped fixture leaves an asyncio loop
     # running on the main thread for the rest of the session, which makes

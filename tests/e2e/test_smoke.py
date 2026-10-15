@@ -73,14 +73,17 @@ def test_app_version_is_rendered(server_url):
 
 
 def test_websocket_join_as_head_judge(server_url):
-    """Create a session over HTTP, open /ws and join as head judge: the server
-    answers with join_success and the session state."""
+    """Create a session over HTTP, open /ws (with the page's Origin, as a
+    browser does) and join as head judge: the server answers with join_success
+    and the session state."""
     with httpx.Client(base_url=server_url, timeout=5) as client:
         created = client.post("/api/sessions", json={"name": "Smoke WS"})
         assert created.status_code == 200
         code = created.json()["session_code"]
 
-        with connect_ws(f"{server_url}/ws", client) as ws:
+        # A browser always sends Origin; CI starts the image with
+        # ALLOWED_ORIGIN set to this URL, so the origin check is exercised.
+        with connect_ws(f"{server_url}/ws", client, headers={"Origin": server_url}) as ws:
             ws.send_text(json.dumps({"type": "join", "session_code": code, "role": "center_judge"}))
             reply = json.loads(ws.receive_text(timeout=5))
 
