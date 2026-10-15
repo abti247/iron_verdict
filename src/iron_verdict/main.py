@@ -70,14 +70,14 @@ async def cleanup_loop(manager: SessionManager, snapshot_path: str, timeout_hour
         elapsed += 60
         try:
             await manager.save_snapshot_if_changed(snapshot_path)
-        except Exception:
-            logger.exception("snapshot_save_failed")
+        except Exception as exc:
+            logger.exception("snapshot_save_failed", extra={"error": str(exc)})
         if elapsed >= 30 * 60:
             elapsed = 0
             try:
                 manager.cleanup_expired(timeout_hours)
-            except Exception:
-                logger.exception("session_cleanup_failed")
+            except Exception as exc:
+                logger.exception("session_cleanup_failed", extra={"error": str(exc)})
 
 
 def _get_http_client_ip(request: Request) -> str:

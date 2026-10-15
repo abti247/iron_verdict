@@ -749,6 +749,7 @@ async def test_cleanup_loop_logs_failed_snapshot_write_and_retries_next_tick(tmp
     failures = [r for r in caplog.records if r.getMessage() == "snapshot_save_failed"]
     assert len(failures) == 1
     assert failures[0].exc_info[0] is OSError
+    assert failures[0].error == "No space left on device"
 
 
 async def test_cleanup_loop_keeps_running_after_cleanup_expired_fails(tmp_path, monkeypatch, caplog):
@@ -803,7 +804,7 @@ async def test_lifespan_shutdown_completes_after_failed_snapshot_write(tmp_path,
         await asyncio.wait_for(failed.wait(), timeout=5)
         await asyncio.sleep(0.05)  # let the loop task get past the failed write before shutdown
 
-    # The fallback shutdown save ran: the snapshot on disk holds the session.
+    # Shutdown ran to the end (no re-raised OSError) and the snapshot on disk holds the session.
     with open(path, encoding="utf-8") as f:
         assert list(json.load(f)) == list(manager.sessions)
 
