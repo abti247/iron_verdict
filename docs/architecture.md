@@ -30,10 +30,9 @@ Security:
 
 - Standard hardening headers: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, HSTS.
 - CSP: scripts, styles and fonts only from `'self'` (plus the Umami analytics host for its script and beacon, and `api.web3forms.com` for the contact form). It allows `'unsafe-inline'` and `'unsafe-eval'` — Alpine compiles `x-show`/`x-bind` expressions at runtime via `eval`; the framework will not function without it. XSS posture is recovered structurally: the app never renders user input as HTML. The only user-controllable string written to the DOM is the session name, which is set via `x-text` (text node, not HTML).
-- WebSocket origin check via `ALLOWED_ORIGIN`. In-code default is `"*"` for local dev; **production overrides this via the Railway env var `ALLOWED_ORIGIN=https://iron-verdict.com`**, so the live deployment rejects cross-origin WebSocket handshakes.  
+- WebSocket origin check via `ALLOWED_ORIGIN`. **There is no in-code default:** startup (`lifespan` → `require_allowed_origin`) logs `allowed_origin_missing` at `ERROR` and aborts if the variable is unset or empty, and `run.py` then exits with code 3 so the platform marks the deploy as failed. Otherwise the resolved value is logged as `allowed_origin_configured`. Production sets `ALLOWED_ORIGIN=https://iron-verdict.com` (Railway env var), so the live deployment rejects cross-origin WebSocket handshakes; local/LAN use sets `*` explicitly (`docker-compose.yml`, `.env.example`).  
 *Why the origin check matters:* Same-Origin Policy does not apply to WebSockets — without a server-side `Origin` check, any site could open a WS to `/ws` from a victim's browser and hijack the session (Cross-Site WebSocket Hijacking).  
-*Why the permissive default:* local dev convenience.  
-*Caveat (tracked in [#60](https://github.com/abti247/iron_verdict/issues/60)):* secure-by-discipline rather than secure-by-default — a new deployment surface that forgets to set the env var would silently accept any origin. Failing loud at startup in non-dev environments without an explicit value would close that gap.
+*Why refuse to start instead of defaulting to `"*"`:* secure by default ([#60](https://github.com/abti247/iron_verdict/issues/60)) — a new deployment (staging, fork, typo in the variable name) that forgot the variable used to accept any origin silently. *Why an explicit `"*"` and no `ENVIRONMENT` flag:* LAN hosting at a venue legitimately needs `*` (judges open the laptop's LAN IP); one variable whose absence is the only error is simpler than a second flag whose own default could reopen the gap.
 
 ## WebSocket surface
 
@@ -174,7 +173,6 @@ These block multi-instance deployment. Listed for the Phase 6 AWS migration, not
 | In-memory `SessionManager.sessions` | No horizontal scaling. Fix path: Redis (state + pub/sub). |
 | In-memory `ConnectionManager` | Broadcasts don't cross instances. Fix path: Redis pub/sub. |
 | `/data/sessions.json` | Needs EFS or persistent volume on ECS. |
-| `ALLOWED_ORIGIN="*"` in-code default | No CSRF risk on the *current* production deploy (Railway env var overrides to `https://iron-verdict.com`), but secure-by-discipline rather than secure-by-default — a new deployment surface that forgets to set the env var would silently accept any origin. Fix: fail loud at startup in non-dev mode if the value is unset or `"*"`. Tracked in [#60](https://github.com/abti247/iron_verdict/issues/60). |
 | `/health` conflates liveness + readiness | ECS/Kubernetes prefer separate `/livez` + `/readyz`. Tracked in [#64](https://github.com/abti247/iron_verdict/issues/64). |
 | `_handle_shutdown` does not drain WebSockets | Clients flap on rolling deploys. Tracked in [#63](https://github.com/abti247/iron_verdict/issues/63). |
 | No Prometheus metrics surface | Phase 3 work on the roadmap. |
