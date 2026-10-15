@@ -91,6 +91,11 @@ class SessionManager:
 
         Returns:
             Dict with success status and error message if failed
+
+        Deliberately synchronous: the "role free?" check and the write that takes the
+        role must stay without an await in between, so two concurrent joins on the
+        event loop cannot both pass the check (#57). Do not make this async or add
+        an await here; if that becomes necessary, take self._lock around check and write.
         """
         # Validate role
         valid_roles = {"left_judge", "center_judge", "right_judge", "display"}
