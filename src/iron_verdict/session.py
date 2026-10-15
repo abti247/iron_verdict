@@ -4,6 +4,7 @@ import logging
 import os
 import secrets
 import string
+import threading
 import time
 from datetime import datetime, timedelta
 from typing import Dict, Any, List
@@ -18,6 +19,10 @@ class SessionManager:
     def __init__(self):
         self.sessions: Dict[str, Dict[str, Any]] = {}
         self._lock = asyncio.Lock()
+        # Snapshot content last written to (or loaded from) disk; None = unknown, write next time.
+        self._last_snapshot: str | None = None
+        # Serializes file writes: the shutdown save may run while a periodic write is in its thread.
+        self._write_lock = threading.Lock()
 
     def generate_session_code(self) -> str:
         """Generate a unique 8-character alphanumeric session code."""
@@ -241,8 +246,8 @@ class SessionManager:
         for code in expired:
             self.delete_session(code)
 
-    def save_snapshot(self, path: str) -> None:
-        """Serialize all sessions to a JSON file."""
+    def _serialize_snapshot(self) -> str:
+        """Serialize all sessions to a JSON string (reconnect tokens excluded)."""
         data = {}
         for code, session in self.sessions.items():
             s = dict(session)
@@ -252,16 +257,42 @@ class SessionManager:
                 for pos, j in session["judges"].items()
             }
             data[code] = s
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        tmp = path + ".tmp"
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(data, f)
-        os.replace(tmp, path)
-        logger.info("snapshot_saved", extra={"session_count": len(data)})
+        return json.dumps(data)
+
+    def _write_snapshot(self, path: str, content: str, session_count: int) -> None:
+        """Atomically write serialized snapshot content to `path`."""
+        with self._write_lock:
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            tmp = path + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as f:
+                f.write(content)
+            os.replace(tmp, path)
+        logger.info("snapshot_saved", extra={"session_count": session_count})
+
+    def save_snapshot(self, path: str) -> None:
+        """Write all sessions to a JSON file unconditionally and synchronously (shutdown path)."""
+        content = self._serialize_snapshot()
+        self._write_snapshot(path, content, len(self.sessions))
+        self._last_snapshot = content
+
+    async def save_snapshot_if_changed(self, path: str) -> bool:
+        """Write the snapshot in a worker thread if it differs from the last one written.
+
+        Serialization happens here in the event loop, so the thread never reads
+        session state that is being mutated concurrently. Returns True if written.
+        """
+        content = self._serialize_snapshot()
+        if content == self._last_snapshot:
+            return False
+        await asyncio.to_thread(self._write_snapshot, path, content, len(self.sessions))
+        self._last_snapshot = content
+        return True
 
     def load_snapshot(self, path: str) -> None:
         """Load sessions from a JSON snapshot file."""
         if not os.path.exists(path):
+            # Nothing on disk matches "no sessions": no need to write an empty snapshot.
+            self._last_snapshot = self._serialize_snapshot()
             return
         try:
             with open(path, encoding="utf-8") as f:
@@ -276,6 +307,9 @@ class SessionManager:
                 s.setdefault("timer_frozen_ms", None)
                 s.setdefault("lift_id", 0)
                 self.sessions[code] = s
+            # Baseline is the restored state: the flags reset above are reset again on every load,
+            # so the file needs no rewrite until something actually changes.
+            self._last_snapshot = self._serialize_snapshot()
             logger.info("snapshot_loaded", extra={"session_count": len(self.sessions)})
         except Exception:
             logger.exception("snapshot_load_failed")

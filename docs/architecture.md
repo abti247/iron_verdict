@@ -80,7 +80,7 @@ Two in-process managers, each guarded by its own `asyncio.Lock`. The two locks a
 
 ## Persistence
 
-`/data/sessions.json` is a periodic JSON snapshot used **only** for crash recovery, not for state sharing between processes. Saved every 60 seconds by the lifespan task. On Railway it is volume-backed; on ECS/Fargate it would need EFS.
+`/data/sessions.json` is a periodic JSON snapshot used **only** for crash recovery, not for state sharing between processes. Checked every 60 seconds by the lifespan task and written only if its content changed since the last write (or since the load at startup); on shutdown it is written once more, unconditionally. On Railway it is volume-backed; on ECS/Fargate it would need EFS.
 
 *Why a JSON file and not a database:* the only requirement is "survive a Railway restart with active sessions intact." A flat file gives that with zero operational overhead — no migrations, no connection pool, no schema. Accepted cost: up to 60 s of mutations lost on crash, no point-in-time recovery, no querying. *Why not skip persistence entirely:* a deploy or OOM mid-event would wipe judges' in-flight votes; the 60 s snapshot bounds the blast radius.
 
@@ -105,8 +105,8 @@ Snapshots exclude reconnect tokens — those exist only in memory and die with t
 
 Single `lifespan` task runs two periodic operations:
 
-- **Snapshot save** — every 60 seconds. Synchronous file I/O inside the async loop; event-loop stall risk at scale.  
-*Why sync is acceptable today:* the snapshot is small (kilobytes — a handful of active sessions) and the write completes in single-digit milliseconds. At higher session counts the blocking write would start visibly stalling the event loop; fix is `aiofiles` or a thread-pool executor.
+- **Snapshot save** — every 60 seconds, only if the serialized sessions differ from the last snapshot written (or loaded). Serialization runs in the event loop; the file write runs in a worker thread (`asyncio.to_thread`). Deleting the last session changes the content to `{}`, which is written once. The shutdown save stays synchronous and unconditional.  
+*Why compare content, not a dirty flag:* sessions are mutated in many places (votes, timer, settings, connected flags); a flag would have to be set at every one of them, and a forgotten one means lost state after a restart. Serializing a few kilobytes once a minute is cheap. *Why serialize before the thread:* the thread must not read session dicts the loop mutates at the same time. *Why no timeout on the write:* a thread cannot be cancelled; during normal running a hung disk only stalls the cleanup loop, not voting or the heartbeat. A lock around the file write keeps the shutdown save from interleaving with an in-flight periodic write — on a hung disk the synchronous shutdown save then waits on that lock, as a hung synchronous write did before.
 - **Cleanup expired sessions** — every 30 minutes; deletes sessions with `last_activity` older than 4 hours.
 
 A server-initiated heartbeat (`heartbeat_sweep`, every `HEARTBEAT_INTERVAL_SECONDS` = 5 s) pings every WebSocket client and closes (code 1001) any client without a `pong` for more than `PONG_STALE_SECONDS` = 15 s — effectively 15–20 s, since the check runs once per interval. The client runs the mirror-image watchdog (see [WebSocket client](#websocket-client)).
@@ -173,7 +173,6 @@ These block multi-instance deployment. Listed for the Phase 6 AWS migration, not
 | In-memory `SessionManager.sessions` | No horizontal scaling. Fix path: Redis (state + pub/sub). |
 | In-memory `ConnectionManager` | Broadcasts don't cross instances. Fix path: Redis pub/sub. |
 | `/data/sessions.json` | Needs EFS or persistent volume on ECS. |
-| Sync file I/O in async loop | Event-loop stall at high session counts. Tracked in [#56](https://github.com/abti247/iron_verdict/issues/56). |
 | `ALLOWED_ORIGIN="*"` in-code default | No CSRF risk on the *current* production deploy (Railway env var overrides to `https://iron-verdict.com`), but secure-by-discipline rather than secure-by-default — a new deployment surface that forgets to set the env var would silently accept any origin. Fix: fail loud at startup in non-dev mode if the value is unset or `"*"`. Tracked in [#60](https://github.com/abti247/iron_verdict/issues/60). |
 | `/health` conflates liveness + readiness | ECS/Kubernetes prefer separate `/livez` + `/readyz`. Tracked in [#64](https://github.com/abti247/iron_verdict/issues/64). |
 | `_handle_shutdown` does not drain WebSockets | Clients flap on rolling deploys. Tracked in [#63](https://github.com/abti247/iron_verdict/issues/63). |
