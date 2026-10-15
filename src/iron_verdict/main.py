@@ -352,8 +352,13 @@ async def websocket_endpoint(websocket: WebSocket):
                                     await old_ws.close()
                                 except Exception:
                                     pass
-                            session_manager.sessions[session_code]["judges"][position]["connected"] = False
-                            result = session_manager.join_session(session_code, role)
+                            # Re-check the token: during the awaits above a concurrent reconnect
+                            # with the same token may have taken the slot and rotated the token.
+                            # From here to join_session there must be no await (#57).
+                            judge = session_manager.sessions.get(session_code, {}).get("judges", {}).get(position, {})
+                            if judge.get("reconnect_token") == stored_token:
+                                judge["connected"] = False
+                                result = session_manager.join_session(session_code, role)
                     if not result["success"]:
                         logger.warning("role_join_failed", extra={
                             "conn_id": conn_id,

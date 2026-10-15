@@ -1064,3 +1064,46 @@ async def test_vote_rejected_logs_info(session_code, caplog):
     assert len(records) == 1
     assert records[0].code == "lift_changed"
     assert records[0].role == "left_judge"
+
+
+# ---- Concurrent joins on the same role (#57) ----
+
+async def _join_and_hold(code, role, token=None):
+    """Join on its own connection and keep it open briefly so the winner still holds the slot."""
+    async with _ws_client() as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+            msg = {"type": "join", "session_code": code, "role": role}
+            if token:
+                msg["reconnect_token"] = token
+            await ws.send_json(msg)
+            reply = await asyncio.wait_for(ws.receive_json(), timeout=2.0)
+            await asyncio.sleep(0.2)
+            return reply
+
+
+async def test_concurrent_fresh_joins_on_same_role_only_one_succeeds(session_code):
+    replies = await asyncio.gather(
+        _join_and_hold(session_code, "left_judge"),
+        _join_and_hold(session_code, "left_judge"),
+    )
+    assert sorted(r["type"] for r in replies) == ["join_error", "join_success"]
+    error = next(r for r in replies if r["type"] == "join_error")
+    assert error["message"] == "Role already taken"
+
+
+async def test_concurrent_reconnects_with_same_token_only_one_succeeds(session_code):
+    async with _ws_client() as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as old_ws:
+            await old_ws.send_json({"type": "join", "session_code": session_code, "role": "left_judge"})
+            token = (await old_ws.receive_json())["reconnect_token"]
+
+            replies = await asyncio.gather(
+                _join_and_hold(session_code, "left_judge", token),
+                _join_and_hold(session_code, "left_judge", token),
+            )
+
+    assert sorted(r["type"] for r in replies) == ["join_error", "join_success"]
+    error = next(r for r in replies if r["type"] == "join_error")
+    assert error["message"] == "Role already taken"
+    winner = next(r for r in replies if r["type"] == "join_success")
+    assert session_manager.sessions[session_code]["judges"]["left"]["reconnect_token"] == winner["reconnect_token"]

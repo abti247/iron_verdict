@@ -17,6 +17,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Bench press and deadlift reasons follow the rulebook wording: "Upper body thrust", "Bar contact with rack supports", "Feet touched bench", "Shoulders not behind bar", and "Head / Shoulders up" and "Hand movement" are now separate reasons (same in German). A reason picked in a session that was running during the update may be shown once as an internal name
 
 ### Fixed
+- If the same judge position is reconnected from two tabs at the same moment (e.g. a duplicated tab), only one gets the position; the other is told it is already taken instead of both acting as that judge
 - The server no longer rewrites its session backup every minute when nothing changed, and saving it no longer pauses votes and connection checks for a moment
 - Reasons under the lights stay centred under their light also for long (German) words, on the display and in the judge's results; on the display they now grow and shrink with the screen size and zoom like the lights
 - Long German words in reasons that do not fit next to their light break at a sensible point with a hyphen ("Hantel-ständern") instead of running past it; on phones the judge's results use a slightly smaller font

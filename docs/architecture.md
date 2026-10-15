@@ -91,6 +91,7 @@ Snapshots exclude reconnect tokens — those exist only in memory and die with t
 ## Reconnection model
 
 - **Judges** receive a 32-character `reconnect_token` on first join. A new WebSocket presenting the matching `(session_code, role, token)` triple replaces the existing connection. An identity guard prevents the disconnect handler of the old socket from clobbering the new one. Tokens survive `reset_for_next_lift`.
+- **Concurrent joins on one role** yield exactly one success. Single-worker asyncio is the guarantee, not a lock: `join_session` is synchronous, so its "role free?" check and the write cannot interleave. The reconnect takeover awaits (closing the old socket) between token check and slot takeover, so it re-checks the token afterwards — a second client with the same token (e.g. a duplicated browser tab copies `sessionStorage`) gets "Role already taken" once the winner has rotated the token. *Why:* otherwise both clients got `join_success` and one acted as judge without receiving broadcasts ([#57](https://github.com/abti247/iron_verdict/issues/57)). Breaks with multiple workers like all in-memory state.
 - **Displays** have no reconnect token. Each display join takes the next free display slot (`display_aabb1122` random suffix). Displays are interchangeable viewers, capped per session by `DISPLAY_CAP` (default 20).
 - Judge slots cap at 3 (left, center, right) and are exclusive.
 - **Votes across reconnects:** the judge screen keeps an unconfirmed vote in memory and in `sessionStorage.iv_pending_vote` (memory covers a failing storage write, storage covers a reload). After every `join_success` it reconciles with the server's snapshot of that judge: server has a vote → shown as confirmed; server has none but one is pending → resent automatically (a stale `lift_id` is rejected with `lift_changed`); neither → open. A vote shown as locked locally but unknown to the server (the lift was reset while offline) reverts to open.
@@ -177,7 +178,6 @@ These block multi-instance deployment. Listed for the Phase 6 AWS migration, not
 | `/health` conflates liveness + readiness | ECS/Kubernetes prefer separate `/livez` + `/readyz`. Tracked in [#64](https://github.com/abti247/iron_verdict/issues/64). |
 | `_handle_shutdown` does not drain WebSockets | Clients flap on rolling deploys. Tracked in [#63](https://github.com/abti247/iron_verdict/issues/63). |
 | No Prometheus metrics surface | Phase 3 work on the roadmap. |
-| `join_session` race at `session.py:104–110` | Check-then-write outside the lock. Low priority; [#57](https://github.com/abti247/iron_verdict/issues/57) checks whether it is a real bug. |
 
 ## Frontend
 
