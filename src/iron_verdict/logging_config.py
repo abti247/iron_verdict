@@ -13,6 +13,8 @@ _EXTRA_FIELDS = (
     "token_status", "token_location", "content_type", "upstream_path",
     # VPortal integration — config-time diagnostics
     "raw", "requested", "clamped_to",
+    # Startup configuration
+    "allowed_origin",
 )
 
 class JsonFormatter(logging.Formatter):

@@ -1,5 +1,9 @@
 import importlib
+import logging
 import os
+import subprocess
+import sys
+from pathlib import Path
 
 import pytest
 
@@ -50,3 +54,71 @@ def test_expose_vportal_staging_true_when_env_set_to_1(monkeypatch):
     monkeypatch.setenv("EXPOSE_VPORTAL_STAGING", "1")
     settings = reload_config()
     assert settings.EXPOSE_VPORTAL_STAGING is True
+
+
+def test_allowed_origin_missing_resolves_to_empty(monkeypatch):
+    monkeypatch.delenv("ALLOWED_ORIGIN", raising=False)
+    settings = reload_config()
+    assert settings.ALLOWED_ORIGIN == ""
+
+
+def test_allowed_origin_blank_resolves_to_empty(monkeypatch):
+    monkeypatch.setenv("ALLOWED_ORIGIN", "  ")
+    settings = reload_config()
+    assert settings.ALLOWED_ORIGIN == ""
+
+
+def test_allowed_origin_explicit_wildcard_is_kept(monkeypatch):
+    monkeypatch.setenv("ALLOWED_ORIGIN", "*")
+    settings = reload_config()
+    assert settings.ALLOWED_ORIGIN == "*"
+
+
+def test_require_allowed_origin_rejects_missing_value_with_error_log(caplog):
+    from iron_verdict.config import MissingAllowedOriginError, require_allowed_origin
+    with caplog.at_level(logging.ERROR, logger="iron_verdict"):
+        with pytest.raises(MissingAllowedOriginError):
+            require_allowed_origin("")
+    assert [r.getMessage() for r in caplog.records] == ["allowed_origin_missing"]
+    assert caplog.records[0].levelno == logging.ERROR
+
+
+def test_require_allowed_origin_accepts_explicit_wildcard_and_logs_it(caplog):
+    from iron_verdict.config import require_allowed_origin
+    with caplog.at_level(logging.INFO, logger="iron_verdict"):
+        require_allowed_origin("*")
+    record = next(r for r in caplog.records if r.getMessage() == "allowed_origin_configured")
+    assert record.allowed_origin == "*"
+
+
+def test_require_allowed_origin_accepts_domain_and_logs_it(caplog):
+    from iron_verdict.config import require_allowed_origin
+    with caplog.at_level(logging.INFO, logger="iron_verdict"):
+        require_allowed_origin("https://iron-verdict.com")
+    record = next(r for r in caplog.records if r.getMessage() == "allowed_origin_configured")
+    assert record.allowed_origin == "https://iron-verdict.com"
+
+
+def test_app_startup_fails_without_allowed_origin(monkeypatch):
+    from fastapi.testclient import TestClient
+    from iron_verdict.main import app, settings
+    monkeypatch.setattr(settings, "ALLOWED_ORIGIN", "")
+    # RuntimeError, not MissingAllowedOriginError: reload_config() above
+    # re-creates the class, so identity with main's import is not stable.
+    with pytest.raises(RuntimeError, match="ALLOWED_ORIGIN is not set"):
+        with TestClient(app):
+            pass
+
+
+def test_run_py_exits_nonzero_without_allowed_origin(tmp_path):
+    repo_root = Path(__file__).resolve().parent.parent
+    # Empty counts as missing; setting it also keeps a developer's .env out.
+    env = {**os.environ, "ALLOWED_ORIGIN": "", "PORT": "0", "HOST": "127.0.0.1",
+           "SNAPSHOT_PATH": str(tmp_path / "sessions.json")}
+    env.pop("ENV", None)
+    result = subprocess.run(
+        [sys.executable, str(repo_root / "run.py")],
+        env=env, capture_output=True, text=True, timeout=30,
+    )
+    assert result.returncode != 0
+    assert "allowed_origin_missing" in result.stdout
