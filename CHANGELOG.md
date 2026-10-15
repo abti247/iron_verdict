@@ -14,7 +14,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - The lights on the display stay in place when the result, a card or a reason appears; "Waiting for judges…" is shown where the verdict will appear, and the display is a little more compact so it still fits the screen at the largest zoom
 - German texts say "Plattform" instead of "Bühne", as is usual in powerlifting
 - "Show reasons on display" is now on in new sessions; the head judge can switch it off. Sessions that were already running keep their setting
-- **Deployment:** `ALLOWED_ORIGIN` is now required — the app refuses to start without it instead of silently accepting connections from any website. Set it to your domain, or explicitly to `*` for local/LAN use (as `docker-compose.yml` does); the value in use is logged at startup
+- `ALLOWED_ORIGIN` is now required — the app refuses to start without it instead of silently accepting connections from any website. Set it to your domain, or explicitly to `*` for local/LAN use (as `docker-compose.yml` does); the value in use is logged at startup
 - Bench press and deadlift reasons follow the rulebook wording: "Upper body thrust", "Bar contact with rack supports", "Feet touched bench", "Shoulders not behind bar", and "Head / Shoulders up" and "Hand movement" are now separate reasons (same in German). A reason picked in a session that was running during the update may be shown once as an internal name
 
 ### Fixed

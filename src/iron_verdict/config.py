@@ -29,10 +29,6 @@ def _read_fetch_interval() -> int:
     return value
 
 
-class MissingAllowedOriginError(RuntimeError):
-    pass
-
-
 def require_allowed_origin(value: str) -> str:
     """Refuse to start without an explicit ALLOWED_ORIGIN.
 
@@ -42,7 +38,7 @@ def require_allowed_origin(value: str) -> str:
     """
     if not value:
         logger.error("allowed_origin_missing")
-        raise MissingAllowedOriginError(
+        raise RuntimeError(
             "ALLOWED_ORIGIN is not set. Set it to the app's public origin "
             "(e.g. https://iron-verdict.com), or explicitly to '*' for local/LAN use."
         )
