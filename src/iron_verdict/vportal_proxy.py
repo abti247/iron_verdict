@@ -301,4 +301,19 @@ async def graphql(body: GraphQLRequest):
     if upstream.status_code >= 500:
         raise HTTPException(status_code=502, detail="VPortal upstream error")
 
-    return upstream.json()
+    # Why 502 for a body that is not JSON (issue #93): e.g. a maintenance or
+    # web-firewall HTML page with 200, or a redirect with an empty body (httpx
+    # does not follow it). Not retried — the response did arrive. The log
+    # carries no body and no token.
+    try:
+        return upstream.json()
+    except ValueError:
+        logger.warning(
+            "vportal_upstream_invalid_response",
+            extra={
+                "host": body.host,
+                "upstream_status": upstream.status_code,
+                "content_type": upstream.headers.get("content-type"),
+            },
+        )
+        raise HTTPException(status_code=502, detail="VPortal upstream invalid response")
