@@ -198,15 +198,21 @@ def new_context(new_context, created_sessions):
         close = ctx.close
 
         def close_after_recording_sessions(*args, **kwargs):
+            # CompetitionHelper.cleanup swallows close errors, so anything that
+            # keeps a code from being read is reported in created_sessions'
+            # teardown instead; the context is closed in any case.
             try:
                 while creations:
-                    response = creations.pop(0).response()  # waits for it; None if it failed
-                    if response is not None and response.ok:
-                        created_sessions.append(response.json()["session_code"])
-            except Exception as exc:
-                # CompetitionHelper.cleanup swallows close errors; report it in
-                # created_sessions' teardown instead.
-                created_sessions.unrecorded.append(repr(exc))
+                    request = creations.pop(0)
+                    try:
+                        response = request.response()  # waits for it
+                        if response is None:
+                            # The server may still have created the session.
+                            created_sessions.unrecorded.append(f"request failed: {request.failure}")
+                        elif response.ok:
+                            created_sessions.append(response.json()["session_code"])
+                    except Exception as exc:
+                        created_sessions.unrecorded.append(repr(exc))
             finally:
                 close(*args, **kwargs)
 
