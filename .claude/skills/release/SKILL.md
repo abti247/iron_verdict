@@ -1,6 +1,6 @@
 ---
 name: release
-description: 'Cut a release of Iron Verdict: turn CHANGELOG [Unreleased] into a version section, bump pyproject.toml, merge, tag vX.Y.Z so the Release workflow promotes the tested image, then hand the maintainer the Railway deploy and rollback steps. Use when asked to release, "Release erstellen" or `/release 0.2.0`.'
+description: 'Cut a release of Iron Verdict: turn CHANGELOG [Unreleased] into a version section, bump pyproject.toml, open the release PR, then guide the maintainer through the two approvals of the release chain (Railway staging E2E, then tag + release) and the Railway deploy and rollback. Use when asked to release, "Release erstellen" or `/release 0.2.0`.'
 argument-hint: <version, e.g. 0.2.0>
 ---
 
@@ -8,7 +8,7 @@ argument-hint: <version, e.g. 0.2.0>
 
 `.claude/CLAUDE.md` and [docs/release.md](../../../docs/release.md) are the rule sources; this skill walks through the runbook. Talk to the maintainer in **German**; CHANGELOG, commit messages and code stay in **English**.
 
-A release never builds anything: it promotes the image the Main workflow already tested (`sha-<commit>`) to `vX.Y.Z`. Deploying to Railway stays a manual step of the maintainer.
+A release never builds anything: it promotes the image the Main workflow already tested (`sha-<commit>`) to `vX.Y.Z`, after it passed the E2E tests on Railway staging. The session never pushes a tag — the release chain in `main.yml` creates it after the maintainer's second approval. Deploying to production stays a manual step of the maintainer.
 
 ## 1. Decide the version
 
@@ -23,37 +23,27 @@ On the session branch (cloud) or a new branch `release/vX.Y.Z` from up-to-date `
   - Rename the `[Unreleased]` content to `## [X.Y.Z] - <today, YYYY-MM-DD>`; drop subsections without entries.
   - End the section with the compare link `[X.Y.Z]: https://github.com/abti247/iron_verdict/compare/v<previous>...vX.Y.Z` (same style as the older sections).
   - Above it, add a fresh `## [Unreleased]` with empty `### Added`, `### Changed`, `### Fixed`, `### Removed`.
-- `pyproject.toml`: `version = "X.Y.Z"` (the Release workflow refuses a tag that does not match).
+- `pyproject.toml`: `version = "X.Y.Z"` — merging a commit with a not yet tagged version is what starts the release chain.
 - Check: `python scripts/changelog_section.py X.Y.Z` prints the section; `pytest tests/test_changelog_section.py`.
 - Commit (`chore(release): vX.Y.Z`), push, open the PR (German prose, no `Closes`). Show the maintainer the release notes preview.
 - The maintainer merges after green CI. Do not merge yourself.
 
-## 3. Wait for the tested image
+## 3. Release chain: two approvals by the maintainer
 
-After the merge, the **Main** workflow for the merge commit must be green — it pushes `ghcr.io/abti247/iron_verdict:sha-<7-char commit>`. Check its run (Actions tab / GitHub tools) and tell the maintainer if it fails; never tag a commit whose Main run is not green.
+After the merge, the **Main** workflow of the merge commit runs CI and the image check, publishes `ghcr.io/abti247/iron_verdict:sha-<7-char commit>` and stops at **approval Release-Kandidat** (job `staging`). Tell the maintainer, in German, with the link to the run:
 
-## 4. Tag
+1. **Release-Kandidat freigeben** (run → *Review deployments*): deploys `sha-<commit>` to Railway staging (`https://ironverdict-staging.up.railway.app`) and runs the `remote_safe` E2E tests against it.
+2. Only if `staging` is green: **Release freigeben**. `release.yml` re-tags the image as `vX.Y.Z` (same digest), creates the tag `vX.Y.Z` and the GitHub release.
 
-Confirm with the maintainer, then:
+Check the run (GitHub tools) and report:
 
-```bash
-git fetch origin main
-git log -1 --oneline origin/main     # must be the release merge commit
-git tag -a vX.Y.Z origin/main -m "vX.Y.Z"
-git push origin vX.Y.Z
-```
+- `release-check` skipped the chain (`vX.Y.Z` already exists, or `main` moved on): say so; with a newer head, its run carries the release.
+- `staging` red: no tag, no release. Read the failing step and the `playwright-traces-staging` artifact. Railway outage → the maintainer fixes it and uses *Re-run failed jobs*. Code defect → a normal fix PR, then a new release PR with a new version (step 1). Never retry a failing test until it passes.
+- `release` green: its job summary shows the digests of `sha-<commit>` and `vX.Y.Z` — identical. GitHub → Releases shows `vX.Y.Z` with the CHANGELOG section and `docker pull ghcr.io/abti247/iron_verdict:vX.Y.Z`.
 
-If pushing tags is not possible from this session, give the maintainer these commands instead.
+Do not push a tag yourself: a pushed tag starts nothing, and the chain would then skip the release because the tag exists.
 
-## 5. Check the Release workflow
-
-- The **Release** workflow must be green. Its job summary shows the digests of `sha-<commit>` and `vX.Y.Z` — they must be identical.
-- GitHub → Releases shows `vX.Y.Z` with the CHANGELOG section and `docker pull ghcr.io/abti247/iron_verdict:vX.Y.Z`.
-- On "`sha-<commit>` not found": the Main run was not finished — re-run the Release job once it is green. Do not move or recreate the tag.
-
-(After #71: instead of pushing the tag yourself, trigger the staging workflow, which sets the tag after green E2E tests on Railway staging.)
-
-## 6. Hand over deploy and rollback
+## 4. Hand over deploy and rollback
 
 Tell the maintainer, in German, with the concrete values filled in:
 

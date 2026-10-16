@@ -1,6 +1,9 @@
 """Judge reconnection — refresh/navigate-away must not break the session."""
 
+import pytest
 from playwright.sync_api import expect
+
+pytestmark = pytest.mark.remote_safe
 
 
 def test_reconnect_before_voting(competition):

@@ -2,8 +2,9 @@ name: Main
 
 # Every push to main: the same checks as a PR (ci.yml), the image build and
 # container smoke test (image.yml), and only if all are green, push of that
-# tested image to GHCR as sha-<commit> and main. Releases (release.yml) only
-# re-tag these images, they never rebuild.
+# tested image to GHCR as sha-<commit> and main. For a release commit the
+# chain continues (release-check, staging, release): two approvals, Railway
+# staging E2E in between, then release.yml re-tags the image (no rebuild).
 on:
   push:
     branches: [main]
@@ -13,6 +14,7 @@ permissions:
 
 env:
   IMAGE_REPO: ghcr.io/abti247/iron_verdict
+  STAGING_URL: https://ironverdict-staging.up.railway.app
 
 jobs:
   ci:
@@ -90,3 +92,145 @@ jobs:
         run: |
           DIGEST="$(docker buildx imagetools inspect "$IMAGE_REPO:sha-${GITHUB_SHA::7}" --format '{{json .Manifest}}' | jq -r .digest)"
           echo "Digest: \`$DIGEST\`" | tee -a "$GITHUB_STEP_SUMMARY"
+
+  # Release chain: runs only for a release commit, i.e. the version in
+  # pyproject.toml has no tag v<version> yet and the commit is the head of
+  # main. For every other push all following jobs are skipped and the run is
+  # green. Why only then: a job waiting for an environment approval keeps the
+  # whole run (and the commit status) pending, and fails after 30 days.
+  release-check:
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      release: ${{ steps.check.outputs.release }}
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: |
+            pyproject.toml
+            CHANGELOG.md
+            scripts
+
+      - name: Detect release commit
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="$(python3 -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          # --exit-code: 0 tag found, 2 not found, anything else is an error
+          # (must not be mistaken for "no tag", which would start a release).
+          status=0
+          git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" > /dev/null || status=$?
+          if [ "$status" -eq 0 ]; then
+            echo "v$VERSION already exists: no release, approval jobs skipped" | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          elif [ "$status" -ne 2 ]; then
+            echo "::error::could not list tags (git ls-remote exit $status)"
+            exit 1
+          fi
+          HEAD_SHA="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)"
+          if [ "$HEAD_SHA" != "$GITHUB_SHA" ]; then
+            echo "main moved on to $HEAD_SHA: release v$VERSION is left to the run of the newer commit" | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # A release commit must be releasable; fail now, not after both approvals.
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::pyproject.toml version $VERSION is not of the form X.Y.Z"
+            exit 1
+          fi
+          python3 scripts/changelog_section.py "$VERSION" > /dev/null
+          echo "Release candidate v$VERSION: waiting for approval **Release-Kandidat** (staging deploy + E2E)" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "release=true" >> "$GITHUB_OUTPUT"
+
+  # Approval 1 (environment Release-Kandidat): deploy sha-<commit> to Railway
+  # staging and run the remote_safe E2E tests against it. "Re-run failed
+  # jobs" repeats it for the same commit (asks for the approval again).
+  staging:
+    needs: release-check
+    if: needs.release-check.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: Release-Kandidat
+      url: ${{ env.STAGING_URL }}
+    # Never two staging runs at once: they would deploy over each other.
+    concurrency:
+      group: railway-staging
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Deploy sha-<commit> to Railway staging
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_SERVICE_ID: ${{ vars.RAILWAY_SERVICE_ID }}
+          RAILWAY_ENVIRONMENT_ID: ${{ vars.RAILWAY_ENVIRONMENT_ID }}
+        run: |
+          scripts/railway_deploy.sh "$IMAGE_REPO:sha-${GITHUB_SHA::7}" "$STAGING_URL" "sha-${GITHUB_SHA::7}"
+          echo "Staging runs \`sha-${GITHUB_SHA::7}\`: $STAGING_URL" >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install test dependencies
+        run: python -m pip install -e ".[dev]"
+
+      - name: Get Playwright version
+        id: playwright
+        run: echo "version=$(python -c 'import importlib.metadata as m; print(m.version("playwright"))')" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+
+      - name: Install Chromium with system dependencies
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: python -m playwright install --with-deps chromium
+
+      - name: Install Chromium system dependencies (browser cached)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: python -m playwright install-deps chromium
+
+      # Only remote_safe tests: the others need the in-process server or the
+      # fake VPortal (docs/testing.md). Each test ends its sessions afterwards.
+      - name: E2E tests against staging (remote_safe)
+        env:
+          E2E_BASE_URL: ${{ env.STAGING_URL }}
+        run: |
+          export E2E_EXPECTED_APP_VERSION="sha-${GITHUB_SHA::7}"
+          python -m pytest tests/e2e/ -m remote_safe --tb=short -v \
+            --tracing retain-on-failure \
+            --screenshot only-on-failure \
+            --output test-results
+
+      - name: Upload Playwright traces and screenshots
+        if: failure() || cancelled()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-traces-staging
+          path: test-results/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  # Approval 2 (environment Release, inside release.yml): tag vX.Y.Z,
+  # promote the image, create the GitHub release. Reached only after green
+  # staging tests, so no version tag ever points at an untested commit.
+  release:
+    needs: [release-check, staging]
+    uses: ./.github/workflows/release.yml
+    with:
+      version: ${{ needs.release-check.outputs.version }}
+    permissions:
+      contents: write
+      packages: write

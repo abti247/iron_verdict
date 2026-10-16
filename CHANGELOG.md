@@ -7,9 +7,12 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Every release is first deployed to a staging environment on Railway and tested there; the version tag and GitHub release are only created after green staging tests and a second approval
+- Rate limits for creating and looking up sessions can be set with `RATE_LIMIT_SESSION_CREATE` and `RATE_LIMIT_SESSION_LOOKUP` (defaults unchanged: 10/hour, 30/minute)
 - Legal notice (Impressum) with contact address and e-mail; the footer link on the start page is now "Privacy & Legal Notice" ("Datenschutz & Impressum")
 
 ### Changed
+- Pushing a version tag no longer creates a release; releases are started by merging a version bump and approving the release run
 - Lights on the display and in the judges' results are only white or red; under a red light a card in the judge's colour (red, blue, yellow), with the reason text below it as before
 - The lights on the display stay in place when the result, a card or a reason appears; "Waiting for judges…" is shown where the verdict will appear, and the display is a little more compact so it still fits the screen at the largest zoom
 - German texts say "Plattform" instead of "Bühne", as is usual in powerlifting

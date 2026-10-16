@@ -3,10 +3,12 @@
 Runbook for the maintainer. The pipeline follows "build once, promote": the image that runs on Railway is bit-for-bit the image CI tested.
 
 ```
-PR ──► image check (build + container smoke test, no push)
+PR ──► image check (build + remote_safe E2E against the container, no push)
 merge to main ──► Main workflow: CI + image check ──► GHCR sha-<commit>, main
-tag vX.Y.Z ──► Release workflow: sha-<commit> re-tagged as vX.Y.Z (no rebuild) + GitHub release
-Railway ──► manual: Source Image tag set to vX.Y.Z
+   └─ only for a release commit (no tag v<pyproject version> yet):
+      [approval Release-Kandidat] ──► Railway staging runs sha-<commit> ──► E2E (remote_safe) against staging
+      ──► [approval Release] ──► tag vX.Y.Z + image vX.Y.Z (same digest) + GitHub release
+Railway production ──► manual: Source Image tag set to vX.Y.Z
 ```
 
 Image: `ghcr.io/abti247/iron_verdict`. Tags:
@@ -15,7 +17,7 @@ Image: `ghcr.io/abti247/iron_verdict`. Tags:
 |---|---|---|
 | `sha-<7-char commit>` | Main workflow | Tested image of that commit on `main`. Never overwritten — a re-run of the Main workflow keeps the existing tag. |
 | `main` | Main workflow | Same digest as the `sha-<commit>` of the latest tested commit on `main`. Not for production. |
-| `vX.Y.Z` | Release workflow | Same digest as the `sha-<commit>` of the tagged commit. Production uses only these. |
+| `vX.Y.Z` | Release workflow (end of the release chain) | Same digest as the `sha-<commit>` of the tagged commit, which passed staging. Production uses only these. |
 
 Versions follow SemVer with a `v` prefix and no pre-release suffix (`v0.2.0`); the 0.x major already signals pre-1.0. Older releases up to `v0.1.4-beta` kept the `-beta` suffix.
 
@@ -26,22 +28,32 @@ The footer of the app shows `sha-<commit>` of the running image (baked in at bui
 - **Branch protection on `main`:** add `image` to the required status checks (next to `backend`, `js`, `e2e`).
 - **GHCR write access for Actions:** the package `iron_verdict` already exists (pushed by hand so far), so GitHub → your profile → Packages → `iron_verdict` → Package settings → *Manage Actions access* → add the repository `abti247/iron_verdict` with role **Write**. Without it the Main and Release workflows fail at the push with `403`/`denied`. (A package first created by a workflow is linked automatically via the image's `org.opencontainers.image.source` label.)
 - **Package visibility:** Railway pulls without credentials, so the package must stay **Public** (Package settings → Danger Zone → Change visibility). It is today, since Railway pulls `v0.1.4-beta`; check it once after the first workflow push. Alternative: keep it private and give Railway registry credentials.
-- **Railway auto updates off:** under Settings → Source → Source Image → *Configure auto updates*, keep automatic updates disabled. Deploys happen only when the tag reference is changed.
+- **Railway auto updates off:** under Settings → Source → Source Image → *Configure auto updates*, keep automatic updates disabled (production and staging). Deploys happen only when the tag reference is changed.
+
+### Staging and approvals (set up 2026-10-16, #71)
+
+- **Railway staging:** environment `staging` in the production project, same service, domain `https://ironverdict-staging.up.railway.app` (Railway subdomain, no Cloudflare), runs permanently, own `/data` volume. Variables as production, except `ALLOWED_ORIGIN=https://ironverdict-staging.up.railway.app`, `RATE_LIMIT_SESSION_CREATE=200/hour` and `RATE_LIMIT_SESSION_LOOKUP=300/minute`. No `APP_VERSION` variable — the release chain checks the footer for `sha-<commit>`.
+- **Railway project token** of environment `staging` (Project Settings → Tokens). It may set the source image and deploy (checked 2026-10-16), and reaches nothing outside staging.
+- **GitHub environments** (Settings → Environments), both with required reviewer `abti247` and deployment branches limited to `main`:
+  - `Release-Kandidat` — secret `RAILWAY_TOKEN` (the project token). Approving it deploys to staging.
+  - `Release` — no secrets. Approving it tags and releases.
+- **Repository variables** (Settings → Secrets and variables → Actions → Variables): `RAILWAY_SERVICE_ID`, `RAILWAY_ENVIRONMENT_ID` (staging). Not secret.
+- The tag is created by the workflow (`GITHUB_TOKEN`, `contents: write`). A tag ruleset that restricts creating `v*` tags must allow GitHub Actions.
 
 ## Release
 
-Run `/release` in a Claude session; it does the following steps with you. By hand:
+Run `/release` in a Claude session; it does steps 1–2 with you. By hand:
 
-1. Check that the **Main** workflow for the commit to release (normally the head of `main`) is green — it published `sha-<commit>`.
-2. On a branch: move `[Unreleased]` in `CHANGELOG.md` into `## [X.Y.Z] - YYYY-MM-DD`, add the compare link `[X.Y.Z]: https://github.com/abti247/iron_verdict/compare/v<previous>...vX.Y.Z` at the end of the section, leave an empty `[Unreleased]` with its four subsections, set `version = "X.Y.Z"` in `pyproject.toml`. PR, merge, wait for the Main workflow to turn green.
-3. Tag the merge commit and push the tag:
-   ```bash
-   git fetch origin main
-   git tag -a vX.Y.Z origin/main -m "vX.Y.Z"
-   git push origin vX.Y.Z
-   ```
-4. The **Release** workflow checks the tag format, that `pyproject.toml` has the same version and that the commit is on `main`; re-tags `sha-<commit>` as `vX.Y.Z` with [scripts/retag_image.sh](../scripts/retag_image.sh) (copies the manifest unchanged, so the digest stays identical) and compares the digests; creates the GitHub release with the CHANGELOG section and the `docker pull` line. The job summary shows both digests.
-   - *`sha-<commit>` not found*: the Main workflow for that commit is not finished or failed. Wait for it to be green, then **Re-run** the Release job — do not move the tag.
+1. Check that the **Main** workflow of the current head of `main` is green.
+2. On a branch: move `[Unreleased]` in `CHANGELOG.md` into `## [X.Y.Z] - YYYY-MM-DD`, add the compare link `[X.Y.Z]: https://github.com/abti247/iron_verdict/compare/v<previous>...vX.Y.Z` at the end of the section, leave an empty `[Unreleased]` with its four subsections, set `version = "X.Y.Z"` in `pyproject.toml`. PR, merge.
+3. The **Main** workflow of the merge commit runs CI, the image check and publishes `sha-<commit>`. Job `release-check` then sees that `vX.Y.Z` does not exist yet and the commit is the head of `main`, checks the version format and the CHANGELOG section, and the run stops at **approval Release-Kandidat** (Actions → the run → *Review deployments*). For every other push (`pyproject.toml` version already tagged) `staging` and `release` are skipped and the run is green.
+   - If `main` moved on before the run reached `release-check`, the release is left to the newer commit's run (its version is still untagged).
+4. **Approve Release-Kandidat.** Job `staging` (never two at once: concurrency group `railway-staging`; while one runs, only the newest waiting run is kept, an older waiting one is cancelled) points Railway staging at `sha-<commit>` and deploys it (`scripts/railway_deploy.sh`), waits until Railway reports this deployment as successful, `/health` answers and the footer shows `sha-<commit>` (at most 10 minutes), then runs the `remote_safe` E2E tests against staging. Staging keeps running this version afterwards.
+   - **Red:** no tag, no image tag, no release. Traces: artifact `playwright-traces-staging`. Railway outage or similar → fix it, then *Re-run failed jobs* (asks for the approval again; same commit). Code defect → fix it with a normal PR, then a new release PR with a new version (the failed version is never tagged; its CHANGELOG section moves into the new one). Until that release PR is merged, `vX.Y.Z` is still untagged, so every push to `main` stops at approval Release-Kandidat again — reject those approvals (each rejected run shows red; that red is not a failure of the commit).
+5. **Approve Release.** `release.yml` checks the version against `pyproject.toml`, re-tags `sha-<commit>` as `vX.Y.Z` with [scripts/retag_image.sh](../scripts/retag_image.sh) (copies the manifest unchanged, so the digest stays identical) and compares the digests, creates the annotated tag `vX.Y.Z` on the commit, and creates the GitHub release with the CHANGELOG section and the `docker pull` line. The job summary shows both digests. A re-run after a failure here is safe (same digest; a tag already on this commit is kept). A tag already on another commit stops the job before the image is re-tagged, so a second run of the same version cannot move `vX.Y.Z`.
+   - Rejecting this approval leaves no tag; *Re-run failed jobs* asks again.
+
+Pushing a `v*` tag by hand starts nothing: no release bypasses staging.
 
 ## Deploy (Railway)
 

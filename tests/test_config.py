@@ -113,3 +113,48 @@ def test_run_py_exits_nonzero_without_allowed_origin(tmp_path):
     )
     assert result.returncode != 0
     assert "allowed_origin_missing" in result.stdout
+
+
+def test_rate_limits_default_to_10_per_hour_and_30_per_minute(monkeypatch):
+    monkeypatch.delenv("RATE_LIMIT_SESSION_CREATE", raising=False)
+    monkeypatch.delenv("RATE_LIMIT_SESSION_LOOKUP", raising=False)
+    settings = reload_config()
+    assert settings.RATE_LIMIT_SESSION_CREATE == "10/hour"
+    assert settings.RATE_LIMIT_SESSION_LOOKUP == "30/minute"
+
+
+@pytest.mark.parametrize("name", ["RATE_LIMIT_SESSION_CREATE", "RATE_LIMIT_SESSION_LOOKUP"])
+def test_invalid_rate_limit_refuses_to_start(monkeypatch, name):
+    monkeypatch.setenv(name, "lots")
+    with pytest.raises(RuntimeError, match=name):
+        reload_config()
+    monkeypatch.delenv(name)
+    reload_config()
+
+
+def _run_app(env_overrides, script):
+    repo_root = Path(__file__).resolve().parent.parent
+    env = {**os.environ, "ALLOWED_ORIGIN": "*", **env_overrides}
+    return subprocess.run(
+        [sys.executable, "-c", script],
+        env=env, capture_output=True, text=True, timeout=60,
+        cwd=repo_root,
+    )
+
+
+def test_session_create_and_lookup_use_configured_rate_limits():
+    script = """
+from fastapi.testclient import TestClient
+from iron_verdict.main import app
+client = TestClient(app)
+create = [client.post("/api/sessions", json={"name": "S"}).status_code for _ in range(3)]
+lookup = [client.get("/api/sessions/ABCDEFGH").status_code for _ in range(3)]
+print(create, lookup)
+"""
+    result = _run_app(
+        {"RATE_LIMIT_SESSION_CREATE": "2/hour", "RATE_LIMIT_SESSION_LOOKUP": "2/minute",
+         "PYTHONPATH": "src"},
+        script,
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "[200, 200, 429] [404, 404, 429]"
