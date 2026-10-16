@@ -72,7 +72,7 @@ def test_app_version_is_rendered(server_url):
         assert version == expected
 
 
-def test_websocket_join_as_head_judge(server_url):
+def test_websocket_join_as_head_judge(server_url, created_sessions):
     """Create a session over HTTP, open /ws (with the page's Origin, as a
     browser does) and join as head judge: the server answers with join_success
     and the session state."""
@@ -80,6 +80,7 @@ def test_websocket_join_as_head_judge(server_url):
         created = client.post("/api/sessions", json={"name": "Smoke WS"})
         assert created.status_code == 200
         code = created.json()["session_code"]
+        created_sessions.append(code)
 
         # A browser always sends Origin; CI starts the image with
         # ALLOWED_ORIGIN set to this URL, so the origin check is exercised.
