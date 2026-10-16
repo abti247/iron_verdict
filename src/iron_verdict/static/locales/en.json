@@ -55,6 +55,8 @@
     "launchDemo": "Launch Demo",
     "popupNote": "This demo is designed for desktop — it opens four pop-up windows to simulate three judges and a display running in parallel. Please allow pop-ups if prompted.",
     "demoRunning": "Demo running — interact with the four open windows",
+    "popupsBlockedAll": "The pop-up windows were blocked. Allow pop-ups for this site and launch the demo again.",
+    "popupsBlockedSome": "Not all windows could be opened — pop-ups were blocked. Either allow pop-ups for this site and launch the demo again, or click “DEMO” in the top right of an open window to switch between screens.",
     "backToStart": "Back to Start"
   },
   "contact": {

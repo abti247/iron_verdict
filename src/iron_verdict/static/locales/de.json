@@ -55,6 +55,8 @@
     "launchDemo": "Demo starten",
     "popupNote": "Diese Demo ist für den Desktop gedacht. Sie öffnet vier Pop-up-Fenster, um drei Kampfrichter:innen- und einen Anzeigebildschirm parallel zu simulieren – dazu auf Aufforderung bitte Pop-ups erlauben.",
     "demoRunning": "Demo läuft — interagieren Sie mit den vier geöffneten Fenstern",
+    "popupsBlockedAll": "Die Pop-up-Fenster wurden blockiert. Pop-ups für diese Seite erlauben und die Demo erneut starten.",
+    "popupsBlockedSome": "Nicht alle Fenster konnten geöffnet werden – Pop-ups wurden blockiert. Entweder Pop-ups für diese Seite erlauben und die Demo erneut starten, oder im geöffneten Fenster oben rechts auf „DEMO“ klicken, um zwischen den Bildschirmen zu wechseln.",
     "backToStart": "Zurück zum Start"
   },
   "contact": {

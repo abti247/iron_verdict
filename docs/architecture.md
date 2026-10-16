@@ -287,14 +287,14 @@ QR entry point: `?session=XXXX` lands on the landing screen with the code pre-fi
 
 | Storage | Key | Content | Lifetime |
 |---|---|---|---|
-| `sessionStorage` | `iv_session` | `{code}` on role-select, `{code, role, reconnect_token?}` on judge/display | Tab close |
+| `sessionStorage` | `iv_session` | `{code}` on role-select, `{code, role, reconnect_token?}` on judge/display; plus `demo: true` in a demo window | Tab close |
 | `sessionStorage` | `iv_pending_vote` | `{code, role, lift_id, color, reason}` from LOCK IN until `vote_ack` / `vote_rejected` / next lift / leaving the judge screen | Tab close |
 | `localStorage` | `iron-verdict-lang` | `'en'` or `'de'` | Persistent |
 | `localStorage` | `iron-verdict:display-zoom` | Display screen zoom multiplier (0.7–1.5) | Persistent |
 | `Alpine.store('session')` | — | Session code, name, kind, own role, `isHead`, `isDemo`, connection status, `serverRestarting`, judge connectivity, role-taken notice, landing form | Page lifetime |
 | `Alpine.store('nav')` | — | Current screen, history flags | Page lifetime |
 | `Alpine.store('judge')` / `display` / `timer` / `settings` | — | Vote and result state (`voteLocked` is derived), display lights and phase, shown time, session settings | Page lifetime |
-| Screen components | — | UI-only state: display zoom and settings panel, reason-list scroll hint, contact form, demo running | Page lifetime (`x-if` screens: while shown) |
+| Screen components | — | UI-only state: display zoom and settings panel, reason-list scroll hint, contact form, demo running / pop-ups blocked | Page lifetime (`x-if` screens: while shown) |
 | `Alpine.store('vportal')` | — | VPortal connection, dialog step, stage list, current lifter on the display | Page lifetime |
 
 *Why `sessionStorage` (not `localStorage`) for the reconnect token:* tab-scoped lifetime matches the lifetime of a judging session. If the token survived in `localStorage`, an old token could leak into a *new* session opened in the same browser later, leading to confusing "Role already taken" failures (server rejects because the role belongs to a stale judge identity). `localStorage` is reserved for genuinely persistent preferences like language.
@@ -309,7 +309,9 @@ Reason keys in `constants.js` are i18n keys. They double as the identifier sent 
 
 ### Demo mode
 
-`launchDemo()` creates a real session via `POST /api/sessions`, then opens 4 browser windows with `?code=XXXX&demo=<role>` params. `init.js` reads those params before Alpine boots and hands them to `app.js` on `alpine:init`; the connection's `start()` auto-joins the specified role. Requires the browser to allow pop-ups.
+`launchDemo()` creates a real session via `POST /api/sessions`, then opens 4 browser windows with `?code=XXXX&demo=<role>` params. `init.js` reads those params before Alpine boots and hands them to `app.js` on `alpine:init`; the connection's `start()` auto-joins the specified role. Requires the browser to allow pop-ups: `launchDemo()` checks every `window.open` result — `null`, or a window that is already `closed` (blockers that open and immediately close), counts as blocked. If any window is blocked the guide shows a hint instead of "Demo running" (all blocked: allow pop-ups and relaunch; some blocked: additionally, switch screens via "DEMO" in an open window); windows that did open stay open. There is no delayed re-check, so a blocker that closes a window later goes unnoticed. **Why** no delay: the check must not slow the launch, and the fallback via "DEMO" covers the rest.
+
+Demo windows (`session.isDemo`) show "DEMO" instead of the session code (judge) or session name (display); clicking it opens role-select like the code link, which still shows the real code and QR code for a second device. The session behind it has a normal unique code, so several demos can run in parallel. `isDemo` is kept in `iv_session` (`demo: true`) and restored on reload, because `app.js` scrubs the URL params at startup. **Why** "DEMO" instead of the code: a demo window must not be mistaken for a real session.
 
 ### Display settings overlay
 

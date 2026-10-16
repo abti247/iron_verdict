@@ -19,6 +19,8 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Bench press and deadlift reasons follow the rulebook wording: "Upper body thrust", "Bar contact with rack supports", "Feet touched bench", "Shoulders not behind bar", and "Head / Shoulders up" and "Hand movement" are now separate reasons (same in German). A reason picked in a session that was running during the update may be shown once as an internal name
 
 ### Fixed
+- If the browser blocks the demo's pop-up windows, the demo guide says so and explains how to continue (allow pop-ups and relaunch, or switch screens in an open window) instead of claiming four windows are open
+- Demo windows show "DEMO" instead of the session code on the judge screen, also after a reload; clicking "DEMO" (now also on the display) opens the role selection
 - If the session backup cannot be written (e.g. the disk is full), the error is logged and the server retries it a minute later; before, backups and the removal of expired sessions stopped silently until the next restart
 - If the same judge position is reconnected from two tabs at the same moment (e.g. a duplicated tab), only one gets the position; the other is shown that the position was taken by another device instead of both acting as that judge
 - The server no longer rewrites its session backup every minute when nothing changed, and saving it no longer pauses votes and connection checks for a moment
