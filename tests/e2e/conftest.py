@@ -96,6 +96,8 @@ def _reset_server_state():
 # half-open connection is evicted by the heartbeat watchdog after 15 s.
 END_SESSION_JOIN_TIMEOUT_S = 20
 END_SESSION_RETRY_INTERVAL_S = 0.5
+# How long _end_session waits for the ended session to disappear from lookups.
+END_SESSION_DELETE_TIMEOUT_S = 5
 
 
 def _end_session(base_url, code):
@@ -109,11 +111,13 @@ def _end_session(base_url, code):
                 reply = json.loads(ws.receive_text(timeout=10))
                 if reply["type"] == "join_success":
                     ws.send_text(json.dumps({"type": "end_session_confirmed"}))
+                    # The server broadcasts session_ended, closes every socket
+                    # (ours included) and deletes the session last.
                     try:
-                        while json.loads(ws.receive_text(timeout=10))["type"] != "session_ended":
-                            pass
+                        while True:
+                            ws.receive_text(timeout=10)
                     except WebSocketDisconnect:
-                        pass  # the server closes the socket right after session_ended
+                        pass
                     break
             if reply.get("message") == "Session not found":
                 return  # the test ended it itself (or it expired)
@@ -121,8 +125,25 @@ def _end_session(base_url, code):
                 raise AssertionError(f"could not end test session {code}: {reply}")
             time.sleep(END_SESSION_RETRY_INTERVAL_S)
 
-        lookup = client.get(f"/api/sessions/{code}")
-        assert lookup.status_code == 404, f"test session {code} still exists after ending it"
+        # Deleting the session follows our socket's close without an await
+        # barrier we can observe, so the lookup may still race it briefly.
+        deadline = time.monotonic() + END_SESSION_DELETE_TIMEOUT_S
+        while True:
+            lookup = client.get(f"/api/sessions/{code}")
+            if lookup.status_code != 200 or time.monotonic() > deadline:
+                break
+            time.sleep(END_SESSION_RETRY_INTERVAL_S)
+        assert lookup.status_code == 404, (
+            f"test session {code} not confirmed ended: lookup answered {lookup.status_code}"
+        )
+
+
+class _CreatedSessions(list):
+    """Session codes, plus errors from reading a creation response."""
+
+    def __init__(self):
+        super().__init__()
+        self.unrecorded = []
 
 
 @pytest.fixture(autouse=True)
@@ -137,30 +158,59 @@ def created_sessions():
     A session that cannot be ended fails the teardown, so it never stays
     behind unnoticed.
     """
-    codes = []
+    codes = _CreatedSessions()
     yield codes
     if not EXTERNAL_BASE_URL:
         return  # _reset_server_state clears the in-process sessions
+    # Try every session even if one fails, so the error names all that stay open.
+    failures = [f"session creation not recorded: {error}" for error in codes.unrecorded]
     for code in dict.fromkeys(codes):
-        _end_session(EXTERNAL_BASE_URL, code)
+        try:
+            _end_session(EXTERNAL_BASE_URL, code)
+        except Exception as exc:
+            failures.append(f"{code}: {exc!r}")
+    if failures:
+        raise AssertionError("test sessions left open on the server:\n" + "\n".join(failures))
 
 
 @pytest.fixture
 def new_context(new_context, created_sessions):
     """pytest-playwright's ``new_context``; in external mode every context also
-    records the codes of sessions created through ``POST /api/sessions``."""
+    records the codes of sessions created through ``POST /api/sessions``.
+
+    The code is read when the context is closed, after waiting for each
+    creation request's response: a test may end right after a click that
+    creates a session, and a response listener would then miss the code
+    (the body cannot be read once the context is closed).
+    """
     if not EXTERNAL_BASE_URL:
         return new_context
 
-    def record_created_session(response):
-        if (response.request.method == "POST"
-                and urlparse(response.url).path == "/api/sessions"
-                and response.ok):
-            created_sessions.append(response.json()["session_code"])
-
     def _new_context(**kwargs):
         ctx = new_context(**kwargs)
-        ctx.on("response", record_created_session)
+        creations = []
+
+        def track_creation(request):
+            if request.method == "POST" and urlparse(request.url).path == "/api/sessions":
+                creations.append(request)
+
+        ctx.on("request", track_creation)
+        close = ctx.close
+
+        def close_after_recording_sessions(*args, **kwargs):
+            try:
+                while creations:
+                    response = creations.pop(0).response()  # waits for it; None if it failed
+                    if response is not None and response.ok:
+                        created_sessions.append(response.json()["session_code"])
+            except Exception as exc:
+                # CompetitionHelper.cleanup swallows close errors; report it in
+                # created_sessions' teardown instead.
+                created_sessions.unrecorded.append(repr(exc))
+            finally:
+                close(*args, **kwargs)
+
+        ctx.close = close_after_recording_sessions
         return ctx
 
     return _new_context

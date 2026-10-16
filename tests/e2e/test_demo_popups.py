@@ -101,23 +101,25 @@ def test_demo_window_closed_immediately_counts_as_blocked(page, server_url):
     expect(screen.get_by_test_id('demo-running')).to_be_hidden()
 
 
-def _demo_session_code(server_url):
+def _demo_session_code(server_url, created_sessions):
     response = httpx.post(f"{server_url}/api/sessions", json={"name": "Demo"})
     response.raise_for_status()
-    return response.json()["session_code"]
+    code = response.json()["session_code"]
+    created_sessions.append(code)
+    return code
 
 
 @pytest.mark.parametrize("role, screen_selector, label_selector", [
     ("left_judge", ".judge-wrap", ".judge-code .code-link"),
     ("display", ".display-full", ".display-tag .code-link"),
 ])
-def test_demo_window_shows_clickable_demo_label(competition, server_url, role, screen_selector, label_selector):
+def test_demo_window_shows_clickable_demo_label(competition, server_url, created_sessions, role, screen_selector, label_selector):
     """A demo window (?code=…&demo=<role>) shows "DEMO" instead of the session
     code (judge) or session name (display), also after a reload. Clicking
     "DEMO" opens the role selection, which still shows the real code for a
     second device; after a reload there, picking another role shows "DEMO"
     again."""
-    code = _demo_session_code(server_url)
+    code = _demo_session_code(server_url, created_sessions)
     page = competition.new_context().new_page()
     page.on("dialog", lambda d: d.accept())
     page.goto(f"{server_url}/?code={code}&demo={role}")
