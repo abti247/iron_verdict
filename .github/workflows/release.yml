@@ -1,52 +1,54 @@
 name: Release
 
-# Pushing a tag vX.Y.Z promotes the image main.yml already built and tested
-# for that commit (sha-<commit>) to vX.Y.Z without rebuilding, then creates
-# the GitHub release from the CHANGELOG section. Deploying stays manual:
-# point the Railway service at the new tag (docs/release.md).
+# Last link of the release chain in main.yml, after green E2E tests on Railway
+# staging. Behind the approval of environment Release: tags the commit
+# vX.Y.Z, promotes the image main.yml already built and tested for it
+# (sha-<commit>) to vX.Y.Z without rebuilding, then creates the GitHub release
+# from the CHANGELOG section. Deploying to production stays manual: point the
+# Railway service at the new tag (docs/release.md).
+#
+# Why no tag trigger: every release must pass staging. And a tag pushed with
+# GITHUB_TOKEN starts no workflow, so this runs inside the chain instead.
 on:
-  push:
-    tags: ["v*"]
+  workflow_call:
+    inputs:
+      version:
+        description: Version from pyproject.toml (X.Y.Z)
+        type: string
+        required: true
 
 permissions:
   contents: write
   packages: write
 
 concurrency:
-  group: release-${{ github.ref_name }}
+  group: release-v${{ inputs.version }}
   cancel-in-progress: false
 
 env:
   IMAGE_REPO: ghcr.io/abti247/iron_verdict
-  TAG: ${{ github.ref_name }}
+  VERSION: ${{ inputs.version }}
+  TAG: v${{ inputs.version }}
 
 jobs:
   release:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    environment: Release
     steps:
       - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
 
-      - name: Check tag, version and commit
+      - name: Check version
         run: |
-          if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error::Tag $TAG is not of the form vX.Y.Z"
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Version $VERSION is not of the form X.Y.Z"
             exit 1
           fi
-          VERSION="${TAG#v}"
           PYPROJECT_VERSION="$(python3 -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')"
           if [ "$PYPROJECT_VERSION" != "$VERSION" ]; then
-            echo "::error::pyproject.toml has version $PYPROJECT_VERSION, tag is $TAG"
+            echo "::error::pyproject.toml has version $PYPROJECT_VERSION, expected $VERSION"
             exit 1
           fi
-          git fetch --no-tags origin main
-          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
-            echo "::error::Tagged commit $GITHUB_SHA is not on main"
-            exit 1
-          fi
-          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
 
       - name: Build release notes
         run: |
@@ -62,15 +64,16 @@ jobs:
 
       # retag_image.sh copies the manifest bytes unchanged, so the digest stays
       # identical; imagetools create would wrap a single-platform manifest in
-      # a new manifest list with another digest.
-      - name: Tag the tested image as ${{ github.ref_name }} (no rebuild)
+      # a new manifest list with another digest. Re-running is safe: the same
+      # digest is tagged again.
+      - name: Tag the tested image as v${{ inputs.version }} (no rebuild)
         env:
           REGISTRY_USER: ${{ github.actor }}
           REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         run: |
           SOURCE="$IMAGE_REPO:sha-${GITHUB_SHA::7}"
           if ! SOURCE_DIGEST="$(docker buildx imagetools inspect "$SOURCE" --format '{{json .Manifest}}' | jq -re .digest)"; then
-            echo "::error::$SOURCE not found. Wait until the Main workflow for this commit is green, then re-run this job."
+            echo "::error::$SOURCE not found"
             exit 1
           fi
           scripts/retag_image.sh "$IMAGE_REPO" "$SOURCE_DIGEST" "$TAG"
@@ -85,6 +88,26 @@ jobs:
             echo "| \`sha-${GITHUB_SHA::7}\` | \`$SOURCE_DIGEST\` |"
             echo "| \`$TAG\` | \`$RELEASE_DIGEST\` |"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      # Annotated tag, like the tags pushed by hand before. If a re-run finds
+      # the tag already on this commit (the release step failed last time),
+      # it keeps it; on another commit it stops.
+      - name: Create tag v${{ inputs.version }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if EXISTING="$(gh api "repos/$GITHUB_REPOSITORY/commits/$TAG" --jq .sha 2>/dev/null)"; then
+            if [ "$EXISTING" != "$GITHUB_SHA" ]; then
+              echo "::error::$TAG already exists on $EXISTING, not on $GITHUB_SHA"
+              exit 1
+            fi
+            echo "$TAG already on $GITHUB_SHA (re-run)"
+            exit 0
+          fi
+          TAG_OBJECT="$(gh api "repos/$GITHUB_REPOSITORY/git/tags" \
+            -f tag="$TAG" -f message="$TAG" -f object="$GITHUB_SHA" -f type=commit --jq .sha)"
+          gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$TAG" -f sha="$TAG_OBJECT" > /dev/null
+          echo "Tagged \`$GITHUB_SHA\` as \`$TAG\`" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Create GitHub release
         env:
