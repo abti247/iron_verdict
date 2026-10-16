@@ -115,7 +115,8 @@ def test_demo_window_shows_clickable_demo_label(competition, server_url, role, s
     """A demo window (?code=…&demo=<role>) shows "DEMO" instead of the session
     code (judge) or session name (display), also after a reload. Clicking
     "DEMO" opens the role selection, which still shows the real code for a
-    second device; picking another role shows "DEMO" again."""
+    second device; after a reload there, picking another role shows "DEMO"
+    again."""
     code = _demo_session_code(server_url)
     page = competition.new_context().new_page()
     page.on("dialog", lambda d: d.accept())
@@ -133,6 +134,8 @@ def test_demo_window_shows_clickable_demo_label(competition, server_url, role, s
     expect(page.locator('.role-wrap')).to_be_visible()
     expect(page.locator('.session-tag .code')).to_have_text(code)
 
+    page.reload()
+    expect(page.locator('.role-wrap')).to_be_visible()
     page.locator('.role-btn', has_text='Right').click()
     expect(page.locator('.judge-wrap')).to_be_visible()
     expect(page.locator('.judge-code .code-link')).to_have_text('DEMO')
