@@ -23,6 +23,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - If the same judge position is reconnected from two tabs at the same moment (e.g. a duplicated tab), only one gets the position; the other is shown that the position was taken by another device instead of both acting as that judge
 - The server no longer rewrites its session backup every minute when nothing changed, and saving it no longer pauses votes and connection checks for a moment
 - Reasons under the lights stay centred under their light also for long (German) words, on the display and in the judge's results; on the display they now grow and shrink with the screen size and zoom like the lights
+- If VPortal answers with something other than lifter data (e.g. a maintenance page), the server reports it as an upstream error (502) instead of an internal error (500) and logs the response status and type
 - Long German words in reasons that do not fit next to their light break at a sensible point with a hyphen ("Hantel-ständern") instead of running past it; on phones the judge's results use a slightly smaller font
 - When the VPortal login fails, the dialog says why (VPortal not reachable, no session returned, token request rejected) instead of a bare error code, and the server log records the cause
 - If loading the VPortal stages fails after login, the dialog shows an error instead of "Loading stages…" forever

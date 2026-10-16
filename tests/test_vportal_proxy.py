@@ -599,6 +599,55 @@ def test_graphql_does_not_retry_http_error_responses(mock_vportal, status):
     assert len(calls) == 1
 
 
+@pytest.mark.parametrize(
+    "upstream_response, content_type",
+    [
+        (
+            httpx.Response(200, content=b"<html>secret-body maintenance</html>",
+                           headers={"content-type": "text/html"}),
+            "text/html",
+        ),
+        (httpx.Response(302, headers={"location": "/login"}), None),
+    ],
+    ids=["200-html", "302-empty"],
+)
+def test_graphql_non_json_response_surfaces_as_502_with_log(
+    mock_vportal, caplog, upstream_response, content_type
+):
+    calls = []
+
+    def handler(request):
+        calls.append(request)
+        return upstream_response
+
+    mock_vportal[("POST", "/graphql")] = handler
+
+    with caplog.at_level(logging.WARNING, logger="iron_verdict"):
+        response = client.post(
+            "/api/vportal/graphql", json={**_GRAPHQL_BODY, "token": "secret-token"}
+        )
+
+    assert response.status_code == 502
+    assert response.json()["detail"] == "VPortal upstream invalid response"
+    assert len(calls) == 1
+    records = [r for r in caplog.records if r.getMessage() == "vportal_upstream_invalid_response"]
+    assert len(records) == 1
+    assert records[0].host == "bvdk.vportal-online.de"
+    assert records[0].upstream_status == upstream_response.status_code
+    assert records[0].content_type == content_type
+    _assert_no_secrets_logged(caplog, "secret-token", "secret-body")
+
+
+def test_graphql_passes_through_json_from_other_statuses(mock_vportal):
+    body = {"errors": [{"message": "forbidden"}]}
+    mock_vportal[("POST", "/graphql")] = lambda req: httpx.Response(403, json=body)
+
+    response = client.post("/api/vportal/graphql", json=_GRAPHQL_BODY)
+
+    assert response.status_code == 200
+    assert response.json() == body
+
+
 def test_login_does_not_leak_cookie_jar_between_calls(mock_vportal):
     # Why: real VPortal treats an incoming Cookie: VPORTAL=<valid> as a session
     # refresh and ignores the form credentials. If the proxy shared a cookie
