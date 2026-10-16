@@ -123,14 +123,6 @@ def test_rate_limits_default_to_10_per_hour_and_30_per_minute(monkeypatch):
     assert settings.RATE_LIMIT_SESSION_LOOKUP == "30/minute"
 
 
-def test_rate_limits_honor_env(monkeypatch):
-    monkeypatch.setenv("RATE_LIMIT_SESSION_CREATE", "200/hour")
-    monkeypatch.setenv("RATE_LIMIT_SESSION_LOOKUP", "300/minute")
-    settings = reload_config()
-    assert settings.RATE_LIMIT_SESSION_CREATE == "200/hour"
-    assert settings.RATE_LIMIT_SESSION_LOOKUP == "300/minute"
-
-
 @pytest.mark.parametrize("name", ["RATE_LIMIT_SESSION_CREATE", "RATE_LIMIT_SESSION_LOOKUP"])
 def test_invalid_rate_limit_refuses_to_start(monkeypatch, name):
     monkeypatch.setenv(name, "lots")

@@ -50,7 +50,7 @@ Not marked, because they cannot run against a deployed server:
 - **Tests that read or reset in-process state** (`session_manager`, `connection_manager`, `limiter`): the state lives in another process.
 - Everything else stays in-process for run time: the subset covers the deployment-specific paths; feature edge cases do not depend on where the server runs.
 
-Mark a new test `remote_safe` only if it uses neither of the above; the `image` job proves it on the PR. Each staging test ends its sessions afterwards (`created_sessions`), and staging raises the rate limits per env var (the suite creates about 30 sessions from one runner IP), never via `TEST_MODE`.
+Mark a new test `remote_safe` only if it uses neither of the above; the `image` job proves on the PR that it runs against a deployed server (over plain `http://127.0.0.1` — behaviour that differs only under `https` shows first on staging). Each staging test ends its sessions afterwards (`created_sessions`), and staging raises the rate limits per env var (the suite creates about 30 sessions from one runner IP), never via `TEST_MODE`.
 
 ## Claude cloud environment setup
 

@@ -17,6 +17,9 @@ class FakeRailway:
         self.requests = []
         self.graphql_errors = None
         self.served_version = "sha-old0000"
+        # Status answers to successive deployment queries; the last one repeats.
+        self.statuses = ["DEPLOYING", "SUCCESS"]
+        self.status_queries = 0
         fake = self
 
         class Handler(BaseHTTPRequestHandler):
@@ -36,9 +39,15 @@ class FakeRailway:
                 fake.requests.append({"token": self.headers.get("Project-Access-Token"), **body})
                 if fake.graphql_errors:
                     payload = {"errors": fake.graphql_errors, "data": None}
+                elif "deployment(" in body["query"]:
+                    status = fake.statuses[min(fake.status_queries, len(fake.statuses) - 1)]
+                    fake.status_queries += 1
+                    if status == "SUCCESS":
+                        fake.served_version = fake.pending_version
+                    payload = {"data": {"deployment": {"status": status}}}
                 elif "serviceInstanceUpdate" in body["query"]:
                     payload = {"data": {"serviceInstanceUpdate": True}}
-                    fake.served_version = body["variables"]["i"].rsplit(":", 1)[1]
+                    fake.pending_version = body["variables"]["i"].rsplit(":", 1)[1]
                 else:
                     payload = {"data": {"serviceInstanceDeployV2": "deploy-1"}}
                 self._send(200, json.dumps(payload), "application/json")
@@ -70,6 +79,7 @@ def run_deploy(railway, expected_version="sha-1a2b3c4", timeout_s="20"):
         "RAILWAY_ENVIRONMENT_ID": "env-1",
         "RAILWAY_API": f"{railway.url}/graphql",
         "DEPLOY_TIMEOUT_S": timeout_s,
+        "POLL_INTERVAL_S": "0.1",
     }
     return subprocess.run(
         ["bash", str(SCRIPT), IMAGE, railway.url, expected_version],
@@ -82,12 +92,34 @@ def test_deploy_sets_image_deploys_and_waits_for_footer_version(railway):
 
     assert result.returncode == 0, result.stderr
     assert f"{railway.url} serves sha-1a2b3c4" in result.stdout
-    update, deploy = railway.requests
+    update, deploy, *status_queries = railway.requests
     assert update["token"] == deploy["token"] == "token-123"
     assert "serviceInstanceUpdate" in update["query"]
     assert update["variables"] == {"e": "env-1", "s": "service-1", "i": IMAGE}
     assert "serviceInstanceDeployV2" in deploy["query"]
     assert deploy["variables"] == {"e": "env-1", "s": "service-1"}
+    assert [q["variables"] for q in status_queries] == [{"d": "deploy-1"}] * 2
+
+
+def test_redeploy_of_served_version_waits_for_new_deployment(railway):
+    # Re-run: staging already serves the image; only Railway's status tells
+    # the new deployment from the old one.
+    railway.served_version = "sha-1a2b3c4"
+    railway.statuses = ["QUEUED", "DEPLOYING", "DEPLOYING", "SUCCESS"]
+
+    result = run_deploy(railway)
+
+    assert result.returncode == 0, result.stderr
+    assert railway.status_queries == 4
+
+
+def test_deploy_fails_when_deployment_fails(railway):
+    railway.statuses = ["DEPLOYING", "CRASHED"]
+
+    result = run_deploy(railway)
+
+    assert result.returncode != 0
+    assert "ended with status CRASHED" in result.stderr
 
 
 def test_deploy_fails_on_graphql_error_without_deploying(railway):
@@ -101,6 +133,8 @@ def test_deploy_fails_on_graphql_error_without_deploying(railway):
 
 
 def test_deploy_fails_when_footer_never_shows_expected_version(railway):
+    railway.statuses = ["SUCCESS"]
+
     result = run_deploy(railway, expected_version="sha-9999999", timeout_s="1")
 
     assert result.returncode != 0

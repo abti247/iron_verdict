@@ -50,6 +50,34 @@ jobs:
             exit 1
           fi
 
+      # Before anything is changed: a tag vX.Y.Z on another commit (a second
+      # run of the same version) stops here, so the image tag vX.Y.Z is never
+      # moved away from the released commit. A tag already on this commit is
+      # a re-run after a failure further down and is kept.
+      - name: Check tag v${{ inputs.version }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if ! REF="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" 2> gh-error.txt)"; then
+            if grep -q "HTTP 404" gh-error.txt; then
+              echo "TAG_EXISTS=false" >> "$GITHUB_ENV"
+              exit 0
+            fi
+            cat gh-error.txt
+            echo "::error::could not look up tag $TAG"
+            exit 1
+          fi
+          SHA="$(jq -r .object.sha <<< "$REF")"
+          if [ "$(jq -r .object.type <<< "$REF")" = "tag" ]; then
+            SHA="$(gh api "repos/$GITHUB_REPOSITORY/git/tags/$SHA" --jq .object.sha)"
+          fi
+          if [ "$SHA" != "$GITHUB_SHA" ]; then
+            echo "::error::$TAG already exists on $SHA, not on $GITHUB_SHA"
+            exit 1
+          fi
+          echo "$TAG already on $GITHUB_SHA (re-run)"
+          echo "TAG_EXISTS=true" >> "$GITHUB_ENV"
+
       - name: Build release notes
         run: |
           python3 scripts/changelog_section.py "$VERSION" > release-notes.md
@@ -89,21 +117,12 @@ jobs:
             echo "| \`$TAG\` | \`$RELEASE_DIGEST\` |"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      # Annotated tag, like the tags pushed by hand before. If a re-run finds
-      # the tag already on this commit (the release step failed last time),
-      # it keeps it; on another commit it stops.
+      # Annotated tag, like the tags pushed by hand before.
       - name: Create tag v${{ inputs.version }}
+        if: env.TAG_EXISTS == 'false'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if EXISTING="$(gh api "repos/$GITHUB_REPOSITORY/commits/$TAG" --jq .sha 2>/dev/null)"; then
-            if [ "$EXISTING" != "$GITHUB_SHA" ]; then
-              echo "::error::$TAG already exists on $EXISTING, not on $GITHUB_SHA"
-              exit 1
-            fi
-            echo "$TAG already on $GITHUB_SHA (re-run)"
-            exit 0
-          fi
           TAG_OBJECT="$(gh api "repos/$GITHUB_REPOSITORY/git/tags" \
             -f tag="$TAG" -f message="$TAG" -f object="$GITHUB_SHA" -f type=commit --jq .sha)"
           gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$TAG" -f sha="$TAG_OBJECT" > /dev/null

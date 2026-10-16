@@ -8,12 +8,15 @@
 #
 # Env: RAILWAY_TOKEN (project token of the target environment, sent as
 # Project-Access-Token), RAILWAY_SERVICE_ID, RAILWAY_ENVIRONMENT_ID.
-# DEPLOY_TIMEOUT_S (default 600) bounds the wait.
+# DEPLOY_TIMEOUT_S (default 600) bounds the wait; POLL_INTERVAL_S (default 5)
+# is shortened by the tests only.
 #
-# Done means: /health answers 200 and the landing page footer shows the
-# expected version. The footer is the only proof that the new image (not the
-# previous deployment) answers on the public domain, so the script does not
-# rely on Railway's deployment status.
+# Done means: Railway reports the new deployment as SUCCESS, then /health
+# answers 200 and the landing page footer shows the expected version.
+# Why both: the status tells this deployment from an older one of the same
+# image (a re-run deploys the image staging already serves, so the footer
+# alone would pass at once, while the swap is still pending); the footer
+# proves the new image answers on the public domain.
 set -euo pipefail
 
 if [ "$#" -ne 3 ]; then
@@ -26,6 +29,7 @@ expected_version="$3"
 : "${RAILWAY_TOKEN:?}" "${RAILWAY_SERVICE_ID:?}" "${RAILWAY_ENVIRONMENT_ID:?}"
 api="${RAILWAY_API:-https://backboard.railway.com/graphql/v2}"
 timeout_s="${DEPLOY_TIMEOUT_S:-600}"
+poll_s="${POLL_INTERVAL_S:-5}"
 
 # Runs one GraphQL request; fails on HTTP errors and on GraphQL "errors".
 gql() {
@@ -51,10 +55,26 @@ deployment="$(gql "$(jq -nc --argjson v "$vars" '{variables: ($v | del(.i)), que
   | jq -re '.data.serviceInstanceDeployV2')"
 echo "Deployment ${deployment} started"
 
-# Poll instead of a fixed wait: go on as soon as the new build answers.
+# Poll instead of a fixed wait: go on as soon as the deployment is up.
 # Every 5 s: a deploy (image pull, start, Railway's traffic switch) takes
 # about a minute; the timeout catches a deploy that never comes up.
 deadline=$((SECONDS + timeout_s))
+while :; do
+  status="$(gql "$(jq -nc --arg d "$deployment" '{variables: {d: $d}, query:
+    "query($d: String!) { deployment(id: $d) { status } }"}')" | jq -re '.data.deployment.status')"
+  case "$status" in
+    SUCCESS) echo "Deployment ${deployment}: SUCCESS"; break ;;
+    FAILED|CRASHED|REMOVED|REMOVING|SKIPPED)
+      echo "error: deployment ${deployment} ended with status ${status}. Check it in Railway." >&2
+      exit 1 ;;
+  esac
+  if [ "$SECONDS" -ge "$deadline" ]; then
+    echo "error: deployment ${deployment} not successful within ${timeout_s} s (status ${status})." >&2
+    exit 1
+  fi
+  sleep "$poll_s"
+done
+
 while :; do
   version=""
   if curl -fsS -m 10 "${url}/health" > /dev/null 2>&1; then
@@ -70,5 +90,5 @@ while :; do
     echo "error: ${url} did not serve ${expected_version} within ${timeout_s} s (last seen: '${version:-no answer}'). Check deployment ${deployment} in Railway." >&2
     exit 1
   fi
-  sleep 5
+  sleep "$poll_s"
 done
