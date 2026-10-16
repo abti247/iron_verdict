@@ -333,6 +333,17 @@
     letter-spacing: 0.5px;
 }
 
+.demo-popups-blocked {
+    margin-top: 24px;
+    border-left: 2px solid var(--blood-bright);
+    padding: 8px 12px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-main);
+    letter-spacing: 0.5px;
+}
+
 .demo-launch-wrap {
     margin-top: 20px;
 }

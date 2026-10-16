@@ -4,6 +4,8 @@
 export function demoIntroScreen() {
     return {
         demoRunning: false,
+        // 'none' | 'some' | 'all' — how many demo windows a pop-up blocker stopped.
+        popupsBlocked: 'none',
 
         async launchDemo() {
             try {
@@ -21,12 +23,16 @@ export function demoIntroScreen() {
 
                 const specs = this.getWindowSpecs(sessionCode);
                 const timestamp = Date.now();
-                window.open(specs.leftJudge.url,   `leftJudge_${timestamp}`,   specs.leftJudge.params);
-                window.open(specs.centerJudge.url, `centerJudge_${timestamp}`, specs.centerJudge.params);
-                window.open(specs.rightJudge.url,  `rightJudge_${timestamp}`,  specs.rightJudge.params);
-                window.open(specs.display.url,     `display_${timestamp}`,     specs.display.params);
-
-                this.demoRunning = true;
+                const windows = [
+                    window.open(specs.leftJudge.url,   `leftJudge_${timestamp}`,   specs.leftJudge.params),
+                    window.open(specs.centerJudge.url, `centerJudge_${timestamp}`, specs.centerJudge.params),
+                    window.open(specs.rightJudge.url,  `rightJudge_${timestamp}`,  specs.rightJudge.params),
+                    window.open(specs.display.url,     `display_${timestamp}`,     specs.display.params),
+                ];
+                // A blocked pop-up returns null; some blockers return a window they already closed.
+                const blocked = windows.filter((win) => !win || win.closed).length;
+                this.popupsBlocked = blocked === 0 ? 'none' : blocked === windows.length ? 'all' : 'some';
+                this.demoRunning = blocked === 0;
             } catch (error) {
                 alert(t('alerts.demoFailed'));
                 console.error('Demo mode error:', error);

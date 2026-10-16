@@ -76,14 +76,16 @@
                 <li x-text="t('demo.duringStep6')"></li>
             </ol>
 
-            <div x-show="!demoRunning" class="demo-popup-note" x-text="t('demo.popupNote')"></div>
+            <div x-show="!demoRunning && popupsBlocked === 'none'" class="demo-popup-note" x-text="t('demo.popupNote')"></div>
+            <div x-show="popupsBlocked !== 'none'" class="demo-popups-blocked" role="alert" data-testid="demo-popups-blocked"
+                 x-text="popupsBlocked === 'all' ? t('demo.popupsBlockedAll') : t('demo.popupsBlockedSome')"></div>
 
             <div x-show="!demoRunning" class="demo-launch-wrap">
                 <button class="btn-blood btn-blood-primary cut-corner-sm" @click="launchDemo()" x-text="t('demo.launchDemo')">
                 </button>
             </div>
 
-            <div x-show="demoRunning" class="demo-running-msg" x-text="t('demo.demoRunning')"></div>
+            <div x-show="demoRunning" class="demo-running-msg" data-testid="demo-running" x-text="t('demo.demoRunning')"></div>
 
             <div class="btn-row">
                 <button class="btn-blood btn-blood-ghost" @click="$store.nav.navigateTo('landing')">
@@ -385,7 +387,7 @@
             <div class="judge-code">
                 <span class="conn-dot" :class="$store.session.connectionStatus"></span>
                 <span class="conn-label" x-show="$store.session.serverRestarting" x-text="t('connection.serverRestarting')"></span>
-                <span class="code-link" @click="returnToRoleSelection()" x-text="$store.session.code"></span>
+                <span class="code-link" @click="returnToRoleSelection()" x-text="$store.session.isDemo ? 'DEMO' : $store.session.code"></span>
             </div>
         </div>
 
@@ -519,8 +521,7 @@
         <div class="display-tag">
             <span class="conn-dot" :class="$store.session.connectionStatus"></span>
             <span class="conn-label" x-show="$store.session.serverRestarting" x-text="t('connection.serverRestarting')"></span>
-            <span class="code-link" x-show="!$store.session.isDemo" @click="returnToRoleSelection()" x-text="$store.session.name"></span>
-            <span x-show="$store.session.isDemo">DEMO</span>
+            <span class="code-link" @click="returnToRoleSelection()" x-text="$store.session.isDemo ? 'DEMO' : $store.session.name"></span>
         </div>
 
         <div class="display-timer-big" :class="$store.timer.expired && 'expired'" x-text="$store.timer.display"></div>

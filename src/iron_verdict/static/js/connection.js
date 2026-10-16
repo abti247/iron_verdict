@@ -59,6 +59,9 @@ export function createConnection({
     let ws = null;
     const { session, nav, judge, timer, vportal } = stores;
 
+    // The demo flag is stored with the session so a reloaded demo window keeps showing "DEMO".
+    const storedEntry = (entry) => (session.isDemo ? { ...entry, demo: true } : entry);
+
     const c = {
         ...stores,
         storage,
@@ -89,7 +92,7 @@ export function createConnection({
             roleTaken.reset();
             const code = session.code || session.joinCode;
             session.code = code;
-            const sessionEntry = { code, role };
+            const sessionEntry = storedEntry({ code, role });
             const existingSession = storage.getItem('iv_session');
             if (existingSession) {
                 try {
@@ -156,7 +159,7 @@ export function createConnection({
                         session.kind = 'generic';
                         vportal.applySessionInfo(null);
                     }
-                    storage.setItem('iv_session', JSON.stringify({ code }));
+                    storage.setItem('iv_session', JSON.stringify(storedEntry({ code })));
                     nav.navigateTo('role-select');
                 } else if (res.status === 404 || res.status === 422) {
                     if (nav.screen === 'reconnecting') {
@@ -197,7 +200,7 @@ export function createConnection({
             vportal.stopDisplayOverlay();
             // Downgrade to a code-only entry so a reload on role-select returns here.
             if (session.code) {
-                storage.setItem('iv_session', JSON.stringify({ code: session.code }));
+                storage.setItem('iv_session', JSON.stringify(storedEntry({ code: session.code })));
             } else {
                 storage.removeItem('iv_session');
             }
