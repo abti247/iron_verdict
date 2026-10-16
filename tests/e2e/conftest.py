@@ -8,12 +8,18 @@ fixtures cannot reset server state and there is no fake VPortal (tests using
 directly (e.g. ``connection_manager``) do not work externally either; CI only
 runs ``test_smoke.py`` in external mode and everything else in the ``e2e`` job
 against the in-process server.
+
+In external mode every session a test creates is ended after the test (see
+``created_sessions``), so test runs against staging or production leave
+no sessions in the server's snapshot.
 """
 
+import json
 import os
 import socket
 import threading
 import time
+from urllib.parse import urlparse
 
 os.environ["TEST_MODE"] = "1"
 os.environ["VPORTAL_FETCH_INTERVAL_MS"] = "2000"
@@ -21,6 +27,7 @@ os.environ["VPORTAL_FETCH_INTERVAL_MS"] = "2000"
 import httpx
 import pytest
 import uvicorn
+from httpx_ws import WebSocketDisconnect, connect_ws
 
 from iron_verdict.main import app, session_manager, connection_manager
 from iron_verdict.main import limiter
@@ -81,6 +88,82 @@ def _reset_server_state():
     yield
     session_manager.sessions.clear()
     connection_manager.active_connections.clear()
+
+
+# How long _end_session waits for the head-judge slot to become free. The
+# server frees it only once it has processed the closed browser's WebSocket
+# close, which over a proxy (Railway) can lag behind the context close; a
+# half-open connection is evicted by the heartbeat watchdog after 15 s.
+END_SESSION_JOIN_TIMEOUT_S = 20
+END_SESSION_RETRY_INTERVAL_S = 0.5
+
+
+def _end_session(base_url, code):
+    """End session *code* on the external server the way the head judge does
+    (join as center judge, ``end_session_confirmed``) and check it is gone."""
+    with httpx.Client(base_url=base_url, timeout=10) as client:
+        deadline = time.monotonic() + END_SESSION_JOIN_TIMEOUT_S
+        while True:
+            with connect_ws(f"{base_url}/ws", client, headers={"Origin": base_url}) as ws:
+                ws.send_text(json.dumps({"type": "join", "session_code": code, "role": "center_judge"}))
+                reply = json.loads(ws.receive_text(timeout=10))
+                if reply["type"] == "join_success":
+                    ws.send_text(json.dumps({"type": "end_session_confirmed"}))
+                    try:
+                        while json.loads(ws.receive_text(timeout=10))["type"] != "session_ended":
+                            pass
+                    except WebSocketDisconnect:
+                        pass  # the server closes the socket right after session_ended
+                    break
+            if reply.get("message") == "Session not found":
+                return  # the test ended it itself (or it expired)
+            if reply.get("message") != "Role already taken" or time.monotonic() > deadline:
+                raise AssertionError(f"could not end test session {code}: {reply}")
+            time.sleep(END_SESSION_RETRY_INTERVAL_S)
+
+        lookup = client.get(f"/api/sessions/{code}")
+        assert lookup.status_code == 404, f"test session {code} still exists after ending it"
+
+
+@pytest.fixture(autouse=True)
+def created_sessions():
+    """Codes of the sessions the current test created; in external mode each
+    is ended after the test, also when the test failed.
+
+    Browser-created sessions are recorded automatically (see ``new_context``).
+    A test that creates a session over plain HTTP appends its code itself.
+    Autouse fixtures are set up first and torn down last, so all browser
+    contexts are closed (and the head-judge slot freed) before this runs.
+    A session that cannot be ended fails the teardown, so it never stays
+    behind unnoticed.
+    """
+    codes = []
+    yield codes
+    if not EXTERNAL_BASE_URL:
+        return  # _reset_server_state clears the in-process sessions
+    for code in dict.fromkeys(codes):
+        _end_session(EXTERNAL_BASE_URL, code)
+
+
+@pytest.fixture
+def new_context(new_context, created_sessions):
+    """pytest-playwright's ``new_context``; in external mode every context also
+    records the codes of sessions created through ``POST /api/sessions``."""
+    if not EXTERNAL_BASE_URL:
+        return new_context
+
+    def record_created_session(response):
+        if (response.request.method == "POST"
+                and urlparse(response.url).path == "/api/sessions"
+                and response.ok):
+            created_sessions.append(response.json()["session_code"])
+
+    def _new_context(**kwargs):
+        ctx = new_context(**kwargs)
+        ctx.on("response", record_created_session)
+        return ctx
+
+    return _new_context
 
 
 # ---------------------------------------------------------------------------
