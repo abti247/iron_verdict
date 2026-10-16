@@ -34,7 +34,7 @@ poll_s="${POLL_INTERVAL_S:-5}"
 # Runs one GraphQL request; fails on HTTP errors and on GraphQL "errors".
 gql() {
   local response
-  response="$(curl -fsS "$api" -H 'Content-Type: application/json' \
+  response="$(curl -fsS -m 30 "$api" -H 'Content-Type: application/json' \
     -H "Project-Access-Token: ${RAILWAY_TOKEN}" -d "$1")"
   if jq -e '.errors' > /dev/null <<< "$response"; then
     echo "error: Railway API: $(jq -c '.errors' <<< "$response")" >&2

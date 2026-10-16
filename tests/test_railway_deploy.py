@@ -122,6 +122,15 @@ def test_deploy_fails_when_deployment_fails(railway):
     assert "ended with status CRASHED" in result.stderr
 
 
+def test_deploy_fails_when_deployment_never_succeeds(railway):
+    railway.statuses = ["DEPLOYING"]
+
+    result = run_deploy(railway, timeout_s="1")
+
+    assert result.returncode != 0
+    assert "not successful within 1 s (status DEPLOYING)" in result.stderr
+
+
 def test_deploy_fails_on_graphql_error_without_deploying(railway):
     railway.graphql_errors = [{"message": "Not Authorized"}]
 
