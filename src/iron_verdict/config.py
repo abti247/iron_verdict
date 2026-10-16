@@ -2,6 +2,7 @@ import logging
 import os
 
 from dotenv import load_dotenv
+from limits import parse_many
 
 load_dotenv()
 
@@ -27,6 +28,24 @@ def _read_fetch_interval() -> int:
         )
         return _FETCH_INTERVAL_MIN_MS
     return value
+
+
+def _read_rate_limit(name: str, default: str) -> str:
+    """Rate limit in slowapi notation (e.g. "10/hour") from env var *name*.
+
+    Why configurable: staging runs the E2E suite against a deployed server,
+    where the test run cannot reset the limiter and needs more than the
+    production limits. An invalid value refuses startup instead of silently
+    falling back, so a typo on a deployment is seen at once.
+    """
+    raw = os.getenv(name, "").strip()
+    if not raw:
+        return default
+    try:
+        parse_many(raw)
+    except ValueError as exc:
+        raise RuntimeError(f"{name}={raw!r} is not a valid rate limit (e.g. '10/hour')") from exc
+    return raw
 
 
 def require_allowed_origin(value: str) -> str:
@@ -57,6 +76,8 @@ class Settings:
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
     SNAPSHOT_PATH: str = os.getenv("SNAPSHOT_PATH", "/data/sessions.json")
     VPORTAL_FETCH_INTERVAL_MS: int = _read_fetch_interval()
+    RATE_LIMIT_SESSION_CREATE: str = _read_rate_limit("RATE_LIMIT_SESSION_CREATE", "10/hour")
+    RATE_LIMIT_SESSION_LOOKUP: str = _read_rate_limit("RATE_LIMIT_SESSION_LOOKUP", "30/minute")
     TEST_MODE: bool = os.getenv("TEST_MODE") == "1"
     EXPOSE_VPORTAL_STAGING: bool = os.getenv("EXPOSE_VPORTAL_STAGING") == "1"
 

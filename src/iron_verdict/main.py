@@ -138,6 +138,10 @@ connection_manager = ConnectionManager()
 async def lifespan(app: FastAPI):
     setup_logging(settings.LOG_LEVEL)
     require_allowed_origin(settings.ALLOWED_ORIGIN)
+    logger.info("rate_limits_configured", extra={
+        "session_create": settings.RATE_LIMIT_SESSION_CREATE,
+        "session_lookup": settings.RATE_LIMIT_SESSION_LOOKUP,
+    })
     session_manager.load_snapshot(settings.SNAPSHOT_PATH)
 
     loop = asyncio.get_running_loop()
@@ -239,7 +243,7 @@ async def vportal_root():
 
 
 @app.post("/api/sessions")
-@limiter.limit("10/hour")
+@limiter.limit(settings.RATE_LIMIT_SESSION_CREATE)
 async def create_session(request: Request, body: CreateSessionRequest):
     """Create a new judging session."""
     code = await session_manager.create_session(body.name, kind=body.kind)
@@ -251,7 +255,7 @@ async def create_session(request: Request, body: CreateSessionRequest):
 
 
 @app.get("/api/sessions/{code}")
-@limiter.limit("30/minute")
+@limiter.limit(settings.RATE_LIMIT_SESSION_LOOKUP)
 async def get_session(
     request: Request,
     code: str = Path(..., pattern=r"^[A-Z0-9]{8}$"),
