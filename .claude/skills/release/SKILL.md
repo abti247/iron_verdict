@@ -47,7 +47,6 @@ Do not push a tag yourself: a pushed tag starts nothing, and the chain would the
 
 Tell the maintainer, in German, with the concrete values filled in:
 
-- **Deploy:** Railway → service `iron_verdict` → Settings → Source → Source Image → tag from `v<previous>` to `vX.Y.Z` → save and deploy. Then check `/health`, the footer shows `sha-<commit>`, a test session works.
+- **Deploy:** Railway → service `iron_verdict` → Settings → Source → Source Image → tag from `v<previous>` to `vX.Y.Z` → save and deploy. Then check `/health`, the footer shows `sha-<commit>`, a test session works, and `/static/js/app.js` answers `cache-control: no-cache` (if it shows `max-age=…`, Cloudflare's Browser Cache TTL must be set back to *Respect Existing Headers* and the cache purged, see `docs/release.md`).
 - **Rollback:** same place, tag back to `v<previous>`, deploy. About one minute, no build.
 - Not on a competition day unless it is a rollback; checklist in `docs/release.md`.
-- **Once, for the first release after v0.2.1** (contains #135): before the next competition, hard-reload every judge and display device (Ctrl+Shift+R, or clear the site data on phones) — they may still hold old static files from the browser cache. Drop this line once that release is out.

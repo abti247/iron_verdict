@@ -25,7 +25,10 @@ Served by FastAPI directly:
 - `POST /api/vportal/login` — proxy endpoint; forwards browser credentials to a federation's VPortal instance via a host-allowlisted outbound request and returns the JWT plus the server-clamped polling interval. See *VPortal integration* below.
 - `POST /api/vportal/graphql` — proxy endpoint; forwards GraphQL reads to VPortal with `Authorization: Bearer <jwt>`. Read-only by construction: mutations and any operation outside a hard-coded allowlist of four read queries are rejected with 400 before the outbound call.
 - `GET /static/*` — static assets (CSS, JS, fonts, vendored libraries) served by FastAPI. Every response carries `Cache-Control: no-cache` (same as `/` and `/vportal`): the browser keeps the file but revalidates it with `If-None-Match` before each use, and an unchanged file comes back as `304` without a body. In an AWS deployment these would move to CloudFront → S3.  
-*Why no-cache, not content-hashed names with `immutable`:* without `Cache-Control` browsers reuse a file heuristically (typically 10 % of its age) without asking, so after a deploy a device that had the app open ran new HTML with old JavaScript — once stuck at "Loading …" because the old `init.js` loaded Alpine from a CDN the new CSP blocks (#135). Hashed names are the usual fix but need a build step; the ES modules import each other by fixed paths and the app has none. Cost: one short conditional request per file and page load, and no page load from cache while the server is unreachable — nothing works without it anyway. One rule for everything, vendored files and fonts included: long caching of a few small files would gain little.
+*Why no-cache, not content-hashed names with `immutable`:* without `Cache-Control` browsers reuse a file heuristically (typically 10 % of its age) without asking, so after a deploy a device that had the app open ran new HTML with old JavaScript — once stuck at "Loading …" because the old `init.js` loaded Alpine from a CDN the new CSP blocks (#135). Hashed names are the usual fix but need a build step; the ES modules import each other by fixed paths and the app has none. Cost: one short conditional request per file and page load, and no page load from cache while the server is unreachable — nothing works without it anyway. One rule for everything, vendored files and fonts included: long caching of a few small files would gain little.  
+*Why Cloudflare must pass the header through:* on production Cloudflare sits in front (see *Edge*). After the v0.3.0 deploy the page stayed black: Cloudflare served v0.2.1 JavaScript it had stored before (no `Cache-Control` yet) with the new HTML (#145). Two things keep a release from needing a cache purge:
+  - The origin's `no-cache` makes Cloudflare's own cache revalidate with the origin before each use (`cf-cache-status: REVALIDATED`/`MISS`). The entries stored under v0.2.1 had to be purged once.
+  - Browser Cache TTL *Respect Existing Headers* passes `no-cache` on to the browser. With the default (4 h) Cloudflare sent v0.3.0's `app.js` (revalidated, origin `no-cache`) to the browser as `max-age=14400`, so a device could again mix new HTML with old JavaScript for up to 4 h after a release.
 
 Security:
 
@@ -158,6 +161,7 @@ Optional, pull-only overlay of the current lifter on the display screen for sess
 ## Edge
 
 - Cloudflare proxy (orange cloud) sits in front of Railway. SSL/TLS Full (strict), Bot Fight Mode on.
+- Caching → Browser Cache TTL: **Respect Existing Headers** (set 2026-10-18, #145), so the origin's `Cache-Control: no-cache` reaches the browser (see `GET /static/*`).
 - Domain: `iron-verdict.com` → CNAME → Railway.
 
 ## Build and deployment
