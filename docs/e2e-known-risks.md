@@ -1,6 +1,6 @@
 # E2E Test Suite — Known Risks
 
-Three tests have latent timing/race risks that could surface as intermittent failures (flakes). They all pass reliably today. This doc exists so that **when a test starts failing after a code change**, you can quickly check whether it's a known risk with a ready-to-apply fix.
+Four places have latent timing/race risks that could surface as intermittent failures (flakes). They all pass reliably today. This doc exists so that **when a test starts failing after a code change**, you can quickly check whether it's a known risk with a ready-to-apply fix.
 
 ## When to consult this doc
 
@@ -23,6 +23,7 @@ Any failure out of 10 = flaky. Apply the fix documented below.
 | Timer race | `test_timer_flow` | Timer logic, tick interval, `.judge-timer` rendering |
 | Role rejection race | `test_cannot_join_taken_role` | Role locking, WebSocket reconnect, `handleJoinError` |
 | Display orphan | `test_display_reconnects_after_refresh` | Display WS handling, connection cleanup, `display_XXXX` IDs |
+| Teardown connection error on staging | `created_sessions` / `_end_session` (any external-mode test) | Session cleanup in `tests/e2e/conftest.py`, staging proxy/TLS setup |
 
 ---
 
@@ -94,6 +95,20 @@ competition.vote_all_white()
 ```
 
 Or fix server-side: in the WebSocket handler, when a display reconnects with the same session code, proactively close the previous connection.
+
+---
+
+## Risk 4: Connection error while ending a test session on staging — `_end_session`
+
+**File:** `tests/e2e/conftest.py` (`_end_session`, run by the autouse `created_sessions` fixture in external mode)
+
+**What it does:** After each external-mode test it joins the test's session as head judge over `/ws`, ends it and checks the lookup answers 404.
+
+**Why it could flake:** Over Railway's proxy and TLS a single connection can fail below the app. In the 0.3.0 release run (attempt 2) all 28 tests passed and one teardown failed with `ReadError('[SSL: WRONG_VERSION_NUMBER] wrong version number')` (#143). The error could not be reproduced locally over TLS (15 runs, plus 5 with the "Role already taken" retry path forced).
+
+**Mitigation (in place):** A `httpx.TransportError` (or `WebSocketNetworkError`, as httpx_ws reports the same fault on an open socket) starts the attempt over on a fresh client within the 20 s join deadline; only the cleanup is retried, never a test. If it still fails, the teardown error lists every error with its step (`connect`, `join`, `end_session_confirmed`, `lookup`).
+
+**If it recurs:** read the step in the error. A `WebSocketNetworkError()` from `join` or `end_session_confirmed` carries no cause: httpx_ws drops it, so it does not tell a TLS fault from a plain EOF. Repeated failures at the same step are not a flake — investigate that step (e.g. proxy behaviour on WebSocket close) instead of widening the deadline.
 
 ---
 

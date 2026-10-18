@@ -27,7 +27,7 @@ os.environ["VPORTAL_FETCH_INTERVAL_MS"] = "2000"
 import httpx
 import pytest
 import uvicorn
-from httpx_ws import WebSocketDisconnect, connect_ws
+from httpx_ws import WebSocketDisconnect, WebSocketNetworkError, connect_ws
 
 from iron_verdict.main import app, session_manager, connection_manager
 from iron_verdict.main import limiter
@@ -94,6 +94,7 @@ def _reset_server_state():
 # server frees it only once it has processed the closed browser's WebSocket
 # close, which over a proxy (Railway) can lag behind the context close; a
 # half-open connection is evicted by the heartbeat watchdog after 15 s.
+# Connection errors are retried within the same deadline.
 END_SESSION_JOIN_TIMEOUT_S = 20
 END_SESSION_RETRY_INTERVAL_S = 0.5
 # How long _end_session waits for the ended session to disappear from lookups.
@@ -102,31 +103,64 @@ END_SESSION_DELETE_TIMEOUT_S = 5
 
 def _end_session(base_url, code):
     """End session *code* on the external server the way the head judge does
-    (join as center judge, ``end_session_confirmed``) and check it is gone."""
-    with httpx.Client(base_url=base_url, timeout=10) as client:
-        deadline = time.monotonic() + END_SESSION_JOIN_TIMEOUT_S
-        while True:
-            with connect_ws(f"{base_url}/ws", client, headers={"Origin": base_url}) as ws:
-                ws.send_text(json.dumps({"type": "join", "session_code": code, "role": "center_judge"}))
-                reply = json.loads(ws.receive_text(timeout=10))
-                if reply["type"] == "join_success":
-                    ws.send_text(json.dumps({"type": "end_session_confirmed"}))
-                    # The server broadcasts session_ended, closes every socket
-                    # (ours included) and deletes the session last.
-                    try:
-                        while True:
-                            ws.receive_text(timeout=10)
-                    except WebSocketDisconnect:
-                        pass
-                    break
-            if reply.get("message") == "Session not found":
-                return  # the test ended it itself (or it expired)
-            if reply.get("message") != "Role already taken" or time.monotonic() > deadline:
-                raise AssertionError(f"could not end test session {code}: {reply}")
+    (join as center judge, ``end_session_confirmed``) and check it is gone.
+
+    A connection error (``httpx.TransportError``; on an open WebSocket httpx_ws
+    reports it as ``WebSocketNetworkError``) starts the attempt over on a
+    fresh client until the join deadline: once a staging run had every test
+    green and one teardown failed with a TLS read error (#143). Every other
+    error fails at once. Giving up names each error with its step."""
+    deadline = time.monotonic() + END_SESSION_JOIN_TIMEOUT_S
+    errors = []
+    while True:
+        step = ["connect"]
+        try:
+            if _end_session_attempt(base_url, code, step):
+                return
+        except (httpx.TransportError, WebSocketNetworkError) as exc:
+            errors.append(f"{step[0]}: {exc!r}")
+            if time.monotonic() > deadline:
+                raise AssertionError(
+                    f"could not end test session {code}: " + "; ".join(errors)
+                ) from exc
             time.sleep(END_SESSION_RETRY_INTERVAL_S)
+            continue
+        # The head-judge slot is still taken (see END_SESSION_JOIN_TIMEOUT_S).
+        if time.monotonic() > deadline:
+            raise AssertionError(
+                f"could not end test session {code}: role still taken; " + "; ".join(errors)
+            )
+        time.sleep(END_SESSION_RETRY_INTERVAL_S)
+
+
+def _end_session_attempt(base_url, code, step):
+    """One attempt of ``_end_session`` on a fresh client. Returns False if the
+    head-judge slot is still taken, True once the session is gone. *step*
+    (a one-item list) tracks the current step for error messages."""
+    with httpx.Client(base_url=base_url, timeout=10) as client:
+        with connect_ws(f"{base_url}/ws", client, headers={"Origin": base_url}) as ws:
+            step[0] = "join"
+            ws.send_text(json.dumps({"type": "join", "session_code": code, "role": "center_judge"}))
+            reply = json.loads(ws.receive_text(timeout=10))
+            if reply.get("message") == "Session not found":
+                return True  # the test ended it itself (or it expired)
+            if reply.get("message") == "Role already taken":
+                return False
+            if reply["type"] != "join_success":
+                raise AssertionError(f"could not end test session {code}: {reply}")
+            step[0] = "end_session_confirmed"
+            ws.send_text(json.dumps({"type": "end_session_confirmed"}))
+            # The server broadcasts session_ended, closes every socket
+            # (ours included) and deletes the session last.
+            try:
+                while True:
+                    ws.receive_text(timeout=10)
+            except WebSocketDisconnect:
+                pass
 
         # Deleting the session follows our socket's close without an await
         # barrier we can observe, so the lookup may still race it briefly.
+        step[0] = "lookup"
         deadline = time.monotonic() + END_SESSION_DELETE_TIMEOUT_S
         while True:
             lookup = client.get(f"/api/sessions/{code}")
@@ -136,6 +170,7 @@ def _end_session(base_url, code):
         assert lookup.status_code == 404, (
             f"test session {code} not confirmed ended: lookup answered {lookup.status_code}"
         )
+        return True
 
 
 class _CreatedSessions(list):
