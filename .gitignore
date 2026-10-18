@@ -41,3 +41,6 @@ node_modules/
 
 # Playwright traces/screenshots from failed E2E runs
 test-results/
+
+# Left behind if an E2E run is killed mid-test (tests/e2e/test_static_cache.py)
+src/iron_verdict/static/_e2e_cache_probe.js

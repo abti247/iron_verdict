@@ -19,3 +19,5 @@ compose.yaml
 docker-compose.yml
 
 src/iron_verdict/static/AGENTS.md
+
+src/iron_verdict/static/_e2e_cache_probe.js
