@@ -7,6 +7,16 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+### Removed
+
+## [0.3.0] - 2026-10-18
+
+### Added
 - Every release is first deployed to a staging environment on Railway and tested there; the version tag and GitHub release are only created after green staging tests and a second approval
 - Rate limits for creating and looking up sessions can be set with `RATE_LIMIT_SESSION_CREATE` and `RATE_LIMIT_SESSION_LOOKUP` (defaults unchanged: 10/hour, 30/minute)
 - Legal notice (Impressum) with contact address and e-mail; the footer link on the start page is now "Privacy & Legal Notice" ("Datenschutz & Impressum")
@@ -36,8 +46,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - A VPortal-connected display that is reloaded on a bad network shows the "VPortal disconnected" banner and fills in the lifter data on its own once the network is back, instead of staying empty until the next reload
 - Switching a display to role selection and back no longer leaves extra VPortal requests running in the background
 
-### Removed
-
+[0.3.0]: https://github.com/abti247/iron_verdict/compare/v0.2.1...v0.3.0
 
 ## [0.2.1] - 2026-10-13
 
