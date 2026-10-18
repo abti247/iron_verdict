@@ -28,6 +28,7 @@ The footer of the app shows `sha-<commit>` of the running image (baked in at bui
 - **Branch protection on `main`:** add `image` to the required status checks (next to `backend`, `js`, `e2e`).
 - **GHCR write access for Actions:** the package `iron_verdict` already exists (pushed by hand so far), so GitHub → your profile → Packages → `iron_verdict` → Package settings → *Manage Actions access* → add the repository `abti247/iron_verdict` with role **Write**. Without it the Main and Release workflows fail at the push with `403`/`denied`. (A package first created by a workflow is linked automatically via the image's `org.opencontainers.image.source` label.)
 - **Package visibility:** Railway pulls without credentials, so the package must stay **Public** (Package settings → Danger Zone → Change visibility). It is today, since Railway pulls `v0.1.4-beta`; check it once after the first workflow push. Alternative: keep it private and give Railway registry credentials.
+- **Cloudflare (production):** Caching → Configuration → *Browser Cache TTL* = **Respect Existing Headers** (set 2026-10-18, #145). With the default (4 h) Cloudflare replaces the app's `Cache-Control: no-cache` with `max-age=14400`, and browsers mix new HTML with old JavaScript after a deploy (black page).
 - **Railway auto updates off:** under Settings → Source → Source Image → *Configure auto updates*, keep automatic updates disabled (production and staging). Deploys happen only when the tag reference is changed.
 
 ### Staging and approvals (set up 2026-10-16, #71)
@@ -60,7 +61,7 @@ Pushing a `v*` tag by hand starts nothing: no release bypasses staging.
 1. Railway → service `iron_verdict` → **Settings → Source → Source Image** → edit (pencil).
 2. Change the tag of `ghcr.io/abti247/iron_verdict:<old>` to the new `vX.Y.Z`, save.
 3. Deploy the change (if Railway stages it as a pending change, apply/deploy it). Wait until the new deployment is *Active*.
-4. Check: `https://iron-verdict.com/health` answers `{"status":"ok"}`, the landing page footer shows the `sha-<commit>` of the release (job summary of the Release workflow), create a test session and join as a judge. The deploy log shows `allowed_origin_configured` with `https://iron-verdict.com`; a missing `ALLOWED_ORIGIN` makes the deployment fail with `allowed_origin_missing`.
+4. Check: `https://iron-verdict.com/health` answers `{"status":"ok"}`, the landing page footer shows the `sha-<commit>` of the release (job summary of the Release workflow), create a test session and join as a judge, and `curl -sI https://iron-verdict.com/static/js/app.js` shows `cache-control: no-cache`. The deploy log shows `allowed_origin_configured` with `https://iron-verdict.com`; a missing `ALLOWED_ORIGIN` makes the deployment fail with `allowed_origin_missing`.
 
 The `/data` volume and all variables stay attached; active sessions survive via the snapshot written on shutdown.
 
@@ -77,7 +78,8 @@ Same as a deploy, with the **previous** version tag (the one before the faulty r
 - [ ] Production runs a release tag (`vX.Y.Z`, not `main` or `sha-…`); footer version matches that release.
 - [ ] The previous release tag is noted (rollback target) and still listed under GitHub → Releases.
 - [ ] No deploy planned during the competition.
-- [ ] Once, for the first competition on a release after v0.2.1: hard-reload every judge and display device (Ctrl+Shift+R, or clear the site data on phones). Static files are revalidated on every load since then (#135); devices may still hold older files the browser considers fresh.
+- [ ] Once, for the first competition on a release after v0.2.1: hard-reload every judge and display device (Ctrl+Shift+R, or clear the site data on phones). Static files are revalidated on every load since then (#135, #145); devices may still hold older files the browser considers fresh.
+- [ ] `curl -sI https://iron-verdict.com/static/js/app.js` shows `cache-control: no-cache` (not `max-age=…`: then Cloudflare's Browser Cache TTL is no longer *Respect Existing Headers*, see One-time setup).
 - [ ] `/health` ok; a test session works end to end: 3 judges + display, vote, result, Next Lift, reload of a judge.
 - [ ] For VPortal competitions: `/vportal` session connects to the federation and shows the current lifter on the display.
 - [ ] Fallback known: the app can run locally on a laptop on the venue Wi-Fi (README, "Running locally on competition WiFi").
