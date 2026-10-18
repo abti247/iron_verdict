@@ -77,6 +77,7 @@ Same as a deploy, with the **previous** version tag (the one before the faulty r
 - [ ] Production runs a release tag (`vX.Y.Z`, not `main` or `sha-…`); footer version matches that release.
 - [ ] The previous release tag is noted (rollback target) and still listed under GitHub → Releases.
 - [ ] No deploy planned during the competition.
+- [ ] Once, for the first competition on a release after v0.2.1: hard-reload every judge and display device (Ctrl+Shift+R, or clear the site data on phones). Static files are revalidated on every load since then (#135); devices may still hold older files the browser considers fresh.
 - [ ] `/health` ok; a test session works end to end: 3 judges + display, vote, result, Next Lift, reload of a judge.
 - [ ] For VPortal competitions: `/vportal` session connects to the federation and shows the current lifter on the display.
 - [ ] Fallback known: the app can run locally on a laptop on the venue Wi-Fi (README, "Running locally on competition WiFi").

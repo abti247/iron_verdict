@@ -191,3 +191,23 @@ def test_session_lookup_reports_staging_available_when_env_set():
         assert lookup.json()["staging_available"] is True
     finally:
         main_module.settings.EXPOSE_VPORTAL_STAGING = original
+
+
+@pytest.mark.parametrize("path", [
+    "/static/js/init.js",
+    "/static/css/base.css",
+    "/static/vendor/alpinejs-3.14.1.min.js",
+    "/static/fonts/rajdhani-400-latin.woff2",
+])
+def test_static_files_require_revalidation(path):
+    response = client.get(path)
+    assert response.status_code == 200
+    assert response.headers["Cache-Control"] == "no-cache"
+
+
+def test_static_file_unchanged_answers_304_with_no_cache():
+    first = client.get("/static/js/init.js")
+    response = client.get("/static/js/init.js", headers={"If-None-Match": first.headers["ETag"]})
+    assert response.status_code == 304
+    assert response.content == b""
+    assert response.headers["Cache-Control"] == "no-cache"

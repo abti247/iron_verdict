@@ -210,9 +210,24 @@ async def global_exception_handler(request: Request, exc: Exception):
     logger.exception("unhandled_exception", extra={"client_ip": _get_http_client_ip(request)})
     return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
+class RevalidatedStaticFiles(StaticFiles):
+    """StaticFiles whose responses the browser must revalidate before each use.
+
+    Without Cache-Control, browsers reuse files heuristically without asking,
+    so after a deploy new HTML could run with old cached JavaScript. With
+    no-cache they keep the file but send If-None-Match; unchanged files come
+    back as 304 without a body.
+    """
+
+    async def get_response(self, path, scope):
+        response = await super().get_response(path, scope)
+        response.headers["Cache-Control"] = "no-cache"
+        return response
+
+
 # Serve static files
 static_dir = os.path.join(os.path.dirname(__file__), "static")
-app.mount("/static", StaticFiles(directory=static_dir), name="static")
+app.mount("/static", RevalidatedStaticFiles(directory=static_dir), name="static")
 
 
 @app.get("/health")
