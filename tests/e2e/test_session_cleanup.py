@@ -84,7 +84,9 @@ def test_end_session_retries_after_network_error_on_open_websocket(
 
     _end_session(server_url, session_code)
 
-    assert len(calls) == 2
+    # The failed socket's join reached the server: until its close is handled
+    # the next attempt may get "Role already taken" and retry once more.
+    assert len(calls) >= 2
     assert httpx.get(f"{server_url}/api/sessions/{session_code}").status_code == 404
 
 

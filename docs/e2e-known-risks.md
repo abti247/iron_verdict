@@ -108,7 +108,7 @@ Or fix server-side: in the WebSocket handler, when a display reconnects with the
 
 **Mitigation (in place):** A `httpx.TransportError` (or `WebSocketNetworkError`, as httpx_ws reports the same fault on an open socket) starts the attempt over on a fresh client within the 20 s join deadline; only the cleanup is retried, never a test. If it still fails, the teardown error lists every error with its step (`connect`, `join`, `end_session_confirmed`, `lookup`).
 
-**If it recurs:** read the step in the error. Repeated failures at the same step are not a flake — investigate that step (e.g. proxy behaviour on WebSocket close) instead of widening the deadline.
+**If it recurs:** read the step in the error. A `WebSocketNetworkError()` from `join` or `end_session_confirmed` carries no cause: httpx_ws drops it, so it does not tell a TLS fault from a plain EOF. Repeated failures at the same step are not a flake — investigate that step (e.g. proxy behaviour on WebSocket close) instead of widening the deadline.
 
 ---
 
