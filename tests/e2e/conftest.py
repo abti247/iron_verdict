@@ -178,10 +178,12 @@ def new_context(new_context, created_sessions):
     """pytest-playwright's ``new_context``; in external mode every context also
     records the codes of sessions created through ``POST /api/sessions``.
 
-    The code is read when the context is closed, after waiting for each
-    creation request's response: a test may end right after a click that
-    creates a session, and a response listener would then miss the code
-    (the body cannot be read once the context is closed).
+    The code is read as soon as a creation response has fully arrived: the
+    body is gone once the page navigates away (e.g. a reload right after
+    joining). Requests still pending when the context is closed are read
+    then, after waiting for their response: a test may end right after a
+    click that creates a session (the body cannot be read once the context
+    is closed).
     """
     if not EXTERNAL_BASE_URL:
         return new_context
@@ -190,11 +192,31 @@ def new_context(new_context, created_sessions):
         ctx = new_context(**kwargs)
         creations = []
 
+        def is_creation(request):
+            return request.method == "POST" and urlparse(request.url).path == "/api/sessions"
+
         def track_creation(request):
-            if request.method == "POST" and urlparse(request.url).path == "/api/sessions":
+            if is_creation(request):
                 creations.append(request)
 
+        def record_finished_creation(request):
+            if is_creation(request) and request in creations:
+                creations.remove(request)
+                record(request)
+
+        def record(request):
+            try:
+                response = request.response()  # waits for it
+                if response is None:
+                    # The server may still have created the session.
+                    created_sessions.unrecorded.append(f"request failed: {request.failure}")
+                elif response.ok:
+                    created_sessions.append(response.json()["session_code"])
+            except Exception as exc:
+                created_sessions.unrecorded.append(repr(exc))
+
         ctx.on("request", track_creation)
+        ctx.on("requestfinished", record_finished_creation)
         close = ctx.close
 
         def close_after_recording_sessions(*args, **kwargs):
@@ -203,16 +225,7 @@ def new_context(new_context, created_sessions):
             # teardown instead; the context is closed in any case.
             try:
                 while creations:
-                    request = creations.pop(0)
-                    try:
-                        response = request.response()  # waits for it
-                        if response is None:
-                            # The server may still have created the session.
-                            created_sessions.unrecorded.append(f"request failed: {request.failure}")
-                        elif response.ok:
-                            created_sessions.append(response.json()["session_code"])
-                    except Exception as exc:
-                        created_sessions.unrecorded.append(repr(exc))
+                    record(creations.pop(0))
             finally:
                 close(*args, **kwargs)
 

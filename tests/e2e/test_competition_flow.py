@@ -1,7 +1,10 @@
 """Competition flow — happy path: full lift cycles, reasons, timer."""
 
 import re
+import pytest
 from playwright.sync_api import expect
+
+pytestmark = pytest.mark.remote_safe
 
 
 def test_full_lift_cycle(competition):

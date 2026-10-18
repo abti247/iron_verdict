@@ -64,6 +64,8 @@ jobs:
           -p 8000:8000
           -v iron-verdict-data:/data
           -e ALLOWED_ORIGIN=http://127.0.0.1:8000
+          -e RATE_LIMIT_SESSION_CREATE=60/hour
+          -e RATE_LIMIT_SESSION_LOOKUP=120/minute
           "$IMAGE"
 
       # Poll instead of a fixed sleep: continue as soon as /health answers,
@@ -110,12 +112,16 @@ jobs:
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: python -m playwright install-deps chromium
 
-      - name: Smoke-test the container
+      # The same remote_safe subset main.yml runs against Railway staging
+      # before a release, so a test marked remote_safe that cannot run
+      # against a deployed server fails here on the PR, not at release time.
+      # The raised rate limits match staging (the subset creates ~20 sessions).
+      - name: E2E tests against the container (remote_safe)
         env:
           E2E_BASE_URL: http://127.0.0.1:8000
           E2E_EXPECTED_APP_VERSION: ${{ steps.version.outputs.app-version }}
         run: >-
-          python -m pytest tests/e2e/test_smoke.py --tb=short -v
+          python -m pytest tests/e2e/ -m remote_safe --tb=short -v
           --tracing retain-on-failure
           --screenshot only-on-failure
           --output test-results

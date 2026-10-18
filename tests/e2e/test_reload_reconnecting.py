@@ -9,6 +9,7 @@ can prove that no frame ever showed the landing screen.
 
 import re
 
+import pytest
 from playwright.sync_api import expect
 
 from tests.e2e.network_switch import NETWORK_SWITCH, join_with_network_switch
@@ -60,6 +61,7 @@ def _screens(page):
     return page.evaluate("window.__screens")
 
 
+@pytest.mark.remote_safe
 def test_judge_reload_never_shows_landing(competition):
     """A judge reloads mid-competition: no frame shows the landing screen, the
     judge screen comes back. (Voting after a reload: test_judge_reconnection.py.)"""
@@ -74,6 +76,7 @@ def test_judge_reload_never_shows_landing(competition):
     assert "landing" not in _screens(left), _screens(left)
 
 
+@pytest.mark.remote_safe
 def test_display_reload_never_shows_landing(competition):
     """A display reloads: no frame shows the landing screen, the display screen
     comes back. (Results after a reload: test_display_resilience.py.)"""
@@ -105,6 +108,7 @@ def test_vportal_display_reload_restarts_polling(competition, server_url, fake_v
     assert "vportal-modal" not in _screens(page), _screens(page)
 
 
+@pytest.mark.remote_safe
 def test_role_select_reload_never_shows_landing(competition):
     """Reloading on role-select (session code stored, no role yet) shows the
     connecting state, then role-select — never the landing screen."""
@@ -118,6 +122,7 @@ def test_role_select_reload_never_shows_landing(competition):
     assert "landing" not in _screens(page), _screens(page)
 
 
+@pytest.mark.remote_safe
 def test_reconnecting_state_shown_while_server_unreachable(competition):
     """The judge reloads while the connection is down: the "Connecting…" state
     with the session code stays visible (not the landing screen) until the
@@ -145,6 +150,7 @@ def test_reconnecting_state_shown_while_server_unreachable(competition):
     expect(left.locator(".locked-status")).to_be_visible()
 
 
+@pytest.mark.remote_safe
 def test_cancel_reconnecting_returns_to_landing_and_forgets_session(competition):
     """While "Connecting…" is shown, Cancel leads to the landing screen and
     removes the stored session, so a further reload stays on landing."""
@@ -167,6 +173,7 @@ def test_cancel_reconnecting_returns_to_landing_and_forgets_session(competition)
     expect(left.locator(".judge-wrap")).not_to_be_visible()
 
 
+@pytest.mark.remote_safe
 def test_cancel_during_role_select_lookup_is_not_undone(competition):
     """Reload on role-select; the session lookup hangs (slow venue Wi-Fi, held
     with page.route — no sleep) and the user presses Cancel. When the lookup
@@ -196,6 +203,7 @@ def test_cancel_during_role_select_lookup_is_not_undone(competition):
     assert page.evaluate("sessionStorage.getItem('iv_session')") is None
 
 
+@pytest.mark.remote_safe
 def test_reload_into_ended_session_shows_landing_with_message(competition):
     """The judge's page is gone while the head judge ends the session. Opening
     the app again in the same tab tries to restore the session and then shows
@@ -221,6 +229,7 @@ def test_reload_into_ended_session_shows_landing_with_message(competition):
     assert _screens(left)[0] == "reconnecting", _screens(left)
 
 
+@pytest.mark.remote_safe
 def test_reload_on_role_select_into_ended_session_shows_landing_with_message(competition):
     """Same as above for a stored session without a role (role-select)."""
     head = competition.create_session_and_join_head()

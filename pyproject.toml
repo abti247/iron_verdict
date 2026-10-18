@@ -37,3 +37,6 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 pythonpath = ["src"]
+markers = [
+    "remote_safe: E2E test that also runs against a deployed server (E2E_BASE_URL): the image check and Railway staging run only these",
+]
