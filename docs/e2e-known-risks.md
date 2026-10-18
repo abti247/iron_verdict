@@ -106,7 +106,7 @@ Or fix server-side: in the WebSocket handler, when a display reconnects with the
 
 **Why it could flake:** Over Railway's proxy and TLS a single connection can fail below the app. In the 0.3.0 release run (attempt 2) all 28 tests passed and one teardown failed with `ReadError('[SSL: WRONG_VERSION_NUMBER] wrong version number')` (#143). The error could not be reproduced locally over TLS (15 runs, plus 5 with the "Role already taken" retry path forced).
 
-**Mitigation (in place):** A `httpx.TransportError` starts the attempt over on a fresh client within the 20 s join deadline; only the cleanup is retried, never a test. If it still fails, the teardown error lists every error with its step (`connect`, `join`, `end_session_confirmed`, `lookup`).
+**Mitigation (in place):** A `httpx.TransportError` (or `WebSocketNetworkError`, as httpx_ws reports the same fault on an open socket) starts the attempt over on a fresh client within the 20 s join deadline; only the cleanup is retried, never a test. If it still fails, the teardown error lists every error with its step (`connect`, `join`, `end_session_confirmed`, `lookup`).
 
 **If it recurs:** read the step in the error. Repeated failures at the same step are not a flake — investigate that step (e.g. proxy behaviour on WebSocket close) instead of widening the deadline.
 

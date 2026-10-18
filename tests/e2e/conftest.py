@@ -27,7 +27,7 @@ os.environ["VPORTAL_FETCH_INTERVAL_MS"] = "2000"
 import httpx
 import pytest
 import uvicorn
-from httpx_ws import WebSocketDisconnect, connect_ws
+from httpx_ws import WebSocketDisconnect, WebSocketNetworkError, connect_ws
 
 from iron_verdict.main import app, session_manager, connection_manager
 from iron_verdict.main import limiter
@@ -105,7 +105,8 @@ def _end_session(base_url, code):
     """End session *code* on the external server the way the head judge does
     (join as center judge, ``end_session_confirmed``) and check it is gone.
 
-    A connection error (``httpx.TransportError``) starts the attempt over on a
+    A connection error (``httpx.TransportError``; on an open WebSocket httpx_ws
+    reports it as ``WebSocketNetworkError``) starts the attempt over on a
     fresh client until the join deadline: once a staging run had every test
     green and one teardown failed with a TLS read error (#143). Every other
     error fails at once. Giving up names each error with its step."""
@@ -116,7 +117,7 @@ def _end_session(base_url, code):
         try:
             if _end_session_attempt(base_url, code, step):
                 return
-        except httpx.TransportError as exc:
+        except (httpx.TransportError, WebSocketNetworkError) as exc:
             errors.append(f"{step[0]}: {exc!r}")
             if time.monotonic() > deadline:
                 raise AssertionError(
