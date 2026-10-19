@@ -9,6 +9,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ### Added
 - Contrast mode for bright halls in the display settings (gear or "S"): solid light colours with a clear border and pure white, bolder texts on the black background; remembered per device
 - Layout editor for the display (settings → "Edit layout"): move, resize and hide timer, lights, cards and reasons, verdict and VPortal lifter and attempt info with mouse or touch; saved per device and copyable to another display as a code
+- Stream overlay for OBS: "Stream overlay (OBS)" on role select gives a URL for an OBS browser source that shows lights, reasons, verdict, timer and lifter info on a transparent background without controls; it has its own layout (or one passed in the URL) and connects to VPortal from its settings ("S")
 
 ### Changed
 
