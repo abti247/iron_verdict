@@ -1,4 +1,6 @@
-"""Display screen size adjustment: gear/S key open panel, slider scales display."""
+"""Display settings panel: gear/S key open it, Escape, a click outside or
+leaving the display close it. (Sizes are set per block in the layout editor,
+see test_display_layout.py; the global zoom slider is gone, #106.)"""
 
 from playwright.sync_api import expect
 
@@ -10,13 +12,6 @@ def _open_display(page, server_url):
     page.locator(".role-wrap").wait_for(state="visible")
     page.locator(".role-btn", has_text="Display Screen").click()
     page.locator(".display-full").wait_for(state="visible")
-
-
-def _display_zoom_value(page) -> float:
-    raw = page.evaluate("""() => getComputedStyle(
-        document.querySelector('.display-full')
-    ).getPropertyValue('--display-zoom').trim()""")
-    return float(raw)
 
 
 def test_gear_icon_opens_settings_panel(page, server_url):
@@ -31,50 +26,6 @@ def test_s_key_opens_settings_panel(page, server_url):
     expect(page.locator(".display-settings-panel")).to_be_hidden()
     page.locator("body").press("s")
     expect(page.locator(".display-settings-panel")).to_be_visible()
-
-
-def test_slider_updates_display_zoom_variable(page, server_url):
-    _open_display(page, server_url)
-    page.locator(".display-settings-gear").click()
-    page.locator(".display-settings-panel").wait_for(state="visible")
-
-    slider = page.locator(".display-settings-slider")
-    slider.evaluate("""(el) => {
-        el.value = '1.3';
-        el.dispatchEvent(new Event('input', { bubbles: true }));
-        el.dispatchEvent(new Event('change', { bubbles: true }));
-    }""")
-
-    page.wait_for_function("""() => Math.abs(
-        parseFloat(getComputedStyle(document.querySelector('.display-full'))
-            .getPropertyValue('--display-zoom')) - 1.3
-    ) < 0.001""")
-
-    assert abs(_display_zoom_value(page) - 1.3) < 0.001
-
-
-def test_reset_button_restores_zoom_to_default(page, server_url):
-    _open_display(page, server_url)
-    page.locator(".display-settings-gear").click()
-    page.locator(".display-settings-panel").wait_for(state="visible")
-
-    slider = page.locator(".display-settings-slider")
-    slider.evaluate("""(el) => {
-        el.value = '1.4';
-        el.dispatchEvent(new Event('input', { bubbles: true }));
-    }""")
-    page.wait_for_function("""() => Math.abs(
-        parseFloat(getComputedStyle(document.querySelector('.display-full'))
-            .getPropertyValue('--display-zoom')) - 1.4
-    ) < 0.001""")
-
-    page.locator(".display-settings-reset").click()
-    page.wait_for_function("""() => Math.abs(
-        parseFloat(getComputedStyle(document.querySelector('.display-full'))
-            .getPropertyValue('--display-zoom')) - 1.0
-    ) < 0.001""")
-
-    assert abs(_display_zoom_value(page) - 1.0) < 0.001
 
 
 def test_escape_dismisses_panel(page, server_url):
@@ -92,27 +43,6 @@ def test_click_outside_dismisses_panel(page, server_url):
     # Click on the timer area (not the panel)
     page.locator(".display-timer-big").click()
     expect(page.locator(".display-settings-panel")).to_be_hidden()
-
-
-def test_zoom_persists_across_reload(page, server_url):
-    _open_display(page, server_url)
-    page.locator(".display-settings-gear").click()
-    page.locator(".display-settings-panel").wait_for(state="visible")
-
-    slider = page.locator(".display-settings-slider")
-    slider.evaluate("""(el) => {
-        el.value = '1.25';
-        el.dispatchEvent(new Event('input', { bubbles: true }));
-    }""")
-    page.wait_for_function("""() => Math.abs(
-        parseFloat(getComputedStyle(document.querySelector('.display-full'))
-            .getPropertyValue('--display-zoom')) - 1.25
-    ) < 0.001""")
-
-    page.reload()
-    page.locator(".display-full").wait_for(state="visible", timeout=10000)
-
-    assert abs(_display_zoom_value(page) - 1.25) < 0.001
 
 
 def test_panel_closes_on_navigation_away_from_display(page, server_url):

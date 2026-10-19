@@ -1,0 +1,243 @@
+/* Display layout (#106): blocks placed by a saved layout
+   (.display-layout-custom) and the layout editor around them
+   (.display-layout-editing). Without either class nothing here applies, so a
+   display without a saved layout keeps the default flow layout of layout.css. */
+
+/* The light size on the whole lights block, for the cards frame below. Same
+   formula as .display-orb-wrap (components.css). */
+.display-lights {
+    --orb-size: calc(clamp(38px, 19.2vmin, 224px) * var(--display-zoom, 1));
+}
+
+/* ===== SAVED LAYOUT ===== */
+/* Each block sits at its own left/top (percent of the display, inline style)
+   and scales with its own --display-zoom. */
+.display-layout-custom .layout-block {
+    position: absolute;
+    width: max-content;
+    right: auto;
+    bottom: auto;
+}
+
+.display-layout-custom:not(.display-layout-editing) .layout-hidden {
+    display: none;
+}
+.display-layout-custom:not(.display-layout-editing) .layout-hidden-lights .display-orb {
+    visibility: hidden;
+}
+.display-layout-custom:not(.display-layout-editing) .layout-hidden-cards .display-orb-card,
+.display-layout-custom:not(.display-layout-editing) .layout-hidden-cards .display-orb-reason {
+    display: none;
+}
+
+/* ===== EDITOR ===== */
+/* Frames are positioned inside their block; in the default flow layout this
+   only happens while editing, so the display looks as before otherwise. */
+.display-layout-editing:not(.display-layout-custom) .layout-block--timer,
+.display-layout-editing:not(.display-layout-custom) .display-lights,
+.display-layout-editing:not(.display-layout-custom) .display-verdict-inline {
+    position: relative;
+}
+
+.display-layout-editing .layout-block {
+    cursor: move;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    pointer-events: auto;   /* the VPortal corners are click-through otherwise */
+}
+
+/* Hidden blocks stay visible but faded while editing, to switch them on
+   again; so does the sample text of the VPortal blocks without a lifter. */
+.display-layout-editing .layout-sample > :not(.layout-frame),
+.display-layout-editing .layout-hidden > :not(.layout-frame),
+.display-layout-editing .layout-hidden-lights .display-orb,
+.display-layout-editing .layout-hidden-cards .display-orb-card,
+.display-layout-editing .layout-hidden-cards .display-orb-reason {
+    opacity: 0.3;
+}
+
+/* Frame chrome has fixed sizes: it must not scale with the block. */
+.layout-frame {
+    position: absolute;
+    inset: -6px;
+    border: 2px dashed var(--layout-frame);
+    pointer-events: none;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 13px;
+    letter-spacing: .08em;
+    line-height: 1;
+    text-transform: uppercase;
+    text-align: left;
+    z-index: 6;   /* labels above the cards frame of the lights */
+}
+
+.layout-frame-label {
+    position: absolute;
+    left: -2px;
+    bottom: 100%;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px;
+    background: var(--layout-frame);
+    color: var(--layout-frame-text);
+    font-weight: 700;
+    white-space: nowrap;
+    pointer-events: auto;
+}
+
+.layout-hide-toggle {
+    background: var(--bg-void);
+    color: var(--panel-text-bright);
+    border: none;
+    padding: 3px 8px;
+    font: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+    cursor: pointer;
+}
+.layout-hide-toggle[aria-pressed="true"] {
+    background: var(--blood);
+}
+
+.layout-scale-handle {
+    position: absolute;
+    right: -12px;
+    bottom: -12px;
+    width: 24px;
+    height: 24px;
+    background: var(--layout-frame);
+    border: 2px solid var(--bg-void);
+    cursor: nwse-resize;
+    touch-action: none;
+    pointer-events: auto;
+}
+
+/* The attempt block is anchored at its right edge: scale it from the left. */
+.vportal-corner-right .layout-scale-handle {
+    right: auto;
+    left: -12px;
+    cursor: nesw-resize;
+}
+
+/* Cards block: the row of cards and reasons under the lights. It only moves
+   up and down (its gap to the lights). */
+.layout-cards-frame {
+    position: absolute;
+    left: -2px;
+    right: -2px;
+    top: calc(var(--orb-size) * (1 + var(--orb-card-gap, 0)) + 0.25rem);
+    bottom: 0;
+    border: 2px dashed var(--layout-frame-cards);
+    cursor: ns-resize;
+    touch-action: none;
+    pointer-events: auto;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 13px;
+    letter-spacing: .08em;
+    line-height: 1;
+    text-transform: uppercase;
+    z-index: 5;
+}
+.layout-cards-frame .layout-frame-label {
+    top: 100%;
+    bottom: auto;
+    background: var(--layout-frame-cards);
+}
+
+/* ===== EDITOR TOOLBAR ===== */
+.layout-toolbar {
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    max-width: calc(100% - 24px);
+    background: var(--bg-surface);
+    border: 1px solid var(--panel-border);
+    border-top: 2px solid var(--layout-frame);
+    padding: 10px 12px;
+    color: var(--panel-text);
+    font-family: 'Rajdhani', sans-serif;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+}
+
+.layout-toolbar-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.layout-toolbar-title {
+    font-size: 14px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--panel-text-bright);
+    margin-right: 8px;
+}
+
+.layout-toolbar-btn {
+    background: transparent;
+    border: 1px solid var(--panel-border);
+    color: var(--panel-text);
+    padding: 8px 14px;
+    min-height: 36px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 12px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+.layout-toolbar-btn:hover { border-color: var(--panel-border-hover); color: var(--panel-text-bright); }
+.layout-toolbar-btn--primary {
+    background: var(--blood);
+    border-color: var(--blood-bright);
+    color: var(--contrast-text);
+}
+
+.layout-toolbar-hint {
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--text-dim);
+}
+
+.layout-code {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 10px;
+    width: min(480px, 100%);
+}
+
+.layout-code-label {
+    font-size: 11px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+}
+
+.layout-code-field {
+    width: 100%;
+    background: var(--bg-void);
+    border: 1px solid var(--panel-border);
+    color: var(--panel-text-bright);
+    padding: 6px 8px;
+    font-family: monospace;
+    font-size: 12px;
+    resize: vertical;
+    word-break: break-all;
+}
+
+.layout-code-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.layout-code-error {
+    color: var(--blood-bright);
+    font-size: 13px;
+    font-weight: 600;
+}

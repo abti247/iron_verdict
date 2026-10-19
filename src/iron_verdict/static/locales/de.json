@@ -232,12 +232,44 @@
   },
   "displaySettings": {
     "title": "Anzeige",
-    "sliderLabel": "Zoom",
-    "resetButton": "Zurücksetzen",
     "openTitle": "Anzeigeeinstellungen (S)",
     "contrastLabel": "Kontrast-Modus",
     "on": "An",
     "off": "Aus"
+  },
+  "displayLayout": {
+    "editButton": "Layout bearbeiten",
+    "title": "Layout bearbeiten",
+    "hint": "Block ziehen zum Verschieben, Ecke ziehen zum Skalieren. Änderungen gelten erst mit Speichern.",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "reset": "Auf Standard zurücksetzen",
+    "codeButton": "Layout-Code",
+    "codeExportLabel": "Code dieses Layouts (auf ein anderes Display kopieren)",
+    "codeDefault": "Standard-Layout – nichts zu kopieren",
+    "codeImportLabel": "Code von einem anderen Display einfügen",
+    "codeApply": "Übernehmen",
+    "codeError": "Ungültiger Code",
+    "hide": "Ausblenden",
+    "show": "Einblenden",
+    "blocks": {
+      "timer": "Timer",
+      "lights": "Lichter",
+      "cards": "Karten + Gründe",
+      "verdict": "Gültig/Ungültig",
+      "lifter": "Lifter",
+      "attempt": "Versuch"
+    },
+    "sample": {
+      "firstName": "Max",
+      "lastName": "Mustermann",
+      "club": "Verein",
+      "bodyWeightCategory": "-93 kg",
+      "ageCategory": "Open",
+      "discipline": "Kniebeuge"
+    },
+    "sampleTag": "Beispiel",
+    "saveError": "Konnte auf diesem Gerät nicht gespeichert werden (Browser-Speicher gesperrt oder voll). Nach dem Neuladen wäre das Layout weg."
   },
   "privacy": {
     "link": "Datenschutz & Impressum",

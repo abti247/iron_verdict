@@ -13,7 +13,8 @@ src/iron_verdict/static/
 │   ├── components.css  # Reusable UI components (.btn-blood, .cut-corner, .chrome-input, etc.)
 │   ├── layout.css      # Screen-level layouts (landing, role-select, judge, display)
 │   ├── animations.css  # Keyframes and transition classes
-│   └── display-contrast.css # Display contrast mode (scoped under .display-contrast)
+│   ├── display-contrast.css # Display contrast mode (scoped under .display-contrast)
+│   └── display-layout.css   # Saved display layout and its editor (.display-layout-custom/-editing)
 ├── js/
 │   ├── init.js         # Entry point: demo params, boot (i18n, fonts, Alpine), popstate → connection
 │   ├── app.js          # Bootstrap: registers stores and screen components with Alpine, starts the app
@@ -26,11 +27,13 @@ src/iron_verdict/static/
 │   ├── settingsStore.js# Alpine.store('settings') — lift type, show/require reasons
 │   ├── timer.js        # Countdown interval and Alpine.store('timer')
 │   ├── vportalStore.js # Alpine.store('vportal') — connect dialog and display overlay
+│   ├── displayLayout.js# Display layout model (pure: validate, store, snap, export code)
 │   ├── websocket.js    # WebSocket connection, send/receive, reconnection
 │   ├── constants.js    # Static data (CARD_REASONS, role name mappings)
 │   ├── …               # Helpers: voteDelivery, reloadRecovery, roleTakeover, i18n, vportal*
 │   └── screens/        # One Alpine component per screen (landing, contact, demoIntro,
-│                       # reconnecting, roleSelect, judge, display)
+│                       # reconnecting, roleSelect, judge, display; displayLayoutEditor
+│                       # is mixed into the display component)
 ```
 
 ## Rules

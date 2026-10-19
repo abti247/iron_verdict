@@ -232,12 +232,44 @@
   },
   "displaySettings": {
     "title": "Display",
-    "sliderLabel": "Zoom",
-    "resetButton": "Reset",
     "openTitle": "Display settings (S)",
     "contrastLabel": "Contrast mode",
     "on": "On",
     "off": "Off"
+  },
+  "displayLayout": {
+    "editButton": "Edit layout",
+    "title": "Edit layout",
+    "hint": "Drag a block to move it, drag its corner to resize it. Changes apply with Save.",
+    "save": "Save",
+    "cancel": "Cancel",
+    "reset": "Reset to default",
+    "codeButton": "Layout code",
+    "codeExportLabel": "Code of this layout (copy it to another display)",
+    "codeDefault": "Default layout – nothing to copy",
+    "codeImportLabel": "Paste a code from another display",
+    "codeApply": "Apply",
+    "codeError": "Invalid code",
+    "hide": "Hide",
+    "show": "Show",
+    "blocks": {
+      "timer": "Timer",
+      "lights": "Lights",
+      "cards": "Cards + reasons",
+      "verdict": "Verdict",
+      "lifter": "Lifter",
+      "attempt": "Attempt"
+    },
+    "sample": {
+      "firstName": "Max",
+      "lastName": "Mustermann",
+      "club": "Club",
+      "bodyWeightCategory": "-93 kg",
+      "ageCategory": "Open",
+      "discipline": "Squat"
+    },
+    "sampleTag": "sample",
+    "saveError": "Could not save on this device (browser storage blocked or full). The layout would be lost after a reload."
   },
   "privacy": {
     "link": "Privacy & Legal Notice",

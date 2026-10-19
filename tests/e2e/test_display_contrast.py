@@ -3,7 +3,7 @@
 A switch in the display settings panel (gear or "S") turns on a high-contrast
 look: full colours instead of gradients on the lights, a clear border around
 them, pure white and bolder texts. The background stays black. The setting is
-stored per device like the zoom and survives reload and reconnection. Without
+stored per device like the layout and survives reload and reconnection. Without
 it the display looks exactly as before.
 """
 

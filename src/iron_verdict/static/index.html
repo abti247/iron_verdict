@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="/static/css/layout.css">
     <link rel="stylesheet" href="/static/css/animations.css">
     <link rel="stylesheet" href="/static/css/display-contrast.css">
+    <link rel="stylesheet" href="/static/css/display-layout.css">
     <link rel="stylesheet" href="/static/css/boot.css">
     <script type="module" src="/static/js/init.js"></script>
     <script defer src="https://umami-production-ca4a.up.railway.app/script.js" data-website-id="aca70c7a-7634-4ae5-bffa-cc83d8764bd0"></script>
@@ -516,22 +517,49 @@
         </div>
     </div>
 
-    <!-- Display Screen: shows sessionName only — sessionCode intentionally omitted (C3) -->
+    <!-- Display Screen: shows sessionName only — sessionCode intentionally omitted (C3).
+         Every block (data-layout-block) can be moved, scaled and hidden in the
+         layout editor (displayLayoutEditor.js); without a saved layout they
+         stay in the default flow layout. -->
     <div class="display-full" data-testid="display-screen" x-data="displayScreen" x-show="$store.nav.screen === 'display'" x-cloak
-         :class="displayContrast && 'display-contrast'"
-         :style="`--display-zoom: ${displayZoom || 1}`">
+         :class="[displayContrast && 'display-contrast', activeLayout() && 'display-layout-custom', layoutEditing && 'display-layout-editing']"
+         @pointermove="layoutPointerMove($event)"
+         @pointerup="layoutPointerUp($event)"
+         @pointercancel="layoutPointerUp($event)"
+         @lostpointercapture="layoutPointerUp($event)">
         <div class="display-tag">
             <span class="conn-dot" :class="$store.session.connectionStatus"></span>
             <span class="conn-label" x-show="$store.session.serverRestarting" x-text="t('connection.serverRestarting')"></span>
             <span class="code-link" @click="returnToRoleSelection()" x-text="$store.session.isDemo ? 'DEMO' : $store.session.name"></span>
         </div>
 
-        <div class="display-timer-big" :class="$store.timer.expired && 'expired'" x-text="$store.timer.display"></div>
+        <div class="layout-block layout-block--timer" data-layout-block="timer" x-ref="layout-timer"
+             :style="layoutBlockStyle('timer')"
+             @pointerdown="layoutPointerDown($event, 'timer', 'move')"
+             :class="layoutBlockHidden('timer') && 'layout-hidden'">
+            <div class="display-timer-big" :class="$store.timer.expired && 'expired'" x-text="$store.timer.display"></div>
+            <div class="layout-frame" x-show="layoutEditing" x-cloak>
+                <span class="layout-frame-label">
+                    <span x-text="t('displayLayout.blocks.timer')"></span>
+                    <button class="layout-hide-toggle" data-testid="layout-hide-timer"
+                            :aria-pressed="layoutBlockHidden('timer') ? 'true' : 'false'"
+                            @pointerdown.stop=""
+                            @click="toggleLayoutBlockHidden('timer')"
+                            x-text="layoutBlockHidden('timer') ? t('displayLayout.show') : t('displayLayout.hide')"></button>
+                </span>
+                <span class="layout-scale-handle" @pointerdown.stop="layoutPointerDown($event, 'timer', 'scale')"></span>
+            </div>
+        </div>
 
-        <!-- Vote orbs with reasons -->
-        <div class="display-lights" x-show="$store.display.phase === 'votes' || $store.display.phase === 'idle'">
+        <!-- Vote orbs with card and reason below. The cards block (card + reason)
+             is not free: it follows the lights, only its gap can change. -->
+        <div class="display-lights layout-block" data-layout-block="lights" x-ref="layout-lights"
+             :style="layoutBlockStyle('lights')"
+             @pointerdown="layoutPointerDown($event, 'lights', 'move')"
+             :class="[layoutBlockHidden('lights') && 'layout-hidden-lights', layoutBlockHidden('cards') && 'layout-hidden-cards']"
+             x-show="$store.display.phase === 'votes' || $store.display.phase === 'idle'">
             <div class="display-orb-wrap">
-                <div class="display-orb" :class="$store.display.lightClass('left')"></div>
+                <div class="display-orb" x-ref="layoutOrb" :class="$store.display.lightClass('left')"></div>
                 <div class="display-orb-card" :class="$store.display.cardClass('left')"></div>
                 <div class="display-orb-reason"
                      x-show="$store.display.showExplanations && $store.display.votes.left && $store.display.votes.left !== 'white' && $store.display.reasons.left"
@@ -554,38 +582,107 @@
                      x-text="$store.display.reasons.right"
                      :data-reason="$store.display.reasons.right"></div>
             </div>
+            <div class="layout-frame" x-show="layoutEditing" x-cloak>
+                <span class="layout-frame-label">
+                    <span x-text="t('displayLayout.blocks.lights')"></span>
+                    <button class="layout-hide-toggle" data-testid="layout-hide-lights"
+                            :aria-pressed="layoutBlockHidden('lights') ? 'true' : 'false'"
+                            @pointerdown.stop=""
+                            @click="toggleLayoutBlockHidden('lights')"
+                            x-text="layoutBlockHidden('lights') ? t('displayLayout.show') : t('displayLayout.hide')"></button>
+                </span>
+                <span class="layout-scale-handle" @pointerdown.stop="layoutPointerDown($event, 'lights', 'scale')"></span>
+            </div>
+            <div class="layout-cards-frame" data-layout-block="cards" x-show="layoutEditing" x-cloak
+                 @pointerdown.stop="layoutPointerDown($event, 'cards', 'gap')">
+                <span class="layout-frame-label">
+                    <span x-text="t('displayLayout.blocks.cards')"></span>
+                    <button class="layout-hide-toggle" data-testid="layout-hide-cards"
+                            :aria-pressed="layoutBlockHidden('cards') ? 'true' : 'false'"
+                            @pointerdown.stop=""
+                            @click="toggleLayoutBlockHidden('cards')"
+                            x-text="layoutBlockHidden('cards') ? t('displayLayout.show') : t('displayLayout.hide')"></button>
+                </span>
+            </div>
         </div>
 
         <!-- Verdict and "Waiting…" share one slot; the verdict is always in layout
              (hidden while idle) so the orbs never shift -->
-        <div class="display-verdict-inline">
+        <div class="display-verdict-inline layout-block" data-layout-block="verdict" x-ref="layout-verdict"
+             :style="layoutBlockStyle('verdict')"
+             @pointerdown="layoutPointerDown($event, 'verdict', 'move')"
+             :class="layoutBlockHidden('verdict') && 'layout-hidden'">
             <div class="verdict-stamp"
                  :style="$store.display.phase !== 'votes' ? 'visibility:hidden' : ''"
                  :class="$store.display.isValidLift() ? 'valid' : 'invalid'"
                  x-text="$store.display.isValidLift() ? t('verdict.goodLift') : t('verdict.noLift')"></div>
             <div class="display-status" x-show="$store.display.phase === 'idle'" x-text="t('display.waiting')"></div>
+            <div class="layout-frame" x-show="layoutEditing" x-cloak>
+                <span class="layout-frame-label">
+                    <span x-text="t('displayLayout.blocks.verdict')"></span>
+                    <button class="layout-hide-toggle" data-testid="layout-hide-verdict"
+                            :aria-pressed="layoutBlockHidden('verdict') ? 'true' : 'false'"
+                            @pointerdown.stop=""
+                            @click="toggleLayoutBlockHidden('verdict')"
+                            x-text="layoutBlockHidden('verdict') ? t('displayLayout.show') : t('displayLayout.hide')"></button>
+                </span>
+                <span class="layout-scale-handle" @pointerdown.stop="layoutPointerDown($event, 'verdict', 'scale')"></span>
+            </div>
         </div>
 
-        <div class="vportal-corner vportal-corner-left" x-show="$store.vportal.displayAttempt">
-            <div class="vportal-corner-name" x-text="$store.vportal.displayAttempt?.firstName + ' ' + $store.vportal.displayAttempt?.lastName"></div>
+        <!-- VPortal lifter (left) and attempt (right); sample text while editing
+             without a lifter (cornerAttempt) so they can be placed. -->
+        <div class="vportal-corner vportal-corner-left layout-block" data-layout-block="lifter" x-ref="layout-lifter"
+             :style="layoutBlockStyle('lifter')"
+             @pointerdown="layoutPointerDown($event, 'lifter', 'move')"
+             :class="[layoutBlockHidden('lifter') && 'layout-hidden', cornerIsSample() && 'layout-sample']"
+             x-show="cornerAttempt()">
+            <div class="vportal-corner-name" x-text="cornerAttempt()?.firstName + ' ' + cornerAttempt()?.lastName"></div>
             <div class="vportal-corner-meta">
-                <span x-text="$store.vportal.displayAttempt?.club"></span> ·
-                <span x-text="$store.vportal.displayAttempt?.bodyWeightCategory"></span> ·
-                <span x-text="$store.vportal.displayAttempt?.ageCategory"></span>
+                <span x-text="cornerAttempt()?.club"></span> ·
+                <span x-text="cornerAttempt()?.bodyWeightCategory"></span> ·
+                <span x-text="cornerAttempt()?.ageCategory"></span>
+            </div>
+            <div class="layout-frame" x-show="layoutEditing" x-cloak>
+                <span class="layout-frame-label">
+                    <span x-text="t('displayLayout.blocks.lifter') + (cornerIsSample() ? ' · ' + t('displayLayout.sampleTag') : '')"></span>
+                    <button class="layout-hide-toggle" data-testid="layout-hide-lifter"
+                            :aria-pressed="layoutBlockHidden('lifter') ? 'true' : 'false'"
+                            @pointerdown.stop=""
+                            @click="toggleLayoutBlockHidden('lifter')"
+                            x-text="layoutBlockHidden('lifter') ? t('displayLayout.show') : t('displayLayout.hide')"></button>
+                </span>
+                <span class="layout-scale-handle" @pointerdown.stop="layoutPointerDown($event, 'lifter', 'scale')"></span>
             </div>
         </div>
-        <div class="vportal-corner vportal-corner-right" x-show="$store.vportal.displayAttempt">
+        <div class="vportal-corner vportal-corner-right layout-block" data-layout-block="attempt" x-ref="layout-attempt"
+             :style="layoutBlockStyle('attempt')"
+             @pointerdown="layoutPointerDown($event, 'attempt', 'move')"
+             :class="[layoutBlockHidden('attempt') && 'layout-hidden', cornerIsSample() && 'layout-sample']"
+             x-show="cornerAttempt()">
             <div class="vportal-corner-disc">
-                <span x-text="$store.vportal.displayAttempt?.discipline"></span> ·
-                <span x-text="t('vportal.attemptShort') + ' ' + $store.vportal.displayAttempt?.attempt"></span>
+                <span x-text="cornerAttempt()?.discipline"></span> ·
+                <span x-text="t('vportal.attemptShort') + ' ' + cornerAttempt()?.attempt"></span>
             </div>
-            <div class="vportal-corner-weight" x-text="$store.vportal.displayAttempt?.weight + ' KG'"></div>
+            <div class="vportal-corner-weight" x-text="cornerAttempt()?.weight + ' KG'"></div>
+            <div class="layout-frame" x-show="layoutEditing" x-cloak>
+                <span class="layout-frame-label">
+                    <span x-text="t('displayLayout.blocks.attempt') + (cornerIsSample() ? ' · ' + t('displayLayout.sampleTag') : '')"></span>
+                    <button class="layout-hide-toggle" data-testid="layout-hide-attempt"
+                            :aria-pressed="layoutBlockHidden('attempt') ? 'true' : 'false'"
+                            @pointerdown.stop=""
+                            @click="toggleLayoutBlockHidden('attempt')"
+                            x-text="layoutBlockHidden('attempt') ? t('displayLayout.show') : t('displayLayout.hide')"></button>
+                </span>
+                <span class="layout-scale-handle" @pointerdown.stop="layoutPointerDown($event, 'attempt', 'scale')"></span>
+            </div>
         </div>
         <div class="vportal-disconnected-banner" x-show="$store.vportal.disconnectedReason"
              x-text="t('vportal.disconnectedBanner')"></div>
 
         <!-- Display settings: gear + panel -->
         <button class="display-settings-gear"
+                x-show="!layoutEditing"
                 @click.stop="openDisplaySettings()"
                 :title="t('displaySettings.openTitle')"
                 aria-label="Display settings">
@@ -601,20 +698,10 @@
              @click.outside="closeDisplaySettings()"
              x-cloak>
             <div class="display-settings-title" x-text="t('displaySettings.title')"></div>
-            <label class="display-settings-label">
-                <span x-text="t('displaySettings.sliderLabel')"></span>
-                <span class="display-settings-readout" x-text="(displayZoom).toFixed(2) + '×'"></span>
-            </label>
-            <input class="display-settings-slider"
-                   type="range"
-                   min="0.7" max="1.5" step="0.05"
-                   :value="displayZoom"
-                   @input="onDisplayZoomInput($event)">
-            <div class="display-settings-actions">
-                <button class="display-settings-reset"
-                        @click="resetDisplayZoom()"
-                        x-text="t('displaySettings.resetButton')"></button>
-            </div>
+            <button class="display-settings-layout-btn"
+                    data-testid="display-layout-edit"
+                    @click="startLayoutEdit()"
+                    x-text="t('displayLayout.editButton')"></button>
             <button class="display-settings-toggle"
                     data-testid="display-contrast-toggle"
                     :class="displayContrast && 'on'"
@@ -624,6 +711,41 @@
                 <span class="display-settings-toggle-state"
                       x-text="displayContrast ? t('displaySettings.on') : t('displaySettings.off')"></span>
             </button>
+        </div>
+
+        <!-- Layout editor toolbar: only the buttons here end the edit mode. -->
+        <div class="layout-toolbar" data-testid="layout-toolbar" x-show="layoutEditing" x-cloak>
+            <div class="layout-toolbar-row">
+                <span class="layout-toolbar-title" x-text="t('displayLayout.title')"></span>
+                <button class="layout-toolbar-btn layout-toolbar-btn--primary" data-testid="layout-save"
+                        @click="saveLayoutEdit()" x-text="t('displayLayout.save')"></button>
+                <button class="layout-toolbar-btn" data-testid="layout-cancel"
+                        @click="cancelLayoutEdit()" x-text="t('displayLayout.cancel')"></button>
+                <button class="layout-toolbar-btn" data-testid="layout-reset"
+                        @click="resetLayoutEdit()" x-text="t('displayLayout.reset')"></button>
+                <button class="layout-toolbar-btn" data-testid="layout-code-toggle"
+                        :aria-expanded="layoutCodeOpen ? 'true' : 'false'"
+                        @click="layoutCodeOpen = !layoutCodeOpen" x-text="t('displayLayout.codeButton')"></button>
+            </div>
+            <div class="layout-toolbar-hint" x-text="t('displayLayout.hint')"></div>
+            <div class="layout-code" x-show="layoutCodeOpen">
+                <label class="layout-code-label" x-text="t('displayLayout.codeExportLabel')"></label>
+                <textarea class="layout-code-field" data-testid="layout-code-export" readonly rows="2"
+                          :value="layoutExportCode()"
+                          :placeholder="t('displayLayout.codeDefault')"
+                          @focus="$event.target.select()"></textarea>
+                <label class="layout-code-label" x-text="t('displayLayout.codeImportLabel')"></label>
+                <textarea class="layout-code-field" data-testid="layout-code-import" rows="2"
+                          x-model="layoutCodeInput"></textarea>
+                <div class="layout-code-actions">
+                    <button class="layout-toolbar-btn" data-testid="layout-code-apply"
+                            @click="applyLayoutCode()" x-text="t('displayLayout.codeApply')"></button>
+                    <span class="layout-code-error" data-testid="layout-code-error" x-show="layoutCodeError"
+                          x-text="t('displayLayout.codeError')"></span>
+                </div>
+            </div>
+            <div class="layout-code-error" data-testid="layout-save-error" x-show="layoutSaveError"
+                 x-text="t('displayLayout.saveError')"></div>
         </div>
     </div>
 

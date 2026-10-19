@@ -159,19 +159,16 @@ def vertical_bounds(page):
     }""")
 
 
-def test_display_fits_screen_at_max_zoom(competition):
+def test_display_fits_screen_in_default_layout(competition):
     """The space kept free for card and reason must not push the timer or the
-    verdict off screen: on 1920×1080, 1366×768 and 1280×720 at the largest zoom
-    (1.5, restored from the display settings after a reload), timer and verdict
-    stay inside the screen while waiting and with a result (card + reason), and
-    the lights do not move when the result arrives.
+    verdict off screen: on 1920×1080, 1366×768 and 1280×720 in the default
+    layout, timer and verdict stay inside the screen while waiting and with a
+    result (card + reason), and the lights do not move when the result arrives.
+    (Larger sizes are set per block in a saved layout, #106; there the operator
+    places the blocks.)
     """
     head, left, right = competition.join_all_judges()
     display = competition.join_as("display")
-    display.evaluate("localStorage.setItem('iron-verdict:display-zoom', '1.5')")
-    display.reload()
-    display.locator(".display-full").wait_for(state="visible")
-    expect(display.locator(".display-full")).to_have_attribute("style", re.compile(r"--display-zoom: 1\.5"))
 
     viewports = ((1920, 1080), (1366, 768), (1280, 720))
     idle_tops = {}
