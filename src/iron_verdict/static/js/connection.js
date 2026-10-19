@@ -63,7 +63,7 @@ export function createConnection({
     const storedEntry = (entry) => (session.isDemo ? { ...entry, demo: true } : entry);
 
     const startDisplayOverlay = (code) => {
-        vportal.startDisplayOverlay(code).then((kind) => {
+        vportal.startDisplayOverlay(code, { streamOverlay: session.overlay }).then((kind) => {
             if (kind) session.kind = kind;
         }).catch((err) => console.warn('VPortal display overlay failed to start', err));
     };
@@ -142,6 +142,7 @@ export function createConnection({
         // dialog opened from the stream overlay's panel): poll with the new login, or stop.
         restartDisplayOverlay() {
             if (session.role !== 'display' || nav.screen !== 'display' || !session.code) return;
+            if (session.overlayNotice) return;  // stream overlay without a session
             startDisplayOverlay(session.code);
         },
 

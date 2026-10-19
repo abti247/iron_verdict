@@ -735,7 +735,7 @@
             <!-- The stream overlay never passes role-select: connect VPortal from here. -->
             <button class="display-settings-layout-btn"
                     data-testid="overlay-vportal-connect"
-                    x-show="$store.session.overlay && $store.session.kind === 'vportal'" x-cloak
+                    x-show="$store.session.overlay && $store.session.kind === 'vportal' && !$store.session.overlayNotice" x-cloak
                     @click="openVportalDialog()"
                     x-text="$store.vportal.connected
                         ? (t('vportal.connectedTo') + ' ' + $store.vportal.federationLabel + ' · ' + ($store.vportal.stageName || ''))

@@ -289,6 +289,7 @@ def test_overlay_connects_vportal_from_the_panel_and_keeps_it_after_reload(
 
     overlay.keyboard.press("s")
     connect = overlay.get_by_test_id("overlay-vportal-connect")
+    expect(connect).to_be_visible()
     expect(connect).to_have_text("Connect to comp software")
     connect.click()
     overlay.evaluate(f"() => {{ window._testVportalHost = '{fake_vportal_url}'; }}")
@@ -308,5 +309,41 @@ def test_overlay_connects_vportal_from_the_panel_and_keeps_it_after_reload(
     wait_joined(overlay, "VP Overlay")
     expect(overlay.locator(".vportal-corner-left")).to_be_visible(timeout=10000)
     overlay.keyboard.press("s")
+    expect(overlay.get_by_test_id("overlay-vportal-connect")).to_be_visible()
     expect(overlay.get_by_test_id("overlay-vportal-connect")).to_have_text(re.compile(r"^Connected to BVDK"))
     httpx.post(f"http://{fake_vportal_url}/_control/reset")
+
+
+def test_overlay_offers_vportal_connect_after_a_failed_first_session_check(page, competition, server_url):
+    """OBS starts the source while the session check fails once (venue Wi-Fi):
+    the overlay has no VPortal login yet, so a hall display would not retry.
+    The overlay retries, so "Connect to comp software" appears in its panel
+    without a reload, and no "VPortal disconnected" banner shows meanwhile."""
+    page.goto(server_url + "/vportal")
+    page.get_by_test_id("session-name-input").fill("VP Retry")
+    page.get_by_role("button", name="Create New Session").click()
+    page.locator(".role-wrap").wait_for(state="visible")
+    code = page.locator(".session-tag .code").text_content()
+    competition.session_code = code
+
+    ctx = competition.new_context(viewport=VIEWPORT)
+    overlay = ctx.new_page()
+    failed = []
+
+    def fail_first_lookup(route):
+        if not failed:
+            failed.append(route.request.url)
+            route.abort()
+        else:
+            route.continue_()
+
+    overlay.route(f"**/api/sessions/{code}", fail_first_lookup)
+    overlay.goto(overlay_url(competition, code=code))
+    wait_joined(overlay, "VP Retry")
+
+    overlay.keyboard.press("s")
+    connect = overlay.get_by_test_id("overlay-vportal-connect")
+    expect(connect).to_be_visible(timeout=10000)
+    expect(connect).to_have_text("Connect to comp software")
+    assert len(failed) == 1
+    expect(overlay.locator(".vportal-disconnected-banner")).to_be_hidden()

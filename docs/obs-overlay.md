@@ -40,7 +40,7 @@ The layout from the URL is then the only one: the panel ("S") shows "Layout come
 
 ## 4. VPortal (lifter and attempt info)
 
-In a VPortal session the overlay needs its own VPortal login, because OBS has its own browser profile. Right-click the source → **Interact** → **S** → **Connect to comp software** → federation, user, password, platform. Lifter and attempt info appear within a few seconds. The login stays stored in the OBS profile; after a reload the panel shows "Connected to … · <platform>".
+In a VPortal session the overlay needs its own VPortal login, because OBS has its own browser profile. Right-click the source → **Interact** → **S** → **Connect to comp software** → federation, user, password, platform. Like the editor, the settings panel and this dialog (including the typed user name) show in the stream while they are open — connect before going live or hide the source meanwhile. If the server could not be reached when the source started, the button appears as soon as the overlay could check the session again. Lifter and attempt info appear within a few seconds. The login stays stored in the OBS profile; after a reload the panel shows "Connected to … · <platform>".
 
 ## Checklist before going live
 

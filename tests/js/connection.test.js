@@ -94,7 +94,7 @@ describe('joining a role', () => {
 
         env.conn.returnToRoleSelection();
         joined(env, 'display');
-        expect(env.stores.vportal.startDisplayOverlay).toHaveBeenCalledWith(CODE);
+        expect(env.stores.vportal.startDisplayOverlay).toHaveBeenCalledWith(CODE, { streamOverlay: false });
     });
 
     it('join_success shows the screen of the role and applies the server settings', () => {
@@ -269,7 +269,7 @@ describe('stream overlay (OBS browser source)', () => {
         expect(env.stores.session.role).toBe('display');
         expect(env.stores.nav.screen).toBe('display');
         expect(env.openSocket).toHaveBeenCalledTimes(1);
-        expect(env.stores.vportal.startDisplayOverlay).toHaveBeenCalledWith(CODE);
+        expect(env.stores.vportal.startDisplayOverlay).toHaveBeenCalledWith(CODE, { streamOverlay: true });
         env.sockets[0].onReopen();
         expect(env.sockets[0].send).toHaveBeenCalledWith({ type: 'join', session_code: CODE, role: 'display' });
         env.sockets[0].onMessage({ type: 'join_success', is_head: false, session_state: { name: 'Meet' } });
@@ -339,7 +339,16 @@ describe('stream overlay (OBS browser source)', () => {
         env.sockets[0].onMessage({ type: 'join_success', is_head: false, session_state: {} });
         env.stores.vportal.startDisplayOverlay.mockClear();
         env.conn.restartDisplayOverlay();
-        expect(env.stores.vportal.startDisplayOverlay).toHaveBeenCalledWith(CODE);
+        expect(env.stores.vportal.startDisplayOverlay).toHaveBeenCalledWith(CODE, { streamOverlay: true });
+    });
+
+    it('a VPortal login change after the session ended does not start the overlay', () => {
+        const env = setup();
+        env.conn.start({ overlayParams });
+        env.sockets[0].onMessage({ type: 'session_ended' });
+        env.stores.vportal.startDisplayOverlay.mockClear();
+        env.conn.restartDisplayOverlay();
+        expect(env.stores.vportal.startDisplayOverlay).not.toHaveBeenCalled();
     });
 
     it('a VPortal login change off the display does not start the overlay', () => {

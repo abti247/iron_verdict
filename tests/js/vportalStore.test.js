@@ -152,13 +152,13 @@ describe('session info', () => {
 });
 
 describe('display overlay', () => {
-    it('shows a stored login with a stage as connected, so the dialog does not ask again', async () => {
+    it('stream overlay: shows a stored login with a stage as connected, so the dialog does not ask again', async () => {
         const fetchFn = vi.fn().mockResolvedValue(jsonResponse({ kind: 'vportal' }));
         const client = fakeClient({
             getStored: vi.fn().mockReturnValue({ host: 'oevk.vportal-online.de', stage_id: 'S1', stage_name: 'Platform A' }),
         });
         const { store } = makeStore({ client, fetchFn });
-        await store.startDisplayOverlay('ABCD1234');
+        await store.startDisplayOverlay('ABCD1234', { streamOverlay: true });
         expect(store.connected).toBe(true);
         expect(store.stageName).toBe('Platform A');
         expect(store.federationLabel).toBe('OEVK');
@@ -211,6 +211,45 @@ describe('display overlay', () => {
 
 describe('display overlay start and stop', () => {
     afterEach(() => { vi.useRealTimers(); });
+
+    it('hall display: a stored login does not change the connect button state', async () => {
+        const fetchFn = vi.fn().mockResolvedValue(jsonResponse({ kind: 'vportal' }));
+        const client = fakeClient({
+            getStored: vi.fn().mockReturnValue({ host: 'bvdk.vportal-online.de', stage_id: 'S1', stage_name: 'Platform A' }),
+        });
+        const { store } = makeStore({ client, fetchFn });
+        await store.startDisplayOverlay('ABCD1234');
+        expect(store.connected).toBe(false);
+        expect(store.stageName).toBe('');
+    });
+
+    it('stream overlay without a login: retries a failed lookup until the kind is known, without the banner', async () => {
+        vi.useFakeTimers();
+        const fetchFn = vi.fn()
+            .mockRejectedValueOnce(new Error('offline'))
+            .mockResolvedValue(jsonResponse({ kind: 'vportal' }));
+        const client = fakeClient({ isConnected: vi.fn().mockReturnValue(false), getStored: vi.fn().mockReturnValue(null) });
+        const { store } = makeStore({ client, fetchFn });
+        const started = store.startDisplayOverlay('ABCD1234', { streamOverlay: true });
+
+        await vi.advanceTimersByTimeAsync(0);
+        expect(fetchFn).toHaveBeenCalledTimes(1);
+        expect(store.disconnectedReason).toBe('');
+
+        await vi.advanceTimersByTimeAsync(3000);
+        expect(await started).toBe('vportal');
+        expect(fetchFn).toHaveBeenCalledTimes(2);
+        expect(client.pollActiveAttempt).not.toHaveBeenCalled();
+        expect(store.disconnectedReason).toBe('');
+    });
+
+    it('hall display without a login: a failed lookup is not retried', async () => {
+        const fetchFn = vi.fn().mockRejectedValue(new Error('offline'));
+        const client = fakeClient({ isConnected: vi.fn().mockReturnValue(false), getStored: vi.fn().mockReturnValue(null) });
+        const { store } = makeStore({ client, fetchFn });
+        expect(await store.startDisplayOverlay('ABCD1234')).toBeNull();
+        expect(fetchFn).toHaveBeenCalledTimes(1);
+    });
 
     it('retries a failed session lookup on a VPortal-connected device and shows the banner meanwhile', async () => {
         vi.useFakeTimers();

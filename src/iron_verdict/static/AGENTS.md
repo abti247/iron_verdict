@@ -14,7 +14,8 @@ src/iron_verdict/static/
 │   ├── layout.css      # Screen-level layouts (landing, role-select, judge, display)
 │   ├── animations.css  # Keyframes and transition classes
 │   ├── display-contrast.css # Display contrast mode (scoped under .display-contrast)
-│   └── display-layout.css   # Saved display layout and its editor (.display-layout-custom/-editing)
+│   ├── display-layout.css   # Saved display layout and its editor (.display-layout-custom/-editing)
+│   └── display-overlay.css  # Transparent stream overlay for OBS (scoped under html.display-overlay)
 ├── js/
 │   ├── init.js         # Entry point: demo params, boot (i18n, fonts, Alpine), popstate → connection
 │   ├── app.js          # Bootstrap: registers stores and screen components with Alpine, starts the app
