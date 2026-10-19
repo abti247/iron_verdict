@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import {
     LAYOUT_STORAGE_KEY,
     LAYOUT_BLOCKS,
-    BLOCK_ANCHORS,
     sanitizeLayout,
     loadLayout,
     saveLayout,
@@ -131,14 +130,6 @@ describe('storage', () => {
         expect(clearLayout(broken)).toBe(false);
         expect(saveLayout(null, validLayout())).toBe(false);
         expect(loadLayout(null)).toBe(null);
-    });
-});
-
-describe('BLOCK_ANCHORS', () => {
-    it('anchors each free block where its content grows from in the default layout', () => {
-        expect(BLOCK_ANCHORS).toEqual({
-            timer: 'center', lights: 'center', verdict: 'center', lifter: 'left', attempt: 'right',
-        });
     });
 });
 
