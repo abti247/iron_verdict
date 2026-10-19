@@ -214,6 +214,11 @@ def test_overlay_edits_its_own_layout_on_a_checkerboard(competition):
     expect(overlay.get_by_test_id("layout-toolbar")).to_be_visible()
     assert "conic-gradient" in backgrounds(overlay)[2][1]
 
+    # The sample lifter corner (no VPortal) is faded, panel included.
+    assert overlay.evaluate(
+        "getComputedStyle(document.querySelector('.vportal-corner-left')).backgroundColor"
+    ) == "rgba(0, 0, 0, 0.21)"
+
     overlay.get_by_test_id("layout-hide-timer").click()
     overlay.get_by_test_id("layout-save").click()
     expect(overlay.get_by_test_id("layout-toolbar")).to_be_hidden()
@@ -359,6 +364,7 @@ def test_overlay_texts_sit_on_a_dark_panel_and_lights_do_not_move(competition):
     head, left, right = competition.join_all_judges()
     overlay, _ = open_overlay(competition)
     hall = competition.join_as("display")
+    hall.set_viewport_size(VIEWPORT)
 
     def orb_box(page):
         return page.locator(".display-lights .display-orb").nth(1).bounding_box()
@@ -376,6 +382,12 @@ def test_overlay_texts_sit_on_a_dark_panel_and_lights_do_not_move(competition):
     reason = ".display-lights .display-orb-wrap:nth-child(2) .display-orb-reason"
     expect(overlay.locator(reason)).to_be_visible()
     assert overlay.evaluate(styles, reason) == [panel, "rgb(255, 255, 255)"]
+    # The panel adds no padding: the reason is exactly as high as on the hall
+    # display (the lights' column reserves two lines, so the orb box alone
+    # would not notice a padding).
+    height = "(sel) => document.querySelector(sel).getBoundingClientRect().height"
+    expect(hall.locator(reason)).to_be_visible()
+    assert abs(overlay.evaluate(height, reason) - hall.evaluate(height, reason)) < 0.5
     assert overlay.evaluate(styles, ".display-timer-big") == [panel, "rgb(255, 255, 255)"]
     assert overlay.evaluate(styles, ".verdict-stamp")[0] == panel
     assert overlay.evaluate(styles, ".vportal-corner-left")[0] == panel

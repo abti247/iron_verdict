@@ -43,5 +43,6 @@
     --overlay-error-text: #fca5a5;
     /* Behind the overlay's texts, so they read on any camera picture. */
     --overlay-panel-bg: rgba(0, 0, 0, 0.7);
+    --overlay-panel-bg-faded: rgba(0, 0, 0, 0.21); /* the editor's 0.3 fade of a hidden or sample block */
     --overlay-text: #FFFFFF;
 }
