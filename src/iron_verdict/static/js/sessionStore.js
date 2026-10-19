@@ -11,6 +11,9 @@ export function createSessionStore() {
         role: '',
         isHead: false,
         isDemo: false,  // joined from a demo window (?code=…&demo=<role>)
+        overlay: false,  // stream overlay for OBS (?session=…&overlay=1): a display without controls
+        overlayLayoutCode: '',  // layout export code from the overlay URL (&layout=…); '' = none
+        overlayNotice: '',  // why the overlay shows no session (ended, not found, join failed)
         connectionStatus: 'disconnected',  // 'disconnected' | 'reconnecting' | 'connected'
         serverRestarting: false,
         judgeConnected: { left: false, center: false, right: false },

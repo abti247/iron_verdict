@@ -29,6 +29,9 @@ export function createVportalStore({
         selectedStage: '',
         displayAttempt: null,
         disconnectedReason: '',
+        // Bumped when the user connects or disconnects in the dialog; the display
+        // screen then has the connection restart the overlay (stream overlay, #107).
+        loginChanges: 0,
         _pollStop: null,
         _retryTimer: null,
         _displayRun: 0,  // bumped on every stop; a lookup from an older run must not start a poller
@@ -74,6 +77,7 @@ export function createVportalStore({
             this.stageName = stage.name;
             this.connected = true;
             this.modalOpen = false;
+            this.loginChanges += 1;
         },
 
         disconnect(sessionCode) {
@@ -81,6 +85,7 @@ export function createVportalStore({
             this.connected = false;
             this.stageName = '';
             this.modalOpen = false;
+            this.loginChanges += 1;
         },
 
         _hostForFederation(fed) {
@@ -90,6 +95,12 @@ export function createVportalStore({
             if (fed === 'OEVK') return 'oevk.vportal-online.de';
             if (fed === 'BVDK_STAGING') return 'staging-bvdk.vportal-online.de';
             return 'bvdk.vportal-online.de';
+        },
+
+        _federationForHost(host) {
+            if (host === 'oevk.vportal-online.de') return 'OEVK';
+            if (host === 'staging-bvdk.vportal-online.de') return 'BVDK_STAGING';
+            return 'BVDK';
         },
 
         // Session lookup result (`GET /api/sessions/{code}`), or null if it could not be read.
@@ -124,8 +135,10 @@ export function createVportalStore({
                 if (data) {
                     const kind = data.kind || 'generic';
                     this.stagingAvailable = !!data.staging_available;
-                    if (kind === 'vportal') this._startPolling(sessionCode);
-                    else this.disconnectedReason = '';
+                    if (kind === 'vportal') {
+                        this._showStoredLogin(sessionCode);
+                        this._startPolling(sessionCode);
+                    } else this.disconnectedReason = '';
                     return kind;
                 }
                 // Without its own VPortal login this device never polls, so there is nothing to retry for.
@@ -171,6 +184,16 @@ export function createVportalStore({
             if (!client.isConnected(sessionCode)) return null;
             const stored = client.getStored(sessionCode);
             return stored?.stage_id ? stored : null;
+        },
+
+        // A login stored before a reload shows as connected, so the dialog opened
+        // from the stream overlay's panel does not ask for it again.
+        _showStoredLogin(sessionCode) {
+            const stored = this._pollableStored(sessionCode);
+            if (!stored) return;
+            this.connected = true;
+            this.stageName = stored.stage_name || '';
+            this.federationLabel = this._federationForHost(stored.host);
         },
 
         _startPolling(sessionCode) {

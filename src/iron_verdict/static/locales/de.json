@@ -284,5 +284,15 @@
     "language": "Die Spracheinstellung wird in localStorage gespeichert.",
     "analytics": "Nutzungsstatistiken über Umami Analytics (ohne Cookies, keine personenbezogenen Daten).",
     "cookies": "Es werden keine Cookies gesetzt."
+  },
+  "overlay": {
+    "sessionEnded": "Session beendet",
+    "sessionNotFound": "Session nicht gefunden",
+    "layoutFromUrl": "Layout kommt aus der URL (&layout=…)",
+    "layoutUrlInvalid": "Layout-Code in der URL ist ungültig – gespeichertes Layout aktiv",
+    "linkButton": "Stream-Overlay (OBS)",
+    "linkHint": "Diese URL in OBS als Browserquelle eintragen (1920 × 1080). Sie öffnet das Display ohne Bedienelemente auf transparentem Hintergrund.",
+    "copy": "Kopieren",
+    "copied": "Kopiert"
   }
 }

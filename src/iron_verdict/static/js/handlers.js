@@ -91,6 +91,12 @@ export function handleJoinError(c, message) {
     c.vportal.stopDisplayOverlay();
     c.storage.removeItem('iv_session');
     const sanitizedMessage = document.createTextNode(message.message).textContent;
+    if (c.session.overlay) {
+        c.failOverlay(message.message === 'Session not found'
+            ? c.t('overlay.sessionNotFound')
+            : `${c.t('alerts.joinFailed')} ${sanitizedMessage}`);
+        return;
+    }
     c.alert(`${c.t('alerts.joinFailed')} ${sanitizedMessage}`);
     // A failed reload recovery must not leave the page on "Connecting…".
     if (c.nav.screen === 'reconnecting') c.returnToLanding();
@@ -138,6 +144,11 @@ export function handleTimerReset(c, _message) {
 export function handleSessionEnded(c, _message) {
     c.judge.clearPendingVote();
     c.vportal.stopDisplayOverlay();
+    if (c.session.overlay) {
+        c.closeSocket();
+        c.failOverlay(c.t('overlay.sessionEnded'));
+        return;
+    }
     c.alert(c.t('alerts.sessionEnded'));
     c.closeSocket();
     c.session.isDemo = false;

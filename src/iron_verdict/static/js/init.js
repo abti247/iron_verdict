@@ -1,12 +1,18 @@
 import { registerApp } from './app.js';
 import { initI18n, t, setLanguage, getLanguage } from './i18n.js';
 
-// Read demo join params from URL before Alpine loads.
+// Read demo and stream-overlay join params from URL before Alpine loads.
 (function () {
     var p = new URLSearchParams(window.location.search);
     var code = p.get('code');
     var demo = p.get('demo');
     window._demoParams = (code && demo) ? { code: code, demo: demo } : null;
+    // Stream overlay (OBS browser source): ?session=CODE&overlay=1[&layout=IV1…].
+    // The class makes the page transparent from the boot screen on, so a reload
+    // in OBS never flashes a dark full screen over the video.
+    var overlay = p.get('overlay') === '1';
+    window._overlayParams = overlay ? { code: p.get('session') || '', layoutCode: p.get('layout') || '' } : null;
+    if (overlay) document.documentElement.classList.add('display-overlay');
 })();
 
 // Wait for translations + custom fonts, then load Alpine. Alpine's CDN build
@@ -48,8 +54,10 @@ let app = null;  // the connection, once Alpine has started (app.js)
 
 document.addEventListener('alpine:init', () => {
     const demoParams = window._demoParams;
+    const overlayParams = window._overlayParams;
     window._demoParams = null;
-    app = registerApp(Alpine, { lang: window._resolvedLang || 'en', demoParams });
+    window._overlayParams = null;
+    app = registerApp(Alpine, { lang: window._resolvedLang || 'en', demoParams, overlayParams });
 });
 
 // Handle browser back button — navigate within the screen machine.

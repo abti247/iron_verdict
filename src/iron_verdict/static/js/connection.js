@@ -62,6 +62,12 @@ export function createConnection({
     // The demo flag is stored with the session so a reloaded demo window keeps showing "DEMO".
     const storedEntry = (entry) => (session.isDemo ? { ...entry, demo: true } : entry);
 
+    const startDisplayOverlay = (code) => {
+        vportal.startDisplayOverlay(code).then((kind) => {
+            if (kind) session.kind = kind;
+        }).catch((err) => console.warn('VPortal display overlay failed to start', err));
+    };
+
     const c = {
         ...stores,
         storage,
@@ -129,11 +135,14 @@ export function createConnection({
             );
             ws = socket;
 
-            if (role === 'display') {
-                vportal.startDisplayOverlay(code).then((kind) => {
-                    if (kind) session.kind = kind;
-                }).catch((err) => console.warn('VPortal display overlay failed to start', err));
-            }
+            if (role === 'display') startDisplayOverlay(code);
+        },
+
+        // The VPortal login of this device changed while it shows the display (connect
+        // dialog opened from the stream overlay's panel): poll with the new login, or stop.
+        restartDisplayOverlay() {
+            if (session.role !== 'display' || nav.screen !== 'display' || !session.code) return;
+            startDisplayOverlay(session.code);
         },
 
         // Look up the code typed on the landing screen (or restored after a reload) and
@@ -210,6 +219,35 @@ export function createConnection({
             timer.reset();
         },
 
+        // Stream overlay (OBS browser source): joins as display without a click and
+        // never leaves the display screen — no landing, role-select or "Connecting…"
+        // screen, no history entry. The URL stays as it is, so a reload (OBS reloads
+        // browser sources now and then) starts the overlay again.
+        startOverlay({ code, layoutCode = '' }) {
+            const trimmed = String(code || '').trim().toUpperCase();
+            session.overlay = true;
+            session.overlayLayoutCode = layoutCode || '';
+            session.overlayNotice = '';
+            nav.screen = 'display';
+            if (trimmed.length !== 8) {
+                session.overlayNotice = t('overlay.sessionNotFound');
+                return;
+            }
+            session.code = trimmed;
+            session.joinCode = trimmed;
+            c.joinSession('display');
+        },
+
+        // The overlay lost its session (ended, not found, join refused): the socket is
+        // already closed and the VPortal overlay stopped; show why, without an alert
+        // (it would block the OBS browser source) and without leaving the display.
+        failOverlay(notice) {
+            storage.removeItem('iv_session');
+            stores.display.clear();
+            timer.reset();
+            session.overlayNotice = notice;
+        },
+
         cancelReconnect() {
             c.returnToLanding();
         },
@@ -251,9 +289,15 @@ export function createConnection({
             }
         },
 
-        // First screen after Alpine started: a QR-code link (?session=…), a session
-        // stored before a reload, a demo window (?code=…&demo=<role>) or the landing screen.
-        start({ urlSession = null, demoParams = null } = {}) {
+        // First screen after Alpine started: the stream overlay (?session=…&overlay=1),
+        // a QR-code link (?session=…), a session stored before a reload, a demo window
+        // (?code=…&demo=<role>) or the landing screen.
+        start({ urlSession = null, overlayParams = null, demoParams = null } = {}) {
+            if (overlayParams) {
+                c.startOverlay(overlayParams);
+                return;
+            }
+
             if (urlSession) {
                 const trimmed = urlSession.trim().toUpperCase();
                 session.joinCode = trimmed;

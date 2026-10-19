@@ -4,11 +4,16 @@
 // rules live in displayLayout.js; this file only turns pointer input into
 // layout changes. Nothing here touches the connection or the stores, so the
 // display keeps showing votes, timer and VPortal data while editing.
+//
+// The stream overlay stores its layout under its own key; a layout code in its
+// URL (&layout=…) is then the only source and the edit mode stays closed, so a
+// reload in OBS never brings back something other than what was edited.
 
 import {
     loadLayout, saveLayout, clearLayout, layoutFromRects,
     movedBlock, scaledBlock, cardsWithGap, withBlockHidden, blockStyle,
     encodeLayout, decodeLayout, FREE_BLOCKS, BLOCK_ANCHORS,
+    LAYOUT_STORAGE_KEY, OVERLAY_LAYOUT_STORAGE_KEY,
 } from '../displayLayout.js';
 import { t } from '../i18n.js';
 
@@ -26,10 +31,19 @@ export function displayLayoutEditor() {
         layoutCodeInput: '',
         layoutCodeError: false,
         layoutSaveError: false,
+        layoutFromUrl: false,   // stream overlay: the layout comes from its URL, no editing
+        layoutUrlInvalid: false, // stream overlay: the URL's layout code could not be read
+        _layoutKey: LAYOUT_STORAGE_KEY,
         _layoutDrag: null,
 
         initDisplayLayout() {
-            this.layout = loadLayout(storage());
+            const session = this.$store.session;
+            this._layoutKey = session.overlay ? OVERLAY_LAYOUT_STORAGE_KEY : LAYOUT_STORAGE_KEY;
+            const urlLayout = session.overlay && session.overlayLayoutCode
+                ? decodeLayout(session.overlayLayoutCode) : null;
+            this.layoutFromUrl = !!urlLayout;
+            this.layoutUrlInvalid = !!(session.overlay && session.overlayLayoutCode && !urlLayout);
+            this.layout = urlLayout || loadLayout(storage(), this._layoutKey);
             // Leaving the display (role select, session end) drops the draft.
             this.$watch('$store.nav.screen', (screen) => {
                 if (screen !== 'display' && this.layoutEditing) this.cancelLayoutEdit();
@@ -75,6 +89,7 @@ export function displayLayoutEditor() {
         },
 
         startLayoutEdit() {
+            if (this.layoutFromUrl) return;
             this.displaySettingsOpen = false;
             this.layoutDraft = this.layout ? JSON.parse(JSON.stringify(this.layout)) : null;
             this.layoutCodeOpen = false;
@@ -88,7 +103,9 @@ export function displayLayoutEditor() {
         // the layout would be gone after the next reload.
         saveLayoutEdit() {
             const draft = this.layoutDraft;
-            const stored = draft ? saveLayout(storage(), draft) : clearLayout(storage());
+            const stored = draft
+                ? saveLayout(storage(), draft, this._layoutKey)
+                : clearLayout(storage(), this._layoutKey);
             this.layoutSaveError = !stored;
             if (!stored) return;
             this.layout = draft;

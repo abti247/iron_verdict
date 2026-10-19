@@ -34,4 +34,11 @@
     --layout-frame: #38BDF8;
     --layout-frame-cards: #FACC15;
     --layout-frame-text: #0A0A0A;
+    /* Stream overlay (#107): checkerboard behind the blocks while editing,
+       notice when the overlay has no session. */
+    --overlay-checker-a: #1a1a1f;
+    --overlay-checker-b: #26262c;
+    --overlay-notice-bg: rgba(10, 10, 10, 0.75);
+    --overlay-notice-text: #f5f5f7;
+    --overlay-error-text: #fca5a5;
 }

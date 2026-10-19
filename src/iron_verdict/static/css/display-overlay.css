@@ -1,0 +1,58 @@
+/* ===== STREAM OVERLAY (#107) =====
+   The display as OBS browser source (?session=…&overlay=1): init.js sets
+   `display-overlay` on <html> from the URL, before Alpine starts. The page is
+   transparent (OBS lays it over the video), only the blocks of the layout
+   show; gear and session name are left out in the markup, the connection dot
+   only shows while the connection is not up.
+   Why on <html> and from init.js: the boot screen comes before Alpine, and a
+   reload in OBS must not flash a dark full screen over the stream.
+   Without the class nothing here applies, so the hall display is unchanged. */
+
+html.display-overlay,
+html.display-overlay body,
+html.display-overlay.booting .boot-screen,
+html.display-overlay .display-full,
+html.display-overlay .display-full.display-contrast {
+    background: transparent;
+}
+html.display-overlay .boot-loading { visibility: hidden; }
+
+html.display-overlay .display-full::before,
+html.display-overlay .display-full::after {
+    display: none;
+}
+
+/* "Waiting…" is a hint for the hall, not for the stream. */
+html.display-overlay .display-status { display: none; }
+
+/* While editing: a dark checkerboard, so the white texts stay visible when the
+   overlay is edited in a normal browser (white page) and it is clear that this
+   is not what the stream shows. */
+html.display-overlay .display-full.display-layout-editing {
+    background: repeating-conic-gradient(var(--overlay-checker-a) 0 25%, var(--overlay-checker-b) 0 50%) 0 0 / 32px 32px;
+}
+
+.overlay-notice {
+    position: absolute;
+    left: 50%;
+    bottom: clamp(16px, 4vmin, 64px);
+    transform: translateX(-50%);
+    padding: clamp(6px, 1vmin, 14px) clamp(12px, 2vmin, 28px);
+    background: var(--overlay-notice-bg);
+    color: var(--overlay-notice-text);
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+    font-size: clamp(14px, 2.2vmin, 36px);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+/* The settings panel's notes (layout from the URL, invalid layout code). */
+.display-settings-note {
+    margin-top: 10px;
+    font-size: 12px;
+    letter-spacing: .06em;
+    color: var(--panel-text);
+}
+.display-settings-note--error { color: var(--overlay-error-text); }
+html.display-overlay .display-settings-layout-btn + .display-settings-layout-btn { margin-top: 10px; }
