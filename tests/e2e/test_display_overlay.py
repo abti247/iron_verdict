@@ -348,3 +348,38 @@ def test_overlay_offers_vportal_connect_after_a_failed_first_session_check(page,
     expect(connect).to_have_text("Connect to comp software")
     assert len(failed) == 1
     expect(overlay.locator(".vportal-disconnected-banner")).to_be_hidden()
+
+
+def test_overlay_texts_sit_on_a_dark_panel_and_lights_do_not_move(competition):
+    """Over a camera picture white text alone is unreadable: in the overlay the
+    timer, the reasons, the verdict and the VPortal corners sit on a
+    translucent dark panel with white text. The panel must not change any
+    size: the lights stay where they were before the reasons appeared. The
+    hall display keeps its look (no panel)."""
+    head, left, right = competition.join_all_judges()
+    overlay, _ = open_overlay(competition)
+    hall = competition.join_as("display")
+
+    def orb_box(page):
+        return page.locator(".display-lights .display-orb").nth(1).bounding_box()
+
+    before = orb_box(overlay)
+    competition.vote_and_lock(head, "red", reason="Depth")
+    competition.vote_and_lock(left, "white")
+    competition.vote_and_lock(right, "white")
+    expect(overlay.locator(".verdict-stamp")).to_have_text("Good Lift")
+    assert orb_box(overlay) == before
+
+    panel = "rgba(0, 0, 0, 0.7)"
+    styles = """(sel) => { const s = getComputedStyle(document.querySelector(sel));
+                          return [s.backgroundColor, s.color]; }"""
+    reason = ".display-lights .display-orb-wrap:nth-child(2) .display-orb-reason"
+    expect(overlay.locator(reason)).to_be_visible()
+    assert overlay.evaluate(styles, reason) == [panel, "rgb(255, 255, 255)"]
+    assert overlay.evaluate(styles, ".display-timer-big") == [panel, "rgb(255, 255, 255)"]
+    assert overlay.evaluate(styles, ".verdict-stamp")[0] == panel
+    assert overlay.evaluate(styles, ".vportal-corner-left")[0] == panel
+
+    expect(hall.locator(reason)).to_be_visible()
+    assert hall.evaluate(styles, reason)[0] == TRANSPARENT
+    assert hall.evaluate(styles, ".display-timer-big")[0] == TRANSPARENT

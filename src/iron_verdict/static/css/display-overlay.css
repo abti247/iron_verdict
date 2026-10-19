@@ -25,6 +25,43 @@ html.display-overlay .display-full::after {
 /* "Waiting…" is a hint for the hall, not for the stream. */
 html.display-overlay .display-status { display: none; }
 
+/* Readable on any camera picture: a translucent dark panel behind every
+   text block (timer, reasons, verdict, lifter and attempt; the lights stay
+   free) and pure white, bolder texts. The panel grows outward with a
+   box-shadow spread instead of padding, so no block changes its size and the
+   lights never move (see layout.css, "Lights never move"). */
+html.display-overlay .display-timer-big,
+html.display-overlay .display-orb-reason,
+html.display-overlay .verdict-stamp,
+html.display-overlay .vportal-corner {
+    background-color: var(--overlay-panel-bg);
+    border-radius: 0.15em;
+}
+/* The timer's box reaches into the lights by its negative bottom margin
+   (empty descender space): clip the panel there. */
+html.display-overlay .display-timer-big {
+    padding: 0 0.08em;
+    clip-path: inset(0 0 0.15em 0 round 0.15em);
+}
+html.display-overlay .display-orb-reason { box-shadow: 0 0 0 0.12em var(--overlay-panel-bg); }
+html.display-overlay .vportal-corner {
+    box-shadow: 0 0 0 calc(clamp(6px, 1vmin, 16px) * var(--display-zoom, 1)) var(--overlay-panel-bg);
+}
+html.display-overlay .display-timer-big:not(.expired),
+html.display-overlay .display-orb-reason,
+html.display-overlay .vportal-corner,
+html.display-overlay .vportal-corner-name,
+html.display-overlay .vportal-corner-meta,
+html.display-overlay .vportal-corner-disc,
+html.display-overlay .vportal-corner-weight {
+    color: var(--overlay-text);
+}
+html.display-overlay .display-orb-reason,
+html.display-overlay .vportal-corner-meta,
+html.display-overlay .vportal-corner-disc {
+    font-weight: 700;
+}
+
 /* While editing: a dark checkerboard, so the white texts stay visible when the
    overlay is edited in a normal browser (white page) and it is clear that this
    is not what the stream shows. */
