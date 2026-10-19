@@ -830,8 +830,8 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     width: 100%;
     margin-top: 16px;
     background: transparent;
-    border: 1px solid #2a2a2e;
-    color: #d1d5db;
+    border: 1px solid var(--panel-border);
+    color: var(--panel-text);
     padding: 8px 12px;
     font-family: 'Rajdhani', sans-serif;
     font-size: 12px;
@@ -839,10 +839,10 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     text-transform: uppercase;
     cursor: pointer;
 }
-.display-settings-toggle:hover { border-color: #4a4a4e; color: #f5f5f7; }
+.display-settings-toggle:hover { border-color: var(--panel-border-hover); color: var(--panel-text-bright); }
 .display-settings-toggle-state { font-weight: 700; }
 .display-settings-toggle.on {
     background: var(--blood);
     border-color: var(--blood-bright);
-    color: #FFFFFF;
+    color: var(--contrast-text);
 }
