@@ -267,7 +267,9 @@
       "bodyWeightCategory": "-93 kg",
       "ageCategory": "Open",
       "discipline": "Kniebeuge"
-    }
+    },
+    "sampleTag": "Beispiel",
+    "saveError": "Konnte auf diesem Gerät nicht gespeichert werden (Browser-Speicher gesperrt oder voll). Nach dem Neuladen wäre das Layout weg."
   },
   "privacy": {
     "link": "Datenschutz & Impressum",

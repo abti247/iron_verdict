@@ -4,18 +4,25 @@
 // default flow layout of layout.css, so a display that never edits looks as
 // before.
 //
-// Free blocks have x/y (top-left corner, percent of the display) and s (scale,
-// applied as the block's --display-zoom). The cards block (card colours and
+// Free blocks have x/y (percent of the display) and s (scale, applied as the
+// block's --display-zoom). y is the top edge; x is the block's anchor: its
+// left edge, centre or right edge (BLOCK_ANCHORS), the side its content grows
+// from in the default layout — so a longer lifter name or a wider weight
+// never pushes a block off screen. The cards block (card colours and
 // reasons under the lights) follows the lights: it only has a gap, in
 // multiples of the light size. Every block can be hidden.
 
 export const LAYOUT_STORAGE_KEY = 'iron-verdict:display-layout';
 export const FREE_BLOCKS = ['timer', 'lights', 'verdict', 'lifter', 'attempt'];
 export const LAYOUT_BLOCKS = [...FREE_BLOCKS, 'cards'];
+export const BLOCK_ANCHORS = {
+    timer: 'center', lights: 'center', verdict: 'center', lifter: 'left', attempt: 'right',
+};
 
 const VERSION = 1;
 const CODE_PREFIX = 'IV1.';
-const POS_MAX = 99;           // the top-left corner stays on screen
+const X_MAX = 100;            // the anchor stays on screen
+const Y_MAX = 99;             // the top edge stays on screen
 const SCALE_MIN = 0.3;
 const SCALE_MAX = 3;
 const SCALE_STEP = 0.05;
@@ -34,8 +41,8 @@ function sanitizeFree(raw) {
     const { x, y, s } = raw;
     if (!isNum(x) || !isNum(y) || !isNum(s)) return null;
     return {
-        x: clamp(x, 0, POS_MAX),
-        y: clamp(y, 0, POS_MAX),
+        x: clamp(x, 0, X_MAX),
+        y: clamp(y, 0, Y_MAX),
         s: clamp(s, SCALE_MIN, SCALE_MAX),
         hidden: raw.hidden === true,
     };
@@ -63,6 +70,8 @@ export function sanitizeLayout(raw) {
     return { v: VERSION, blocks };
 }
 
+// storage may be null (localStorage blocked); loading then finds nothing and
+// saving reports false, so the editor can say so.
 export function loadLayout(storage) {
     try {
         const raw = storage.getItem(LAYOUT_STORAGE_KEY);
@@ -73,11 +82,30 @@ export function loadLayout(storage) {
 }
 
 export function saveLayout(storage, layout) {
-    try { storage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(layout)); } catch (_) {}
+    try {
+        storage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(layout));
+        return true;
+    } catch (_) {
+        return false;
+    }
 }
 
 export function clearLayout(storage) {
-    try { storage.removeItem(LAYOUT_STORAGE_KEY); } catch (_) {}
+    try {
+        storage.removeItem(LAYOUT_STORAGE_KEY);
+        return true;
+    } catch (_) {
+        return false;
+    }
+}
+
+const ANCHOR_SHIFT = { left: '0', center: '-50%', right: '-100%' };
+
+// x of a measured rect at the block's anchor.
+function anchorX(rect, anchor) {
+    if (anchor === 'left') return rect.left;
+    if (anchor === 'right') return rect.right;
+    return rect.left + rect.width / 2;
 }
 
 // A layout that puts every free block where it is now (rects from
@@ -87,7 +115,7 @@ export function layoutFromRects(root, rects) {
     for (const id of FREE_BLOCKS) {
         const r = rects[id];
         blocks[id] = {
-            x: tidy(((r.left - root.left) / root.width) * 100),
+            x: tidy(((anchorX(r, BLOCK_ANCHORS[id]) - root.left) / root.width) * 100),
             y: tidy(((r.top - root.top) / root.height) * 100),
             s: 1,
             hidden: false,
@@ -101,8 +129,8 @@ export function layoutFromRects(root, rects) {
 export function movedBlock(block, dx, dy) {
     return {
         ...block,
-        x: clamp(Math.round(block.x + dx), 0, POS_MAX),
-        y: clamp(Math.round(block.y + dy), 0, POS_MAX),
+        x: clamp(Math.round(block.x + dx), 0, X_MAX),
+        y: clamp(Math.round(block.y + dy), 0, Y_MAX),
     };
 }
 
@@ -122,9 +150,14 @@ export function withBlockHidden(layout, id, hidden) {
 // string) so it leaves x-show's `display` alone; every key is always present,
 // with '' for "unset" (no block = default flow layout), because Alpine only
 // resets the keys of the next object.
-export function blockStyle(block) {
-    if (!block) return { left: '', top: '', '--display-zoom': '' };
-    return { left: `${block.x}%`, top: `${block.y}%`, '--display-zoom': String(block.s) };
+export function blockStyle(block, anchor) {
+    if (!block) return { left: '', top: '', transform: '', '--display-zoom': '' };
+    return {
+        left: `${block.x}%`,
+        top: `${block.y}%`,
+        transform: `translateX(${ANCHOR_SHIFT[anchor]})`,
+        '--display-zoom': String(block.s),
+    };
 }
 
 // Export code: "IV1." + base64url(JSON). Layouts hold only ASCII, so btoa is safe.

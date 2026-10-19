@@ -8,11 +8,14 @@
 import {
     loadLayout, saveLayout, clearLayout, layoutFromRects,
     movedBlock, scaledBlock, cardsWithGap, withBlockHidden, blockStyle,
-    encodeLayout, decodeLayout, FREE_BLOCKS,
+    encodeLayout, decodeLayout, FREE_BLOCKS, BLOCK_ANCHORS,
 } from '../displayLayout.js';
 import { t } from '../i18n.js';
 
-const storage = () => window.localStorage;
+// null when the browser blocks site data; load/save then report it.
+function storage() {
+    try { return window.localStorage; } catch (_) { return null; }
+}
 
 export function displayLayoutEditor() {
     return {
@@ -22,10 +25,11 @@ export function displayLayoutEditor() {
         layoutCodeOpen: false,
         layoutCodeInput: '',
         layoutCodeError: false,
+        layoutSaveError: false,
         _layoutDrag: null,
 
         initDisplayLayout() {
-            try { this.layout = loadLayout(storage()); } catch (_) { this.layout = null; }
+            this.layout = loadLayout(storage());
             // Leaving the display (role select, session end) drops the draft.
             this.$watch('$store.nav.screen', (screen) => {
                 if (screen !== 'display' && this.layoutEditing) this.cancelLayoutEdit();
@@ -39,7 +43,7 @@ export function displayLayoutEditor() {
 
         layoutBlockStyle(id) {
             const layout = this.activeLayout();
-            const style = blockStyle(layout && layout.blocks[id]);
+            const style = blockStyle(layout && layout.blocks[id], BLOCK_ANCHORS[id]);
             if (id === 'lights') style['--orb-card-gap'] = layout ? String(layout.blocks.cards.gap) : '';
             return style;
         },
@@ -50,7 +54,11 @@ export function displayLayoutEditor() {
         },
 
         // The VPortal corners while editing without a lifter: sample text so
-        // they can be placed.
+        // they can be placed, faded and labelled as a sample (cornerIsSample).
+        cornerIsSample() {
+            return this.layoutEditing && !this.$store.vportal.displayAttempt;
+        },
+
         cornerAttempt() {
             const attempt = this.$store.vportal.displayAttempt;
             if (attempt || !this.layoutEditing) return attempt;
@@ -72,13 +80,18 @@ export function displayLayoutEditor() {
             this.layoutCodeOpen = false;
             this.layoutCodeInput = '';
             this.layoutCodeError = false;
+            this.layoutSaveError = false;
             this.layoutEditing = true;
         },
 
+        // If this device cannot store it, the editor stays open with a message:
+        // the layout would be gone after the next reload.
         saveLayoutEdit() {
-            this.layout = this.layoutDraft;
-            if (this.layout) saveLayout(storage(), this.layout);
-            else clearLayout(storage());
+            const draft = this.layoutDraft;
+            const stored = draft ? saveLayout(storage(), draft) : clearLayout(storage());
+            this.layoutSaveError = !stored;
+            if (!stored) return;
+            this.layout = draft;
             this._endLayoutEdit();
         },
 
@@ -115,6 +128,7 @@ export function displayLayoutEditor() {
             try { event.currentTarget.setPointerCapture(event.pointerId); } catch (_) {}
             const root = this.$root.getBoundingClientRect();
             const rect = this.$refs[`layout-${id === 'cards' ? 'lights' : id}`].getBoundingClientRect();
+            const anchor = BLOCK_ANCHORS[id];
             this._layoutDrag = {
                 id, mode,
                 pointerId: event.pointerId,
@@ -122,7 +136,8 @@ export function displayLayoutEditor() {
                 startY: event.clientY,
                 rootW: root.width,
                 rootH: root.height,
-                w: rect.width,
+                // Scaling keeps the anchor (left edge, centre or right edge) in place.
+                anchorX: anchor === 'left' ? rect.left : anchor === 'right' ? rect.right : rect.left + rect.width / 2,
                 h: rect.height,
                 orb: this.$refs.layoutOrb.getBoundingClientRect().height,
                 block: draft.blocks[id],
@@ -138,7 +153,9 @@ export function displayLayoutEditor() {
             if (d.mode === 'move') {
                 next = movedBlock(d.block, (dx / d.rootW) * 100, (dy / d.rootH) * 100);
             } else if (d.mode === 'scale') {
-                next = scaledBlock(d.block, Math.max((d.w + dx) / d.w, (d.h + dy) / d.h));
+                const fromAnchor = d.startX - d.anchorX;
+                const rx = Math.abs(fromAnchor) >= 1 ? (event.clientX - d.anchorX) / fromAnchor : 0;
+                next = scaledBlock(d.block, Math.max(rx, (d.h + dy) / d.h));
             } else {
                 next = cardsWithGap(d.block, d.block.gap + dy / d.orb);
             }
@@ -167,6 +184,7 @@ export function displayLayoutEditor() {
 
         _endLayoutEdit() {
             this.layoutEditing = false;
+            this.layoutSaveError = false;
             this.layoutDraft = null;
             this._layoutDrag = null;
             this.layoutCodeOpen = false;

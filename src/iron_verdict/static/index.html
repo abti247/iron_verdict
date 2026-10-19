@@ -525,7 +525,8 @@
          :class="[displayContrast && 'display-contrast', activeLayout() && 'display-layout-custom', layoutEditing && 'display-layout-editing']"
          @pointermove="layoutPointerMove($event)"
          @pointerup="layoutPointerUp($event)"
-         @pointercancel="layoutPointerUp($event)">
+         @pointercancel="layoutPointerUp($event)"
+         @lostpointercapture="layoutPointerUp($event)">
         <div class="display-tag">
             <span class="conn-dot" :class="$store.session.connectionStatus"></span>
             <span class="conn-label" x-show="$store.session.serverRestarting" x-text="t('connection.serverRestarting')"></span>
@@ -634,7 +635,7 @@
         <div class="vportal-corner vportal-corner-left layout-block" data-layout-block="lifter" x-ref="layout-lifter"
              :style="layoutBlockStyle('lifter')"
              @pointerdown="layoutPointerDown($event, 'lifter', 'move')"
-             :class="layoutBlockHidden('lifter') && 'layout-hidden'"
+             :class="[layoutBlockHidden('lifter') && 'layout-hidden', cornerIsSample() && 'layout-sample']"
              x-show="cornerAttempt()">
             <div class="vportal-corner-name" x-text="cornerAttempt()?.firstName + ' ' + cornerAttempt()?.lastName"></div>
             <div class="vportal-corner-meta">
@@ -644,7 +645,7 @@
             </div>
             <div class="layout-frame" x-show="layoutEditing" x-cloak>
                 <span class="layout-frame-label">
-                    <span x-text="t('displayLayout.blocks.lifter')"></span>
+                    <span x-text="t('displayLayout.blocks.lifter') + (cornerIsSample() ? ' · ' + t('displayLayout.sampleTag') : '')"></span>
                     <button class="layout-hide-toggle" data-testid="layout-hide-lifter"
                             :aria-pressed="layoutBlockHidden('lifter') ? 'true' : 'false'"
                             @pointerdown.stop=""
@@ -657,7 +658,7 @@
         <div class="vportal-corner vportal-corner-right layout-block" data-layout-block="attempt" x-ref="layout-attempt"
              :style="layoutBlockStyle('attempt')"
              @pointerdown="layoutPointerDown($event, 'attempt', 'move')"
-             :class="layoutBlockHidden('attempt') && 'layout-hidden'"
+             :class="[layoutBlockHidden('attempt') && 'layout-hidden', cornerIsSample() && 'layout-sample']"
              x-show="cornerAttempt()">
             <div class="vportal-corner-disc">
                 <span x-text="cornerAttempt()?.discipline"></span> ·
@@ -666,7 +667,7 @@
             <div class="vportal-corner-weight" x-text="cornerAttempt()?.weight + ' KG'"></div>
             <div class="layout-frame" x-show="layoutEditing" x-cloak>
                 <span class="layout-frame-label">
-                    <span x-text="t('displayLayout.blocks.attempt')"></span>
+                    <span x-text="t('displayLayout.blocks.attempt') + (cornerIsSample() ? ' · ' + t('displayLayout.sampleTag') : '')"></span>
                     <button class="layout-hide-toggle" data-testid="layout-hide-attempt"
                             :aria-pressed="layoutBlockHidden('attempt') ? 'true' : 'false'"
                             @pointerdown.stop=""
@@ -743,6 +744,8 @@
                           x-text="t('displayLayout.codeError')"></span>
                 </div>
             </div>
+            <div class="layout-code-error" data-testid="layout-save-error" x-show="layoutSaveError"
+                 x-text="t('displayLayout.saveError')"></div>
         </div>
     </div>
 

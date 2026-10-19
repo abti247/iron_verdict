@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
     LAYOUT_STORAGE_KEY,
     LAYOUT_BLOCKS,
+    BLOCK_ANCHORS,
     sanitizeLayout,
     loadLayout,
     saveLayout,
@@ -74,9 +75,11 @@ describe('sanitizeLayout', () => {
     it('clamps out-of-range values', () => {
         const raw = validLayout();
         raw.blocks.timer = { x: -20, y: 500, s: 10, hidden: false };
+        raw.blocks.lights = { x: 120, y: -5, s: 0, hidden: false };
         raw.blocks.cards = { gap: -1, hidden: false };
         const out = sanitizeLayout(raw);
         expect(out.blocks.timer).toEqual({ x: 0, y: 99, s: 3, hidden: false });
+        expect(out.blocks.lights).toEqual({ x: 100, y: 0, s: 0.3, hidden: false });
         expect(out.blocks.cards.gap).toBe(0);
     });
 
@@ -98,7 +101,7 @@ describe('storage', () => {
 
     it('round-trips a saved layout', () => {
         const storage = makeStorage();
-        saveLayout(storage, validLayout());
+        expect(saveLayout(storage, validLayout())).toBe(true);
         expect(loadLayout(storage)).toEqual(validLayout());
     });
 
@@ -124,35 +127,47 @@ describe('storage', () => {
             removeItem: () => { throw new Error('blocked'); },
         };
         expect(loadLayout(broken)).toBe(null);
-        expect(() => saveLayout(broken, validLayout())).not.toThrow();
-        expect(() => clearLayout(broken)).not.toThrow();
+        expect(saveLayout(broken, validLayout())).toBe(false);
+        expect(clearLayout(broken)).toBe(false);
+        expect(saveLayout(null, validLayout())).toBe(false);
+        expect(loadLayout(null)).toBe(null);
+    });
+});
+
+describe('BLOCK_ANCHORS', () => {
+    it('anchors each free block where its content grows from in the default layout', () => {
+        expect(BLOCK_ANCHORS).toEqual({
+            timer: 'center', lights: 'center', verdict: 'center', lifter: 'left', attempt: 'right',
+        });
     });
 });
 
 describe('layoutFromRects', () => {
-    it('turns measured block positions into percent of the display, unscaled and visible', () => {
+    const rect = (left, top, width) => ({ left, top, right: left + width, width });
+
+    it('turns measured blocks into their anchor point in percent of the display, unscaled and visible', () => {
         const root = { left: 0, top: 0, width: 1000, height: 500 };
-        const rect = (left, top) => ({ left, top });
         const layout = layoutFromRects(root, {
-            timer: rect(400, 10),
-            lights: rect(200, 150),
-            verdict: rect(450, 400),
-            lifter: rect(20, 450),
-            attempt: rect(900, 450),
+            timer: rect(400, 10, 200),
+            lights: rect(200, 150, 600),
+            verdict: rect(450, 400, 100),
+            lifter: rect(20, 450, 300),
+            attempt: rect(800, 450, 180),
         });
         expect(layout.v).toBe(1);
-        expect(layout.blocks.timer).toEqual({ x: 40, y: 2, s: 1, hidden: false });
-        expect(layout.blocks.lights).toEqual({ x: 20, y: 30, s: 1, hidden: false });
-        expect(layout.blocks.attempt).toEqual({ x: 90, y: 90, s: 1, hidden: false });
+        expect(layout.blocks.timer).toEqual({ x: 50, y: 2, s: 1, hidden: false });
+        expect(layout.blocks.lights).toEqual({ x: 50, y: 30, s: 1, hidden: false });
+        expect(layout.blocks.lifter).toEqual({ x: 2, y: 90, s: 1, hidden: false });
+        expect(layout.blocks.attempt).toEqual({ x: 98, y: 90, s: 1, hidden: false });
         expect(layout.blocks.cards).toEqual({ gap: 0, hidden: false });
     });
 
     it('measures relative to the display, not the page', () => {
         const root = { left: 100, top: 50, width: 1000, height: 500 };
-        const r = { left: 150, top: 100 };
+        const r = rect(150, 100, 0);
         const layout = layoutFromRects(root, { timer: r, lights: r, verdict: r, lifter: r, attempt: r });
-        expect(layout.blocks.timer.x).toBe(5);
-        expect(layout.blocks.timer.y).toBe(10);
+        expect(layout.blocks.lifter.x).toBe(5);
+        expect(layout.blocks.lifter.y).toBe(10);
     });
 });
 
@@ -163,8 +178,9 @@ describe('block edits', () => {
         expect(movedBlock(block, 5.3, -2.2)).toEqual({ x: 16, y: 18, s: 1, hidden: false });
     });
 
-    it('keeps the top-left corner on screen', () => {
+    it('keeps the anchor point on screen', () => {
         expect(movedBlock(block, -50, 200)).toMatchObject({ x: 0, y: 99 });
+        expect(movedBlock(block, 150, -50)).toMatchObject({ x: 100, y: 0 });
     });
 
     it('scales in 5 % steps', () => {
@@ -194,13 +210,20 @@ describe('block edits', () => {
 });
 
 describe('blockStyle', () => {
-    it('positions and scales a block', () => {
-        expect(blockStyle({ x: 12, y: 34.5, s: 1.25, hidden: false }))
-            .toEqual({ left: '12%', top: '34.5%', '--display-zoom': '1.25' });
+    const block = { x: 12, y: 34.5, s: 1.25, hidden: false };
+
+    it('positions a left-anchored block by its left edge and scales it', () => {
+        expect(blockStyle(block, 'left'))
+            .toEqual({ left: '12%', top: '34.5%', transform: 'translateX(0)', '--display-zoom': '1.25' });
+    });
+
+    it('positions centred and right-anchored blocks by their centre and right edge', () => {
+        expect(blockStyle(block, 'center').transform).toBe('translateX(-50%)');
+        expect(blockStyle(block, 'right').transform).toBe('translateX(-100%)');
     });
 
     it('unsets every property without a block', () => {
-        expect(blockStyle(null)).toEqual({ left: '', top: '', '--display-zoom': '' });
+        expect(blockStyle(null, 'center')).toEqual({ left: '', top: '', transform: '', '--display-zoom': '' });
     });
 });
 

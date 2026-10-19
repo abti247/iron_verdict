@@ -47,7 +47,9 @@
     pointer-events: auto;   /* the VPortal corners are click-through otherwise */
 }
 
-/* Hidden blocks stay visible but faded while editing, to switch them on again. */
+/* Hidden blocks stay visible but faded while editing, to switch them on
+   again; so does the sample text of the VPortal blocks without a lifter. */
+.display-layout-editing .layout-sample > :not(.layout-frame),
 .display-layout-editing .layout-hidden > :not(.layout-frame),
 .display-layout-editing .layout-hidden-lights .display-orb,
 .display-layout-editing .layout-hidden-cards .display-orb-card,
@@ -110,6 +112,13 @@
     cursor: nwse-resize;
     touch-action: none;
     pointer-events: auto;
+}
+
+/* The attempt block is anchored at its right edge: scale it from the left. */
+.vportal-corner-right .layout-scale-handle {
+    right: auto;
+    left: -12px;
+    cursor: nesw-resize;
 }
 
 /* Cards block: the row of cards and reasons under the lights. It only moves

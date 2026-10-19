@@ -3,7 +3,9 @@
 From the display settings (gear or "S") the operator opens an edit mode: the
 blocks of the display (timer, lights, cards + reasons under the lights,
 verdict, lifter info, attempt info) get a frame and can be dragged (mouse and
-touch) and scaled at a handle, snapping to 1 % of the screen. The cards block
+touch) and scaled at a handle, snapping to 1 % of the screen. Each block is
+anchored where its content grows from (lifter: left edge, attempt: right
+edge, the others: centre), so longer content never pushes it off screen. The cards block
 follows the lights and is only dragged up or down (its gap to the lights).
 Every block can be hidden. "Save" stores the layout on this device, "Cancel"
 drops the changes, "Reset" brings back the default. A layout can be copied to
@@ -14,6 +16,7 @@ While editing, the display keeps showing votes, timer and VPortal data.
 import json
 import re
 
+import httpx
 from playwright.sync_api import expect
 
 from tests.e2e.network_switch import cut_network, join_with_network_switch, restore_network
@@ -29,16 +32,21 @@ def block(page, block_id):
     return page.locator(f'{ROOT} [data-layout-block="{block_id}"]')
 
 
+ANCHORS = {"timer": "center", "lights": "center", "verdict": "center", "lifter": "left", "attempt": "right"}
+
+
 def block_pos(page, block_id):
-    """Top-left corner of a block in percent of the display."""
+    """[anchor x, top] of a block in percent of the display (anchor: left
+    edge, centre or right edge, see ANCHORS), plus its width and height in px."""
     return page.evaluate(
-        """(id) => {
+        """([id, anchor]) => {
             const root = document.querySelector('.display-full').getBoundingClientRect();
             const r = document.querySelector(`.display-full [data-layout-block="${id}"]`).getBoundingClientRect();
-            return [ (r.left - root.left) / root.width * 100, (r.top - root.top) / root.height * 100,
+            const x = anchor === 'left' ? r.left : anchor === 'right' ? r.right : r.left + r.width / 2;
+            return [ (x - root.left) / root.width * 100, (r.top - root.top) / root.height * 100,
                      r.width, r.height ];
         }""",
-        block_id,
+        [block_id, ANCHORS.get(block_id, "left")],
     )
 
 
@@ -128,7 +136,8 @@ def test_move_and_scale_then_save_survives_reload(page, server_url):
     timer_x, timer_y = block_pos(page, "timer")[:2]
     drag(page, block(page, "timer"), 192, 54)
     lights_w = block_pos(page, "lights")[2]
-    drag(page, block(page, "lights").locator(".layout-scale-handle"), lights_w * 0.5, 0)
+    # Lights are centred: the handle 1.5× as far from the centre → scale 1.5.
+    drag(page, block(page, "lights").locator(".layout-scale-handle"), lights_w * 0.25, 0)
     save(page)
 
     layout = stored_layout(page)
@@ -378,12 +387,15 @@ def test_votes_timer_and_results_keep_running_while_editing(competition):
 
 def test_lifter_and_attempt_blocks_placeable_without_vportal(page, server_url):
     """Without VPortal the lifter and attempt blocks only appear in the editor
-    (with sample text) so they can be placed; outside it they stay hidden."""
+    (with faded sample text, labelled as a sample) so they can be placed;
+    outside it they stay hidden."""
     open_display(page, server_url)
     expect(page.locator(".vportal-corner-left")).to_be_hidden()
     open_editor(page)
-    expect(page.locator(".vportal-corner-left")).to_be_visible()
-    expect(page.locator(".vportal-corner-right")).to_be_visible()
+    for corner in (".vportal-corner-left", ".vportal-corner-right"):
+        expect(page.locator(corner)).to_be_visible()
+        expect(page.locator(corner)).to_have_class(re.compile(r"\blayout-sample\b"))
+        expect(page.locator(f"{corner} .layout-frame-label")).to_contain_text("sample")
     drag(page, page.locator(".vportal-corner-left"), 400, -300)
     save(page)
     expect(page.locator(".vportal-corner-left")).to_be_hidden()
@@ -426,3 +438,80 @@ def test_keys_do_not_end_edit_mode(page, server_url):
     assert stored_layout(page) is None
     save(page)
     assert stored_layout(page) is not None
+
+
+def test_attempt_and_verdict_stay_anchored_when_content_grows(page, server_url):
+    """A layout saved with the sample attempt keeps the attempt block's right
+    edge in place when a much wider attempt arrives (long discipline, decimal
+    weight), so the weight is never cut off at the screen edge; the verdict
+    stays centred whether it reads "Good Lift" or "No Lift"."""
+    open_display(page, server_url)
+    open_editor(page)
+    drag(page, page.locator(".vportal-corner-right"), -96, -216)
+    save(page)
+    right_edge = stored_layout(page)["blocks"]["attempt"]["x"]
+
+    page.evaluate("""() => { Alpine.store('vportal').displayAttempt = {
+        firstName: 'Maximiliane', lastName: 'Schneider-Wolkenstein', club: 'SV Eisenkraft',
+        bodyWeightCategory: '-84 kg', ageCategory: 'Masters 1',
+        discipline: 'Deadlift (Kreuzheben)', attempt: 3, weight: 312.5 }; }""")
+    weight = page.locator(".vportal-corner-weight")
+    expect(weight).to_have_text("312.5 KG")
+    expect(page.locator(".vportal-corner-right")).to_be_visible()
+    x = block_pos(page, "attempt")[0]
+    assert abs(x - right_edge) < 0.1, (x, right_edge)
+    root_right = page.locator(ROOT).bounding_box()["width"]
+    box = weight.bounding_box()
+    assert box["x"] + box["width"] <= root_right, box
+
+    def verdict_center():
+        b = page.locator(".verdict-stamp").bounding_box()
+        return b["x"] + b["width"] / 2
+
+    show = """(votes) => Alpine.store('display').showResults({ votes,
+        reasons: { left: '', center: '', right: '' }, showExplanations: true, liftType: 'squat' })"""
+    page.evaluate(show, {"left": "white", "center": "white", "right": "white"})
+    expect(page.locator(".verdict-stamp")).to_have_text("Good Lift")
+    good = verdict_center()
+    page.evaluate(show, {"left": "red", "center": "red", "right": "white"})
+    expect(page.locator(".verdict-stamp")).to_have_text("No Lift")
+    assert abs(verdict_center() - good) < 1, (good, verdict_center())
+
+
+def test_vportal_keeps_updating_while_editing(page, server_url, fake_vportal_url):
+    """With VPortal connected and the editor open, the lifter changes on the
+    VPortal side: no active attempt → the blocks show the faded sample; the
+    attempt is back → the real lifter appears while still editing, and stays
+    after saving."""
+    _connect_and_open_display(page, server_url, fake_vportal_url)
+    corner = page.locator(".vportal-corner-left")
+    expect(corner).to_contain_text("MARIA SCHNEIDER", timeout=10000, ignore_case=True)
+    open_editor(page)
+    expect(corner).not_to_have_class(re.compile(r"\blayout-sample\b"))
+
+    httpx.post(f"http://{fake_vportal_url}/_control/clear_attempt")
+    expect(corner).to_have_class(re.compile(r"\blayout-sample\b"), timeout=10000)
+    expect(corner).not_to_contain_text("MARIA SCHNEIDER", ignore_case=True)
+
+    httpx.post(f"http://{fake_vportal_url}/_control/restore_attempt")
+    expect(corner).to_contain_text("MARIA SCHNEIDER", timeout=10000, ignore_case=True)
+    expect(corner).not_to_have_class(re.compile(r"\blayout-sample\b"))
+    expect(page.locator(ROOT)).to_have_class(EDITING)
+    save(page)
+    expect(corner).to_contain_text("MARIA SCHNEIDER", ignore_case=True)
+
+
+def test_save_failure_is_shown_and_keeps_editor_open(page, server_url):
+    """If this device cannot store the layout (browser storage blocked or
+    full), "Save" says so and the editor stays open instead of pretending the
+    layout was saved."""
+    open_display(page, server_url)
+    open_editor(page)
+    drag(page, block(page, "timer"), 192, 0)
+    page.evaluate("""() => { Storage.prototype.setItem = () => {
+        throw new DOMException('full', 'QuotaExceededError'); }; }""")
+    page.get_by_test_id("layout-save").click()
+    expect(page.get_by_test_id("layout-save-error")).to_be_visible()
+    expect(page.locator(ROOT)).to_have_class(EDITING)
+    page.get_by_test_id("layout-cancel").click()
+    expect(page.locator(ROOT)).not_to_have_class(EDITING)

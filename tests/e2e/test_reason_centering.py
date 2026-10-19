@@ -140,7 +140,7 @@ def _scale_lights(page, scale):
     """Save a layout with the lights block scaled (the layout editor's scale,
     #106) and reload the display with it."""
     blocks = {b: {"x": 5, "y": 5, "s": 1, "hidden": False} for b in ("timer", "verdict", "lifter", "attempt")}
-    blocks["lights"] = {"x": 8, "y": 20, "s": scale, "hidden": False}
+    blocks["lights"] = {"x": 50, "y": 20, "s": scale, "hidden": False}  # x: centre
     blocks["cards"] = {"gap": 0, "hidden": False}
     page.evaluate(
         "(l) => localStorage.setItem('iron-verdict:display-layout', JSON.stringify(l))",

@@ -267,7 +267,9 @@
       "bodyWeightCategory": "-93 kg",
       "ageCategory": "Open",
       "discipline": "Squat"
-    }
+    },
+    "sampleTag": "sample",
+    "saveError": "Could not save on this device (browser storage blocked or full). The layout would be lost after a reload."
   },
   "privacy": {
     "link": "Privacy & Legal Notice",
