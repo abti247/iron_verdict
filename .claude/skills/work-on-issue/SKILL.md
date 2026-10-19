@@ -76,6 +76,7 @@ Push the branch (`git push -u origin <branch>`), then open the PR against `main`
   - **Testnachweis**: commands run and pass/fail counts, new tests named
   - Reviewer result: findings and how each was handled — answer every `[proportionality]` finding explicitly (implemented, or declined with the reason)
   - If VPortal files were touched: add the `vportal` label and a checklist of what to verify in the next manual test against the BVDK staging environment (start from the reviewer's checklist)
+- If VPortal files were touched: after opening the PR, merge its checklist into issue #151 as `.claude/CLAUDE.md` (VPortal Protection) describes. Read the current body, edit it and write it back: `gh api repos/abti247/iron_verdict/issues/151 -X PATCH -F body=@<file>`.
 - Do not merge — merging needs green CI and the maintainer's approval.
 
 Finally, tell the maintainer the PR link and anything still open.

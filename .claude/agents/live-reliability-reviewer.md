@@ -66,7 +66,7 @@ Protected files:
 - `docs/vportal-fake-server-fidelity.md`
 
 - List which protected files (or VPortal parts) the diff touches.
-- If any: the PR needs the `vportal` label and a staging checklist. **Produce that checklist yourself**: concrete things to verify in the next manual test against the BVDK staging environment, derived from what changed.
+- If any: the PR needs the `vportal` label and a staging checklist. **Produce that checklist yourself**: concrete things to verify in the next manual test against the BVDK staging environment, derived from what changed. Also name points in the standing test issue #151 that the change makes obsolete or alters, so the author can update it.
 - If `tests/e2e/fake_vportal.py` changed: `docs/vportal-fake-server-fidelity.md` must change in the same diff with a justification (what real VPortal behavior the fake now mirrors and how that is known). Missing or "to make the test green"-style justification → blocking.
 - A test assertion loosened in `test_vportal_integration.py` or `test_vportal_proxy.py` without a corresponding behavior reason → blocking.
 
