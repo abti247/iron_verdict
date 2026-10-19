@@ -15,7 +15,6 @@ import time
 import os
 import secrets
 from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from starlette.middleware.base import BaseHTTPMiddleware
 import logging
@@ -80,14 +79,24 @@ async def cleanup_loop(manager: SessionManager, snapshot_path: str, timeout_hour
                 logger.exception("session_cleanup_failed", extra={"error": str(exc)})
 
 
+def _client_ip(headers, client) -> str:
+    # Production runs behind Cloudflare and Railway's edge proxy: the TCP peer
+    # is a Railway 100.64.0.0/10 address that changes even for one client.
+    # Cloudflare sets CF-Connecting-IP to the real client and overwrites any
+    # value the client sends. X-Forwarded-For is not used: its first entry is
+    # whatever the client put there.
+    cf_ip = headers.get("cf-connecting-ip", "").strip()
+    if cf_ip:
+        return cf_ip
+    return client.host if client else "unknown"
+
+
 def _get_http_client_ip(request: Request) -> str:
-    fwd = request.headers.get("x-forwarded-for")
-    return fwd.split(",")[0].strip() if fwd else (request.client.host if request.client else "unknown")
+    return _client_ip(request.headers, request.client)
 
 
 def _get_ws_client_ip(websocket: WebSocket) -> str:
-    fwd = websocket.headers.get("x-forwarded-for")
-    return fwd.split(",")[0].strip() if fwd else (websocket.client.host if websocket.client else "unknown")
+    return _client_ip(websocket.headers, websocket.client)
 
 
 class CreateSessionRequest(BaseModel):
@@ -130,7 +139,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         return response
 
 
-limiter = Limiter(key_func=get_remote_address)
+limiter = Limiter(key_func=_get_http_client_ip)
 session_manager = SessionManager()
 connection_manager = ConnectionManager()
 

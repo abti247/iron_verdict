@@ -11,6 +11,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ### Changed
 
 ### Fixed
+- Session lookup and creation limits now count per network instead of across all competitions, so a wave of joins or reloads elsewhere can no longer lock judges out with "Too Many Requests"
 
 ### Removed
 
