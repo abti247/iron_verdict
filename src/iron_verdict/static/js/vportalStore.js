@@ -155,8 +155,10 @@ export function createVportalStore({
                     this.disconnectedReason = 'session-lookup-failed';
                 }
                 // Retry interval, not an artificial delay: the same pace as the VPortal
-                // polling this lookup unlocks, so a reloaded display on a flaky network
-                // recovers without a second reload and without hammering our server.
+                // polling this lookup unlocks (the stream overlay without a login: the
+                // default polling interval until its connect button can show), so a
+                // reloaded display on a flaky network recovers without a second reload
+                // and without hammering our server.
                 await new Promise((resolve) => {
                     this._retryTimer = setTimeout(resolve, stored?.fetch_interval_ms || 3000);
                 });

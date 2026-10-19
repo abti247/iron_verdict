@@ -340,6 +340,7 @@ def test_overlay_offers_vportal_connect_after_a_failed_first_session_check(page,
     overlay.route(f"**/api/sessions/{code}", fail_first_lookup)
     overlay.goto(overlay_url(competition, code=code))
     wait_joined(overlay, "VP Retry")
+    expect(overlay.locator(".vportal-disconnected-banner")).to_be_hidden()
 
     overlay.keyboard.press("s")
     connect = overlay.get_by_test_id("overlay-vportal-connect")
