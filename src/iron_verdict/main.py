@@ -31,8 +31,30 @@ HEARTBEAT_INTERVAL_SECONDS = 5
 PONG_STALE_SECONDS = 15
 
 
+async def release_connection(manager: ConnectionManager, session_code: str, role: str, websocket) -> bool:
+    """Unregister *websocket* from *role* if it still holds it; return whether it did.
+
+    Used by the WebSocket handler on every exit and by the heartbeat for dead
+    connections. A judge released here is marked disconnected on all devices.
+    """
+    if not await manager.remove_connection_if_current(session_code, role, websocket):
+        return False
+    if role.endswith("_judge") and session_code in session_manager.sessions:
+        position = role.replace("_judge", "")
+        session_manager.sessions[session_code]["judges"][position]["connected"] = False
+        await manager.broadcast_to_session(
+            session_code,
+            {"type": "judge_status_update", "position": position, "connected": False},
+        )
+    return True
+
+
 async def heartbeat_sweep(manager: ConnectionManager, now: float) -> None:
-    """Close connections without a pong for PONG_STALE_SECONDS; ping all others."""
+    """Close connections without a pong for PONG_STALE_SECONDS; ping all others.
+
+    A connection that is closed here or cannot be pinged is removed right away:
+    its handler may already have ended and would never clean it up.
+    """
     for session_code, role, ws in await manager.get_all_connections():
         log_role = "display" if role.startswith("display_") else role
         last_pong = await manager.get_last_pong(ws)
@@ -46,15 +68,17 @@ async def heartbeat_sweep(manager: ConnectionManager, now: float) -> None:
                 await ws.close(code=1001)
             except Exception as exc:
                 logger.warning("heartbeat_close_failed", extra={"reason": str(exc)})
+            await release_connection(manager, session_code, role, ws)
             continue
         try:
             await ws.send_json({"type": "ping"})
         except Exception as exc:
-            logger.warning("heartbeat_send_failed", extra={
-                "session_code": session_code,
-                "role": log_role,
-                "reason": str(exc),
-            })
+            if await release_connection(manager, session_code, role, ws):
+                logger.warning("heartbeat_dead_connection_removed", extra={
+                    "session_code": session_code,
+                    "role": log_role,
+                    "reason": str(exc),
+                })
 
 
 async def cleanup_loop(manager: SessionManager, snapshot_path: str, timeout_hours: int, sleep=asyncio.sleep) -> None:
@@ -331,6 +355,9 @@ async def websocket_endpoint(websocket: WebSocket):
 
     session_code = None
     role = None
+    # True while this socket is registered in connection_manager under role;
+    # the finally block below releases it on every way the handler ends.
+    registered = False
 
     msg_count = 0
     window_start = time.monotonic()
@@ -363,6 +390,16 @@ async def websocket_endpoint(websocket: WebSocket):
             # Issue 2: Use .get() method with validation
             message_type = message.get("type")
             if message_type == "join":
+                if registered:
+                    # The client sends one join per socket; a second one must not
+                    # register this socket under a second role (#136).
+                    logger.warning("second_join_rejected", extra={
+                        "conn_id": conn_id,
+                        "session_code": session_code,
+                        "role": "display" if role.startswith("display_") else role,
+                    })
+                    await websocket.send_json({"type": "error", "message": "Already joined"})
+                    continue
                 session_code = (message.get("session_code") or "").upper()
                 role = message.get("role")
 
@@ -425,6 +462,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
                 # Add connection
                 await connection_manager.add_connection(session_code, role, websocket)
+                registered = True
                 logger.info("role_joined", extra={
                     "conn_id": conn_id,
                     "session_code": session_code,
@@ -670,6 +708,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 # closed above; returning prevents receive_text() from being
                 # called on a dead connection, which would raise RuntimeError.
                 session_manager.delete_session(session_code)
+                registered = False
                 return
             elif message_type == "settings_update":
                 if not session_code or not role:
@@ -712,28 +751,16 @@ async def websocket_endpoint(websocket: WebSocket):
                 pass
 
     except WebSocketDisconnect:
-        if session_code and role:
-            current_ws = await connection_manager.get_connection(session_code, role)
-            if current_ws is websocket:
-                # This is still the active connection — clean up normally
-                await connection_manager.remove_connection(session_code, role)
-                logger.info("role_disconnected", extra={
-                    "conn_id": conn_id,
-                    "session_code": session_code,
-                    "role": "display" if role.startswith("display_") else role,
-                })
-                if role.endswith("_judge"):
-                    position = role.replace("_judge", "")
-                    if session_code in session_manager.sessions:
-                        session_manager.sessions[session_code]["judges"][position]["connected"] = False
-                        await connection_manager.broadcast_to_session(
-                            session_code,
-                            {"type": "judge_status_update", "position": position, "connected": False},
-                        )
+        pass
+    finally:
+        if registered:
+            log_extra = {
+                "conn_id": conn_id,
+                "session_code": session_code,
+                "role": "display" if role.startswith("display_") else role,
+            }
+            if await release_connection(connection_manager, session_code, role, websocket):
+                logger.info("role_disconnected", extra=log_extra)
             else:
-                # Connection was replaced by a reconnect — ignore stale disconnect
-                logger.info("stale_disconnect_ignored", extra={
-                    "conn_id": conn_id,
-                    "session_code": session_code,
-                    "role": "display" if role.startswith("display_") else role,
-                })
+                # Replaced by a reconnect or already removed by the heartbeat
+                logger.info("stale_disconnect_ignored", extra=log_extra)

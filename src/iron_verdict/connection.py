@@ -32,6 +32,22 @@ class ConnectionManager:
                 if not self.active_connections[session_code]:
                     del self.active_connections[session_code]
 
+    async def remove_connection_if_current(self, session_code: str, role: str, websocket: WebSocket) -> bool:
+        """Remove *role* only if it is still held by *websocket*; return whether it was.
+
+        A reconnect may already have registered a newer socket under the same
+        role — that one must never be removed on behalf of the old socket.
+        """
+        async with self._lock:
+            roles = self.active_connections.get(session_code, {})
+            if roles.get(role) is not websocket:
+                return False
+            del roles[role]
+            self._last_pong.pop(websocket, None)
+            if not roles:
+                del self.active_connections[session_code]
+            return True
+
     async def get_connection(self, session_code: str, role: str):
         """Return the registered WebSocket for a role, or None."""
         async with self._lock:
