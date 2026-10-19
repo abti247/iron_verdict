@@ -38,6 +38,7 @@ Protected files:
 
 Rules:
 - Every PR touching one of these files gets the label `vportal` and a checklist in the PR description of what to verify in the next manual test against the BVDK staging environment.
+- The same checklist is merged into the standing issue #151 ("VPortal: Checkliste für den nächsten Staging-Test") when the PR is opened, so the maintainer has one list to work through at the next staging test. New points go under the matching section with the PR number. A point that already exists gets the PR number appended. Points the PR makes obsolete are removed. The PR is added to "Seit … ungetestet" under "Stand". If the PR is closed without merging, its points are removed again.
 - The fake server (`tests/e2e/fake_vportal.py`) may only be changed with a justification recorded in `docs/vportal-fake-server-fidelity.md` (what real VPortal behavior it now mirrors, and how that is known) — never just "to make the test green".
 
 ## Workflow
