@@ -1127,3 +1127,162 @@ async def test_concurrent_reconnects_with_same_token_only_one_succeeds(session_c
     assert error["message"] == "Role already taken"
     winner = next(r for r in replies if r["type"] == "join_success")
     assert session_manager.sessions[session_code]["judges"]["left"]["reconnect_token"] == winner["reconnect_token"]
+
+
+# ---- Orphaned connections (#136) ----
+
+def _entries(code):
+    from iron_verdict.main import connection_manager
+    return dict(connection_manager.active_connections.get(code, {}))
+
+
+async def test_second_join_on_same_connection_is_rejected_and_keeps_first_role(session_code, caplog):
+    async with _ws_client() as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+            await ws.send_json({"type": "join", "session_code": session_code, "role": "display"})
+            assert (await ws.receive_json())["type"] == "join_success"
+            with caplog.at_level(logging.WARNING, logger="iron_verdict"):
+                await ws.send_json({"type": "join", "session_code": session_code, "role": "display"})
+                reply = await asyncio.wait_for(ws.receive_json(), timeout=1.0)
+            assert reply == {"type": "error", "message": "Already joined"}
+            assert len(_entries(session_code)) == 1
+        await asyncio.sleep(0.1)
+    assert _entries(session_code) == {}
+    assert [r.getMessage() for r in caplog.records].count("second_join_rejected") == 1
+
+
+async def test_second_join_as_other_judge_does_not_take_the_other_role(session_code):
+    async with _ws_client() as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+            await ws.send_json({"type": "join", "session_code": session_code, "role": "left_judge"})
+            await ws.receive_json()
+            await ws.send_json({"type": "join", "session_code": session_code, "role": "right_judge"})
+            reply = await asyncio.wait_for(ws.receive_json(), timeout=1.0)
+            assert reply == {"type": "error", "message": "Already joined"}
+            assert list(_entries(session_code)) == ["left_judge"]
+            assert session_manager.sessions[session_code]["judges"]["right"]["connected"] is False
+        await asyncio.sleep(0.1)
+    assert _entries(session_code) == {}
+    assert session_manager.sessions[session_code]["judges"]["left"]["connected"] is False
+
+
+async def test_flood_disconnect_after_join_removes_connection_and_marks_judge_disconnected(session_code):
+    async with _ws_client() as center_client, _ws_client() as left_client:
+        async with httpx_ws.aconnect_ws("ws://test/ws", center_client) as center_ws:
+            await center_ws.send_json({"type": "join", "session_code": session_code, "role": "center_judge"})
+            await center_ws.receive_json()
+            async with httpx_ws.aconnect_ws("ws://test/ws", left_client) as left_ws:
+                await left_ws.send_json({"type": "join", "session_code": session_code, "role": "left_judge"})
+                await left_ws.receive_json()
+                assert (await center_ws.receive_json())["connected"] is True
+                for _ in range(25):
+                    try:
+                        await left_ws.send_json({"type": "pong"})
+                    except Exception:
+                        break
+                msg = await asyncio.wait_for(center_ws.receive_json(), timeout=1.0)
+            assert msg == {"type": "judge_status_update", "position": "left", "connected": False}
+            assert list(_entries(session_code)) == ["center_judge"]
+            assert session_manager.sessions[session_code]["judges"]["left"]["connected"] is False
+
+
+async def test_unexpected_exception_in_handler_removes_connection(session_code, monkeypatch):
+    async def boom(code):
+        raise RuntimeError("boom")
+    monkeypatch.setattr(session_manager, "reset_for_next_lift", boom)
+    with pytest.raises(Exception):
+        async with _ws_client() as ac:
+            async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+                await ws.send_json({"type": "join", "session_code": session_code, "role": "center_judge"})
+                await ws.receive_json()
+                await ws.send_json({"type": "next_lift"})
+                await asyncio.wait_for(ws.receive_json(), timeout=1.0)
+    assert _entries(session_code) == {}
+    assert session_manager.sessions[session_code]["judges"]["center"]["connected"] is False
+
+
+async def test_heartbeat_removes_connection_when_ping_fails_and_logs_once(caplog):
+    from unittest.mock import AsyncMock
+    from iron_verdict.main import heartbeat_sweep
+    from iron_verdict.connection import ConnectionManager
+
+    manager = ConnectionManager()
+    healthy, dead = AsyncMock(), AsyncMock()
+    dead.send_json.side_effect = RuntimeError("Unexpected ASGI message 'websocket.send'")
+    await manager.add_connection("ABCD1234", "display_1", healthy)
+    await manager.add_connection("ABCD1234", "display_2", dead)
+
+    with caplog.at_level(logging.INFO, logger="iron_verdict"):
+        await heartbeat_sweep(manager, time.monotonic())
+        await heartbeat_sweep(manager, time.monotonic())
+
+    assert manager.active_connections == {"ABCD1234": {"display_1": healthy}}
+    assert await manager.get_last_pong(dead) is None
+    messages = [r.getMessage() for r in caplog.records]
+    assert messages.count("heartbeat_dead_connection_removed") == 1
+    assert "heartbeat_send_failed" not in messages
+    assert healthy.send_json.await_count == 2
+
+
+async def test_heartbeat_never_removes_newer_connection_of_same_role():
+    from unittest.mock import AsyncMock
+    from iron_verdict.main import heartbeat_sweep
+    from iron_verdict.connection import ConnectionManager
+
+    manager = ConnectionManager()
+    old, new = AsyncMock(), AsyncMock()
+
+    async def reconnect_then_fail(message):
+        # A reconnect takes the role between the sweep's snapshot and the failed ping.
+        await manager.add_connection("ABCD1234", "display_1", new)
+        raise RuntimeError("closed")
+
+    old.send_json.side_effect = reconnect_then_fail
+    await manager.add_connection("ABCD1234", "display_1", old)
+
+    await heartbeat_sweep(manager, time.monotonic())
+
+    assert manager.active_connections == {"ABCD1234": {"display_1": new}}
+    assert await manager.get_last_pong(new) is not None
+
+
+async def test_heartbeat_removal_of_judge_marks_disconnected_and_notifies_others(session_code):
+    from unittest.mock import AsyncMock
+    from iron_verdict.main import heartbeat_sweep
+    from iron_verdict.connection import ConnectionManager
+
+    manager = ConnectionManager()
+    center, dead_left = AsyncMock(), AsyncMock()
+    dead_left.send_json.side_effect = RuntimeError("closed")
+    session_manager.join_session(session_code, "center_judge")
+    session_manager.join_session(session_code, "left_judge")
+    await manager.add_connection(session_code, "center_judge", center)
+    await manager.add_connection(session_code, "left_judge", dead_left)
+
+    await heartbeat_sweep(manager, time.monotonic())
+
+    assert session_manager.sessions[session_code]["judges"]["left"]["connected"] is False
+    center.send_json.assert_any_await({"type": "judge_status_update", "position": "left", "connected": False})
+    assert list(manager.active_connections[session_code]) == ["center_judge"]
+
+
+async def test_heartbeat_removes_connection_after_stale_close_even_if_close_fails(caplog):
+    from unittest.mock import AsyncMock
+    from iron_verdict.main import heartbeat_sweep, PONG_STALE_SECONDS
+    from iron_verdict.connection import ConnectionManager
+
+    manager = ConnectionManager()
+    stale = AsyncMock()
+    stale.close.side_effect = RuntimeError("already closed")
+    await manager.add_connection("ABCD1234", "display_1", stale)
+    now = time.monotonic()
+    manager._last_pong[stale] = now - (PONG_STALE_SECONDS + 1)
+
+    with caplog.at_level(logging.INFO, logger="iron_verdict"):
+        await heartbeat_sweep(manager, now)
+        await heartbeat_sweep(manager, now + 5)
+
+    assert manager.active_connections == {}
+    messages = [r.getMessage() for r in caplog.records]
+    assert messages.count("heartbeat_stale_close") == 1
+    assert messages.count("heartbeat_close_failed") == 1
