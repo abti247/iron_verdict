@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="/static/css/components.css">
     <link rel="stylesheet" href="/static/css/layout.css">
     <link rel="stylesheet" href="/static/css/animations.css">
+    <link rel="stylesheet" href="/static/css/display-contrast.css">
     <link rel="stylesheet" href="/static/css/boot.css">
     <script type="module" src="/static/js/init.js"></script>
     <script defer src="https://umami-production-ca4a.up.railway.app/script.js" data-website-id="aca70c7a-7634-4ae5-bffa-cc83d8764bd0"></script>
@@ -517,6 +518,7 @@
 
     <!-- Display Screen: shows sessionName only — sessionCode intentionally omitted (C3) -->
     <div class="display-full" data-testid="display-screen" x-data="displayScreen" x-show="$store.nav.screen === 'display'" x-cloak
+         :class="displayContrast && 'display-contrast'"
          :style="`--display-zoom: ${displayZoom || 1}`">
         <div class="display-tag">
             <span class="conn-dot" :class="$store.session.connectionStatus"></span>
@@ -613,6 +615,15 @@
                         @click="resetDisplayZoom()"
                         x-text="t('displaySettings.resetButton')"></button>
             </div>
+            <button class="display-settings-toggle"
+                    data-testid="display-contrast-toggle"
+                    :class="displayContrast && 'on'"
+                    :aria-pressed="displayContrast ? 'true' : 'false'"
+                    @click="toggleDisplayContrast()">
+                <span x-text="t('displaySettings.contrastLabel')"></span>
+                <span class="display-settings-toggle-state"
+                      x-text="displayContrast ? t('displaySettings.on') : t('displaySettings.off')"></span>
+            </button>
         </div>
     </div>
 

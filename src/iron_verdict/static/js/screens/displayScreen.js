@@ -1,18 +1,22 @@
 // Display screen: timer, vote lights with reasons and verdict, the VPortal lifter
-// overlay, and the local settings panel (zoom, opened with the gear or "S").
-// What is shown comes from the display, timer and vportal stores; this component
-// only holds the zoom and whether the settings panel is open.
+// overlay, and the local settings panel (zoom and contrast mode, opened with
+// the gear or "S"). What is shown comes from the display, timer and vportal
+// stores; this component only holds the zoom, the contrast mode and whether the
+// settings panel is open. Both settings are per device (localStorage).
 
 const DISPLAY_ZOOM_KEY = 'iron-verdict:display-zoom';
+const DISPLAY_CONTRAST_KEY = 'iron-verdict:display-contrast';
 
 export function displayScreen(conn) {
     return {
         displaySettingsOpen: false,
         displayZoom: 1,
+        displayContrast: false,
         _displayKeydownHandler: null,
 
         init() {
             this._loadDisplayZoomFromStorage();
+            this._loadDisplayContrastFromStorage();
             this._installDisplayKeyHandler();
             // Any screen change closes the panel.
             this.$watch('$store.nav.screen', () => { this.displaySettingsOpen = false; });
@@ -40,6 +44,17 @@ export function displayScreen(conn) {
             if (!Number.isFinite(n)) return;
             this.displayZoom = Math.min(1.5, Math.max(0.7, n));
             try { localStorage.setItem(DISPLAY_ZOOM_KEY, String(this.displayZoom)); } catch (_) {}
+        },
+
+        toggleDisplayContrast() {
+            this.displayContrast = !this.displayContrast;
+            try { localStorage.setItem(DISPLAY_CONTRAST_KEY, this.displayContrast ? '1' : '0'); } catch (_) {}
+        },
+
+        _loadDisplayContrastFromStorage() {
+            try {
+                this.displayContrast = localStorage.getItem(DISPLAY_CONTRAST_KEY) === '1';
+            } catch (_) {}
         },
 
         _loadDisplayZoomFromStorage() {

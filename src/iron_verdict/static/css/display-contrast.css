@@ -1,0 +1,90 @@
+/* ===== DISPLAY CONTRAST MODE (#105) =====
+   Turned on per device in the display settings panel; `.display-contrast` on
+   `.display-full`. For bright halls: the background stays black (lights glow
+   best on it), lights get full colours instead of gradients and a clear
+   border, texts become pure white and bolder. Every text reaches at least
+   7:1 (WCAG AAA) against its background.
+   Why its own file, loaded after animations.css: one place to see the whole
+   mode, and it overrides the expired-timer colour from animations.css.
+   Without the class nothing here applies, so the normal look is unchanged. */
+
+.display-full.display-contrast {
+    background: var(--bg-void);
+}
+.display-full.display-contrast::before,
+.display-full.display-contrast::after {
+    display: none;
+}
+
+/* Texts */
+.display-full.display-contrast .display-tag,
+.display-full.display-contrast .display-tag .conn-label,
+.display-full.display-contrast .display-tag .code-link {
+    color: var(--contrast-text);
+    font-weight: 700;
+}
+.display-full.display-contrast .display-timer-big {
+    color: var(--contrast-text);
+    text-shadow: none;
+}
+.display-full.display-contrast .display-timer-big.expired {
+    color: var(--contrast-text-red);
+}
+.display-full.display-contrast .display-status {
+    color: var(--contrast-text);
+    font-weight: 700;
+}
+.display-full.display-contrast .display-orb-reason {
+    color: var(--contrast-text);
+    font-weight: 700;
+}
+
+/* Lights: full colours, thick border; an unlit light keeps a visible ring */
+.display-full.display-contrast .display-orb {
+    background: var(--contrast-light-off);
+    border: calc(6px * var(--display-zoom, 1)) solid var(--contrast-light-off-border);
+    box-shadow: none;
+}
+.display-full.display-contrast .display-orb.white {
+    background: var(--contrast-light-white);
+    border-color: var(--contrast-light-white);
+    box-shadow: 0 0 50px rgba(255,255,255,0.4);
+}
+.display-full.display-contrast .display-orb.red {
+    background: var(--contrast-light-red);
+    border-color: var(--contrast-light-red);
+    box-shadow: 0 0 50px rgba(255,31,31,0.5);
+}
+.display-full.display-contrast .display-orb-card {
+    outline: calc(2px * var(--display-zoom, 1)) solid var(--contrast-text);
+}
+.display-full.display-contrast .display-orb-card:not(.red):not(.blue):not(.yellow) {
+    outline: none;
+}
+
+/* Verdict: filled stamps instead of outlined text */
+.display-full.display-contrast .verdict-stamp.valid {
+    background: var(--contrast-valid-bg);
+    color: var(--contrast-valid-text);
+    border-color: var(--contrast-valid-bg);
+    box-shadow: none;
+}
+.display-full.display-contrast .verdict-stamp.invalid {
+    background: var(--contrast-invalid-bg);
+    color: var(--contrast-text);
+    border-color: var(--contrast-invalid-border);
+    box-shadow: none;
+}
+
+/* VPortal lifter corners and disconnect banner (styling only) */
+.display-full.display-contrast .vportal-corner,
+.display-full.display-contrast .vportal-corner-name,
+.display-full.display-contrast .vportal-corner-meta,
+.display-full.display-contrast .vportal-corner-disc,
+.display-full.display-contrast .vportal-corner-weight,
+.display-full.display-contrast .vportal-disconnected-banner {
+    color: var(--contrast-text);
+}
+.display-full.display-contrast .vportal-corner-meta {
+    font-weight: 700;
+}
