@@ -244,7 +244,7 @@ No-build single-page application. One HTML file served by FastAPI's `StaticFiles
 | `screens/reconnectingScreen.js` | "Connecting…" after a reload; Cancel. |
 | `screens/roleSelectScreen.js` | Role-select: role buttons, QR code, role-taken notice (VPortal button reads `$store.vportal`). |
 | `screens/judgeScreen.js` | Judge screen: reason-list scroll hint, role label, reasons for the chosen colour, head-judge controls (send via the connection). |
-| `screens/displayScreen.js` | Display screen: zoom and settings panel (gear, `S`, `Esc`). |
+| `screens/displayScreen.js` | Display screen: zoom, contrast mode and settings panel (gear, `S`, `Esc`). |
 | `constants.js` | `CARD_REASONS[liftType][color]` — arrays of i18n reason keys. |
 | `i18n.js` | Locale loading, `t()` lookup, `setLanguage()`, Alpine store integration. |
 | `vportalClient.js` / `vportalQueries.js` | VPortal proxy calls, JWT in `localStorage`, polling; the GraphQL read operations. |
@@ -252,13 +252,13 @@ No-build single-page application. One HTML file served by FastAPI's `StaticFiles
 
 *Why a connection module instead of a component:* the socket belongs to no screen and no element. With one owner no screen component can open a second socket (see the bfcache bug under *WebSocket client*), and every way out of the display (role-select, landing, session ended, final join error, back button) runs through the same module, so the VPortal overlay stop cannot be forgotten and no second poller starts. Join, reconnect, reload and role takeover — the most critical code — run under Vitest.
 
-*Why server-driven state lives in stores:* a message must reach its state even when the screen that shows it is not in the DOM (`x-if`) or not visible. Handlers write the stores directly; components only read them and hold pure UI state (zoom, settings panel, scroll hint). No browser events as transport — with no listener a message would be lost silently.
+*Why server-driven state lives in stores:* a message must reach its state even when the screen that shows it is not in the DOM (`x-if`) or not visible. Handlers write the stores directly; components only read them and hold pure UI state (zoom, contrast mode, settings panel, scroll hint). No browser events as transport — with no listener a message would be lost silently.
 
 *Why `x-if` for landing, contact, privacy, demo intro and reconnecting, `x-show` for role-select, judge and display:* screens that hold nothing are not in the DOM when not shown, so they cannot flash up. Judge and display must not be rebuilt on a reconnect; role-select keeps its QR code and VPortal button for the frequent judge ↔ role-select round trip. State an `x-if` screen needs after it is gone (the landing form, written by reload recovery and the leave flows) lives in the session store.
 
 *Why a store for VPortal instead of its own component:* the connect button, the dialog and the display overlay sit in three separate places of the markup and share one connection, so a component scoped to one element cannot hold them. The session kind is not VPortal state: it is a session property (sent at create, read on role-select, corrected from the server on display start) and lives in `Alpine.store('session')`.
 
-**CSS files:** `variables.css` (16 custom properties) → `base.css` (resets, typography) → `components.css` (buttons, inputs, orbs) → `layout.css` (per-screen wrappers) → `animations.css` (keyframes) → `boot.css` (boot screen and fallback, see *Boot sequence*).
+**CSS files:** `variables.css` (custom properties, incl. the contrast-mode tokens `--contrast-*`) → `base.css` (resets, typography) → `components.css` (buttons, inputs, orbs) → `layout.css` (per-screen wrappers) → `animations.css` (keyframes) → `display-contrast.css` (display contrast mode, see *Display settings overlay*) → `boot.css` (boot screen and fallback, see *Boot sequence*).
 
 ### Screen machine
 
@@ -305,10 +305,11 @@ QR entry point: `?session=XXXX` lands on the landing screen with the code pre-fi
 | `sessionStorage` | `iv_pending_vote` | `{code, role, lift_id, color, reason}` from LOCK IN until `vote_ack` / `vote_rejected` / next lift / leaving the judge screen | Tab close |
 | `localStorage` | `iron-verdict-lang` | `'en'` or `'de'` | Persistent |
 | `localStorage` | `iron-verdict:display-zoom` | Display screen zoom multiplier (0.7–1.5) | Persistent |
+| `localStorage` | `iron-verdict:display-contrast` | Display contrast mode, `'1'` on / `'0'` off (missing = off) | Persistent |
 | `Alpine.store('session')` | — | Session code, name, kind, own role, `isHead`, `isDemo`, connection status, `serverRestarting`, judge connectivity, role-taken notice, landing form | Page lifetime |
 | `Alpine.store('nav')` | — | Current screen, history flags | Page lifetime |
 | `Alpine.store('judge')` / `display` / `timer` / `settings` | — | Vote and result state (`voteLocked` is derived), display lights and phase, shown time, session settings | Page lifetime |
-| Screen components | — | UI-only state: display zoom and settings panel, reason-list scroll hint, contact form, demo running / pop-ups blocked | Page lifetime (`x-if` screens: while shown) |
+| Screen components | — | UI-only state: display zoom, contrast mode and settings panel, reason-list scroll hint, contact form, demo running / pop-ups blocked | Page lifetime (`x-if` screens: while shown) |
 | `Alpine.store('vportal')` | — | VPortal connection, dialog step, stage list, current lifter on the display | Page lifetime |
 
 *Why `sessionStorage` (not `localStorage`) for the reconnect token:* tab-scoped lifetime matches the lifetime of a judging session. If the token survived in `localStorage`, an old token could leak into a *new* session opened in the same browser later, leading to confusing "Role already taken" failures (server rejects because the role belongs to a stale judge identity). `localStorage` is reserved for genuinely persistent preferences like language.
@@ -329,11 +330,13 @@ Demo windows (`session.isDemo`) show "DEMO" instead of the session code (judge) 
 
 ### Display settings overlay
 
-The display screen has a single interactive control: a low-contrast gear icon (top-left) and `S` keyboard shortcut, both of which open a small overlay with a 0.7×–1.5× zoom slider. The slider writes to `--display-zoom` on the display root; every responsive size on the display multiplies through that variable. Selection persists to `localStorage` as `iron-verdict:display-zoom`.
+The display screen has a single interactive control: a low-contrast gear icon (top-left) and `S` keyboard shortcut, both of which open a small overlay with a 0.7×–1.5× zoom slider and a contrast-mode switch. The slider writes to `--display-zoom` on the display root; every responsive size on the display multiplies through that variable. Selection persists to `localStorage` as `iron-verdict:display-zoom`.
+
+The contrast-mode switch (On/Off, `aria-pressed`) toggles the class `display-contrast` on the display root and persists as `iron-verdict:display-contrast`. All its rules live in `display-contrast.css` and are scoped under `.display-full.display-contrast`, so without the class the display is unchanged: solid light colours with a thick border (an unlit light keeps a visible ring), pure white bold texts (session tag, timer, waiting text, reasons, VPortal corners), filled verdict stamps; every text reaches at least 7:1 (WCAG AAA) against the black background, checked by `test_display_contrast.py`. *Why the background stays black:* the lights glow best on black on most screens; bright halls wash out dim greys and gradients, not the black itself. *Why on/off instead of a slider:* one click under time pressure, no fine-tuning at the venue. The mode is a device setting of its own, independent of any future layout presets (#106).
 
 *Why a low-contrast gear plus a keyboard shortcut:* the display is mixed-deployment — sometimes the operator knows the app, sometimes a volunteer is at the keyboard. A faint gear is invisible at projector distance but discoverable on the operator laptop; `S` exists as the power-user path. There is no other interactive control on the display screen, so a single conventional dismiss model (`Escape`, click-outside) suffices.
 
-*Why per-browser localStorage:* the same laptop typically goes to the same venue, so the setting should outlive a session. A new laptop re-tunes once. Server-side per-session storage would add a new API surface for a per-device UI preference — out of proportion with the value.
+*Why per-browser localStorage:* the same laptop typically goes to the same venue, so the settings should outlive a session; light conditions differ per screen, so contrast is per device too. A new laptop re-tunes once. Server-side per-session storage would add a new API surface for a per-device UI preference — out of proportion with the value.
 
 ### Lights and cards
 
