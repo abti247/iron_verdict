@@ -7,6 +7,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Contrast mode for bright halls in the display settings (gear or "S"): solid light colours with a clear border and pure white, bolder texts on the black background; remembered per device like the zoom
 
 ### Changed
 

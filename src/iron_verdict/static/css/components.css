@@ -821,3 +821,28 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     cursor: pointer;
 }
 .display-settings-reset:hover { border-color: #4a4a4e; color: #f5f5f7; }
+/* Contrast mode switch: the state is spelled out (On/Off) and the whole
+   button turns red when on, so it reads at a glance. */
+.display-settings-toggle {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    margin-top: 16px;
+    background: transparent;
+    border: 1px solid var(--panel-border);
+    color: var(--panel-text);
+    padding: 8px 12px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 12px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+.display-settings-toggle:hover { border-color: var(--panel-border-hover); color: var(--panel-text-bright); }
+.display-settings-toggle-state { font-weight: 700; }
+.display-settings-toggle.on {
+    background: var(--blood);
+    border-color: var(--blood-bright);
+    color: var(--contrast-text);
+}

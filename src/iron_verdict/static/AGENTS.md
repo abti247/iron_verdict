@@ -12,7 +12,8 @@ src/iron_verdict/static/
 │   ├── base.css        # Resets, typography, body, global element styles
 │   ├── components.css  # Reusable UI components (.btn-blood, .cut-corner, .chrome-input, etc.)
 │   ├── layout.css      # Screen-level layouts (landing, role-select, judge, display)
-│   └── animations.css  # Keyframes and transition classes
+│   ├── animations.css  # Keyframes and transition classes
+│   └── display-contrast.css # Display contrast mode (scoped under .display-contrast)
 ├── js/
 │   ├── init.js         # Entry point: demo params, boot (i18n, fonts, Alpine), popstate → connection
 │   ├── app.js          # Bootstrap: registers stores and screen components with Alpine, starts the app

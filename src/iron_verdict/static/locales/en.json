@@ -231,10 +231,13 @@
     "attemptShort": "Att"
   },
   "displaySettings": {
-    "title": "Display Size",
+    "title": "Display",
     "sliderLabel": "Zoom",
     "resetButton": "Reset",
-    "openTitle": "Display settings (S)"
+    "openTitle": "Display settings (S)",
+    "contrastLabel": "Contrast mode",
+    "on": "On",
+    "off": "Off"
   },
   "privacy": {
     "link": "Privacy & Legal Notice",

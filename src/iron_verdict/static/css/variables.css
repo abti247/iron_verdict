@@ -14,4 +14,20 @@
     --vote-yellow: #EAB308;
     --success: #22C55E;
     --warning: #F59E0B;
+    --panel-border: #2a2a2e;
+    --panel-border-hover: #4a4a4e;
+    --panel-text: #d1d5db;
+    --panel-text-bright: #f5f5f7;
+    /* Display contrast mode (#105): black background stays, everything on it
+       reaches at least 7:1 (WCAG AAA) against it. */
+    --contrast-text: #FFFFFF;
+    --contrast-text-red: #FF8080;
+    --contrast-light-off: #262626;
+    --contrast-light-off-border: #A3A3A3;
+    --contrast-light-white: #FFFFFF;
+    --contrast-light-red: #FF1F1F;
+    --contrast-valid-bg: var(--success);
+    --contrast-valid-text: #000000;
+    --contrast-invalid-bg: #991B1B;
+    --contrast-invalid-border: #FF1F1F;
 }
