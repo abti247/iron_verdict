@@ -329,6 +329,26 @@ async def test_ws_join_success_logs_role_and_session(caplog):
     assert records[0].role == "left_judge"
 
 
+async def test_ws_join_logs_cloudflare_client_ip_not_x_forwarded_for(caplog):
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        resp = await ac.post("/api/sessions", json={"name": "Test"})
+    code = resp.json()["session_code"]
+
+    headers = {"CF-Connecting-IP": "198.51.100.7", "X-Forwarded-For": "203.0.113.1"}
+    async with httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as ac:
+        with caplog.at_level(logging.INFO, logger="iron_verdict"):
+            async with httpx_ws.aconnect_ws("ws://test/ws", ac, headers=headers) as ws:
+                await ws.send_json({"type": "join", "session_code": code, "role": "left_judge"})
+                await ws.receive_json()
+
+    records = [r for r in caplog.records if r.getMessage() == "role_joined"]
+    assert records[0].client_ip == "198.51.100.7"
+
+
 async def test_ws_disconnect_logs_info(caplog):
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app), base_url="http://test"

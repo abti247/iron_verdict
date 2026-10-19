@@ -49,6 +49,52 @@ def test_create_session_rate_limited_after_10_requests():
     assert r.status_code == 429
 
 
+def test_session_lookup_counts_cloudflare_client_ips_separately():
+    """Behind Cloudflare and Railway, the TCP peer is a proxy; CF-Connecting-IP is the client."""
+    for _ in range(30):
+        r = client.get("/api/sessions/AAAAAAAA", headers={"CF-Connecting-IP": "198.51.100.1"})
+        assert r.status_code == 404
+    r = client.get("/api/sessions/AAAAAAAA", headers={"CF-Connecting-IP": "198.51.100.1"})
+    assert r.status_code == 429
+    r = client.get("/api/sessions/AAAAAAAA", headers={"CF-Connecting-IP": "198.51.100.2"})
+    assert r.status_code == 404
+
+
+def test_create_session_counts_cloudflare_client_ips_separately():
+    for i in range(10):
+        r = client.post("/api/sessions", json={"name": f"S{i}"}, headers={"CF-Connecting-IP": "198.51.100.1"})
+        assert r.status_code == 200
+    r = client.post("/api/sessions", json={"name": "overflow"}, headers={"CF-Connecting-IP": "198.51.100.1"})
+    assert r.status_code == 429
+    r = client.post("/api/sessions", json={"name": "other"}, headers={"CF-Connecting-IP": "198.51.100.2"})
+    assert r.status_code == 200
+
+
+def test_session_lookup_spoofed_x_forwarded_for_does_not_bypass_limit():
+    for i in range(30):
+        r = client.get("/api/sessions/AAAAAAAA", headers={"X-Forwarded-For": f"203.0.113.{i}"})
+        assert r.status_code == 404
+    r = client.get("/api/sessions/AAAAAAAA", headers={"X-Forwarded-For": "203.0.113.99"})
+    assert r.status_code == 429
+
+
+def test_session_lookup_logs_cloudflare_client_ip_not_x_forwarded_for(caplog):
+    with caplog.at_level(logging.INFO, logger="iron_verdict"):
+        client.get(
+            "/api/sessions/AAAAAAAA",
+            headers={"CF-Connecting-IP": "198.51.100.7", "X-Forwarded-For": "203.0.113.1"},
+        )
+    records = [r for r in caplog.records if r.getMessage() == "session_lookup_not_found"]
+    assert records[-1].client_ip == "198.51.100.7"
+
+
+def test_session_lookup_logs_peer_ip_without_cloudflare_header(caplog):
+    with caplog.at_level(logging.INFO, logger="iron_verdict"):
+        client.get("/api/sessions/AAAAAAAA", headers={"X-Forwarded-For": "203.0.113.1"})
+    records = [r for r in caplog.records if r.getMessage() == "session_lookup_not_found"]
+    assert records[-1].client_ip == "testclient"
+
+
 def test_health_returns_200():
     assert client.get("/health").status_code == 200
 
