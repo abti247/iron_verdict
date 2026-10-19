@@ -12,6 +12,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 - Session lookup and creation limits now count per network instead of across all competitions, so a wave of joins or reloads elsewhere can no longer lock judges out with "Too Many Requests"
+- Connections that ended unexpectedly no longer stay registered: they no longer take up display slots, a judge's lost connection always shows as disconnected on the other devices, and the server log no longer repeats the same heartbeat warning every 5 seconds
 
 ### Removed
 

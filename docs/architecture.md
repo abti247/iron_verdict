@@ -51,6 +51,8 @@ Security:
 - `end_session_confirmed` — head judge ends the session.
 - `pong` — client reply to server-initiated heartbeat ping.
 
+A second `join` on a socket that already joined is answered with `error` "Already joined" (logged as `second_join_rejected`); the first role stays registered. *Why:* the client sends one `join` per socket; registering one socket under two roles left an orphaned entry once it closed ([#136](https://github.com/abti247/iron_verdict/issues/136)).
+
 Head-judge-only messages (`timer_start`, `timer_reset`, `next_lift`, `end_session_confirmed`, `settings_update`) from any other role get an `error` and leave the session unchanged — the UI only hides these buttons, the server is the actual guard.
 
 *Why `vote_ack` / `vote_rejected` instead of fire-and-forget:* the client's socket can look open while the network is gone, and `websocket.js` drops sends on a closed socket. Without an explicit answer the judge screen cannot know whether a vote counted; showing "Vote Locked" optimistically let a lost vote hang the competition with nobody seeing why. *Why `lift_id`:* a vote queued offline is resent after reconnect; if the head judge advanced meanwhile, the server would otherwise count it for the wrong lift. `lift_id` is optional in `vote_lock` so a tab still running the previous frontend during a deploy keeps working (without the stale-lift check).
@@ -77,6 +79,7 @@ Two in-process managers, each guarded by its own `asyncio.Lock`. The two locks a
 
 - Holds `self.active_connections: dict[session_code, dict[role, WebSocket]]` — transport registry only.
 - Tracks `_last_pong: dict[WebSocket, float]` for the heartbeat task.
+- `remove_connection_if_current(code, role, ws)` removes a role only while `ws` still holds it — the identity guard (see [Reconnection model](#reconnection-model)).
 - Provides `broadcast_to_session`, `broadcast_to_others`, `send_to_role`, `send_to_displays`. Per-socket errors are swallowed and emit warning logs by name.
 
 *Why swallow per-socket errors:* one dead or slow client must not abort the broadcast to the others. The alternative — propagating the first send failure — would let a single misbehaving client (or a TCP RST on one judge's connection) stall state propagation to the remaining judges and the display.
@@ -93,7 +96,8 @@ Snapshots exclude reconnect tokens — those exist only in memory and die with t
 
 ## Reconnection model
 
-- **Judges** receive a 32-character `reconnect_token` on first join. A new WebSocket presenting the matching `(session_code, role, token)` triple replaces the existing connection. An identity guard prevents the disconnect handler of the old socket from clobbering the new one. Tokens survive `reset_for_next_lift`.
+- **Judges** receive a 32-character `reconnect_token` on first join. A new WebSocket presenting the matching `(session_code, role, token)` triple replaces the existing connection. An identity guard prevents the disconnect handler of the old socket from clobbering the new one.
+- **Releasing a connection:** `release_connection` (in `main.py`) unregisters a socket through the identity guard and, for a judge, sets `connected = False` and broadcasts `judge_status_update`. The WebSocket handler calls it in `finally` on every exit — regular disconnect, flood disconnect, failed join, unexpected exception — and the heartbeat calls it for dead connections. *Why `finally`, not only on `WebSocketDisconnect`:* any other exit left an orphaned entry that took a display slot, was pinged every 5 s forever and survived session expiry ([#136](https://github.com/abti247/iron_verdict/issues/136)). Tokens survive `reset_for_next_lift`.
 - **Concurrent joins on one role** yield exactly one success. Single-worker asyncio is the guarantee, not a lock: `join_session` is synchronous, so its "role free?" check and the write cannot interleave. The reconnect takeover awaits (closing the old socket) between token check and slot takeover, so it re-checks the token afterwards — a second client with the same token (e.g. a duplicated browser tab copies `sessionStorage`) gets "Role already taken" once the winner has rotated the token. *Why:* otherwise both clients got `join_success` and one acted as judge without receiving broadcasts ([#57](https://github.com/abti247/iron_verdict/issues/57)). Breaks with multiple workers like all in-memory state.
 - **Displays** have no reconnect token. Each display join takes the next free display slot (`display_aabb1122` random suffix). Displays are interchangeable viewers, capped per session by `DISPLAY_CAP` (default 20).
 - Judge slots cap at 3 (left, center, right) and are exclusive.
@@ -116,7 +120,7 @@ Single `lifespan` task runs two periodic operations:
 A failure in either operation (e.g. `OSError` on a full or read-only volume) is logged (`snapshot_save_failed` / `session_cleanup_failed`) and the loop keeps running; a failed write leaves the last-written snapshot unchanged, so the next tick retries it.  
 *Why catch per operation:* an uncaught exception would end the task silently — no further snapshots, no more expiry — and re-raise from `await task` at shutdown, skipping the heartbeat cancel and the fallback save.
 
-A server-initiated heartbeat (`heartbeat_sweep`, every `HEARTBEAT_INTERVAL_SECONDS` = 5 s) pings every WebSocket client and closes (code 1001) any client without a `pong` for more than `PONG_STALE_SECONDS` = 15 s — effectively 15–20 s, since the check runs once per interval. The client runs the mirror-image watchdog (see [WebSocket client](#websocket-client)).
+A server-initiated heartbeat (`heartbeat_sweep`, every `HEARTBEAT_INTERVAL_SECONDS` = 5 s) pings every WebSocket client and closes (code 1001) any client without a `pong` for more than `PONG_STALE_SECONDS` = 15 s — effectively 15–20 s, since the check runs once per interval. The sweep removes a connection itself (via `release_connection`) right after a stale close, and when a ping cannot be sent (logged once as `heartbeat_dead_connection_removed`). *Why the heartbeat removes, not only the handler:* the handler may already have ended, so nobody else would ever clean the entry up; the identity guard keeps it from removing a newer connection of the same role. The client runs the mirror-image watchdog (see [WebSocket client](#websocket-client)).
 *Why 5 s / 15 s:* a half-open connection — typical on venue Wi-Fi when a device switches access points — fires no close event on either side; with the former 30 s / 70 s a judge looked connected for over a minute while votes went nowhere. One ping per client every 5 s is negligible next to the 20 messages/s rate limit.
 
 ## VPortal integration
