@@ -60,7 +60,9 @@ def _registered_roles(code, timeout_s=5.0):
     while True:
         roles = sorted(
             "display" if r.startswith("display_") else r
-            for r in connection_manager.active_connections.get(code, {})
+            # list() copies the keys in one step; the server thread may be
+            # releasing the reloaded pages' old sockets meanwhile.
+            for r in list(connection_manager.active_connections.get(code, {}))
         )
         if roles == expected or time.monotonic() > deadline:
             return roles
