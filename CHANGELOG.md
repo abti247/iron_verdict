@@ -11,7 +11,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ### Changed
 
 ### Fixed
-- Session lookup and creation limits now count each device's own address; before, devices across all competitions could share one limit, so a wave of joins or reloads could lock judges out with "Too Many Requests"
+- Session lookup and creation limits now count per network instead of across all competitions, so a wave of joins or reloads elsewhere can no longer lock judges out with "Too Many Requests"
 
 ### Removed
 

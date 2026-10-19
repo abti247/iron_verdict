@@ -88,9 +88,10 @@ def test_session_lookup_logs_cloudflare_client_ip_not_x_forwarded_for(caplog):
     assert records[-1].client_ip == "198.51.100.7"
 
 
-def test_session_lookup_logs_peer_ip_without_cloudflare_header(caplog):
+@pytest.mark.parametrize("cf_headers", [{}, {"CF-Connecting-IP": ""}, {"CF-Connecting-IP": "  "}])
+def test_session_lookup_logs_peer_ip_without_cloudflare_header(caplog, cf_headers):
     with caplog.at_level(logging.INFO, logger="iron_verdict"):
-        client.get("/api/sessions/AAAAAAAA", headers={"X-Forwarded-For": "203.0.113.1"})
+        client.get("/api/sessions/AAAAAAAA", headers={"X-Forwarded-For": "203.0.113.1", **cf_headers})
     records = [r for r in caplog.records if r.getMessage() == "session_lookup_not_found"]
     assert records[-1].client_ip == "testclient"
 
