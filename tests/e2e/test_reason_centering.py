@@ -24,7 +24,9 @@ MEASURE_JS = """([container, bounds]) => {
     const root = document.querySelector(container);
     const gap = parseFloat(getComputedStyle(root).columnGap);
     const row = document.querySelector(bounds).getBoundingClientRect();
-    return [...root.children].map((wrap) => {
+    // Light columns only: the display's lights block also holds the layout
+    // editor frames (#106).
+    return [...root.children].filter((wrap) => wrap.querySelector('.display-orb')).map((wrap) => {
         const orb = wrap.querySelector('.display-orb').getBoundingClientRect();
         const el = wrap.querySelector('.display-orb-reason');
         const shown = el && getComputedStyle(el).display !== 'none' && el.textContent;
@@ -134,20 +136,22 @@ SHOW_ON_JUDGE = """([l, c, r]) => Alpine.store('judge').showResults(
 )"""
 
 
-def _set_zoom(page, zoom):
-    page.locator(".display-settings-gear").click()
-    page.locator(".display-settings-slider").evaluate(
-        """(el, z) => {
-            el.value = String(z);
-            el.dispatchEvent(new Event('input', { bubbles: true }));
-        }""",
-        zoom,
+def _scale_lights(page, scale):
+    """Save a layout with the lights block scaled (the layout editor's scale,
+    #106) and reload the display with it."""
+    blocks = {b: {"x": 5, "y": 5, "s": 1, "hidden": False} for b in ("timer", "verdict", "lifter", "attempt")}
+    blocks["lights"] = {"x": 8, "y": 20, "s": scale, "hidden": False}
+    blocks["cards"] = {"gap": 0, "hidden": False}
+    page.evaluate(
+        "(l) => localStorage.setItem('iron-verdict:display-layout', JSON.stringify(l))",
+        {"v": 1, "blocks": blocks},
     )
-    page.locator("body").press("Escape")
+    page.reload()
+    page.locator(".display-full").wait_for(state="visible")
     page.wait_for_function(
-        """(z) => Math.abs(parseFloat(getComputedStyle(document.querySelector('.display-full'))
-            .getPropertyValue('--display-zoom')) - z) < 0.001""",
-        arg=zoom,
+        """(s) => Math.abs(parseFloat(getComputedStyle(document.querySelector('.display-lights'))
+            .getPropertyValue('--display-zoom')) - s) < 0.001""",
+        arg=scale,
     )
 
 
@@ -187,16 +191,17 @@ def test_long_german_reasons_centered_on_display_and_judge_results(competition):
 
 def test_every_reason_centered_on_display(competition):
     """All reasons of all disciplines in German and English are shown on the
-    display, three at a time, at 1920×1080 and 1280×720 with zoom 1 and at
-    1920×1080 with the maximum zoom 1.5. Every reason is centred under its
+    display, three at a time, at 1920×1080 and 1280×720 in the default layout
+    and at 1920×1080 with the lights scaled to 1.5 in a saved layout. Every
+    reason is centred under its
     light, fits its box and stays within half the gap to its neighbour."""
     competition.create_session_and_join_head()
     display = competition.join_as("display")
 
-    for width, height, zoom in ((1920, 1080, 1.0), (1280, 720, 1.0), (1920, 1080, 1.5)):
+    for width, height, scale in ((1920, 1080, 1.0), (1280, 720, 1.0), (1920, 1080, 1.5)):
         display.set_viewport_size({"width": width, "height": height})
-        if zoom != 1.0:
-            _set_zoom(display, zoom)
+        if scale != 1.0:
+            _scale_lights(display, scale)
         _sweep(display, DISPLAY, SHOW_ON_DISPLAY)
 
 

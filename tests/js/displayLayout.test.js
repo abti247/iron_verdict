@@ -196,7 +196,11 @@ describe('block edits', () => {
 describe('blockStyle', () => {
     it('positions and scales a block', () => {
         expect(blockStyle({ x: 12, y: 34.5, s: 1.25, hidden: false }))
-            .toBe('left: 12%; top: 34.5%; --display-zoom: 1.25');
+            .toEqual({ left: '12%', top: '34.5%', '--display-zoom': '1.25' });
+    });
+
+    it('unsets every property without a block', () => {
+        expect(blockStyle(null)).toEqual({ left: '', top: '', '--display-zoom': '' });
     });
 });
 

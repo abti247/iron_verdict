@@ -7,7 +7,8 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
-- Contrast mode for bright halls in the display settings (gear or "S"): solid light colours with a clear border and pure white, bolder texts on the black background; remembered per device like the zoom
+- Contrast mode for bright halls in the display settings (gear or "S"): solid light colours with a clear border and pure white, bolder texts on the black background; remembered per device
+- Layout editor for the display (settings → "Edit layout"): move, resize and hide timer, lights, cards and reasons, verdict and VPortal lifter and attempt info with mouse or touch; saved per device and copyable to another display as a code
 
 ### Changed
 
@@ -16,6 +17,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Connections that ended unexpectedly no longer stay registered: they no longer take up display slots, a judge's lost connection always shows as disconnected on the other devices, and the server log no longer repeats the same heartbeat warning every 5 seconds
 
 ### Removed
+- Display zoom slider: sizes are now set per block in the layout editor; a previously set zoom is reset to the default size
 
 ## [0.3.0] - 2026-10-18
 

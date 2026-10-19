@@ -1,22 +1,24 @@
 // Display screen: timer, vote lights with reasons and verdict, the VPortal lifter
-// overlay, and the local settings panel (zoom and contrast mode, opened with
-// the gear or "S"). What is shown comes from the display, timer and vportal
-// stores; this component only holds the zoom, the contrast mode and whether the
-// settings panel is open. Both settings are per device (localStorage).
+// overlay, and the local settings panel (contrast mode and the layout editor,
+// opened with the gear or "S"). What is shown comes from the display, timer and
+// vportal stores; this component only holds the contrast mode, the layout
+// (displayLayoutEditor.js) and whether the settings panel is open. Both
+// settings are per device (localStorage).
 
-const DISPLAY_ZOOM_KEY = 'iron-verdict:display-zoom';
+import { displayLayoutEditor } from './displayLayoutEditor.js';
+
 const DISPLAY_CONTRAST_KEY = 'iron-verdict:display-contrast';
 
 export function displayScreen(conn) {
     return {
+        ...displayLayoutEditor(),
         displaySettingsOpen: false,
-        displayZoom: 1,
         displayContrast: false,
         _displayKeydownHandler: null,
 
         init() {
-            this._loadDisplayZoomFromStorage();
             this._loadDisplayContrastFromStorage();
+            this.initDisplayLayout();
             this._installDisplayKeyHandler();
             // Any screen change closes the panel.
             this.$watch('$store.nav.screen', () => { this.displaySettingsOpen = false; });
@@ -34,18 +36,6 @@ export function displayScreen(conn) {
             this.displaySettingsOpen = false;
         },
 
-        resetDisplayZoom() {
-            this.displayZoom = 1;
-            try { localStorage.setItem(DISPLAY_ZOOM_KEY, '1'); } catch (_) {}
-        },
-
-        onDisplayZoomInput(event) {
-            const n = parseFloat(event.target.value);
-            if (!Number.isFinite(n)) return;
-            this.displayZoom = Math.min(1.5, Math.max(0.7, n));
-            try { localStorage.setItem(DISPLAY_ZOOM_KEY, String(this.displayZoom)); } catch (_) {}
-        },
-
         toggleDisplayContrast() {
             this.displayContrast = !this.displayContrast;
             try { localStorage.setItem(DISPLAY_CONTRAST_KEY, this.displayContrast ? '1' : '0'); } catch (_) {}
@@ -57,20 +47,13 @@ export function displayScreen(conn) {
             } catch (_) {}
         },
 
-        _loadDisplayZoomFromStorage() {
-            try {
-                const raw = localStorage.getItem(DISPLAY_ZOOM_KEY);
-                if (raw == null) return;
-                const n = parseFloat(raw);
-                if (!Number.isFinite(n)) return;
-                this.displayZoom = Math.min(1.5, Math.max(0.7, n));
-            } catch (_) {}
-        },
-
         _installDisplayKeyHandler() {
             if (this._displayKeydownHandler) return;
             this._displayKeydownHandler = (e) => {
                 if (this.$store.nav.screen !== 'display') return;
+                // Only the editor's buttons end the edit mode, so a stray key
+                // never drops or saves a layout.
+                if (this.layoutEditing) return;
                 const tag = (e.target && e.target.tagName) || '';
                 if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
                 if (e.key === 's' || e.key === 'S') {

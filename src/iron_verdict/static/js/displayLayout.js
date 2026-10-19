@@ -118,8 +118,13 @@ export function withBlockHidden(layout, id, hidden) {
     return { ...layout, blocks: { ...layout.blocks, [id]: { ...layout.blocks[id], hidden } } };
 }
 
+// Inline style of a free block for Alpine's object :style. An object (not a
+// string) so it leaves x-show's `display` alone; every key is always present,
+// with '' for "unset" (no block = default flow layout), because Alpine only
+// resets the keys of the next object.
 export function blockStyle(block) {
-    return `left: ${block.x}%; top: ${block.y}%; --display-zoom: ${block.s}`;
+    if (!block) return { left: '', top: '', '--display-zoom': '' };
+    return { left: `${block.x}%`, top: `${block.y}%`, '--display-zoom': String(block.s) };
 }
 
 // Export code: "IV1." + base64url(JSON). Layouts hold only ASCII, so btoa is safe.

@@ -30,4 +30,8 @@
     --contrast-valid-text: #000000;
     --contrast-invalid-bg: #991B1B;
     --contrast-invalid-border: #FF1F1F;
+    /* Display layout editor (#106): frames around the blocks. */
+    --layout-frame: #38BDF8;
+    --layout-frame-cards: #FACC15;
+    --layout-frame-text: #0A0A0A;
 }

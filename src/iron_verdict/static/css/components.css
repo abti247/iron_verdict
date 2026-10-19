@@ -397,8 +397,9 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     align-items: center;
     gap: 0.5rem;
     width: var(--orb-size);
-    /* light + card (20 % of the light) + 2 gaps + 2 reason lines */
-    min-height: calc(var(--orb-size) * 1.2 + 1rem + 2 * 1.3 * var(--orb-reason-size));
+    /* light + card (20 % of the light) + 2 gaps + 2 reason lines, plus the
+       card gap of a saved layout (#106; 0 by default) */
+    min-height: calc(var(--orb-size) * (1.2 + var(--orb-card-gap, 0)) + 1rem + 2 * 1.3 * var(--orb-reason-size));
 }
 
 .display-orb-reason {
@@ -462,6 +463,8 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .display-orb-card {
     width: 40%;
     aspect-ratio: 2 / 1;
+    /* Extra gap to the light from a saved layout (#106), in light sizes. */
+    margin-top: calc(var(--orb-size, 0px) * var(--orb-card-gap, 0));
     border-radius: calc(4px * var(--display-zoom, 1));
     visibility: hidden;
 }
@@ -784,43 +787,22 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     color: #f5f5f7;
     margin-bottom: 14px;
 }
-.display-settings-label {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    font-size: 11px;
-    letter-spacing: .12em;
-    text-transform: uppercase;
-    color: #9ca3af;
-    margin-bottom: 8px;
-}
-.display-settings-readout {
-    color: #f5f5f7;
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 16px;
-    letter-spacing: .04em;
-}
-.display-settings-slider {
+/* Opens the layout editor (#106); looks like the contrast switch below. */
+.display-settings-layout-btn {
+    display: block;
     width: 100%;
-    accent-color: #ef4444;
-}
-.display-settings-actions {
-    display: flex;
-    justify-content: flex-end;
-    margin-top: 14px;
-}
-.display-settings-reset {
     background: transparent;
-    border: 1px solid #2a2a2e;
-    color: #d1d5db;
-    padding: 6px 14px;
+    border: 1px solid var(--panel-border);
+    color: var(--panel-text);
+    padding: 8px 12px;
     font-family: 'Rajdhani', sans-serif;
-    font-size: 11px;
+    font-size: 12px;
     letter-spacing: .12em;
     text-transform: uppercase;
+    text-align: left;
     cursor: pointer;
 }
-.display-settings-reset:hover { border-color: #4a4a4e; color: #f5f5f7; }
+.display-settings-layout-btn:hover { border-color: var(--panel-border-hover); color: var(--panel-text-bright); }
 /* Contrast mode switch: the state is spelled out (On/Off) and the whole
    button turns red when on, so it reads at a glance. */
 .display-settings-toggle {
