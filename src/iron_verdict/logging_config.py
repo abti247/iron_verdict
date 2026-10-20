@@ -15,6 +15,8 @@ _EXTRA_FIELDS = (
     "raw", "requested", "clamped_to",
     # Startup configuration
     "allowed_origin",
+    # Global WebSocket cap (#61)
+    "limit",
 )
 
 class JsonFormatter(logging.Formatter):

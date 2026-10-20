@@ -89,3 +89,14 @@ def test_json_formatter_includes_vportal_login_failure_fields():
     assert parsed["content_type"] == "text/html"
     assert parsed["upstream_path"] == "/auth/token"
     assert parsed["error"] == "ConnectError"
+
+
+def test_json_formatter_includes_websocket_cap_limit():
+    formatter = JsonFormatter()
+    record = logging.LogRecord(
+        name="iron_verdict", level=logging.WARNING, pathname="", lineno=0,
+        msg="websocket_cap_reached", args=(), exc_info=None
+    )
+    record.limit = 2000
+    parsed = json.loads(formatter.format(record))
+    assert parsed["limit"] == 2000
