@@ -438,20 +438,42 @@ def test_overlay_narrow_lights_keep_long_reasons_readable(competition):
         expect(reasons.nth(i)).to_have_text(text)
     assert orb_boxes(overlay) == before
 
-    # Every word on one line (a hyphen may break, as at the default gap); panels (box + 0.12em spread, display-overlay.css)
-    # of neighbouring reasons keep a visible gap.
-    result = overlay.evaluate("""() => {
+    assert_reasons_readable(overlay)
+
+    # The German bench reasons broke inside words below 0.4× (matrix in #154).
+    overlay.evaluate("""() => Alpine.store('display').showResults({
+        votes: {left: 'yellow', center: 'blue', right: 'blue'},
+        reasons: {left: 'Hantel\\u00adkontakt mit Hantel\\u00adständern',
+                  center: 'Arme nicht gestreckt bei Abschluss', right: 'Arme nicht gestreckt vor Start'},
+        showExplanations: true, liftType: 'bench'})""")
+    expect(reasons.nth(0)).to_contain_text("Hantel")
+    assert orb_boxes(overlay) == before
+    assert_reasons_readable(overlay, german=True)
+
+
+def assert_reasons_readable(page, german=False):
+    """Every word on one line (a hyphen may break, as at the default gap; in
+    German also a soft hyphen of de.json); the panels (box + 0.12em spread,
+    display-overlay.css) of neighbouring reasons keep a visible gap."""
+    breaks = "\\s\\u00ad-" if german else "\\s-"  # regex class content
+    result = page.evaluate("""([breaks]) => {
         const els = [...document.querySelectorAll('.display-lights .display-orb-reason')];
         const broken = [];
         for (const el of els) {
             const node = el.firstChild;
-            const re = /[^\\s-]+/g;  // a break after a hyphen is fine
+            const re = new RegExp(`[^${breaks}]+`, 'g');
             let m;
             while ((m = re.exec(node.data))) {
-                const r = document.createRange();
-                r.setStart(node, m.index);
-                r.setEnd(node, m.index + m[0].length);
-                const lines = new Set([...r.getClientRects()].map((q) => Math.round(q.top)));
+                // Line of each character: its last rect (Chrome adds the
+                // hyphen a soft hyphen broke at to the next character's range).
+                const lines = new Set();
+                for (let i = m.index; i < m.index + m[0].length; i++) {
+                    const r = document.createRange();
+                    r.setStart(node, i);
+                    r.setEnd(node, i + 1);
+                    const rects = r.getClientRects();
+                    lines.add(Math.round(rects[rects.length - 1].top));
+                }
                 if (lines.size > 1) broken.push(m[0]);
             }
         }
@@ -459,6 +481,6 @@ def test_overlay_narrow_lights_keep_long_reasons_readable(competition):
         const boxes = els.map((el) => el.getBoundingClientRect());
         const gaps = [boxes[1].left - boxes[0].right - 2 * spread, boxes[2].left - boxes[1].right - 2 * spread];
         return { broken, gaps };
-    }""")
+    }""", [breaks])
     assert result["broken"] == [], result
     assert all(g > 4 for g in result["gaps"]), result

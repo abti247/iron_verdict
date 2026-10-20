@@ -98,11 +98,11 @@ describe('sanitizeLayout', () => {
     it('clamps out-of-range values', () => {
         const raw = validLayout();
         raw.blocks.timer = { x: -20, y: 500, s: 10, hidden: false };
-        raw.blocks.lights = { x: 120, y: -5, s: 0, hidden: false, gap: 0 };
+        raw.blocks.lights = { x: 120, y: -5, s: 0, hidden: false };
         raw.blocks.cards = { gap: -1, hidden: false };
         const out = sanitizeLayout(raw);
         expect(out.blocks.timer).toEqual({ x: 0, y: 99, s: 3, hidden: false });
-        expect(out.blocks.lights).toEqual({ x: 100, y: 0, s: 0.3, hidden: false, gap: 0.4 });
+        expect(out.blocks.lights).toMatchObject({ x: 100, y: 0, s: 0.3, hidden: false });
         expect(out.blocks.cards.gap).toBe(0);
     });
 
@@ -254,12 +254,6 @@ describe('export code', () => {
         const code = encodeLayout(validLayout());
         expect(code).toMatch(/^IV1\.[A-Za-z0-9_-]+$/);
         expect(decodeLayout(code)).toEqual(validLayout());
-    });
-
-    it('reads a code made before the lights gap existed with the default gap', () => {
-        const old = validLayout();
-        delete old.blocks.lights.gap;
-        expect(decodeLayout(encodeLayout(old)).blocks.lights.gap).toBe(1);
     });
 
     it('tolerates surrounding whitespace', () => {

@@ -368,7 +368,8 @@ def test_cards_follow_lights_and_only_change_their_gap(competition):
 
 def test_layout_code_copies_layout_to_another_device(competition, page, server_url):
     """Display A exports its layout as a code (including a narrower gap
-    between the lights); display B pastes it, sees the layout and saves it. A wrong code shows an error and changes nothing."""
+    between the lights); display B pastes it, sees the layout and saves
+    it. A wrong code shows an error and changes nothing."""
     open_display(page, server_url)
     open_editor(page)
     drag(page, block(page, "timer"), 192, 108)
