@@ -2,17 +2,28 @@ import asyncio
 import json
 import logging
 import os
+import re
 import secrets
 import string
 import threading
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, List
 
 logger = logging.getLogger("iron_verdict")
 
 VALID_LIFT_TYPES = {"squat", "bench", "deadlift"}
 VALID_SESSION_KINDS = {"generic", "vportal"}
+# A pause lasts at most 12 h: a typo in the end time (13:00 instead of 14:00)
+# would otherwise make a pause of almost 24 h (#163).
+PAUSE_MAX_SECONDS = 12 * 60 * 60
+_PAUSE_UNTIL_RE = re.compile(r"([01]\d|2[0-3]):([0-5]\d)")
+# UTC offsets in use range from -12:00 to +14:00.
+_UTC_OFFSET_MIN_RANGE = (-12 * 60, 14 * 60)
+
+
+def _is_int(value) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
 
 
 class SessionManager:
@@ -77,6 +88,7 @@ class SessionManager:
                     "lift_type": "squat",
                     "require_reasons": False,
                 },
+                "pause": None,
                 "last_activity": datetime.now(),
             }
             return code
@@ -229,6 +241,92 @@ class SessionManager:
         session["last_activity"] = datetime.now()
         return {"success": True}
 
+    def start_pause(
+        self,
+        code: str,
+        minutes=None,
+        until=None,
+        utc_offset_min=None,
+        next_lift=None,
+        now: float | None = None,
+    ) -> Dict[str, Any]:
+        """Start (or replace) the session's pause, shown on every display (#163).
+
+        Exactly one of *minutes* (1..720) or *until* ("HH:MM" on the device that
+        started it, with its *utc_offset_min*) gives the end. The end is stored as
+        an absolute server time (epoch seconds), computed with the server's clock,
+        so a display with a wrong clock cannot shift it. *next_lift* is shown only.
+
+        Errors: "invalid" (malformed input), "past" (until is not in the future),
+        "too_long" (more than PAUSE_MAX_SECONDS), "Session not found".
+        """
+        if code not in self.sessions:
+            return {"success": False, "error": "Session not found"}
+        now = time.time() if now is None else now
+        if next_lift is not None and next_lift not in VALID_LIFT_TYPES:
+            return {"success": False, "error": "invalid"}
+        if (minutes is None) == (until is None):
+            return {"success": False, "error": "invalid"}
+
+        if minutes is not None:
+            if not _is_int(minutes) or minutes < 1:
+                return {"success": False, "error": "invalid"}
+            seconds = minutes * 60
+            mode = "minutes"
+        else:
+            match = _PAUSE_UNTIL_RE.fullmatch(until) if isinstance(until, str) else None
+            lo, hi = _UTC_OFFSET_MIN_RANGE
+            if not match or not _is_int(utc_offset_min) or not lo <= utc_offset_min <= hi:
+                return {"success": False, "error": "invalid"}
+            local_now = datetime.fromtimestamp(now, timezone(timedelta(minutes=utc_offset_min)))
+            target = local_now.replace(
+                hour=int(match.group(1)), minute=int(match.group(2)), second=0, microsecond=0
+            )
+            # Same day only: over midnight works with minutes (decided in #163).
+            seconds = target.timestamp() - now
+            if seconds <= 0:
+                return {"success": False, "error": "past"}
+            mode = "until"
+
+        if seconds > PAUSE_MAX_SECONDS:
+            return {"success": False, "error": "too_long"}
+
+        session = self.sessions[code]
+        session["pause"] = {
+            "id": secrets.token_hex(4),
+            "end_at": now + seconds,
+            "mode": mode,
+            "until": until if mode == "until" else None,
+            "next_lift": next_lift,
+        }
+        session["last_activity"] = datetime.now()
+        return {"success": True, "pause": session["pause"]}
+
+    def end_pause(self, code: str, pause_id: str | None = None) -> bool:
+        """End the session's pause; with *pause_id* only if that pause still runs.
+
+        Returns whether a pause was ended.
+        """
+        session = self.sessions.get(code)
+        if not session or not session.get("pause"):
+            return False
+        if pause_id is not None and session["pause"]["id"] != pause_id:
+            return False
+        session["pause"] = None
+        session["last_activity"] = datetime.now()
+        return True
+
+    def active_pause(self, code: str, now: float | None = None) -> Dict[str, Any] | None:
+        """The session's running pause, or None; a pause past its end is cleared here."""
+        session = self.sessions.get(code)
+        pause = session.get("pause") if session else None
+        if pause is None:
+            return None
+        if (time.time() if now is None else now) >= pause["end_at"]:
+            session["pause"] = None
+            return None
+        return pause
+
     def get_expired_sessions(self, hours: int = 4) -> List[str]:
         """Get list of session codes that have expired."""
         cutoff = datetime.now() - timedelta(hours=hours)
@@ -311,6 +409,7 @@ class SessionManager:
                 s.setdefault("phase", "voting")
                 s.setdefault("timer_frozen_ms", None)
                 s.setdefault("lift_id", 0)
+                s.setdefault("pause", None)
                 self.sessions[code] = s
             # Baseline is the restored state: the flags reset above are reset again on every load,
             # so the file needs no rewrite until something actually changes.

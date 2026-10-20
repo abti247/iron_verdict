@@ -103,6 +103,65 @@ async def cleanup_loop(manager: SessionManager, snapshot_path: str, timeout_hour
                 logger.exception("session_cleanup_failed", extra={"error": str(exc)})
 
 
+def public_pause(pause) -> dict | None:
+    """The pause as clients see it: end in epoch ms, without the internal id."""
+    if pause is None:
+        return None
+    return {
+        "end_at_ms": int(pause["end_at"] * 1000),
+        "mode": pause["mode"],
+        "until": pause["until"],
+        "next_lift": pause["next_lift"],
+    }
+
+
+def pause_update_message(pause) -> dict:
+    # server_now_ms lets each display count down against the server clock (#163).
+    return {"type": "pause_update", "pause": public_pause(pause), "server_now_ms": int(time.time() * 1000)}
+
+
+# One automatic pause end per session (#163). The server decides the end, so a
+# display with a wrong clock or without a connection cannot end it early or late.
+_pause_end_tasks: dict[str, asyncio.Task] = {}
+
+
+async def end_pause_when_due(session_code: str, pause_id: str, end_at: float, sleep=asyncio.sleep) -> None:
+    """Wait until *end_at*, then end that pause (if it still runs) on every device.
+
+    The wait is the pause itself (its end time chosen on a display), not an
+    artificial delay.
+    """
+    await sleep(max(0.0, end_at - time.time()))
+    if session_manager.end_pause(session_code, pause_id=pause_id):
+        logger.info("pause_ended", extra={"session_code": session_code, "by": "time"})
+        await connection_manager.broadcast_to_session(session_code, pause_update_message(None))
+
+
+def schedule_pause_end(session_code: str) -> None:
+    """(Re)arm the automatic end for the session's current pause; cancel it if none runs."""
+    old = _pause_end_tasks.pop(session_code, None)
+    if old is not None:
+        old.cancel()
+    pause = session_manager.sessions.get(session_code, {}).get("pause")
+    if pause is None:
+        return
+    task = asyncio.create_task(end_pause_when_due(session_code, pause["id"], pause["end_at"]))
+    _pause_end_tasks[session_code] = task
+
+    def forget(done: asyncio.Task) -> None:
+        if _pause_end_tasks.get(session_code) is done:
+            del _pause_end_tasks[session_code]
+
+    task.add_done_callback(forget)
+
+
+def restore_pause_timers() -> None:
+    """After loading the snapshot: arm the end of every restored pause (an expired one ends at once)."""
+    for session_code, session in list(session_manager.sessions.items()):
+        if session.get("pause") is not None:
+            schedule_pause_end(session_code)
+
+
 def _client_ip(headers, client) -> str:
     # Production runs behind Cloudflare and Railway's edge proxy: the TCP peer
     # is a Railway 100.64.0.0/10 address that changes even for one client.
@@ -176,6 +235,7 @@ async def lifespan(app: FastAPI):
         "session_lookup": settings.RATE_LIMIT_SESSION_LOOKUP,
     })
     session_manager.load_snapshot(settings.SNAPSHOT_PATH)
+    restore_pause_timers()
 
     loop = asyncio.get_running_loop()
     uvicorn_server = getattr(app.state, "uvicorn_server", None)
@@ -501,8 +561,12 @@ async def websocket_endpoint(websocket: WebSocket):
                     "client_ip": _get_ws_client_ip(websocket),
                 })
 
+                # A pause past its end is dropped here, before the scheduled end may have run.
+                session_manager.active_pause(session_code)
                 # Issue 3: Use deep copy for nested dicts
                 session_state = copy.deepcopy(session_manager.sessions[session_code])
+                session_state["pause"] = public_pause(session_state.get("pause"))
+                session_state["server_now_ms"] = int(time.time() * 1000)
                 session_state["last_activity"] = session_state["last_activity"].isoformat()
                 # Do not expose other judges' reconnect tokens to clients
                 for judge in session_state["judges"].values():
@@ -656,6 +720,11 @@ async def websocket_endpoint(websocket: WebSocket):
                     continue
 
                 logger.info("timer_start", extra={"conn_id": conn_id, "session_code": session_code})
+                # Starting the timer ends a pause (#163), on every display before the timer shows.
+                if session_manager.end_pause(session_code):
+                    schedule_pause_end(session_code)
+                    logger.info("pause_ended", extra={"conn_id": conn_id, "session_code": session_code, "by": "timer_start"})
+                    await connection_manager.broadcast_to_session(session_code, pause_update_message(None))
                 session_manager.sessions[session_code]["timer_started_at"] = time.time()
                 await connection_manager.broadcast_to_session(
                     session_code,
@@ -739,6 +808,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 # closed above; returning prevents receive_text() from being
                 # called on a dead connection, which would raise RuntimeError.
                 session_manager.delete_session(session_code)
+                schedule_pause_end(session_code)  # no session, no pause: cancels its end
                 registered = False
                 return
             elif message_type == "settings_update":
@@ -773,6 +843,43 @@ async def websocket_endpoint(websocket: WebSocket):
                             "requireReasons": session_settings["require_reasons"],
                         }
                     )
+            elif message_type in ("pause_start", "pause_end"):
+                if not session_code or not role:
+                    continue
+                # Started and ended from a display's settings panel only (#163).
+                if not role.startswith("display_"):
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": "Only displays can control the pause"
+                    })
+                    continue
+                if message_type == "pause_start":
+                    result = session_manager.start_pause(
+                        session_code,
+                        minutes=message.get("minutes"),
+                        until=message.get("until"),
+                        utc_offset_min=message.get("utc_offset_min"),
+                        next_lift=message.get("next_lift"),
+                    )
+                    if not result["success"]:
+                        # Every pause_start gets one answer to the sender: pause_update or pause_rejected.
+                        await websocket.send_json({"type": "pause_rejected", "code": result["error"]})
+                        continue
+                    logger.info("pause_started", extra={
+                        "conn_id": conn_id,
+                        "session_code": session_code,
+                        "mode": result["pause"]["mode"],
+                        "seconds": round(result["pause"]["end_at"] - time.time()),
+                    })
+                else:
+                    if session_manager.end_pause(session_code):
+                        logger.info("pause_ended", extra={"conn_id": conn_id, "session_code": session_code, "by": "display"})
+                schedule_pause_end(session_code)
+                # Also sent when no pause ran, so the sender's display shows the real state.
+                await connection_manager.broadcast_to_session(
+                    session_code,
+                    pause_update_message(session_manager.sessions[session_code]["pause"]),
+                )
             elif message_type == "pong":
                 await connection_manager.mark_pong(websocket)
                 continue
