@@ -18,6 +18,7 @@ import json
 import re
 
 import httpx
+import pytest
 from playwright.sync_api import expect
 
 from tests.e2e.network_switch import NETWORK_SWITCH, cut_network, restore_network
@@ -35,7 +36,7 @@ def overlay_url(competition, layout_code=None, code=None):
     return url
 
 
-def open_overlay(competition, layout_code=None, network_switch=False, code=None, name="Test Session"):
+def open_overlay(competition, layout_code=None, network_switch=False, name="Test Session", before_goto=None):
     """Open the overlay URL in a new 1920×1080 context, as OBS does; returns
     (page, dialogs) — dialogs collects every alert/confirm the page raised."""
     ctx = competition.new_context(viewport=VIEWPORT)
@@ -44,10 +45,28 @@ def open_overlay(competition, layout_code=None, network_switch=False, code=None,
     page = ctx.new_page()
     dialogs = []
     page.on("dialog", lambda d: (dialogs.append(d.message), d.accept()))
-    page.goto(overlay_url(competition, layout_code, code))
+    if before_goto:
+        before_goto(page)
+    page.goto(overlay_url(competition, layout_code))
     expect(page.get_by_test_id("display-screen")).to_be_visible()
     wait_joined(page, name)
     return page, dialogs
+
+
+@pytest.fixture
+def judged_overlay(competition):
+    """All three judges joined and the overlay open: (overlay, dialogs, (head, left, right))."""
+    judges = competition.join_all_judges()
+    overlay, dialogs = open_overlay(competition)
+    return overlay, dialogs, judges
+
+
+def create_vportal_session(page, competition, server_url, name):
+    page.goto(server_url + "/vportal")
+    page.get_by_test_id("session-name-input").fill(name)
+    page.get_by_role("button", name="Create New Session").click()
+    page.locator(".role-wrap").wait_for(state="visible")
+    competition.session_code = page.locator(".session-tag .code").text_content()
 
 
 def wait_joined(page, name="Test Session"):
@@ -55,13 +74,18 @@ def wait_joined(page, name="Test Session"):
     page.wait_for_function(f"Alpine.store('session').name === {json.dumps(name)}")
 
 
-def backgrounds(page):
+def computed(page, selector, *props):
+    """Computed style values of the first element matching selector."""
     return page.evaluate(
-        """() => ['html', 'body', '.display-full'].map((sel) => {
-            const s = getComputedStyle(document.querySelector(sel));
-            return [s.backgroundColor, s.backgroundImage];
-        })"""
+        "([sel, props]) => { const s = getComputedStyle(document.querySelector(sel));"
+        " return props.map((p) => s[p]); }",
+        [selector, list(props)],
     )
+
+
+def expect_transparent(page):
+    for selector in ("html", "body", ".display-full"):
+        assert computed(page, selector, "backgroundColor", "backgroundImage") == [TRANSPARENT, "none"], selector
 
 
 def layout_code(layout):
@@ -89,22 +113,18 @@ def expect_good_lift(page):
         expect(orb).to_have_class(re.compile(r"\bwhite\b"))
 
 
-def test_overlay_opens_without_clicks_and_shows_votes_on_transparent_background(competition):
+def test_overlay_opens_without_clicks_and_shows_votes_on_transparent_background(competition, judged_overlay):
     """The overlay URL opens the display directly (no landing or role-select),
     on a transparent page without gear, session name, panel or "Waiting…";
     a vote shows lights and verdict as on the hall display. The URL keeps the
     overlay parameters, so OBS reloads the overlay itself."""
-    competition.join_all_judges()
-    overlay, dialogs = open_overlay(competition)
+    overlay, dialogs, _ = judged_overlay
 
-    for color, image in backgrounds(overlay):
-        assert color == TRANSPARENT
-        assert image == "none"
-    expect(overlay.get_by_test_id("display-settings-gear")).to_be_hidden()
-    expect(overlay.get_by_test_id("display-tag")).to_be_hidden()
-    expect(overlay.locator(".display-settings-panel")).to_be_hidden()
-    expect(overlay.locator(".display-status")).to_be_hidden()
-    expect(overlay.locator(".role-wrap")).to_be_hidden()
+    expect_transparent(overlay)
+    for hidden in ("display-settings-gear", "display-tag"):
+        expect(overlay.get_by_test_id(hidden)).to_be_hidden()
+    for hidden in (".display-settings-panel", ".display-status", ".role-wrap"):
+        expect(overlay.locator(hidden)).to_be_hidden()
     expect(overlay.get_by_role("button", name="Create New Session")).to_be_hidden()
     assert "overlay=1" in overlay.url and competition.session_code in overlay.url
 
@@ -132,12 +152,11 @@ def test_overlay_shows_dot_only_while_disconnected_and_misses_no_result(competit
     expect_good_lift(overlay)
 
 
-def test_overlay_reload_rejoins_and_restores_the_result(competition):
+def test_overlay_reload_rejoins_and_restores_the_result(competition, judged_overlay):
     """OBS reloads the browser source: the overlay comes back on the same URL,
     transparent, without the "Connecting…" screen or the landing screen, and
     shows the current result again."""
-    competition.join_all_judges()
-    overlay, dialogs = open_overlay(competition)
+    overlay, dialogs, _ = judged_overlay
     competition.vote_all_white()
     expect_good_lift(overlay)
 
@@ -148,17 +167,15 @@ def test_overlay_reload_rejoins_and_restores_the_result(competition):
     expect(overlay.get_by_test_id("landing-screen")).to_have_count(0)
     expect_good_lift(overlay)
     assert overlay.url == url
-    for color, image in backgrounds(overlay):
-        assert color == TRANSPARENT and image == "none"
+    expect_transparent(overlay)
     assert dialogs == []
 
 
-def test_overlay_session_end_shows_notice_without_alert(competition):
+def test_overlay_session_end_shows_notice_without_alert(competition, judged_overlay):
     """The head judge ends the session: the overlay shows "Session ended"
     instead of an alert (which would block OBS) and stays transparent. A
     reload then shows "Session not found"."""
-    head, _, _ = competition.join_all_judges()
-    overlay, dialogs = open_overlay(competition)
+    overlay, dialogs, (head, _, _) = judged_overlay
     competition.vote_all_white()
     expect_good_lift(overlay)
 
@@ -212,17 +229,14 @@ def test_overlay_edits_its_own_layout_on_a_checkerboard(competition):
     overlay.keyboard.press("s")
     overlay.get_by_test_id("display-layout-edit").click()
     expect(overlay.get_by_test_id("layout-toolbar")).to_be_visible()
-    assert "conic-gradient" in backgrounds(overlay)[2][1]
-
+    assert "conic-gradient" in computed(overlay, ".display-full", "backgroundImage")[0]
     # The sample lifter corner (no VPortal) is faded, panel included.
-    assert overlay.evaluate(
-        "getComputedStyle(document.querySelector('.vportal-corner-left')).backgroundColor"
-    ) == "rgba(0, 0, 0, 0.21)"
+    assert computed(overlay, ".vportal-corner-left", "backgroundColor") == ["rgba(0, 0, 0, 0.21)"]
 
     overlay.get_by_test_id("layout-hide-timer").click()
     overlay.get_by_test_id("layout-save").click()
     expect(overlay.get_by_test_id("layout-toolbar")).to_be_hidden()
-    assert backgrounds(overlay)[2] == [TRANSPARENT, "none"]
+    expect_transparent(overlay)
     expect(overlay.locator('[data-layout-block="timer"]')).to_be_hidden()
 
     stored = json.loads(overlay.evaluate(f"localStorage.getItem('{OVERLAY_LAYOUT_KEY}')"))
@@ -246,6 +260,7 @@ def _open_role_select(competition, insecure=False):
     page.get_by_test_id("join-code-input").fill(competition.session_code)
     page.get_by_role("button", name="Join Session").click()
     page.locator(".role-wrap").wait_for(state="visible")
+    page.get_by_test_id("overlay-link-toggle").click()
     return page
 
 
@@ -254,23 +269,21 @@ def test_role_select_offers_the_overlay_url_to_copy(competition):
     browser source — exactly the URL that opens the overlay — and copies it.
     Without the clipboard API (plain http) the URL is selected for Ctrl+C."""
     competition.create_session_and_join_head()
+    url = overlay_url(competition)
 
     page = _open_role_select(competition)
-    expect(page.get_by_test_id("overlay-link-url")).to_be_hidden()
-    page.get_by_test_id("overlay-link-toggle").click()
-    expect(page.get_by_test_id("overlay-link-url")).to_have_value(overlay_url(competition))
+    expect(page.get_by_test_id("overlay-link-url")).to_have_value(url)
     page.get_by_test_id("overlay-link-copy").click()
     expect(page.get_by_test_id("overlay-link-copy")).to_have_text("Copied")
-    assert page.evaluate("navigator.clipboard.readText()") == overlay_url(competition)
+    assert page.evaluate("navigator.clipboard.readText()") == url
 
     insecure = _open_role_select(competition, insecure=True)
-    insecure.get_by_test_id("overlay-link-toggle").click()
     insecure.get_by_test_id("overlay-link-copy").click()
     expect(insecure.get_by_test_id("overlay-link-copy")).to_have_text("Copy")
-    assert insecure.evaluate("document.activeElement.dataset.testid") == "overlay-link-url"
-    assert insecure.evaluate("window.getSelection().toString() || document.activeElement.value.substring("
-                             "document.activeElement.selectionStart, document.activeElement.selectionEnd)") \
-        == overlay_url(competition)
+    assert insecure.evaluate(
+        "(() => { const el = document.activeElement;"
+        " return [el.dataset.testid, el.value.substring(el.selectionStart, el.selectionEnd)]; })()"
+    ) == ["overlay-link-url", url]
 
 
 def test_overlay_connects_vportal_from_the_panel_and_keeps_it_after_reload(
@@ -282,14 +295,9 @@ def test_overlay_connects_vportal_from_the_panel_and_keeps_it_after_reload(
     back from the stored login and the panel shows it as connected."""
     httpx.post(f"http://{fake_vportal_url}/_control/reset")
     httpx.post(f"http://{fake_vportal_url}/_control/restore_attempt")
-    page.goto(server_url + "/vportal")
-    page.get_by_test_id("session-name-input").fill("VP Overlay")
-    page.get_by_role("button", name="Create New Session").click()
-    page.locator(".role-wrap").wait_for(state="visible")
-    code = page.locator(".session-tag .code").text_content()
-    competition.session_code = code
+    create_vportal_session(page, competition, server_url, "VP Overlay")
 
-    overlay, _ = open_overlay(competition, code=code, name="VP Overlay")
+    overlay, _ = open_overlay(competition, name="VP Overlay")
     expect(overlay.locator(".vportal-corner-left")).to_be_hidden()
 
     overlay.keyboard.press("s")
@@ -314,8 +322,8 @@ def test_overlay_connects_vportal_from_the_panel_and_keeps_it_after_reload(
     wait_joined(overlay, "VP Overlay")
     expect(overlay.locator(".vportal-corner-left")).to_be_visible(timeout=10000)
     overlay.keyboard.press("s")
-    expect(overlay.get_by_test_id("overlay-vportal-connect")).to_be_visible()
-    expect(overlay.get_by_test_id("overlay-vportal-connect")).to_have_text(re.compile(r"^Connected to BVDK"))
+    expect(connect).to_be_visible()
+    expect(connect).to_have_text(re.compile(r"^Connected to BVDK"))
     httpx.post(f"http://{fake_vportal_url}/_control/reset")
 
 
@@ -324,74 +332,62 @@ def test_overlay_offers_vportal_connect_after_a_failed_first_session_check(page,
     the overlay has no VPortal login yet, so a hall display would not retry.
     The overlay retries, so "Connect to comp software" appears in its panel
     without a reload, and no "VPortal disconnected" banner shows meanwhile."""
-    page.goto(server_url + "/vportal")
-    page.get_by_test_id("session-name-input").fill("VP Retry")
-    page.get_by_role("button", name="Create New Session").click()
-    page.locator(".role-wrap").wait_for(state="visible")
-    code = page.locator(".session-tag .code").text_content()
-    competition.session_code = code
-
-    ctx = competition.new_context(viewport=VIEWPORT)
-    overlay = ctx.new_page()
+    create_vportal_session(page, competition, server_url, "VP Retry")
     failed = []
 
     def fail_first_lookup(route):
-        if not failed:
+        if failed:
+            route.continue_()
+        else:
             failed.append(route.request.url)
             route.abort()
-        else:
-            route.continue_()
 
-    overlay.route(f"**/api/sessions/{code}", fail_first_lookup)
-    overlay.goto(overlay_url(competition, code=code))
-    wait_joined(overlay, "VP Retry")
-    expect(overlay.locator(".vportal-disconnected-banner")).to_be_hidden()
+    overlay, _ = open_overlay(
+        competition, name="VP Retry",
+        before_goto=lambda p: p.route(f"**/api/sessions/{competition.session_code}", fail_first_lookup),
+    )
+    banner = overlay.locator(".vportal-disconnected-banner")
+    expect(banner).to_be_hidden()
 
     overlay.keyboard.press("s")
     connect = overlay.get_by_test_id("overlay-vportal-connect")
     expect(connect).to_be_visible(timeout=10000)
     expect(connect).to_have_text("Connect to comp software")
     assert len(failed) == 1
-    expect(overlay.locator(".vportal-disconnected-banner")).to_be_hidden()
+    expect(banner).to_be_hidden()
 
 
-def test_overlay_texts_sit_on_a_dark_panel_and_lights_do_not_move(competition):
+def test_overlay_texts_sit_on_a_dark_panel_and_lights_do_not_move(competition, judged_overlay):
     """Over a camera picture white text alone is unreadable: in the overlay the
     timer, the reasons, the verdict and the VPortal corners sit on a
     translucent dark panel with white text. The panel must not change any
     size: the lights stay where they were before the reasons appeared. The
     hall display keeps its look (no panel)."""
-    head, left, right = competition.join_all_judges()
-    overlay, _ = open_overlay(competition)
+    overlay, _, (head, left, right) = judged_overlay
     hall = competition.join_as("display")
     hall.set_viewport_size(VIEWPORT)
+    middle_orb = overlay.locator(".display-lights .display-orb").nth(1)
 
-    def orb_box(page):
-        return page.locator(".display-lights .display-orb").nth(1).bounding_box()
-
-    before = orb_box(overlay)
+    before = middle_orb.bounding_box()
     competition.vote_and_lock(head, "red", reason="Depth")
     competition.vote_and_lock(left, "white")
     competition.vote_and_lock(right, "white")
     expect(overlay.locator(".verdict-stamp")).to_have_text("Good Lift")
-    assert orb_box(overlay) == before
+    assert middle_orb.bounding_box() == before
 
-    panel = "rgba(0, 0, 0, 0.7)"
-    styles = """(sel) => { const s = getComputedStyle(document.querySelector(sel));
-                          return [s.backgroundColor, s.color]; }"""
+    panel, white = "rgba(0, 0, 0, 0.7)", "rgb(255, 255, 255)"
     reason = ".display-lights .display-orb-wrap:nth-child(2) .display-orb-reason"
     expect(overlay.locator(reason)).to_be_visible()
-    assert overlay.evaluate(styles, reason) == [panel, "rgb(255, 255, 255)"]
+    expect(hall.locator(reason)).to_be_visible()
+    assert computed(overlay, reason, "backgroundColor", "color") == [panel, white]
+    assert computed(overlay, ".display-timer-big", "backgroundColor", "color") == [panel, white]
+    assert computed(overlay, ".verdict-stamp", "backgroundColor") == [panel]
+    assert computed(overlay, ".vportal-corner-left", "backgroundColor") == [panel]
     # The panel adds no padding: the reason is exactly as high as on the hall
     # display (the lights' column reserves two lines, so the orb box alone
     # would not notice a padding).
-    height = "(sel) => document.querySelector(sel).getBoundingClientRect().height"
-    expect(hall.locator(reason)).to_be_visible()
-    assert abs(overlay.evaluate(height, reason) - hall.evaluate(height, reason)) < 0.5
-    assert overlay.evaluate(styles, ".display-timer-big") == [panel, "rgb(255, 255, 255)"]
-    assert overlay.evaluate(styles, ".verdict-stamp")[0] == panel
-    assert overlay.evaluate(styles, ".vportal-corner-left")[0] == panel
+    assert abs(overlay.locator(reason).bounding_box()["height"]
+               - hall.locator(reason).bounding_box()["height"]) < 0.5
 
-    expect(hall.locator(reason)).to_be_visible()
-    assert hall.evaluate(styles, reason)[0] == TRANSPARENT
-    assert hall.evaluate(styles, ".display-timer-big")[0] == TRANSPARENT
+    assert computed(hall, reason, "backgroundColor") == [TRANSPARENT]
+    assert computed(hall, ".display-timer-big", "backgroundColor") == [TRANSPARENT]
