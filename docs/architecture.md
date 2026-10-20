@@ -59,6 +59,8 @@ Head-judge-only messages (`timer_start`, `timer_reset`, `next_lift`, `end_sessio
 
 Per-connection rate limit: 20 messages/second via a sliding window. Exceeding it closes the connection with code 1008. Per-IP concurrent-connection cap is delegated to the edge (Cloudflare).
 
+Global connection cap `MAX_WEBSOCKETS` (default 2000): a `join` while `ConnectionManager.count_connections()` (joined sockets across all sessions) is at the cap gets `join_error` "Server at capacity", is logged as `websocket_cap_reached` and closed with code 1013 (try again later); the client shows "Failed to join session" and does not retry. Checked **before** `join_session`, so a rejected judge is never marked connected. A judge presenting its valid reconnect token is exempt — it only replaces its own connection, which may still be counted (half-open, or not yet released). Sockets that never sent `join` are not counted. The check is not atomic with the registration: concurrent joins can pass it together and exceed the cap by a few. *Why:* backstop if the edge misses a flood or a deployment runs without Cloudflare (local Wi-Fi); costs nothing below the cap ([#61](https://github.com/abti247/iron_verdict/issues/61)).
+
 *Why split the limits this way:* per-connection caps are cheap and local — they protect the message-handling path from a single buggy or malicious client. Per-IP concurrency caps need cross-connection awareness that the edge already has, plus Cloudflare can tie them to broader signals (bot scoring, ASN reputation) that the app process cannot.
 
 ## State management
@@ -80,6 +82,7 @@ Two in-process managers, each guarded by its own `asyncio.Lock`. The two locks a
 - Holds `self.active_connections: dict[session_code, dict[role, WebSocket]]` — transport registry only.
 - Tracks `_last_pong: dict[WebSocket, float]` for the heartbeat task.
 - `remove_connection_if_current(code, role, ws)` removes a role only while `ws` still holds it — the identity guard (see [Reconnection model](#reconnection-model)).
+- `count_connections()` counts all registered sockets for the global `MAX_WEBSOCKETS` cap (see [WebSocket surface](#websocket-surface)); `count_displays(code)` serves `DISPLAY_CAP`.
 - Provides `broadcast_to_session`, `broadcast_to_others`, `send_to_role`, `send_to_displays`. Per-socket errors are swallowed and emit warning logs by name.
 
 *Why swallow per-socket errors:* one dead or slow client must not abort the broadcast to the others. The alternative — propagating the first send failure — would let a single misbehaving client (or a TCP RST on one judge's connection) stall state propagation to the remaining judges and the display.

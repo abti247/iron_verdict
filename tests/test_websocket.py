@@ -243,6 +243,80 @@ async def test_display_cap_rejects_when_full(monkeypatch):
         session_manager.delete_session(code)
 
 
+async def _join(ws, code, role, token=None):
+    msg = {"type": "join", "session_code": code, "role": role}
+    if token:
+        msg["reconnect_token"] = token
+    await ws.send_json(msg)
+    return await asyncio.wait_for(ws.receive_json(), timeout=1.0)
+
+
+async def test_websocket_cap_rejects_join_with_1013_and_logs(monkeypatch, session_code, caplog):
+    monkeypatch.setattr(settings, "MAX_WEBSOCKETS", 2)
+    caplog.set_level(logging.WARNING, logger="iron_verdict")
+    async with httpx.AsyncClient(transport=ASGIWebSocketTransport(app=app), base_url="http://test") as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as left_ws, \
+                   httpx_ws.aconnect_ws("ws://test/ws", ac) as center_ws:
+            assert (await _join(left_ws, session_code, "left_judge"))["type"] == "join_success"
+            assert (await _join(center_ws, session_code, "center_judge"))["type"] == "join_success"
+
+            for role in ("display", "right_judge"):
+                async with httpx_ws.aconnect_ws("ws://test/ws", ac) as extra_ws:
+                    response = await _join(extra_ws, session_code, role)
+                    assert response == {"type": "join_error", "message": "Server at capacity"}
+                    with pytest.raises(httpx_ws.WebSocketDisconnect) as closed:
+                        await asyncio.wait_for(extra_ws.receive_json(), timeout=1.0)
+                    assert closed.value.code == 1013
+
+    # The rejected judge must not hold its position.
+    assert session_manager.sessions[session_code]["judges"]["right"]["connected"] is False
+    cap_logs = [r for r in caplog.records if r.message == "websocket_cap_reached"]
+    assert [r.role for r in cap_logs] == ["display", "right_judge"]
+    assert all(r.limit == 2 for r in cap_logs)
+
+
+async def test_websocket_cap_admits_token_reconnect_while_old_socket_registered(monkeypatch, session_code):
+    monkeypatch.setattr(settings, "MAX_WEBSOCKETS", 2)
+    async with httpx.AsyncClient(transport=ASGIWebSocketTransport(app=app), base_url="http://test") as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as old_ws, \
+                   httpx_ws.aconnect_ws("ws://test/ws", ac) as center_ws:
+            token = (await _join(old_ws, session_code, "left_judge"))["reconnect_token"]
+            assert (await _join(center_ws, session_code, "center_judge"))["type"] == "join_success"
+
+            async with httpx_ws.aconnect_ws("ws://test/ws", ac) as new_ws:
+                response = await _join(new_ws, session_code, "left_judge", token)
+                assert response["type"] == "join_success"
+                assert session_manager.sessions[session_code]["judges"]["left"]["connected"] is True
+
+
+async def test_websocket_cap_admits_token_reconnect_after_old_socket_released(monkeypatch, session_code):
+    monkeypatch.setattr(settings, "MAX_WEBSOCKETS", 1)
+    async with httpx.AsyncClient(transport=ASGIWebSocketTransport(app=app), base_url="http://test") as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as old_ws:
+            token = (await _join(old_ws, session_code, "left_judge"))["reconnect_token"]
+        for _ in range(20):
+            if not session_manager.sessions[session_code]["judges"]["left"]["connected"]:
+                break
+            await asyncio.sleep(0.05)
+        assert session_manager.sessions[session_code]["judges"]["left"]["connected"] is False
+
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as display_ws:
+            assert (await _join(display_ws, session_code, "display"))["type"] == "join_success"
+            async with httpx_ws.aconnect_ws("ws://test/ws", ac) as new_ws:
+                response = await _join(new_ws, session_code, "left_judge", token)
+                assert response["type"] == "join_success"
+
+
+async def test_websocket_cap_rejects_judge_with_wrong_token(monkeypatch, session_code):
+    monkeypatch.setattr(settings, "MAX_WEBSOCKETS", 1)
+    async with httpx.AsyncClient(transport=ASGIWebSocketTransport(app=app), base_url="http://test") as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as display_ws:
+            assert (await _join(display_ws, session_code, "display"))["type"] == "join_success"
+            async with httpx_ws.aconnect_ws("ws://test/ws", ac) as judge_ws:
+                response = await _join(judge_ws, session_code, "left_judge", "0" * 32)
+                assert response == {"type": "join_error", "message": "Server at capacity"}
+
+
 async def test_websocket_rejects_wrong_origin(monkeypatch):
     """WS connection with wrong Origin is closed with code 1008."""
     monkeypatch.setattr(settings, "ALLOWED_ORIGIN", "https://app.example.com")

@@ -285,3 +285,16 @@ async def test_get_all_connections_returns_empty_when_none():
     manager = ConnectionManager()
     result = await manager.get_all_connections()
     assert result == []
+
+
+async def test_count_connections_counts_every_registered_role_across_sessions():
+    manager = ConnectionManager()
+    assert await manager.count_connections() == 0
+
+    await manager.add_connection("ABC123", "left_judge", AsyncMock())
+    await manager.add_connection("ABC123", "display_aa", AsyncMock())
+    await manager.add_connection("XYZ789", "center_judge", AsyncMock())
+    assert await manager.count_connections() == 3
+
+    await manager.remove_connection("ABC123", "display_aa")
+    assert await manager.count_connections() == 2

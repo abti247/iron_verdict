@@ -189,6 +189,7 @@ All settings except `ALLOWED_ORIGIN` are optional and have defaults suitable for
 | `RATE_LIMIT_SESSION_CREATE` | `10/hour` | Sessions one IP may create, e.g. `60/hour`. Invalid values refuse startup |
 | `RATE_LIMIT_SESSION_LOOKUP` | `30/minute` | Session-code lookups per IP, e.g. `120/minute`. Invalid values refuse startup |
 | `DISPLAY_CAP` | `20` | Maximum number of display connections per session |
+| `MAX_WEBSOCKETS` | `2000` | Maximum number of joined connections (judges and displays) across all sessions. Above it a new device is turned away with "Server at capacity"; a judge reconnecting to their own position is always let back in |
 | `SNAPSHOT_PATH` | `/data/sessions.json` | Path for session persistence snapshot — mount `/data` as a volume to survive restarts |
 | `LOG_LEVEL` | `INFO` | Logging verbosity (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
 | `VPORTAL_FETCH_INTERVAL_MS` | `3000` | How often the display polls VPortal for the current lifter, in milliseconds. Clamped to 2000ms minimum. Only used for sessions created via `/vportal`. |
