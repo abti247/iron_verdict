@@ -38,6 +38,8 @@ https://<your-iron-verdict-host>/?session=AB12CD34&overlay=1&layout=IV1.eyJ2Ijox
 
 The layout from the URL is then the only one: the panel ("S") shows "Layout comes from the URL" instead of the edit button. To change it, repeat B with the new code. This way the same stream layout can be reused on another PC or at the next competition. If the code in the URL is invalid, the overlay uses its saved (or default) layout and the panel says so.
 
+**Do not stack blocks.** Blocks may overlap, but their dark panels are translucent: where one block lies on another, the text underneath shows through (e.g. a long reason behind "No lift"). Leave some space around the lights for the reasons — long ones wrap to two or three lines. Check with the longest reasons of each discipline before going live.
+
 ## 4. VPortal (lifter and attempt info)
 
 In a VPortal session the overlay needs its own VPortal login, because OBS has its own browser profile. Right-click the source → **Interact** → **S** → **Connect to comp software** → federation, user, password, platform. Like the editor, the settings panel and this dialog (including the typed user name) show in the stream while they are open — connect before going live or hide the source meanwhile. If the server could not be reached when the source started, the button appears as soon as the overlay could check the session again. Lifter and attempt info appear within a few seconds. The login stays stored in the OBS profile; after a reload the panel shows "Connected to … · <platform>".
@@ -46,6 +48,6 @@ In a VPortal session the overlay needs its own VPortal login, because OBS has it
 
 - [ ] Source 1920 × 1080, above the camera
 - [ ] A test vote shows the lights and Good/No lift in the preview, and the background is transparent
-- [ ] Layout arranged (A or B), checkerboard gone (editor closed)
+- [ ] Layout arranged (A or B), no blocks on top of each other, checkerboard gone (editor closed)
 - [ ] VPortal sessions: lifter and attempt info visible
 - [ ] Right-click → *Refresh cache of current page*: the overlay comes back by itself
