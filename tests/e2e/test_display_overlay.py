@@ -193,7 +193,9 @@ def test_overlay_session_end_shows_notice_without_alert(competition, judged_over
 
 def test_overlay_layout_from_url_is_used_and_locks_the_editor(competition):
     """A layout code in the URL places the blocks (here: timer hidden) and is
-    the only source: the panel ("S") says so instead of offering the editor."""
+    the only source: the panel ("S") says so instead of offering the editor.
+    The session was created on "/", not "/vportal", so the panel offers no
+    VPortal connection either (VPortal stays limited to "/vportal" sessions)."""
     competition.create_session_and_join_head()
     overlay, _ = open_overlay(competition, layout_code=layout_code(layout_with_timer_hidden()))
 
@@ -204,6 +206,7 @@ def test_overlay_layout_from_url_is_used_and_locks_the_editor(competition):
     expect(overlay.locator(".display-settings-panel")).to_be_visible()
     expect(overlay.get_by_test_id("overlay-layout-from-url")).to_be_visible()
     expect(overlay.get_by_test_id("display-layout-edit")).to_be_hidden()
+    expect(overlay.get_by_test_id("overlay-vportal-connect")).to_be_hidden()
 
 
 def test_overlay_invalid_layout_code_falls_back_with_a_hint(competition):
