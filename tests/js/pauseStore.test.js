@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createPauseStore, formatPauseRemaining, PAUSE_TICK_MS } from '../../src/iron_verdict/static/js/pauseStore.js';
-import { handlePauseUpdate, handlePauseRejected, handleJoinSuccess } from '../../src/iron_verdict/static/js/handlers.js';
+import { handlePauseUpdate, handleJoinSuccess } from '../../src/iron_verdict/static/js/handlers.js';
 
 const MIN = 60_000;
 
