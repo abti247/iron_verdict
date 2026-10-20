@@ -133,7 +133,7 @@ async def end_pause_when_due(session_code: str, pause_id: str, end_at: float, sl
     """
     await sleep(max(0.0, end_at - time.time()))
     if session_manager.end_pause(session_code, pause_id=pause_id):
-        logger.info("pause_ended", extra={"session_code": session_code, "by": "time"})
+        logger.info("pause_ended", extra={"session_code": session_code, "ended_by": "time"})
         await connection_manager.broadcast_to_session(session_code, pause_update_message(None))
 
 
@@ -723,7 +723,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 # Starting the timer ends a pause (#163), on every display before the timer shows.
                 if session_manager.end_pause(session_code):
                     schedule_pause_end(session_code)
-                    logger.info("pause_ended", extra={"conn_id": conn_id, "session_code": session_code, "by": "timer_start"})
+                    logger.info("pause_ended", extra={"conn_id": conn_id, "session_code": session_code, "ended_by": "timer_start"})
                     await connection_manager.broadcast_to_session(session_code, pause_update_message(None))
                 session_manager.sessions[session_code]["timer_started_at"] = time.time()
                 await connection_manager.broadcast_to_session(
@@ -868,12 +868,12 @@ async def websocket_endpoint(websocket: WebSocket):
                     logger.info("pause_started", extra={
                         "conn_id": conn_id,
                         "session_code": session_code,
-                        "mode": result["pause"]["mode"],
-                        "seconds": round(result["pause"]["end_at"] - time.time()),
+                        "pause_mode": result["pause"]["mode"],
+                        "pause_seconds": round(result["pause"]["end_at"] - time.time()),
                     })
                 else:
                     if session_manager.end_pause(session_code):
-                        logger.info("pause_ended", extra={"conn_id": conn_id, "session_code": session_code, "by": "display"})
+                        logger.info("pause_ended", extra={"conn_id": conn_id, "session_code": session_code, "ended_by": "display"})
                 schedule_pause_end(session_code)
                 # Also sent when no pause ran, so the sender's display shows the real state.
                 await connection_manager.broadcast_to_session(

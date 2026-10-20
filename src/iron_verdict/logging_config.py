@@ -17,6 +17,8 @@ _EXTRA_FIELDS = (
     "allowed_origin",
     # Global WebSocket cap (#61)
     "limit",
+    # Display pause (#163)
+    "pause_mode", "pause_seconds", "ended_by",
 )
 
 class JsonFormatter(logging.Formatter):

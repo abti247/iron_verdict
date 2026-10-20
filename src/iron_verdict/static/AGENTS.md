@@ -26,6 +26,7 @@ src/iron_verdict/static/
 │   ├── judgeStore.js   # Alpine.store('judge') — vote and result of the judge screen
 │   ├── displayStore.js # Alpine.store('display') — lights, reasons, verdict of the display
 │   ├── settingsStore.js# Alpine.store('settings') — lift type, show/require reasons
+│   ├── pauseStore.js   # Alpine.store('pause') — the session's pause on the display
 │   ├── timer.js        # Countdown interval and Alpine.store('timer')
 │   ├── vportalStore.js # Alpine.store('vportal') — connect dialog and display overlay
 │   ├── displayLayout.js# Display layout model (pure: validate, store, snap, export code)
@@ -34,7 +35,7 @@ src/iron_verdict/static/
 │   ├── …               # Helpers: voteDelivery, reloadRecovery, roleTakeover, i18n, vportal*
 │   └── screens/        # One Alpine component per screen (landing, contact, demoIntro,
 │                       # reconnecting, roleSelect, judge, display; displayLayoutEditor
-│                       # is mixed into the display component)
+│                       # and displayPause are mixed into the display component)
 ```
 
 ## Rules
@@ -53,7 +54,7 @@ src/iron_verdict/static/
 ### JavaScript
 - Use ES modules (`export`/`import`) for all JS files. The entry point (`init.js`) is loaded with `<script type="module">`.
 - One Alpine component per screen in `js/screens/`, registered in `app.js` and placed on the screen's root element in `index.html`. A component holds only UI state of its screen (zoom, open panel, scroll hint, a form shown only there).
-- State the server drives or several screens read lives in a store (`session`, `nav`, `judge`, `display`, `timer`, `settings`, `vportal`) — never in a screen component. Incoming messages reach it through `handlers.js`, never through browser events: a screen that is not in the DOM (`x-if`) would miss them.
+- State the server drives or several screens read lives in a store (`session`, `nav`, `judge`, `display`, `timer`, `settings`, `vportal`, `pause`) — never in a screen component. Incoming messages reach it through `handlers.js`, never through browser events: a screen that is not in the DOM (`x-if`) would miss them.
 - The WebSocket and the join/leave flows belong to `connection.js` only. Screens call its functions; they never open a socket or start/stop the VPortal overlay themselves.
 - `<template x-if>` for screens without state that must survive (landing, contact, privacy, demo intro, reconnecting); `x-show` for role-select, judge and display. `data-testid` goes on the element inside the template.
 - WebSocket message handling (`handleMessage`) should dispatch to named handler functions, not be a single long if/else chain.

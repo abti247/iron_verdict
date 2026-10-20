@@ -26,7 +26,7 @@ When the session ends the overlay shows "Session ended". With a wrong or old cod
 
 ## 3. Arrange the overlay
 
-The overlay has its own layout, separate from the hall display. Without one it uses the default arrangement of the display. There are two ways to set it up:
+The overlay has its own layout, separate from the hall display. Without one it uses the default arrangement of the display. A break started on a hall display hides lights, timer and lifter in the overlay too, but the overlay does not show the break itself unless you switch the editor to "View: break" and show that block. There are two ways to set it up:
 
 **A — directly in OBS.** Right-click the source → **Interact**. In that window press **S** → **Edit layout**. Drag blocks with the mouse, resize them at the corner handle, bring the lights closer together or further apart at the handle beside them, hide blocks you do not need (e.g. the timer), then **Save**. The layout is stored in OBS's browser profile and survives restarts. While editing, the overlay shows a dark checkerboard and the frames — **in the stream as well**, so edit before going live or hide the source meanwhile.
 

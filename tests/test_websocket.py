@@ -1374,7 +1374,7 @@ async def test_display_pause_start_broadcasts_pause_update(session_code):
                    httpx_ws.aconnect_ws("ws://test/ws", ac) as judge:
             await _join(judge, session_code, "center_judge")
             await _join(display, session_code, "display")
-            before_ms = time.time() * 1000
+            before_ms = int(time.time() * 1000)
             await display.send_json({"type": "pause_start", "minutes": 10, "next_lift": "bench"})
             for ws in (display, judge):
                 msg = await _recv(ws)
