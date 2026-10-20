@@ -18,7 +18,7 @@ import { judgeScreen } from './screens/judgeScreen.js';
 import { displayScreen } from './screens/displayScreen.js';
 
 // Called on alpine:init, before Alpine renders anything. Returns the connection.
-export function registerApp(Alpine, { lang = 'en', demoParams = null } = {}) {
+export function registerApp(Alpine, { lang = 'en', demoParams = null, overlayParams = null } = {}) {
     Alpine.store('i18n', { lang, _v: 0 });  // t() reads it, setLanguage() writes it
     Alpine.store('session', createSessionStore());
     Alpine.store('nav', createNavStore());
@@ -56,9 +56,15 @@ export function registerApp(Alpine, { lang = 'en', demoParams = null } = {}) {
     Alpine.data('displayScreen', () => displayScreen(conn));
 
     // Capture URL params and pathname before scrubbing them via replaceState.
+    // The stream overlay keeps its URL: OBS reloads the current URL, which must
+    // still name the session and the overlay.
     const urlSession = new URLSearchParams(window.location.search).get('session');
     Alpine.store('nav').entryPath = window.location.pathname;
-    history.replaceState({ screen: 'landing' }, '', '/');
-    conn.start({ urlSession, demoParams });
+    if (overlayParams) {
+        history.replaceState({ screen: 'display' }, '');
+    } else {
+        history.replaceState({ screen: 'landing' }, '', '/');
+    }
+    conn.start({ urlSession, overlayParams, demoParams });
     return conn;
 }

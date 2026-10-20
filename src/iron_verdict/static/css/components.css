@@ -669,6 +669,26 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .vportal-connect-btn:hover { background: #1a1a1f; }
 .vportal-connect-btn.connected { border-left-color: #22c55e; }
 
+/* Role-select: the stream-overlay URL for OBS (#107), to open and copy. */
+.overlay-link-wrap { margin-top: 14px; }
+.overlay-link-btn {
+    width: 100%;
+    background: transparent;
+    color: var(--panel-text);
+    border: 1px dashed var(--panel-border);
+    padding: 8px 14px;
+    font-family: 'Rajdhani', sans-serif;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+.overlay-link-btn:hover { border-color: var(--panel-border-hover); color: var(--panel-text-bright); }
+.overlay-link-box { margin-top: 10px; text-align: left; }
+.overlay-link-hint { font-size: 13px; color: var(--panel-text); margin-bottom: 8px; }
+.overlay-link-row { display: flex; gap: 8px; }
+.overlay-link-input { flex: 1; min-width: 0; padding: 10px 12px; font-size: 13px; }
+.overlay-link-copy { flex-shrink: 0; width: auto; padding: 10px 16px; font-size: 16px; letter-spacing: 2px; }
+
 .vportal-modal-backdrop {
     position: fixed; inset: 0;
     background: rgba(0,0,0,0.7);

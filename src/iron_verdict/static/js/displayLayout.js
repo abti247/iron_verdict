@@ -1,5 +1,5 @@
 // Display layout: where each block of the display screen sits and how large it
-// is, stored per device (localStorage). Pure functions only; the editor in
+// is, stored per device (localStorage; the stream overlay under its own key). Pure functions only; the editor in
 // screens/displayLayoutEditor.js drives them. No layout (null) means the
 // default flow layout of layout.css, so a display that never edits looks as
 // before.
@@ -13,6 +13,9 @@
 // multiples of the light size. Every block can be hidden.
 
 export const LAYOUT_STORAGE_KEY = 'iron-verdict:display-layout';
+// The stream overlay (OBS browser source) keeps its own layout, so opening the
+// overlay in a browser that is also a hall display changes neither layout.
+export const OVERLAY_LAYOUT_STORAGE_KEY = 'iron-verdict:display-layout:overlay';
 export const FREE_BLOCKS = ['timer', 'lights', 'verdict', 'lifter', 'attempt'];
 export const LAYOUT_BLOCKS = [...FREE_BLOCKS, 'cards'];
 export const BLOCK_ANCHORS = {
@@ -72,27 +75,27 @@ export function sanitizeLayout(raw) {
 
 // storage may be null (localStorage blocked); loading then finds nothing and
 // saving reports false, so the editor can say so.
-export function loadLayout(storage) {
+export function loadLayout(storage, key = LAYOUT_STORAGE_KEY) {
     try {
-        const raw = storage.getItem(LAYOUT_STORAGE_KEY);
+        const raw = storage.getItem(key);
         return raw == null ? null : sanitizeLayout(JSON.parse(raw));
     } catch (_) {
         return null;
     }
 }
 
-export function saveLayout(storage, layout) {
+export function saveLayout(storage, layout, key = LAYOUT_STORAGE_KEY) {
     try {
-        storage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(layout));
+        storage.setItem(key, JSON.stringify(layout));
         return true;
     } catch (_) {
         return false;
     }
 }
 
-export function clearLayout(storage) {
+export function clearLayout(storage, key = LAYOUT_STORAGE_KEY) {
     try {
-        storage.removeItem(LAYOUT_STORAGE_KEY);
+        storage.removeItem(key);
         return true;
     } catch (_) {
         return false;

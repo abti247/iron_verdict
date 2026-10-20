@@ -29,6 +29,9 @@ export function createVportalStore({
         selectedStage: '',
         displayAttempt: null,
         disconnectedReason: '',
+        // Bumped when the user connects or disconnects in the dialog; the display
+        // screen then has the connection restart the overlay (stream overlay, #107).
+        loginChanges: 0,
         _pollStop: null,
         _retryTimer: null,
         _displayRun: 0,  // bumped on every stop; a lookup from an older run must not start a poller
@@ -74,6 +77,7 @@ export function createVportalStore({
             this.stageName = stage.name;
             this.connected = true;
             this.modalOpen = false;
+            this.loginChanges += 1;
         },
 
         disconnect(sessionCode) {
@@ -81,6 +85,7 @@ export function createVportalStore({
             this.connected = false;
             this.stageName = '';
             this.modalOpen = false;
+            this.loginChanges += 1;
         },
 
         _hostForFederation(fed) {
@@ -90,6 +95,12 @@ export function createVportalStore({
             if (fed === 'OEVK') return 'oevk.vportal-online.de';
             if (fed === 'BVDK_STAGING') return 'staging-bvdk.vportal-online.de';
             return 'bvdk.vportal-online.de';
+        },
+
+        _federationForHost(host) {
+            if (host === 'oevk.vportal-online.de') return 'OEVK';
+            if (host === 'staging-bvdk.vportal-online.de') return 'BVDK_STAGING';
+            return 'BVDK';
         },
 
         // Session lookup result (`GET /api/sessions/{code}`), or null if it could not be read.
@@ -112,7 +123,11 @@ export function createVportalStore({
         // from the server, or null if the lookup failed and is not retried (the
         // caller keeps its own kind then). If the display is left meanwhile it
         // resolves with null or, during a retry wait, never settles.
-        async startDisplayOverlay(sessionCode) {
+        // streamOverlay (OBS browser source, #107): its panel offers the connect
+        // dialog only once the kind is known, so a failed lookup is retried even
+        // without a login (no banner then: nothing is missing yet), and a login
+        // stored before a reload shows as connected.
+        async startDisplayOverlay(sessionCode, { streamOverlay = false } = {}) {
             // Never two pollers: a restart replaces whatever the last start left running.
             this.stopDisplayOverlay();
             const run = this._displayRun;
@@ -124,21 +139,28 @@ export function createVportalStore({
                 if (data) {
                     const kind = data.kind || 'generic';
                     this.stagingAvailable = !!data.staging_available;
-                    if (kind === 'vportal') this._startPolling(sessionCode);
-                    else this.disconnectedReason = '';
+                    if (kind === 'vportal') {
+                        if (streamOverlay) this._showStoredLogin(sessionCode);
+                        this._startPolling(sessionCode);
+                    } else this.disconnectedReason = '';
                     return kind;
                 }
-                // Without its own VPortal login this device never polls, so there is nothing to retry for.
+                // Without its own VPortal login a hall display never polls, so there is
+                // nothing to retry for; the stream overlay still needs the kind (see above).
                 const stored = this._pollableStored(sessionCode);
-                if (!stored) return null;
-                // Show the real state: the lifter data is missing until the lookup succeeds.
-                this.displayAttempt = null;
-                this.disconnectedReason = 'session-lookup-failed';
+                if (!stored && !streamOverlay) return null;
+                if (stored) {
+                    // Show the real state: the lifter data is missing until the lookup succeeds.
+                    this.displayAttempt = null;
+                    this.disconnectedReason = 'session-lookup-failed';
+                }
                 // Retry interval, not an artificial delay: the same pace as the VPortal
-                // polling this lookup unlocks, so a reloaded display on a flaky network
-                // recovers without a second reload and without hammering our server.
+                // polling this lookup unlocks (the stream overlay without a login: the
+                // default polling interval until its connect button can show), so a
+                // reloaded display on a flaky network recovers without a second reload
+                // and without hammering our server.
                 await new Promise((resolve) => {
-                    this._retryTimer = setTimeout(resolve, stored.fetch_interval_ms || 3000);
+                    this._retryTimer = setTimeout(resolve, stored?.fetch_interval_ms || 3000);
                 });
                 if (run !== this._displayRun) return null;
             }
@@ -171,6 +193,18 @@ export function createVportalStore({
             if (!client.isConnected(sessionCode)) return null;
             const stored = client.getStored(sessionCode);
             return stored?.stage_id ? stored : null;
+        },
+
+        // A login stored before a reload shows as connected, so the dialog opened
+        // from the stream overlay's panel does not ask for it again. Only for the
+        // overlay: its URL never changes session, so this cannot go stale; the
+        // hall display keeps the state of its own connect dialog.
+        _showStoredLogin(sessionCode) {
+            const stored = this._pollableStored(sessionCode);
+            if (!stored) return;
+            this.connected = true;
+            this.stageName = stored.stage_name || '';
+            this.federationLabel = this._federationForHost(stored.host);
         },
 
         _startPolling(sessionCode) {

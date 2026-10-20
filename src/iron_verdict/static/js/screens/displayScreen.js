@@ -4,6 +4,11 @@
 // vportal stores; this component only holds the contrast mode, the layout
 // (displayLayoutEditor.js) and whether the settings panel is open. Both
 // settings are per device (localStorage).
+//
+// As stream overlay (session.overlay, OBS browser source) the same screen runs
+// on a transparent page without gear or session name (display-overlay.css);
+// "S" still opens the panel, which then also offers the VPortal connect dialog,
+// because the overlay never passes role-select.
 
 import { displayLayoutEditor } from './displayLayoutEditor.js';
 
@@ -22,6 +27,13 @@ export function displayScreen(conn) {
             this._installDisplayKeyHandler();
             // Any screen change closes the panel.
             this.$watch('$store.nav.screen', () => { this.displaySettingsOpen = false; });
+            // Connected or disconnected in the dialog while on the display: poll with the new login.
+            this.$watch('$store.vportal.loginChanges', () => conn.restartDisplayOverlay());
+        },
+
+        openVportalDialog() {
+            this.displaySettingsOpen = false;
+            this.$store.vportal.openModal();
         },
 
         returnToRoleSelection() {

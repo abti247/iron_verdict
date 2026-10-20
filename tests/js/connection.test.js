@@ -94,7 +94,7 @@ describe('joining a role', () => {
 
         env.conn.returnToRoleSelection();
         joined(env, 'display');
-        expect(env.stores.vportal.startDisplayOverlay).toHaveBeenCalledWith(CODE);
+        expect(env.stores.vportal.startDisplayOverlay).toHaveBeenCalledWith(CODE, { streamOverlay: false });
     });
 
     it('join_success shows the screen of the role and applies the server settings', () => {
@@ -255,5 +255,107 @@ describe('session lookup and reload recovery', () => {
         expect(env.stores.nav.screen).toBe('judge');
         // The reload keeps the back-stack depth: the screen change replaces the entry.
         expect(env.history.replaceState).toHaveBeenCalledWith({ screen: 'judge' }, '', '/');
+    });
+});
+
+describe('stream overlay (OBS browser source)', () => {
+    const overlayParams = { code: CODE, layoutCode: '' };
+
+    it('joins as display right away, without the reconnecting screen or a history entry', () => {
+        const env = setup();
+        env.conn.start({ overlayParams });
+        expect(env.stores.session.overlay).toBe(true);
+        expect(env.stores.session.code).toBe(CODE);
+        expect(env.stores.session.role).toBe('display');
+        expect(env.stores.nav.screen).toBe('display');
+        expect(env.openSocket).toHaveBeenCalledTimes(1);
+        expect(env.stores.vportal.startDisplayOverlay).toHaveBeenCalledWith(CODE, { streamOverlay: true });
+        env.sockets[0].onReopen();
+        expect(env.sockets[0].send).toHaveBeenCalledWith({ type: 'join', session_code: CODE, role: 'display' });
+        env.sockets[0].onMessage({ type: 'join_success', is_head: false, session_state: { name: 'Meet' } });
+        expect(env.stores.nav.screen).toBe('display');
+        expect(env.history.pushState).not.toHaveBeenCalled();
+        expect(env.history.replaceState).not.toHaveBeenCalled();
+    });
+
+    it('wins over a session stored before a reload', () => {
+        const env = setup();
+        sessionStorage.setItem('iv_session', JSON.stringify({ code: 'ZZZZ9999', role: 'left_judge' }));
+        env.conn.start({ overlayParams });
+        expect(env.stores.nav.screen).toBe('display');
+        expect(env.openSocket).toHaveBeenCalledTimes(1);
+        expect(JSON.parse(sessionStorage.getItem('iv_session'))).toEqual({ code: CODE, role: 'display' });
+    });
+
+    it('an invalid code shows a notice instead of joining', () => {
+        const env = setup();
+        env.conn.start({ overlayParams: { code: 'abc', layoutCode: '' } });
+        expect(env.openSocket).not.toHaveBeenCalled();
+        expect(env.stores.nav.screen).toBe('display');
+        expect(env.stores.session.overlayNotice).toBe('overlay.sessionNotFound');
+    });
+
+    it('session ended: stops the VPortal overlay, closes the socket and shows a notice without an alert', () => {
+        const env = setup();
+        env.conn.start({ overlayParams });
+        const socket = env.sockets[0];
+        socket.onReopen();
+        socket.onMessage({ type: 'join_success', is_head: false, session_state: {} });
+        socket.onMessage({ type: 'show_results', votes: { left: 'white', center: 'white', right: 'white' }, reasons: {} });
+        socket.onMessage({ type: 'session_ended' });
+        expect(env.alert).not.toHaveBeenCalled();
+        expect(env.stores.vportal.stopDisplayOverlay).toHaveBeenCalled();
+        expect(socket.close).toHaveBeenCalled();
+        expect(env.stores.nav.screen).toBe('display');
+        expect(env.stores.display.phase).toBe('idle');
+        expect(env.stores.session.overlayNotice).toBe('overlay.sessionEnded');
+        expect(sessionStorage.getItem('iv_session')).toBeNull();
+    });
+
+    it('a final join error: stops the VPortal overlay and shows a notice without an alert', () => {
+        const env = setup();
+        env.conn.start({ overlayParams });
+        const socket = env.sockets[0];
+        socket.onMessage({ type: 'join_error', message: 'Session not found' });
+        expect(env.alert).not.toHaveBeenCalled();
+        expect(env.stores.vportal.stopDisplayOverlay).toHaveBeenCalled();
+        expect(socket.close).toHaveBeenCalled();
+        expect(env.stores.nav.screen).toBe('display');
+        expect(env.stores.session.overlayNotice).toBe('overlay.sessionNotFound');
+    });
+
+    it('any other join error shows its message in the notice', () => {
+        const env = setup();
+        env.conn.start({ overlayParams });
+        env.sockets[0].onMessage({ type: 'join_error', message: 'Display cap reached' });
+        expect(env.alert).not.toHaveBeenCalled();
+        expect(env.stores.session.overlayNotice).toBe('alerts.joinFailed Display cap reached');
+    });
+
+    it('a VPortal login change on the display restarts the VPortal overlay', () => {
+        const env = setup();
+        env.conn.start({ overlayParams });
+        env.sockets[0].onReopen();
+        env.sockets[0].onMessage({ type: 'join_success', is_head: false, session_state: {} });
+        env.stores.vportal.startDisplayOverlay.mockClear();
+        env.conn.restartDisplayOverlay();
+        expect(env.stores.vportal.startDisplayOverlay).toHaveBeenCalledWith(CODE, { streamOverlay: true });
+    });
+
+    it('a VPortal login change after the session ended does not start the overlay', () => {
+        const env = setup();
+        env.conn.start({ overlayParams });
+        env.sockets[0].onMessage({ type: 'session_ended' });
+        env.stores.vportal.startDisplayOverlay.mockClear();
+        env.conn.restartDisplayOverlay();
+        expect(env.stores.vportal.startDisplayOverlay).not.toHaveBeenCalled();
+    });
+
+    it('a VPortal login change off the display does not start the overlay', () => {
+        const env = setup();
+        env.stores.session.code = CODE;
+        env.stores.nav.screen = 'role-select';
+        env.conn.restartDisplayOverlay();
+        expect(env.stores.vportal.startDisplayOverlay).not.toHaveBeenCalled();
     });
 });

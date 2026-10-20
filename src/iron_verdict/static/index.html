@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="/static/css/animations.css">
     <link rel="stylesheet" href="/static/css/display-contrast.css">
     <link rel="stylesheet" href="/static/css/display-layout.css">
+    <link rel="stylesheet" href="/static/css/display-overlay.css">
     <link rel="stylesheet" href="/static/css/boot.css">
     <script type="module" src="/static/js/init.js"></script>
     <script defer src="https://umami-production-ca4a.up.railway.app/script.js" data-website-id="aca70c7a-7634-4ae5-bffa-cc83d8764bd0"></script>
@@ -308,6 +309,23 @@
                                 : t('vportal.connectButton')"></button>
                 </div>
             </template>
+            <!-- Stream overlay: the URL for an OBS browser source, to copy. -->
+            <div class="overlay-link-wrap">
+                <button class="overlay-link-btn" data-testid="overlay-link-toggle"
+                        :aria-expanded="overlayLinkOpen ? 'true' : 'false'"
+                        @click="toggleOverlayLink()"
+                        x-text="t('overlay.linkButton')"></button>
+                <div class="overlay-link-box" x-show="overlayLinkOpen" x-cloak>
+                    <p class="overlay-link-hint" x-text="t('overlay.linkHint')"></p>
+                    <div class="overlay-link-row">
+                        <input class="chrome-input overlay-link-input" data-testid="overlay-link-url" type="text" readonly
+                               x-ref="overlayUrl" :value="overlayUrl()" @focus="$event.target.select()">
+                        <button class="btn-blood btn-blood-ghost overlay-link-copy" data-testid="overlay-link-copy"
+                                @click="copyOverlayUrl()"
+                                x-text="overlayLinkCopied ? t('overlay.copied') : t('overlay.copy')"></button>
+                    </div>
+                </div>
+            </div>
             <div class="btn-row">
                 <button class="btn-blood btn-blood-ghost" @click="returnToLanding()">
                     &larr; <span x-text="t('roles.backToStart')"></span>
@@ -527,11 +545,17 @@
          @pointerup="layoutPointerUp($event)"
          @pointercancel="layoutPointerUp($event)"
          @lostpointercapture="layoutPointerUp($event)">
-        <div class="display-tag">
+        <!-- In the stream overlay only a connection problem shows here (no session name). -->
+        <div class="display-tag" data-testid="display-tag"
+             x-show="!$store.session.overlay || $store.session.connectionStatus !== 'connected' || $store.session.serverRestarting">
             <span class="conn-dot" :class="$store.session.connectionStatus"></span>
             <span class="conn-label" x-show="$store.session.serverRestarting" x-text="t('connection.serverRestarting')"></span>
-            <span class="code-link" @click="returnToRoleSelection()" x-text="$store.session.isDemo ? 'DEMO' : $store.session.name"></span>
+            <span class="code-link" x-show="!$store.session.overlay" @click="returnToRoleSelection()" x-text="$store.session.isDemo ? 'DEMO' : $store.session.name"></span>
         </div>
+
+        <!-- Stream overlay without a session (ended, not found, join refused). -->
+        <div class="overlay-notice" data-testid="overlay-notice" x-show="$store.session.overlayNotice" x-cloak
+             x-text="$store.session.overlayNotice"></div>
 
         <div class="layout-block layout-block--timer" data-layout-block="timer" x-ref="layout-timer"
              :style="layoutBlockStyle('timer')"
@@ -682,7 +706,8 @@
 
         <!-- Display settings: gear + panel -->
         <button class="display-settings-gear"
-                x-show="!layoutEditing"
+                data-testid="display-settings-gear"
+                x-show="!layoutEditing && !$store.session.overlay"
                 @click.stop="openDisplaySettings()"
                 :title="t('displaySettings.openTitle')"
                 aria-label="Display settings">
@@ -700,8 +725,21 @@
             <div class="display-settings-title" x-text="t('displaySettings.title')"></div>
             <button class="display-settings-layout-btn"
                     data-testid="display-layout-edit"
+                    x-show="!layoutFromUrl"
                     @click="startLayoutEdit()"
                     x-text="t('displayLayout.editButton')"></button>
+            <div class="display-settings-note" data-testid="overlay-layout-from-url" x-show="layoutFromUrl" x-cloak
+                 x-text="t('overlay.layoutFromUrl')"></div>
+            <div class="display-settings-note display-settings-note--error" data-testid="overlay-layout-url-invalid"
+                 x-show="layoutUrlInvalid" x-cloak x-text="t('overlay.layoutUrlInvalid')"></div>
+            <!-- The stream overlay never passes role-select: connect VPortal from here. -->
+            <button class="display-settings-layout-btn"
+                    data-testid="overlay-vportal-connect"
+                    x-show="$store.session.overlay && $store.session.kind === 'vportal' && !$store.session.overlayNotice" x-cloak
+                    @click="openVportalDialog()"
+                    x-text="$store.vportal.connected
+                        ? (t('vportal.connectedTo') + ' ' + $store.vportal.federationLabel + ' · ' + ($store.vportal.stageName || ''))
+                        : t('vportal.connectButton')"></button>
             <button class="display-settings-toggle"
                     data-testid="display-contrast-toggle"
                     :class="displayContrast && 'on'"

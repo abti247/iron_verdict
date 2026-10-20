@@ -1,0 +1,102 @@
+/* ===== STREAM OVERLAY (#107) =====
+   The display as OBS browser source (?session=…&overlay=1): init.js sets
+   `display-overlay` on <html> from the URL, before Alpine starts. The page is
+   transparent (OBS lays it over the video), only the blocks of the layout
+   show; gear and session name are left out in the markup, the connection dot
+   only shows while the connection is not up.
+   Why on <html> and from init.js: the boot screen comes before Alpine, and a
+   reload in OBS must not flash a dark full screen over the stream.
+   Without the class nothing here applies, so the hall display is unchanged. */
+
+html.display-overlay,
+html.display-overlay body,
+html.display-overlay.booting .boot-screen,
+html.display-overlay .display-full,
+html.display-overlay .display-full.display-contrast {
+    background: transparent;
+}
+html.display-overlay .boot-loading { visibility: hidden; }
+
+html.display-overlay .display-full::before,
+html.display-overlay .display-full::after {
+    display: none;
+}
+
+/* "Waiting…" is a hint for the hall, not for the stream. */
+html.display-overlay .display-status { display: none; }
+
+/* Readable on any camera picture: a translucent dark panel behind every
+   text block (timer, reasons, verdict, lifter and attempt; the lights stay
+   free) and pure white, bolder texts. The panel grows outward with a
+   box-shadow spread instead of padding, so no block changes its size and the
+   lights never move (see layout.css, "Lights never move"). */
+html.display-overlay .display-timer-big,
+html.display-overlay .display-orb-reason,
+html.display-overlay .verdict-stamp,
+html.display-overlay .vportal-corner {
+    background-color: var(--overlay-panel-bg);
+    border-radius: 0.15em;
+}
+/* The timer's box reaches into the lights by its negative bottom margin
+   (empty descender space): clip the panel there. */
+html.display-overlay .display-timer-big {
+    padding: 0 0.08em;
+    clip-path: inset(0 0 0.15em 0 round 0.15em);
+}
+html.display-overlay .display-orb-reason { box-shadow: 0 0 0 0.12em var(--overlay-panel-bg); }
+html.display-overlay .vportal-corner {
+    box-shadow: 0 0 0 calc(clamp(6px, 1vmin, 16px) * var(--display-zoom, 1)) var(--overlay-panel-bg);
+}
+/* The editor fades a hidden or sample block's children (display-layout.css);
+   the corners carry the panel on the block itself, so fade it here too, or a
+   hidden corner would look as if it still showed in the stream. */
+html.display-overlay .display-layout-editing .vportal-corner:is(.layout-hidden, .layout-sample) {
+    background-color: var(--overlay-panel-bg-faded);
+    box-shadow: 0 0 0 calc(clamp(6px, 1vmin, 16px) * var(--display-zoom, 1)) var(--overlay-panel-bg-faded);
+}
+html.display-overlay .display-timer-big:not(.expired),
+html.display-overlay .display-orb-reason,
+html.display-overlay .vportal-corner,
+html.display-overlay .vportal-corner-name,
+html.display-overlay .vportal-corner-meta,
+html.display-overlay .vportal-corner-disc,
+html.display-overlay .vportal-corner-weight {
+    color: var(--overlay-text);
+}
+html.display-overlay .display-orb-reason,
+html.display-overlay .vportal-corner-meta,
+html.display-overlay .vportal-corner-disc {
+    font-weight: 700;
+}
+
+/* While editing: a dark checkerboard, so the white texts stay visible when the
+   overlay is edited in a normal browser (white page) and it is clear that this
+   is not what the stream shows. */
+html.display-overlay .display-full.display-layout-editing {
+    background: repeating-conic-gradient(var(--overlay-checker-a) 0 25%, var(--overlay-checker-b) 0 50%) 0 0 / 32px 32px;
+}
+
+.overlay-notice {
+    position: absolute;
+    left: 50%;
+    bottom: clamp(16px, 4vmin, 64px);
+    transform: translateX(-50%);
+    padding: clamp(6px, 1vmin, 14px) clamp(12px, 2vmin, 28px);
+    background: var(--overlay-notice-bg);
+    color: var(--overlay-notice-text);
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+    font-size: clamp(14px, 2.2vmin, 36px);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+/* The settings panel's notes (layout from the URL, invalid layout code). */
+.display-settings-note {
+    margin-top: 10px;
+    font-size: 12px;
+    letter-spacing: .06em;
+    color: var(--panel-text);
+}
+.display-settings-note--error { color: var(--overlay-error-text); }
+html.display-overlay .display-settings-layout-btn + .display-settings-layout-btn { margin-top: 10px; }

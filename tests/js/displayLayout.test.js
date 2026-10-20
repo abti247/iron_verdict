@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
     LAYOUT_STORAGE_KEY,
+    OVERLAY_LAYOUT_STORAGE_KEY,
     LAYOUT_BLOCKS,
     sanitizeLayout,
     loadLayout,
@@ -231,5 +232,20 @@ describe('export code', () => {
 
     it.each(['', 'hello', 'IV1.', 'IV1.!!!', 'IV2.e30', 'IV1.e30'])('rejects %p', (code) => {
         expect(decodeLayout(code)).toBe(null);
+    });
+});
+
+describe('layout storage key', () => {
+    it('keeps the overlay layout apart from the hall display layout', () => {
+        const storage = makeStorage();
+        const overlay = { ...validLayout(), blocks: { ...validLayout().blocks, timer: { x: 1, y: 1, s: 1, hidden: true } } };
+        expect(saveLayout(storage, validLayout())).toBe(true);
+        expect(saveLayout(storage, overlay, OVERLAY_LAYOUT_STORAGE_KEY)).toBe(true);
+        expect(loadLayout(storage)).toEqual(validLayout());
+        expect(loadLayout(storage, OVERLAY_LAYOUT_STORAGE_KEY)).toEqual(overlay);
+        expect(clearLayout(storage, OVERLAY_LAYOUT_STORAGE_KEY)).toBe(true);
+        expect(loadLayout(storage, OVERLAY_LAYOUT_STORAGE_KEY)).toBe(null);
+        expect(loadLayout(storage)).toEqual(validLayout());
+        expect(OVERLAY_LAYOUT_STORAGE_KEY).not.toBe(LAYOUT_STORAGE_KEY);
     });
 });
