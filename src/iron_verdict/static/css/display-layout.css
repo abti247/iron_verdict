@@ -13,12 +13,13 @@
    verdict, so in the editor the cards label (under the cards frame) and the
    verdict label (above the verdict) sit one above the other instead of on
    top of each other (#162). Fixed px like the labels, which do not scale:
-   two labels of 27px minus the 12px flex gap, plus a few px. The negative
-   bottom margin keeps the height of the flow, so the timer and the lights
-   stay where they were and only the verdict moves down. */
+   two labels of 27px minus the 12px flex gap, plus a few px
+   (--layout-verdict-room; raise it with the label font or padding). The
+   negative bottom margin keeps the height of the flow, so the timer and the
+   lights stay where they were and only the verdict moves down. */
 .display-full:not(.display-layout-custom) .display-verdict-inline {
-    margin-top: 48px;
-    margin-bottom: -48px;
+    margin-top: var(--layout-verdict-room);
+    margin-bottom: calc(-1 * var(--layout-verdict-room));
 }
 
 /* ===== SAVED LAYOUT ===== */

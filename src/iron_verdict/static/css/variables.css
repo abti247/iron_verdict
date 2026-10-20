@@ -34,6 +34,9 @@
     --layout-frame: #38BDF8;
     --layout-frame-cards: #FACC15;
     --layout-frame-text: #0A0A0A;
+    /* Extra room above the verdict in the default layout for the cards and
+       verdict editor labels (27px each, see .layout-frame-label) (#162). */
+    --layout-verdict-room: 48px;
     /* Stream overlay (#107): checkerboard behind the blocks while editing,
        notice when the overlay has no session. */
     --overlay-checker-a: #1a1a1f;
