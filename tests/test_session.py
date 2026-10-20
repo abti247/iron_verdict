@@ -959,13 +959,23 @@ async def test_end_pause_with_id_only_ends_that_pause():
     assert manager.sessions[code]["pause"] is not None
 
 
-async def test_active_pause_clears_expired_pause():
+async def test_running_pause_keeps_session_from_expiring():
     manager = SessionManager()
     code = await manager.create_session("Test")
-    manager.start_pause(code, minutes=1, now=PAUSE_NOW)
-    assert manager.active_pause(code, now=PAUSE_NOW + 59) is not None
-    assert manager.active_pause(code, now=PAUSE_NOW + 60) is None
-    assert manager.sessions[code]["pause"] is None
+    manager.start_pause(code, minutes=6 * 60)
+    manager.sessions[code]["last_activity"] = datetime.now() - timedelta(hours=5)
+    assert manager.get_expired_sessions(hours=4) == []
+    manager.end_pause(code)
+    manager.sessions[code]["last_activity"] = datetime.now() - timedelta(hours=5)
+    assert manager.get_expired_sessions(hours=4) == [code]
+
+
+async def test_pause_past_its_end_no_longer_keeps_session_alive():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    manager.start_pause(code, minutes=1, now=time.time() - 120)
+    manager.sessions[code]["last_activity"] = datetime.now() - timedelta(hours=5)
+    assert manager.get_expired_sessions(hours=4) == [code]
 
 
 async def test_pause_survives_snapshot_round_trip(tmp_path):

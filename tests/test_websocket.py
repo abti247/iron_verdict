@@ -1449,12 +1449,23 @@ async def test_join_success_includes_running_pause_and_server_time(session_code)
     assert abs(state["pause"]["end_at_ms"] - (state["server_now_ms"] + 30 * 60_000)) < 1000
 
 
-async def test_join_success_drops_expired_pause(session_code):
-    session_manager.start_pause(session_code, minutes=1, now=time.time() - 61)
+async def test_join_after_pause_end_leaves_the_end_broadcast_to_the_end_task(session_code, monkeypatch):
+    """A join between end_at and the end task must not swallow the end: the
+    task still ends the pause and broadcasts pause_update null (review #163)."""
+    from iron_verdict import main as main_module
+
+    pause = session_manager.start_pause(session_code, minutes=1, now=time.time() - 61)["pause"]
     async with _ws_client() as ac:
         async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
             msg = await _join(ws, session_code, "display")
-    assert msg["session_state"]["pause"] is None
+            assert msg["session_state"]["pause"]["end_at_ms"] <= msg["session_state"]["server_now_ms"]
+
+            async def no_sleep(_seconds):
+                pass
+
+            await main_module.end_pause_when_due(session_code, pause["id"], pause["end_at"], sleep=no_sleep)
+            update = await _recv(ws)
+    assert update["type"] == "pause_update" and update["pause"] is None
     assert session_manager.sessions[session_code]["pause"] is None
 
 

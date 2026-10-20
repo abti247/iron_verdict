@@ -287,8 +287,9 @@ def test_pause_survives_a_server_restart(competition):
 
 def test_pause_hides_the_vportal_lifter_and_brings_it_back(page, server_url, fake_vportal_url):
     """A VPortal display shows the current lifter. During a pause the lifter
-    and attempt are hidden while VPortal polling continues; after the pause
-    the lifter shows again."""
+    and attempt are hidden while VPortal polling continues: VPortal drops the
+    current attempt during the pause, so after the pause no lifter shows
+    (not the one from before the pause); when VPortal has one again it shows."""
     _connect_and_open_display(page, server_url, fake_vportal_url)
     lifter = page.locator(".vportal-corner-left")
     expect(lifter).to_be_visible(timeout=10000)
@@ -298,8 +299,14 @@ def test_pause_hides_the_vportal_lifter_and_brings_it_back(page, server_url, fak
     expect(lifter).to_be_hidden()
     expect(page.locator(".vportal-corner-right")).to_be_hidden()
 
+    httpx.post(f"http://{fake_vportal_url}/_control/clear_attempt")
+    page.wait_for_function("Alpine.store('vportal').displayAttempt === null", timeout=10000)
+
     end_pause(page)
-    expect(lifter).to_be_visible()
+    expect_not_paused(page)
+    expect(lifter).to_be_hidden()
+    httpx.post(f"http://{fake_vportal_url}/_control/restore_attempt")
+    expect(lifter).to_be_visible(timeout=10000)
     expect(lifter).to_contain_text("MARIA SCHNEIDER", ignore_case=True)
     httpx.post(f"http://{fake_vportal_url}/_control/reset")
 

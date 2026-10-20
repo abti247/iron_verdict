@@ -316,23 +316,20 @@ class SessionManager:
         session["last_activity"] = datetime.now()
         return True
 
-    def active_pause(self, code: str, now: float | None = None) -> Dict[str, Any] | None:
-        """The session's running pause, or None; a pause past its end is cleared here."""
-        session = self.sessions.get(code)
-        pause = session.get("pause") if session else None
-        if pause is None:
-            return None
-        if (time.time() if now is None else now) >= pause["end_at"]:
-            session["pause"] = None
-            return None
-        return pause
-
     def get_expired_sessions(self, hours: int = 4) -> List[str]:
-        """Get list of session codes that have expired."""
+        """Get list of session codes that have expired.
+
+        A session with a running pause never expires: a pause may last longer
+        than the timeout (up to PAUSE_MAX_SECONDS) without any other activity.
+        """
         cutoff = datetime.now() - timedelta(hours=hours)
+        now = time.time()
         expired = []
 
         for code, session in self.sessions.items():
+            pause = session.get("pause")
+            if pause is not None and pause["end_at"] > now:
+                continue
             if session["last_activity"] < cutoff:
                 expired.append(code)
 

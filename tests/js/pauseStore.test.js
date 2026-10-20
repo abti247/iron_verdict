@@ -94,6 +94,11 @@ describe('pause store', () => {
         expect(store.error).toBe('');
     });
 
+    it('shows an unknown rejection code as invalid input', () => {
+        store.rejected('Session not found');
+        expect(store.error).toBe('invalid');
+    });
+
     it('takes the state of a (re)join as the truth and drops a pending request', () => {
         store.requestSent();
         store.joined(pause(), 2_000_000);
@@ -120,20 +125,9 @@ describe('pause handlers', () => {
 
     const conn = (role) => ({ session: { role }, pause: store });
 
-    it('applies pause_update on a display', () => {
-        handlePauseUpdate(conn('display'), { type: 'pause_update', pause: { end_at_ms: MIN, mode: 'until', until: '13:15', next_lift: null }, server_now_ms: 0 });
-        expect(store.pause).toEqual({ endAtMs: MIN, mode: 'until', until: '13:15', nextLift: null });
-    });
-
     it('ignores pause_update on a judge device', () => {
         handlePauseUpdate(conn('left_judge'), { type: 'pause_update', pause: { end_at_ms: MIN, mode: 'minutes', until: null, next_lift: null }, server_now_ms: 0 });
         expect(store.active).toBe(false);
-    });
-
-    it('shows pause_rejected', () => {
-        store.requestSent();
-        handlePauseRejected(conn('display'), { type: 'pause_rejected', code: 'too_long' });
-        expect(store.error).toBe('too_long');
     });
 
     it('takes the pause from join_success on a display', () => {

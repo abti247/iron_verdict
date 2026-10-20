@@ -287,6 +287,9 @@ async def lifespan(app: FastAPI):
         await heartbeat_task
     except asyncio.CancelledError:
         pass
+    # The pause itself is in the snapshot; its end is armed again after the restart.
+    for pause_task in list(_pause_end_tasks.values()):
+        pause_task.cancel()
 
     # Fallback snapshot save for shutdowns not triggered via signal handler
     session_manager.save_snapshot(settings.SNAPSHOT_PATH)
@@ -561,8 +564,6 @@ async def websocket_endpoint(websocket: WebSocket):
                     "client_ip": _get_ws_client_ip(websocket),
                 })
 
-                # A pause past its end is dropped here, before the scheduled end may have run.
-                session_manager.active_pause(session_code)
                 # Issue 3: Use deep copy for nested dicts
                 session_state = copy.deepcopy(session_manager.sessions[session_code])
                 session_state["pause"] = public_pause(session_state.get("pause"))

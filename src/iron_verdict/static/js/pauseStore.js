@@ -8,6 +8,8 @@
 // How often the countdown refreshes. A display refresh, not a delay: nothing
 // waits on it, and the end comes from the server.
 export const PAUSE_TICK_MS = 250;
+// Rejection codes with a text in the locales (pause.errors.*).
+const REJECTION_CODES = ['past', 'too_long', 'invalid'];
 
 // "9:41", or "1:05:00" from one hour on; rounds up like the lift timer.
 export function formatPauseRemaining(ms) {
@@ -67,7 +69,7 @@ export function createPauseStore({ now = () => Date.now() } = {}) {
 
         rejected(code) {
             this.pending = false;
-            this.error = code || 'invalid';
+            this.error = REJECTION_CODES.includes(code) ? code : 'invalid';
         },
 
         _tick() {
