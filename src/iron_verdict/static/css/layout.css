@@ -279,6 +279,16 @@
     column-gap: var(--orb-reason-gap);
 }
 
+/* Pause (#163): in the default flow layout it sits where a saved layout from
+   before the pause block puts it (displayLayout.js, PAUSE_DEFAULT), so it
+   never pushes the other blocks while the editor shows all of them. */
+.display-full:not(.display-layout-custom) .layout-block--pause {
+    position: absolute;
+    left: 50%;
+    top: 30%;
+    transform: translateX(-50%);
+}
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 600px) {
     .judge-timer { font-size: 48px; }

@@ -33,7 +33,8 @@ html.display-overlay .display-status { display: none; }
 html.display-overlay .display-timer-big,
 html.display-overlay .display-orb-reason,
 html.display-overlay .verdict-stamp,
-html.display-overlay .vportal-corner {
+html.display-overlay .vportal-corner,
+html.display-overlay .display-pause {
     background-color: var(--overlay-panel-bg);
     border-radius: 0.15em;
 }
@@ -44,13 +45,14 @@ html.display-overlay .display-timer-big {
     clip-path: inset(0 0 0.15em 0 round 0.15em);
 }
 html.display-overlay .display-orb-reason { box-shadow: 0 0 0 0.12em var(--overlay-panel-bg); }
-html.display-overlay .vportal-corner {
+html.display-overlay .vportal-corner,
+html.display-overlay .display-pause {
     box-shadow: 0 0 0 calc(clamp(6px, 1vmin, 16px) * var(--display-zoom, 1)) var(--overlay-panel-bg);
 }
 /* The editor fades a hidden or sample block's children (display-layout.css);
    the corners carry the panel on the block itself, so fade it here too, or a
    hidden corner would look as if it still showed in the stream. */
-html.display-overlay .display-layout-editing .vportal-corner:is(.layout-hidden, .layout-sample) {
+html.display-overlay .display-layout-editing :is(.vportal-corner, .display-pause):is(.layout-hidden, .layout-sample) {
     background-color: var(--overlay-panel-bg-faded);
     box-shadow: 0 0 0 calc(clamp(6px, 1vmin, 16px) * var(--display-zoom, 1)) var(--overlay-panel-bg-faded);
 }
@@ -60,7 +62,10 @@ html.display-overlay .vportal-corner,
 html.display-overlay .vportal-corner-name,
 html.display-overlay .vportal-corner-meta,
 html.display-overlay .vportal-corner-disc,
-html.display-overlay .vportal-corner-weight {
+html.display-overlay .vportal-corner-weight,
+html.display-overlay .display-pause-title,
+html.display-overlay .display-pause-time,
+html.display-overlay .display-pause-next {
     color: var(--overlay-text);
 }
 html.display-overlay .display-orb-reason,

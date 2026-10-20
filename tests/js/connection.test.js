@@ -6,6 +6,7 @@ import { createJudgeStore } from '../../src/iron_verdict/static/js/judgeStore.js
 import { createDisplayStore } from '../../src/iron_verdict/static/js/displayStore.js';
 import { createTimerStore } from '../../src/iron_verdict/static/js/timer.js';
 import { createSettingsStore } from '../../src/iron_verdict/static/js/settingsStore.js';
+import { createPauseStore } from '../../src/iron_verdict/static/js/pauseStore.js';
 
 const CODE = 'ABCD1234';
 
@@ -36,6 +37,7 @@ function setup({ fetchFn = vi.fn() } = {}) {
         display: createDisplayStore(),
         timer: createTimerStore(),
         vportal: fakeVportal(),
+        pause: createPauseStore(),
     };
     const alert = vi.fn();
     conn = createConnection({
@@ -201,6 +203,22 @@ describe('incoming messages reach the stores', () => {
         socket.onMessage({ type: 'settings_update', liftType: 'deadlift', requireReasons: true });
         expect(env.stores.settings.liftType).toBe('deadlift');
         expect(env.stores.settings.requireReasons).toBe(true);
+    });
+
+    it('pause_update and pause_rejected reach the pause store of a display', () => {
+        const env = setup();
+        const socket = joined(env, 'display', { pause: null, server_now_ms: Date.now() });
+        env.stores.pause.requestSent();
+        socket.onMessage({ type: 'pause_rejected', code: 'past' });
+        expect(env.stores.pause.error).toBe('past');
+        socket.onMessage({
+            type: 'pause_update',
+            pause: { end_at_ms: Date.now() + 60000, mode: 'minutes', until: null, next_lift: null },
+            server_now_ms: Date.now(),
+        });
+        expect(env.stores.pause.active).toBe(true);
+        socket.onMessage({ type: 'pause_update', pause: null, server_now_ms: Date.now() });
+        expect(env.stores.pause.active).toBe(false);
     });
 
     it('answers ping with pong', () => {

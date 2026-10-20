@@ -30,6 +30,12 @@
 .display-full.display-contrast .display-timer-big.expired {
     color: var(--contrast-text-red);
 }
+.display-full.display-contrast .display-pause-title,
+.display-full.display-contrast .display-pause-time,
+.display-full.display-contrast .display-pause-next {
+    color: var(--contrast-text);
+    font-weight: 700;
+}
 .display-full.display-contrast .display-status {
     color: var(--contrast-text);
     font-weight: 700;

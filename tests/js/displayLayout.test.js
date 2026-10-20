@@ -38,8 +38,16 @@ function validLayout() {
             verdict: { x: 40, y: 80, s: 1, hidden: true },
             lifter: { x: 2, y: 88, s: 1, hidden: false },
             attempt: { x: 80, y: 88, s: 0.8, hidden: false },
+            pause: { x: 50, y: 40, s: 1.2, hidden: false },
         },
     };
+}
+
+// A layout saved before the pause block existed (#163).
+function layoutWithoutPause() {
+    const raw = validLayout();
+    delete raw.blocks.pause;
+    return raw;
 }
 
 describe('sanitizeLayout', () => {
@@ -80,6 +88,24 @@ describe('sanitizeLayout', () => {
     it('rejects a layout with a missing block', () => {
         const raw = validLayout();
         delete raw.blocks.timer;
+        expect(sanitizeLayout(raw)).toBe(null);
+    });
+
+    it('gives a layout without a pause block (saved before #163) a visible default pause block', () => {
+        const layout = sanitizeLayout(layoutWithoutPause());
+        expect(layout.blocks.pause).toEqual({ x: 50, y: 30, s: 1, hidden: false });
+        expect(layout.blocks.timer).toEqual(validLayout().blocks.timer);
+    });
+
+    it('hides that default pause block when asked (stream overlay)', () => {
+        expect(sanitizeLayout(layoutWithoutPause(), { pauseHidden: true }).blocks.pause.hidden).toBe(true);
+        // A stored pause block keeps its own state.
+        expect(sanitizeLayout(validLayout(), { pauseHidden: true }).blocks.pause.hidden).toBe(false);
+    });
+
+    it('rejects an invalid pause block', () => {
+        const raw = validLayout();
+        raw.blocks.pause = { x: 'centre', y: 1, s: 1 };
         expect(sanitizeLayout(raw)).toBe(null);
     });
 
@@ -168,8 +194,10 @@ describe('layoutFromRects', () => {
             verdict: rect(450, 400, 100),
             lifter: rect(20, 450, 300),
             attempt: rect(800, 450, 180),
+            pause: rect(300, 100, 400),
         });
         expect(layout.v).toBe(1);
+        expect(layout.blocks.pause).toEqual({ x: 50, y: 20, s: 1, hidden: false });
         expect(layout.blocks.timer).toEqual({ x: 50, y: 2, s: 1, hidden: false });
         expect(layout.blocks.lights).toEqual({ x: 50, y: 30, s: 1, hidden: false, gap: 1 });
         expect(layout.blocks.lifter).toEqual({ x: 2, y: 90, s: 1, hidden: false });
@@ -180,9 +208,19 @@ describe('layoutFromRects', () => {
     it('measures relative to the display, not the page', () => {
         const root = { left: 100, top: 50, width: 1000, height: 500 };
         const r = rect(150, 100, 0);
-        const layout = layoutFromRects(root, { timer: r, lights: r, verdict: r, lifter: r, attempt: r });
+        const layout = layoutFromRects(root, { timer: r, lights: r, verdict: r, lifter: r, attempt: r, pause: r });
         expect(layout.blocks.lifter.x).toBe(5);
         expect(layout.blocks.lifter.y).toBe(10);
+    });
+});
+
+describe('layoutFromRects for the pause block', () => {
+    it('starts the measured pause block hidden when asked (stream overlay)', () => {
+        const root = { left: 0, top: 0, width: 1000, height: 500 };
+        const r = { left: 0, top: 0, right: 10, width: 10 };
+        const rects = { timer: r, lights: r, verdict: r, lifter: r, attempt: r, pause: r };
+        expect(layoutFromRects(root, rects, { pauseHidden: true }).blocks.pause.hidden).toBe(true);
+        expect(layoutFromRects(root, rects).blocks.pause.hidden).toBe(false);
     });
 });
 
@@ -260,6 +298,12 @@ describe('export code', () => {
         expect(decodeLayout(`  ${encodeLayout(validLayout())}\n`)).toEqual(validLayout());
     });
 
+    it('gives an old code without a pause block the default pause block (hidden when asked)', () => {
+        const code = encodeLayout(layoutWithoutPause());
+        expect(decodeLayout(code).blocks.pause.hidden).toBe(false);
+        expect(decodeLayout(code, { pauseHidden: true }).blocks.pause.hidden).toBe(true);
+    });
+
     it.each(['', 'hello', 'IV1.', 'IV1.!!!', 'IV2.e30', 'IV1.e30'])('rejects %p', (code) => {
         expect(decodeLayout(code)).toBe(null);
     });
@@ -277,5 +321,12 @@ describe('layout storage key', () => {
         expect(loadLayout(storage, OVERLAY_LAYOUT_STORAGE_KEY)).toBe(null);
         expect(loadLayout(storage)).toEqual(validLayout());
         expect(OVERLAY_LAYOUT_STORAGE_KEY).not.toBe(LAYOUT_STORAGE_KEY);
+    });
+
+    it('hides the default pause block of an old layout only in the stream overlay', () => {
+        const old = JSON.stringify(layoutWithoutPause());
+        const storage = makeStorage({ [LAYOUT_STORAGE_KEY]: old, [OVERLAY_LAYOUT_STORAGE_KEY]: old });
+        expect(loadLayout(storage).blocks.pause.hidden).toBe(false);
+        expect(loadLayout(storage, OVERLAY_LAYOUT_STORAGE_KEY).blocks.pause.hidden).toBe(true);
     });
 });

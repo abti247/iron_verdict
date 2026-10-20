@@ -13,15 +13,20 @@
 // and codes from before it get the default (1). The cards block (card colours and
 // reasons under the lights) follows the lights: it only has a gap, in
 // multiples of the light size. Every block can be hidden.
+//
+// The pause block (#163) came later: a layout or code without it gets a
+// default pause block, so it stays valid. The stream overlay hides that
+// default block (pauseHidden), because the stream shows other content during
+// a pause; it can be shown in the editor.
 
 export const LAYOUT_STORAGE_KEY = 'iron-verdict:display-layout';
 // The stream overlay (OBS browser source) keeps its own layout, so opening the
 // overlay in a browser that is also a hall display changes neither layout.
 export const OVERLAY_LAYOUT_STORAGE_KEY = 'iron-verdict:display-layout:overlay';
-export const FREE_BLOCKS = ['timer', 'lights', 'verdict', 'lifter', 'attempt'];
+export const FREE_BLOCKS = ['timer', 'lights', 'verdict', 'lifter', 'attempt', 'pause'];
 export const LAYOUT_BLOCKS = [...FREE_BLOCKS, 'cards'];
 export const BLOCK_ANCHORS = {
-    timer: 'center', lights: 'center', verdict: 'center', lifter: 'left', attempt: 'right',
+    timer: 'center', lights: 'center', verdict: 'center', lifter: 'left', attempt: 'right', pause: 'center',
 };
 
 const VERSION = 1;
@@ -37,6 +42,8 @@ const GAP_STEP = 0.05;
 const LIGHTS_GAP_MIN = 0.4;
 const LIGHTS_GAP_MAX = 2;
 const LIGHTS_GAP_DEFAULT = 1;
+// Where a layout from before the pause block shows it: centred, at about the lights.
+const PAUSE_DEFAULT = { x: 50, y: 30, s: 1 };
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 // Two decimals hide float noise (1.5 * 1.1 → 1.6500000000000001).
@@ -70,16 +77,23 @@ function sanitizeCards(raw) {
     return { gap: clamp(raw.gap, 0, GAP_MAX), hidden: raw.hidden === true };
 }
 
+function sanitizePause(raw, pauseHidden) {
+    return raw === undefined ? { ...PAUSE_DEFAULT, hidden: pauseHidden } : sanitizeFree(raw);
+}
+
 // Returns a clean copy of a layout, or null if it is not a complete, known
 // layout. Only numbers and booleans survive, so a stored or imported layout
-// can never inject CSS into blockStyle().
-export function sanitizeLayout(raw) {
+// can never inject CSS into blockStyle(). pauseHidden: whether a missing pause
+// block (layout from before #163) starts hidden.
+export function sanitizeLayout(raw, { pauseHidden = false } = {}) {
     if (!raw || typeof raw !== 'object' || raw.v !== VERSION) return null;
     const src = raw.blocks;
     if (!src || typeof src !== 'object') return null;
     const blocks = {};
     for (const id of FREE_BLOCKS) {
-        blocks[id] = id === 'lights' ? sanitizeLights(src[id]) : sanitizeFree(src[id]);
+        if (id === 'lights') blocks[id] = sanitizeLights(src[id]);
+        else if (id === 'pause') blocks[id] = sanitizePause(src[id], pauseHidden);
+        else blocks[id] = sanitizeFree(src[id]);
         if (!blocks[id]) return null;
     }
     blocks.cards = sanitizeCards(src.cards);
@@ -92,7 +106,7 @@ export function sanitizeLayout(raw) {
 export function loadLayout(storage, key = LAYOUT_STORAGE_KEY) {
     try {
         const raw = storage.getItem(key);
-        return raw == null ? null : sanitizeLayout(JSON.parse(raw));
+        return raw == null ? null : sanitizeLayout(JSON.parse(raw), { pauseHidden: key === OVERLAY_LAYOUT_STORAGE_KEY });
     } catch (_) {
         return null;
     }
@@ -127,7 +141,8 @@ function anchorX(rect, anchor) {
 
 // A layout that puts every free block where it is now (rects from
 // getBoundingClientRect), so leaving the flow layout does not move anything.
-export function layoutFromRects(root, rects) {
+// pauseHidden: the pause block starts hidden (stream overlay).
+export function layoutFromRects(root, rects, { pauseHidden = false } = {}) {
     const blocks = {};
     for (const id of FREE_BLOCKS) {
         const r = rects[id];
@@ -135,7 +150,7 @@ export function layoutFromRects(root, rects) {
             x: tidy(((anchorX(r, BLOCK_ANCHORS[id]) - root.left) / root.width) * 100),
             y: tidy(((r.top - root.top) / root.height) * 100),
             s: 1,
-            hidden: false,
+            hidden: id === 'pause' && pauseHidden,
         };
     }
     blocks.lights.gap = LIGHTS_GAP_DEFAULT;
@@ -188,14 +203,14 @@ export function encodeLayout(layout) {
     return CODE_PREFIX + b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-export function decodeLayout(code) {
+export function decodeLayout(code, { pauseHidden = false } = {}) {
     const text = String(code || '').trim();
     if (!text.startsWith(CODE_PREFIX)) return null;
     const body = text.slice(CODE_PREFIX.length);
     if (!/^[A-Za-z0-9_-]+$/.test(body)) return null;
     try {
         const b64 = body.replace(/-/g, '+').replace(/_/g, '/');
-        return sanitizeLayout(JSON.parse(atob(b64)));
+        return sanitizeLayout(JSON.parse(atob(b64)), { pauseHidden });
     } catch (_) {
         return null;
     }

@@ -26,6 +26,8 @@ import {
     handleJudgeStatusUpdate,
     handleVoteAck,
     handleVoteRejected,
+    handlePauseUpdate,
+    handlePauseRejected,
 } from './handlers.js';
 
 const DISPATCH = {
@@ -43,9 +45,11 @@ const DISPATCH = {
     judge_status_update: handleJudgeStatusUpdate,
     vote_ack:            handleVoteAck,
     vote_rejected:       handleVoteRejected,
+    pause_update:        handlePauseUpdate,
+    pause_rejected:      handlePauseRejected,
 };
 
-// stores: { session, nav, judge, display, timer, settings, vportal }.
+// stores: { session, nav, judge, display, timer, settings, vportal, pause }.
 export function createConnection({
     stores,
     storage = sessionStorage,

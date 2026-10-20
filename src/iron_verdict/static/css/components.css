@@ -786,6 +786,36 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .display-settings-gear:hover { color: rgba(220, 220, 230, 0.9); transform: rotate(30deg); }
 .display-settings-gear svg { width: 70%; height: 70%; }
 
+/* ===== PAUSE (#163) ===== */
+.display-pause {
+    text-align: center;
+    white-space: nowrap;
+    line-height: 1;
+}
+.display-pause-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: calc(clamp(40px, 17vmin, 210px) * var(--display-zoom, 1));
+    letter-spacing: 0.08em;
+    color: var(--text-chrome);
+}
+.display-pause-time {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: calc(clamp(28px, 10vmin, 130px) * var(--display-zoom, 1));
+    letter-spacing: 0.04em;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-chrome);
+    margin-top: calc(clamp(4px, 1.5vmin, 20px) * var(--display-zoom, 1));
+}
+.display-pause-next {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+    font-size: calc(clamp(14px, 4.5vmin, 56px) * var(--display-zoom, 1));
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--panel-text);
+    margin-top: calc(clamp(6px, 2.5vmin, 32px) * var(--display-zoom, 1));
+}
+
 .display-settings-panel {
     position: absolute;
     top: clamp(48px, 6vmin, 88px);
@@ -847,4 +877,64 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     background: var(--blood);
     border-color: var(--blood-bright);
     color: var(--contrast-text);
+}
+/* Pause form in the settings panel (#163). */
+.pause-controls {
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--panel-border);
+}
+.pause-controls-title {
+    font-size: 12px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--panel-text-bright);
+    margin-bottom: 10px;
+}
+.pause-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.pause-mode {
+    display: flex;
+}
+.pause-mode-btn {
+    flex: 1;
+    background: transparent;
+    border: 1px solid var(--panel-border);
+    color: var(--panel-text);
+    padding: 6px 8px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 12px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+.pause-mode-btn + .pause-mode-btn { border-left: none; }
+.pause-mode-btn.on {
+    background: var(--blood);
+    border-color: var(--blood-bright);
+    color: var(--contrast-text);
+}
+.pause-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 12px;
+    letter-spacing: .06em;
+    color: var(--panel-text);
+}
+.pause-input {
+    background: var(--bg-void);
+    border: 1px solid var(--panel-border);
+    color: var(--panel-text-bright);
+    padding: 6px 8px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 15px;
+    color-scheme: dark;
+}
+.pause-controls .display-settings-layout-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }

@@ -244,6 +244,8 @@
     "save": "Save",
     "cancel": "Cancel",
     "reset": "Reset to default",
+    "viewLift": "View: lift",
+    "viewPause": "View: break",
     "codeButton": "Layout code",
     "codeExportLabel": "Code of this layout (copy it to another display)",
     "codeDefault": "Default layout – nothing to copy",
@@ -258,7 +260,8 @@
       "cards": "Cards + reasons",
       "verdict": "Verdict",
       "lifter": "Lifter",
-      "attempt": "Attempt"
+      "attempt": "Attempt",
+      "pause": "Break"
     },
     "sample": {
       "firstName": "Max",
@@ -270,6 +273,28 @@
     },
     "sampleTag": "sample",
     "saveError": "Could not save on this device (browser storage blocked or full). The layout would be lost after a reload."
+  },
+  "pause": {
+    "title": "Break",
+    "remaining": "{time} left",
+    "until": "until {time}",
+    "next": "Next: {lift}",
+    "panelTitle": "Break (all displays)",
+    "byMinutes": "Minutes",
+    "byTime": "Time",
+    "minutesLabel": "Duration in minutes",
+    "untilLabel": "Ends at",
+    "nextLiftLabel": "Next lift (optional)",
+    "nextLiftNone": "Not set",
+    "start": "Start break",
+    "end": "End break",
+    "sending": "Sending…",
+    "offline": "No connection – the break cannot be controlled right now.",
+    "errors": {
+      "past": "Time is in the past",
+      "too_long": "A break lasts at most 12 hours (past midnight use minutes)",
+      "invalid": "Enter a duration of 1 to 720 minutes or a time"
+    }
   },
   "privacy": {
     "link": "Privacy & Legal Notice",

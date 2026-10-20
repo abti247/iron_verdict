@@ -5,6 +5,12 @@
 // layout changes. Nothing here touches the connection or the stores, so the
 // display keeps showing votes, timer and VPortal data while editing.
 //
+// The pause (#163) never shows together with timer, lights, verdict and
+// lifter, and in the default layout both sit in the middle; so the editor has
+// two views (layoutView): the lift blocks or the pause block. The blocks of
+// the other view stay in the page, invisible (layout-off-view), so they can
+// still be measured when the draft leaves the default layout.
+//
 // The stream overlay stores its layout under its own key; a layout code in its
 // URL (&layout=…) is then the only source and the edit mode stays closed, so a
 // reload in OBS never brings back something other than what was edited.
@@ -27,6 +33,7 @@ export function displayLayoutEditor() {
         layout: null,           // saved layout of this device; null = default
         layoutDraft: null,      // layout being edited; null = default
         layoutEditing: false,
+        layoutView: 'lift',     // 'lift' | 'pause': which blocks the editor shows
         layoutCodeOpen: false,
         layoutCodeInput: '',
         layoutCodeError: false,
@@ -40,7 +47,7 @@ export function displayLayoutEditor() {
             const session = this.$store.session;
             this._layoutKey = session.overlay ? OVERLAY_LAYOUT_STORAGE_KEY : LAYOUT_STORAGE_KEY;
             const urlLayout = session.overlay && session.overlayLayoutCode
-                ? decodeLayout(session.overlayLayoutCode) : null;
+                ? decodeLayout(session.overlayLayoutCode, { pauseHidden: true }) : null;
             this.layoutFromUrl = !!urlLayout;
             this.layoutUrlInvalid = !!(session.overlay && session.overlayLayoutCode && !urlLayout);
             this.layout = urlLayout || loadLayout(storage(), this._layoutKey);
@@ -48,6 +55,15 @@ export function displayLayoutEditor() {
             this.$watch('$store.nav.screen', (screen) => {
                 if (screen !== 'display' && this.layoutEditing) this.cancelLayoutEdit();
             });
+        },
+
+        // Whether block id belongs to the editor view that is not shown.
+        layoutOffView(id) {
+            return this.layoutEditing && (id === 'pause') !== (this.layoutView === 'pause');
+        },
+
+        toggleLayoutView() {
+            this.layoutView = this.layoutView === 'pause' ? 'lift' : 'pause';
         },
 
         // What the display shows: the draft while editing, else the saved layout.
@@ -65,9 +81,16 @@ export function displayLayoutEditor() {
             return style;
         },
 
+        // Without a layout every block shows, except the pause block in the
+        // stream overlay (the stream shows other content during a pause, #163).
         layoutBlockHidden(id) {
             const layout = this.activeLayout();
-            return !!(layout && layout.blocks[id].hidden);
+            if (!layout) return id === 'pause' && this._pauseHiddenByDefault();
+            return layout.blocks[id].hidden;
+        },
+
+        _pauseHiddenByDefault() {
+            return !!this.$store.session.overlay;
         },
 
         // The VPortal corners while editing without a lifter: sample text so
@@ -99,6 +122,8 @@ export function displayLayoutEditor() {
             this.layoutCodeInput = '';
             this.layoutCodeError = false;
             this.layoutSaveError = false;
+            // A running pause is what the hall sees now: start with its view.
+            this.layoutView = this.$store.pause.active ? 'pause' : 'lift';
             this.layoutEditing = true;
         },
 
@@ -135,7 +160,7 @@ export function displayLayoutEditor() {
         },
 
         applyLayoutCode() {
-            const layout = decodeLayout(this.layoutCodeInput);
+            const layout = decodeLayout(this.layoutCodeInput, { pauseHidden: this._pauseHiddenByDefault() });
             this.layoutCodeError = !layout;
             if (layout) this.layoutDraft = layout;
         },
@@ -203,7 +228,9 @@ export function displayLayoutEditor() {
             if (!this.layoutDraft) {
                 const rects = {};
                 for (const id of FREE_BLOCKS) rects[id] = this.$refs[`layout-${id}`].getBoundingClientRect();
-                this.layoutDraft = layoutFromRects(this.$root.getBoundingClientRect(), rects);
+                this.layoutDraft = layoutFromRects(this.$root.getBoundingClientRect(), rects, {
+                    pauseHidden: this._pauseHiddenByDefault(),
+                });
             }
             return this.layoutDraft;
         },
