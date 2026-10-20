@@ -121,6 +121,21 @@
     cursor: nesw-resize;
 }
 
+/* Lights: the handle on the right side, half-way down the lights, sets the
+   gap between them (#154). Dragged sideways only. */
+.layout-gap-handle {
+    position: absolute;
+    right: -12px;
+    top: calc(6px + var(--orb-size) / 2 - 18px);
+    width: 16px;
+    height: 36px;
+    background: var(--layout-frame);
+    border: 2px solid var(--bg-void);
+    cursor: ew-resize;
+    touch-action: none;
+    pointer-events: auto;
+}
+
 /* Cards block: the row of cards and reasons under the lights. It only moves
    up and down (its gap to the lights). */
 .layout-cards-frame {

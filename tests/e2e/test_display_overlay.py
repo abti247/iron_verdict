@@ -394,3 +394,93 @@ def test_overlay_texts_sit_on_a_dark_panel_and_lights_do_not_move(competition, j
 
     assert computed(hall, reason, "backgroundColor") == [TRANSPARENT]
     assert computed(hall, ".display-timer-big", "backgroundColor") == [TRANSPARENT]
+
+
+def layout_with_lights(scale, gap=None):
+    layout = layout_with_timer_hidden()
+    layout["blocks"]["lights"] = {"x": 50, "y": 30, "s": scale, "hidden": False}
+    if gap is not None:
+        layout["blocks"]["lights"]["gap"] = gap
+    return layout
+
+
+def lights_gap(page):
+    return page.evaluate("parseFloat(getComputedStyle(document.querySelector('.display-lights')).columnGap)")
+
+
+def orb_boxes(page):
+    return [orb.bounding_box() for orb in page.locator(".display-lights .display-orb").all()]
+
+
+def test_overlay_narrow_lights_keep_long_reasons_readable(competition):
+    """Stream use case of #154: big lights (1.5×) close together at the
+    smallest gap (0.4×), set by the layout code in the URL. The three
+    longest squat reasons appear side by side: the lights do not move, no
+    word is broken inside, and the reason panels of neighbouring lights do
+    not touch. An older code without a lights gap keeps the gap of before."""
+    competition.create_session_and_join_head()
+    old, _ = open_overlay(competition, layout_code=layout_code(layout_with_lights(1.5)))
+    assert lights_gap(old) == 128
+    old.context.close()
+
+    head = competition.pages["center_judge"]
+    left = competition.join_as("left_judge")
+    right = competition.join_as("right_judge")
+    overlay, _ = open_overlay(competition, layout_code=layout_code(layout_with_lights(1.5, gap=0.4)))
+    assert lights_gap(overlay) == 128 * 0.4
+    before = orb_boxes(overlay)
+
+    competition.vote_and_lock(left, "yellow", reason="Supporting contact on legs")
+    competition.vote_and_lock(head, "yellow", reason="Technical Non-compliance")
+    competition.vote_and_lock(right, "blue", reason="Downward movement")
+    reasons = overlay.locator(".display-lights .display-orb-reason")
+    for i, text in enumerate(("Supporting contact on legs", "Technical Non-compliance", "Downward movement")):
+        expect(reasons.nth(i)).to_have_text(text)
+    assert orb_boxes(overlay) == before
+
+    assert_reasons_readable(overlay)
+
+    # The German bench reasons broke inside words below 0.4× (matrix in #154).
+    overlay.evaluate("""() => Alpine.store('display').showResults({
+        votes: {left: 'yellow', center: 'blue', right: 'blue'},
+        reasons: {left: 'Hantel\\u00adkontakt mit Hantel\\u00adständern',
+                  center: 'Arme nicht gestreckt bei Abschluss', right: 'Arme nicht gestreckt vor Start'},
+        showExplanations: true, liftType: 'bench'})""")
+    expect(reasons.nth(0)).to_contain_text("Hantel")
+    assert orb_boxes(overlay) == before
+    assert_reasons_readable(overlay, german=True)
+
+
+def assert_reasons_readable(page, german=False):
+    """Every word on one line (a hyphen may break, as at the default gap; in
+    German also a soft hyphen of de.json); the panels (box + 0.12em spread,
+    display-overlay.css) of neighbouring reasons keep a visible gap."""
+    breaks = "\\s\\u00ad-" if german else "\\s-"  # regex class content
+    result = page.evaluate("""([breaks]) => {
+        const els = [...document.querySelectorAll('.display-lights .display-orb-reason')];
+        const broken = [];
+        for (const el of els) {
+            const node = el.firstChild;
+            const re = new RegExp(`[^${breaks}]+`, 'g');
+            let m;
+            while ((m = re.exec(node.data))) {
+                // Line of each character: its last rect (Chrome adds the
+                // hyphen a soft hyphen broke at to the next character's range).
+                const lines = new Set();
+                for (let i = m.index; i < m.index + m[0].length; i++) {
+                    const r = document.createRange();
+                    r.setStart(node, i);
+                    r.setEnd(node, i + 1);
+                    const rects = r.getClientRects();
+                    lines.add(Math.round(rects[rects.length - 1].top));
+                }
+                if (lines.size > 1) broken.push(m[0]);
+            }
+        }
+        const spread = 0.12 * parseFloat(getComputedStyle(els[0]).fontSize);
+        const boxes = els.map((el) => el.getBoundingClientRect());
+        const gaps = [boxes[1].left - boxes[0].right - 2 * spread, boxes[2].left - boxes[1].right - 2 * spread];
+        return { broken, gaps };
+    }""", [breaks])
+    assert result["broken"] == [], result
+    assert all(g > 4 for g in result["gaps"]), result

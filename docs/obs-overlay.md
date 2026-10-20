@@ -28,7 +28,7 @@ When the session ends the overlay shows "Session ended". With a wrong or old cod
 
 The overlay has its own layout, separate from the hall display. Without one it uses the default arrangement of the display. There are two ways to set it up:
 
-**A — directly in OBS.** Right-click the source → **Interact**. In that window press **S** → **Edit layout**. Drag blocks with the mouse, resize them at the corner handle, hide blocks you do not need (e.g. the timer), then **Save**. The layout is stored in OBS's browser profile and survives restarts. While editing, the overlay shows a dark checkerboard and the frames — **in the stream as well**, so edit before going live or hide the source meanwhile.
+**A — directly in OBS.** Right-click the source → **Interact**. In that window press **S** → **Edit layout**. Drag blocks with the mouse, resize them at the corner handle, bring the lights closer together or further apart at the handle beside them, hide blocks you do not need (e.g. the timer), then **Save**. The layout is stored in OBS's browser profile and survives restarts. While editing, the overlay shows a dark checkerboard and the frames — **in the stream as well**, so edit before going live or hide the source meanwhile.
 
 **B — prepare in a browser, put it in the URL.** Open the overlay URL in Chrome, full screen (F11) on a 16:9 monitor. Press **S** → **Edit layout**, arrange the blocks, then **Layout code** and copy the code (`IV1.…`). Close the browser tab. Append the code to the URL in OBS:
 

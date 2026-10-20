@@ -11,7 +11,7 @@
 
 import {
     loadLayout, saveLayout, clearLayout, layoutFromRects,
-    movedBlock, scaledBlock, cardsWithGap, withBlockHidden, blockStyle,
+    movedBlock, scaledBlock, cardsWithGap, lightsWithGap, withBlockHidden, blockStyle,
     encodeLayout, decodeLayout, FREE_BLOCKS, BLOCK_ANCHORS,
     LAYOUT_STORAGE_KEY, OVERLAY_LAYOUT_STORAGE_KEY,
 } from '../displayLayout.js';
@@ -58,7 +58,10 @@ export function displayLayoutEditor() {
         layoutBlockStyle(id) {
             const layout = this.activeLayout();
             const style = blockStyle(layout && layout.blocks[id], BLOCK_ANCHORS[id]);
-            if (id === 'lights') style['--orb-card-gap'] = layout ? String(layout.blocks.cards.gap) : '';
+            if (id === 'lights') {
+                style['--orb-card-gap'] = layout ? String(layout.blocks.cards.gap) : '';
+                style['--lights-gap'] = layout ? String(layout.blocks.lights.gap) : '';
+            }
             return style;
         },
 
@@ -137,7 +140,8 @@ export function displayLayoutEditor() {
             if (layout) this.layoutDraft = layout;
         },
 
-        // mode: 'move' (free blocks), 'scale' (handle), 'gap' (cards block).
+        // mode: 'move' (free blocks), 'scale' (handle), 'gap' (cards block),
+        // 'lightsGap' (side handle of the lights).
         layoutPointerDown(event, id, mode) {
             if (!this.layoutEditing || this._layoutDrag) return;
             event.preventDefault();
@@ -157,6 +161,9 @@ export function displayLayoutEditor() {
                 anchorX: anchor === 'left' ? rect.left : anchor === 'right' ? rect.right : rect.left + rect.width / 2,
                 h: rect.height,
                 orb: this.$refs.layoutOrb.getBoundingClientRect().height,
+                // The lights are centred, so the side handle moves by as much
+                // as the gap changes.
+                columnGap: parseFloat(getComputedStyle(this.$refs['layout-lights']).columnGap),
                 block: draft.blocks[id],
             };
         },
@@ -173,6 +180,8 @@ export function displayLayoutEditor() {
                 const fromAnchor = d.startX - d.anchorX;
                 const rx = Math.abs(fromAnchor) >= 1 ? (event.clientX - d.anchorX) / fromAnchor : 0;
                 next = scaledBlock(d.block, Math.max(rx, (d.h + dy) / d.h));
+            } else if (d.mode === 'lightsGap') {
+                next = lightsWithGap(d.block, d.block.gap * (d.columnGap + dx) / d.columnGap);
             } else {
                 next = cardsWithGap(d.block, d.block.gap + dy / d.orb);
             }
