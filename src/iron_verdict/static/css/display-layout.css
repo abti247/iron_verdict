@@ -9,6 +9,19 @@
     --orb-size: calc(clamp(38px, 19.2vmin, 224px) * var(--display-zoom, 1));
 }
 
+/* Default flow layout: extra room between the cards + reasons and the
+   verdict, so in the editor the cards label (under the cards frame) and the
+   verdict label (above the verdict) sit one above the other instead of on
+   top of each other (#162). Fixed px like the labels, which do not scale:
+   two labels of 27px minus the 12px flex gap, plus a few px
+   (--layout-verdict-room; raise it with the label font or padding). The
+   negative bottom margin keeps the height of the flow, so the timer and the
+   lights stay where they were and only the verdict moves down. */
+.display-full:not(.display-layout-custom) .display-verdict-inline {
+    margin-top: var(--layout-verdict-room);
+    margin-bottom: calc(-1 * var(--layout-verdict-room));
+}
+
 /* ===== SAVED LAYOUT ===== */
 /* Each block sits at its own left/top (percent of the display, inline style)
    and scales with its own --display-zoom. */
@@ -114,7 +127,12 @@
     pointer-events: auto;
 }
 
-/* The attempt block is anchored at its right edge: scale it from the left. */
+/* The attempt block is anchored at its right edge: scale it from the left,
+   and its label grows to the left, so it stays on screen (#162). */
+.vportal-corner-right .layout-frame-label {
+    left: auto;
+    right: -2px;
+}
 .vportal-corner-right .layout-scale-handle {
     right: auto;
     left: -12px;
@@ -162,17 +180,22 @@
 }
 
 /* ===== EDITOR TOOLBAR ===== */
+/* Centred by auto margins between left and right, not by left: 50% plus a
+   transform: that would give it only half the screen width and wrap the
+   German buttons into three rows. Kept flat so at 1280×720 it ends above
+   the timer label (#162). */
 .layout-toolbar {
     position: absolute;
-    top: 12px;
-    left: 50%;
-    transform: translateX(-50%);
+    top: 6px;
+    left: 12px;
+    right: 12px;
+    width: fit-content;
+    margin: 0 auto;
     z-index: 20;
-    max-width: calc(100% - 24px);
     background: var(--bg-surface);
     border: 1px solid var(--panel-border);
     border-top: 2px solid var(--layout-frame);
-    padding: 10px 12px;
+    padding: 6px 12px;
     color: var(--panel-text);
     font-family: 'Rajdhani', sans-serif;
     box-shadow: 0 12px 32px rgba(0,0,0,0.5);
@@ -213,7 +236,7 @@
 }
 
 .layout-toolbar-hint {
-    margin-top: 6px;
+    margin-top: 4px;
     font-size: 12px;
     color: var(--text-dim);
 }

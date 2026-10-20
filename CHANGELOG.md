@@ -13,6 +13,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Stream overlay for OBS: "Stream overlay (OBS)" on role select gives a URL for an OBS browser source that shows lights, reasons, verdict, timer and lifter info on a transparent background without controls, texts on a dark panel so they stay readable over the camera picture; it has its own layout (or one passed in the URL) and connects to VPortal from its settings ("S")
 
 ### Changed
+- The verdict sits a little further below the cards and reasons, so in the display layout editor their labels and hide buttons no longer cover each other
 
 ### Fixed
 - Session lookup and creation limits now count per network instead of across all competitions, so a wave of joins or reloads elsewhere can no longer lock judges out with "Too Many Requests"

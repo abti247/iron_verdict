@@ -19,6 +19,7 @@ import json
 import re
 
 import httpx
+import pytest
 from playwright.sync_api import expect
 
 from tests.e2e.network_switch import cut_network, join_with_network_switch, restore_network
@@ -586,3 +587,58 @@ def test_save_failure_is_shown_and_keeps_editor_open(page, server_url):
     expect(page.locator(ROOT)).to_have_class(EDITING)
     page.get_by_test_id("layout-cancel").click()
     expect(page.locator(ROOT)).not_to_have_class(EDITING)
+
+
+@pytest.mark.parametrize("lang", ["en", "de"])
+@pytest.mark.parametrize("size", [(1920, 1080), (1280, 720)])
+def test_editor_labels_do_not_overlap_in_default_layout(competition, size, lang):
+    """A no lift with reasons on a display in the default layout, editor open,
+    in English and German (longer labels and verdict) (#162): no two block
+    labels overlap, and every hide/show button lies fully on screen,
+    uncovered by the toolbar or anything else, so it can be clicked. Before
+    the fix the verdict label covered the label of the cards + reasons
+    (under the cards frame), and at 1280×720 the toolbar covered the timer
+    label and the attempt button stuck out on the right."""
+    head, left, right = competition.join_all_judges()
+    display = competition.join_as("display")
+    display.set_viewport_size({"width": size[0], "height": size[1]})
+    display.evaluate(f"localStorage.setItem('iron-verdict-lang', '{lang}')")
+    display.reload()
+    display.locator(ROOT).wait_for(state="visible")
+    vote(head, "white")
+    vote(left, "red", with_reason=True)
+    vote(right, "blue", with_reason=True)
+    expect(display.locator(".verdict-stamp")).to_have_class(re.compile(r"\binvalid\b"))
+    expect(display.locator(f"{ROOT} .display-orb-reason").first).to_be_visible()
+    open_editor(display)
+    expect(display.locator(ROOT)).not_to_have_class(CUSTOM)
+
+    labels = display.evaluate(
+        """() => [...document.querySelectorAll('.display-full .layout-frame-label')]
+            .filter(el => el.getClientRects().length)
+            .map(el => {
+                const r = el.getBoundingClientRect();
+                const button = el.querySelector('.layout-hide-toggle');
+                const b = button.getBoundingClientRect();
+                // Centre and the four corners (1px inside): nothing, e.g. the
+                // toolbar or another label, covers any part of the button.
+                const points = [[b.left + b.width / 2, b.top + b.height / 2],
+                                [b.left + 1, b.top + 1], [b.right - 1, b.top + 1],
+                                [b.left + 1, b.bottom - 1], [b.right - 1, b.bottom - 1]];
+                return { id: el.closest('[data-layout-block]').dataset.layoutBlock,
+                         rect: [r.left, r.top, r.right, r.bottom],
+                         button: [b.left, b.top, b.right, b.bottom],
+                         hit: points.every(([x, y]) => document.elementFromPoint(x, y) === button) };
+            })"""
+    )
+    assert {lab["id"] for lab in labels} == {"timer", "lights", "cards", "verdict", "lifter", "attempt"}
+    for i, a in enumerate(labels):
+        for b in labels[i + 1:]:
+            ax0, ay0, ax1, ay1 = a["rect"]
+            bx0, by0, bx1, by1 = b["rect"]
+            overlap = ax0 < bx1 and bx0 < ax1 and ay0 < by1 and by0 < ay1
+            assert not overlap, (a, b)
+    for lab in labels:
+        x0, y0, x1, y1 = lab["button"]
+        assert x0 >= 0 and y0 >= 0 and x1 <= size[0] and y1 <= size[1], lab
+        assert lab["hit"], lab
