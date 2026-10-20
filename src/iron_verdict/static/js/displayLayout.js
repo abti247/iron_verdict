@@ -8,7 +8,9 @@
 // block's --display-zoom). y is the top edge; x is the block's anchor: its
 // left edge, centre or right edge (BLOCK_ANCHORS), the side its content grows
 // from in the default layout — so a longer lifter name or a wider weight
-// never pushes a block off screen. The cards block (card colours and
+// never pushes a block off screen. The lights also have a gap between the
+// three lights (#154), a factor on the default gap of layout.css; layouts
+// and codes from before it get the default (1). The cards block (card colours and
 // reasons under the lights) follows the lights: it only has a gap, in
 // multiples of the light size. Every block can be hidden.
 
@@ -31,6 +33,10 @@ const SCALE_MAX = 3;
 const SCALE_STEP = 0.05;
 const GAP_MAX = 2;
 const GAP_STEP = 0.05;
+// Below 0.4 the reasons of neighbouring lights touch (comparison matrix in #154).
+const LIGHTS_GAP_MIN = 0.4;
+const LIGHTS_GAP_MAX = 2;
+const LIGHTS_GAP_DEFAULT = 1;
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 // Two decimals hide float noise (1.5 * 1.1 → 1.6500000000000001).
@@ -51,6 +57,14 @@ function sanitizeFree(raw) {
     };
 }
 
+function sanitizeLights(raw) {
+    const block = sanitizeFree(raw);
+    if (!block) return null;
+    const gap = raw.gap === undefined ? LIGHTS_GAP_DEFAULT : raw.gap;
+    if (!isNum(gap)) return null;
+    return { ...block, gap: clamp(gap, LIGHTS_GAP_MIN, LIGHTS_GAP_MAX) };
+}
+
 function sanitizeCards(raw) {
     if (!raw || typeof raw !== 'object' || !isNum(raw.gap)) return null;
     return { gap: clamp(raw.gap, 0, GAP_MAX), hidden: raw.hidden === true };
@@ -65,7 +79,7 @@ export function sanitizeLayout(raw) {
     if (!src || typeof src !== 'object') return null;
     const blocks = {};
     for (const id of FREE_BLOCKS) {
-        blocks[id] = sanitizeFree(src[id]);
+        blocks[id] = id === 'lights' ? sanitizeLights(src[id]) : sanitizeFree(src[id]);
         if (!blocks[id]) return null;
     }
     blocks.cards = sanitizeCards(src.cards);
@@ -124,6 +138,7 @@ export function layoutFromRects(root, rects) {
             hidden: false,
         };
     }
+    blocks.lights.gap = LIGHTS_GAP_DEFAULT;
     blocks.cards = { gap: 0, hidden: false };
     return { v: VERSION, blocks };
 }
@@ -143,6 +158,10 @@ export function scaledBlock(block, ratio) {
 
 export function cardsWithGap(cards, gap) {
     return { ...cards, gap: clamp(snap(gap, GAP_STEP), 0, GAP_MAX) };
+}
+
+export function lightsWithGap(lights, gap) {
+    return { ...lights, gap: clamp(snap(gap, GAP_STEP), LIGHTS_GAP_MIN, LIGHTS_GAP_MAX) };
 }
 
 export function withBlockHidden(layout, id, hidden) {

@@ -616,6 +616,8 @@
                             x-text="layoutBlockHidden('lights') ? t('displayLayout.show') : t('displayLayout.hide')"></button>
                 </span>
                 <span class="layout-scale-handle" @pointerdown.stop="layoutPointerDown($event, 'lights', 'scale')"></span>
+                <span class="layout-gap-handle" data-testid="layout-lights-gap-handle"
+                      @pointerdown.stop="layoutPointerDown($event, 'lights', 'lightsGap')"></span>
             </div>
             <div class="layout-cards-frame" data-layout-block="cards" x-show="layoutEditing" x-cloak
                  @pointerdown.stop="layoutPointerDown($event, 'cards', 'gap')">

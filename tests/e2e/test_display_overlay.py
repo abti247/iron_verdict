@@ -394,3 +394,71 @@ def test_overlay_texts_sit_on_a_dark_panel_and_lights_do_not_move(competition, j
 
     assert computed(hall, reason, "backgroundColor") == [TRANSPARENT]
     assert computed(hall, ".display-timer-big", "backgroundColor") == [TRANSPARENT]
+
+
+def layout_with_lights(scale, gap=None):
+    layout = layout_with_timer_hidden()
+    layout["blocks"]["lights"] = {"x": 50, "y": 30, "s": scale, "hidden": False}
+    if gap is not None:
+        layout["blocks"]["lights"]["gap"] = gap
+    return layout
+
+
+def lights_gap(page):
+    return page.evaluate("parseFloat(getComputedStyle(document.querySelector('.display-lights')).columnGap)")
+
+
+def orb_boxes(page):
+    return [orb.bounding_box() for orb in page.locator(".display-lights .display-orb").all()]
+
+
+def test_overlay_narrow_lights_keep_long_reasons_readable(competition):
+    """Stream use case of #154: big lights (1.5×) close together at the
+    smallest gap (0.4×), set by the layout code in the URL. The three
+    longest squat reasons appear side by side: the lights do not move, no
+    word is broken inside, and the reason panels of neighbouring lights do
+    not touch. An older code without a lights gap keeps the gap of before."""
+    competition.create_session_and_join_head()
+    old, _ = open_overlay(competition, layout_code=layout_code(layout_with_lights(1.5)))
+    assert lights_gap(old) == 128
+    old.context.close()
+
+    head = competition.pages["center_judge"]
+    left = competition.join_as("left_judge")
+    right = competition.join_as("right_judge")
+    overlay, _ = open_overlay(competition, layout_code=layout_code(layout_with_lights(1.5, gap=0.4)))
+    assert lights_gap(overlay) == 128 * 0.4
+    before = orb_boxes(overlay)
+
+    competition.vote_and_lock(left, "yellow", reason="Supporting contact on legs")
+    competition.vote_and_lock(head, "yellow", reason="Technical Non-compliance")
+    competition.vote_and_lock(right, "blue", reason="Downward movement")
+    reasons = overlay.locator(".display-lights .display-orb-reason")
+    for i, text in enumerate(("Supporting contact on legs", "Technical Non-compliance", "Downward movement")):
+        expect(reasons.nth(i)).to_have_text(text)
+    assert orb_boxes(overlay) == before
+
+    # Every word on one line (a hyphen may break, as at the default gap); panels (box + 0.12em spread, display-overlay.css)
+    # of neighbouring reasons keep a visible gap.
+    result = overlay.evaluate("""() => {
+        const els = [...document.querySelectorAll('.display-lights .display-orb-reason')];
+        const broken = [];
+        for (const el of els) {
+            const node = el.firstChild;
+            const re = /[^\\s-]+/g;  // a break after a hyphen is fine
+            let m;
+            while ((m = re.exec(node.data))) {
+                const r = document.createRange();
+                r.setStart(node, m.index);
+                r.setEnd(node, m.index + m[0].length);
+                const lines = new Set([...r.getClientRects()].map((q) => Math.round(q.top)));
+                if (lines.size > 1) broken.push(m[0]);
+            }
+        }
+        const spread = 0.12 * parseFloat(getComputedStyle(els[0]).fontSize);
+        const boxes = els.map((el) => el.getBoundingClientRect());
+        const gaps = [boxes[1].left - boxes[0].right - 2 * spread, boxes[2].left - boxes[1].right - 2 * spread];
+        return { broken, gaps };
+    }""")
+    assert result["broken"] == [], result
+    assert all(g > 4 for g in result["gaps"]), result

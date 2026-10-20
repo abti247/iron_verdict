@@ -7,6 +7,8 @@ touch) and scaled at a handle, snapping to 1 % of the screen. Each block is
 anchored where its content grows from (lifter: left edge, attempt: right
 edge, the others: centre), so longer content never pushes it off screen. The cards block
 follows the lights and is only dragged up or down (its gap to the lights).
+The gap between the three lights is set at a handle on the side of the
+lights block (#154).
 Every block can be hidden. "Save" stores the layout on this device, "Cancel"
 drops the changes, "Reset" brings back the default. A layout can be copied to
 another device as a code. Without a saved layout the display looks as before.
@@ -80,6 +82,25 @@ def drag(page, locator, dx, dy, steps=4):
 def drag_lights(page, dx, dy):
     """The lights block is grabbed at a light (its lower part is the cards frame)."""
     drag(page, block(page, "lights").locator(".display-orb").first, dx, dy)
+
+
+def lights_gap(page):
+    """Gap between the lights in px (column-gap of the lights block)."""
+    return page.evaluate(
+        "parseFloat(getComputedStyle(document.querySelector('.display-full .display-lights')).columnGap)"
+    )
+
+
+def touch_drag(page, locator, dx, dy, steps=4):
+    """Drag with real touch input (CDP), like a finger on a tablet."""
+    box = locator.bounding_box()
+    sx, sy = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+    cdp = page.context.new_cdp_session(page)
+    cdp.send("Input.dispatchTouchEvent", {"type": "touchStart", "touchPoints": [{"x": sx, "y": sy}]})
+    for i in range(1, steps + 1):
+        cdp.send("Input.dispatchTouchEvent",
+                 {"type": "touchMove", "touchPoints": [{"x": sx + dx * i / steps, "y": sy + dy * i / steps}]})
+    cdp.send("Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []})
 
 
 def open_display(page, server_url, size=(1920, 1080)):
@@ -178,18 +199,64 @@ def test_touch_drag_moves_block(page, server_url):
     open_display(page, server_url)
     open_editor(page)
     x0, y0 = block_pos(page, "verdict")[:2]
-    box = block(page, "verdict").bounding_box()
-    sx, sy = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
-    cdp = page.context.new_cdp_session(page)
-    cdp.send("Input.dispatchTouchEvent", {"type": "touchStart", "touchPoints": [{"x": sx, "y": sy}]})
-    for i in range(1, 5):
-        cdp.send("Input.dispatchTouchEvent",
-                 {"type": "touchMove", "touchPoints": [{"x": sx - 96 * i, "y": sy - 27 * i}]})
-    cdp.send("Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []})
+    touch_drag(page, block(page, "verdict"), -384, -108)
     save(page)
     layout = stored_layout(page)
     assert layout["blocks"]["verdict"]["x"] == round(x0 - 20)
     assert layout["blocks"]["verdict"]["y"] == round(y0 - 10)
+
+
+def test_lights_gap_set_at_side_handle_with_mouse_and_touch_survives_reload(page, server_url):
+    """Without a layout the lights stand 128 px apart (as before #154). In the
+    editor the handle on the side of the lights narrows the gap with the mouse
+    (−64 px → 0.5× in 5 % steps) and widens it with a finger (+32 px →
+    0.75×); the lights stay centred where they were. It never goes below
+    0.4× (reasons of neighbouring lights would touch). Saved, the gap comes
+    back after a reload."""
+    open_display(page, server_url)
+    assert lights_gap(page) == 128
+    centre_x = block_pos(page, "lights")[0]
+    open_editor(page)
+    handle = page.get_by_test_id("layout-lights-gap-handle")
+    expect(handle).to_be_visible()
+
+    drag(page, handle, -64, 0)
+    assert lights_gap(page) == 64
+    touch_drag(page, handle, 32, 0)
+    assert lights_gap(page) == 96
+    assert abs(block_pos(page, "lights")[0] - centre_x) < 0.6
+    save(page)
+    assert stored_layout(page)["blocks"]["lights"]["gap"] == 0.75
+
+    page.reload()
+    page.locator(ROOT).wait_for(state="visible")
+    expect(page.locator(ROOT)).to_have_class(CUSTOM)
+    assert lights_gap(page) == 96
+    expect(page.get_by_test_id("layout-lights-gap-handle")).to_be_hidden()
+
+    open_editor(page)
+    drag(page, page.get_by_test_id("layout-lights-gap-handle"), -500, 0)
+    assert lights_gap(page) == 128 * 0.4
+    page.get_by_test_id("layout-cancel").click()
+    assert lights_gap(page) == 96
+
+
+def test_layout_without_lights_gap_keeps_default_gap(page, server_url):
+    """A layout saved before #154 has no lights gap: it stays valid and the
+    lights keep the gap of before (128 px)."""
+    open_display(page, server_url)
+    page.evaluate(f"""localStorage.setItem('{LAYOUT_KEY}', JSON.stringify({{v: 1, blocks: {{
+        timer: {{x: 50, y: 5, s: 1, hidden: false}},
+        lights: {{x: 50, y: 40, s: 0.8, hidden: false}},
+        cards: {{gap: 0, hidden: false}},
+        verdict: {{x: 50, y: 80, s: 1, hidden: false}},
+        lifter: {{x: 2, y: 88, s: 1, hidden: false}},
+        attempt: {{x: 98, y: 88, s: 1, hidden: false}}}}}}))""")
+    page.reload()
+    page.locator(ROOT).wait_for(state="visible")
+    expect(page.locator(ROOT)).to_have_class(CUSTOM)
+    expect(block(page, "lights")).to_have_attribute("style", re.compile(r"--display-zoom: 0\.8"))
+    assert lights_gap(page) == 128
 
 
 def test_cancel_discards_changes(page, server_url):
@@ -300,11 +367,12 @@ def test_cards_follow_lights_and_only_change_their_gap(competition):
 
 
 def test_layout_code_copies_layout_to_another_device(competition, page, server_url):
-    """Display A exports its layout as a code; display B pastes it, sees the
-    layout and saves it. A wrong code shows an error and changes nothing."""
+    """Display A exports its layout as a code (including a narrower gap
+    between the lights); display B pastes it, sees the layout and saves it. A wrong code shows an error and changes nothing."""
     open_display(page, server_url)
     open_editor(page)
     drag(page, block(page, "timer"), 192, 108)
+    drag(page, page.get_by_test_id("layout-lights-gap-handle"), -64, 0)
     page.get_by_test_id("layout-hide-verdict").click()
     page.get_by_test_id("layout-code-toggle").click()
     code = page.get_by_test_id("layout-code-export").input_value()
@@ -327,7 +395,9 @@ def test_layout_code_copies_layout_to_another_device(competition, page, server_u
     expect(other.locator(ROOT)).to_have_class(CUSTOM)
     save(other)
     assert stored_layout(other) == layout_a
+    assert layout_a["blocks"]["lights"]["gap"] == 0.5
     expect(block(other, "verdict")).to_be_hidden()
+    assert lights_gap(other) == 64
 
 
 def test_layout_survives_connection_loss(competition):

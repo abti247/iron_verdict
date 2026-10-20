@@ -11,6 +11,7 @@ import {
     movedBlock,
     scaledBlock,
     cardsWithGap,
+    lightsWithGap,
     withBlockHidden,
     blockStyle,
     encodeLayout,
@@ -32,7 +33,7 @@ function validLayout() {
         v: 1,
         blocks: {
             timer: { x: 30, y: 5, s: 1, hidden: false },
-            lights: { x: 20, y: 35, s: 1.5, hidden: false },
+            lights: { x: 20, y: 35, s: 1.5, hidden: false, gap: 0.6 },
             cards: { gap: 0.25, hidden: false },
             verdict: { x: 40, y: 80, s: 1, hidden: true },
             lifter: { x: 2, y: 88, s: 1, hidden: false },
@@ -48,6 +49,28 @@ describe('sanitizeLayout', () => {
 
     it.each([null, undefined, 'x', 42, [], {}])('rejects %p', (raw) => {
         expect(sanitizeLayout(raw)).toBe(null);
+    });
+
+    it('gives a layout without a lights gap (saved before #154) the default gap', () => {
+        const raw = validLayout();
+        delete raw.blocks.lights.gap;
+        expect(sanitizeLayout(raw).blocks.lights.gap).toBe(1);
+    });
+
+    it('limits the lights gap and rejects one that is not a number', () => {
+        const raw = validLayout();
+        raw.blocks.lights.gap = 0.1;
+        expect(sanitizeLayout(raw).blocks.lights.gap).toBe(0.4);
+        raw.blocks.lights.gap = 9;
+        expect(sanitizeLayout(raw).blocks.lights.gap).toBe(2);
+        raw.blocks.lights.gap = '1; color: red';
+        expect(sanitizeLayout(raw)).toBe(null);
+    });
+
+    it('drops a gap on other free blocks', () => {
+        const raw = validLayout();
+        raw.blocks.timer.gap = 0.5;
+        expect(sanitizeLayout(raw).blocks.timer).not.toHaveProperty('gap');
     });
 
     it('rejects an unknown version', () => {
@@ -75,11 +98,11 @@ describe('sanitizeLayout', () => {
     it('clamps out-of-range values', () => {
         const raw = validLayout();
         raw.blocks.timer = { x: -20, y: 500, s: 10, hidden: false };
-        raw.blocks.lights = { x: 120, y: -5, s: 0, hidden: false };
+        raw.blocks.lights = { x: 120, y: -5, s: 0, hidden: false, gap: 0 };
         raw.blocks.cards = { gap: -1, hidden: false };
         const out = sanitizeLayout(raw);
         expect(out.blocks.timer).toEqual({ x: 0, y: 99, s: 3, hidden: false });
-        expect(out.blocks.lights).toEqual({ x: 100, y: 0, s: 0.3, hidden: false });
+        expect(out.blocks.lights).toEqual({ x: 100, y: 0, s: 0.3, hidden: false, gap: 0.4 });
         expect(out.blocks.cards.gap).toBe(0);
     });
 
@@ -148,7 +171,7 @@ describe('layoutFromRects', () => {
         });
         expect(layout.v).toBe(1);
         expect(layout.blocks.timer).toEqual({ x: 50, y: 2, s: 1, hidden: false });
-        expect(layout.blocks.lights).toEqual({ x: 50, y: 30, s: 1, hidden: false });
+        expect(layout.blocks.lights).toEqual({ x: 50, y: 30, s: 1, hidden: false, gap: 1 });
         expect(layout.blocks.lifter).toEqual({ x: 2, y: 90, s: 1, hidden: false });
         expect(layout.blocks.attempt).toEqual({ x: 98, y: 90, s: 1, hidden: false });
         expect(layout.blocks.cards).toEqual({ gap: 0, hidden: false });
@@ -192,6 +215,13 @@ describe('block edits', () => {
         expect(cardsWithGap(cards, 50).gap).toBe(2);
     });
 
+    it('sets the lights gap in 5 % steps of the default gap, from 0.4 to 2', () => {
+        const lights = { x: 50, y: 30, s: 1, hidden: false, gap: 1 };
+        expect(lightsWithGap(lights, 0.72)).toEqual({ ...lights, gap: 0.7 });
+        expect(lightsWithGap(lights, 0).gap).toBe(0.4);
+        expect(lightsWithGap(lights, 50).gap).toBe(2);
+    });
+
     it('hides and shows a block without touching the others', () => {
         const layout = validLayout();
         const out = withBlockHidden(layout, 'timer', true);
@@ -224,6 +254,12 @@ describe('export code', () => {
         const code = encodeLayout(validLayout());
         expect(code).toMatch(/^IV1\.[A-Za-z0-9_-]+$/);
         expect(decodeLayout(code)).toEqual(validLayout());
+    });
+
+    it('reads a code made before the lights gap existed with the default gap', () => {
+        const old = validLayout();
+        delete old.blocks.lights.gap;
+        expect(decodeLayout(encodeLayout(old)).blocks.lights.gap).toBe(1);
     });
 
     it('tolerates surrounding whitespace', () => {

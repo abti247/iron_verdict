@@ -270,7 +270,9 @@
 }
 
 .display-lights {
-    --orb-reason-gap: 8rem;
+    /* --lights-gap: factor from a saved layout (#154; unset = 1). The gap is
+       also the room a reason may take from its neighbours (components.css). */
+    --orb-reason-gap: calc(8rem * var(--lights-gap, 1));
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     justify-items: center;

@@ -240,7 +240,7 @@
   "displayLayout": {
     "editButton": "Edit layout",
     "title": "Edit layout",
-    "hint": "Drag a block to move it, drag its corner to resize it. Changes apply with Save.",
+    "hint": "Drag a block to move it, drag its corner to resize it, drag the handle beside the lights to space them. Changes apply with Save.",
     "save": "Save",
     "cancel": "Cancel",
     "reset": "Reset to default",

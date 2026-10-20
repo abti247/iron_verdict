@@ -240,7 +240,7 @@
   "displayLayout": {
     "editButton": "Layout bearbeiten",
     "title": "Layout bearbeiten",
-    "hint": "Block ziehen zum Verschieben, Ecke ziehen zum Skalieren. Änderungen gelten erst mit Speichern.",
+    "hint": "Block ziehen zum Verschieben, Ecke ziehen zum Skalieren, Griff an der Seite der Lichter ziehen für ihren Abstand. Änderungen gelten erst mit Speichern.",
     "save": "Speichern",
     "cancel": "Abbrechen",
     "reset": "Auf Standard zurücksetzen",
