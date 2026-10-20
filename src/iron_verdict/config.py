@@ -70,6 +70,8 @@ class Settings:
     PORT: int = int(os.getenv("PORT", "8000"))
     SESSION_TIMEOUT_HOURS: int = int(os.getenv("SESSION_TIMEOUT_HOURS", "4"))
     DISPLAY_CAP: int = int(os.getenv("DISPLAY_CAP", "20"))
+    # Upper bound for joined WebSockets across all sessions (#61).
+    MAX_WEBSOCKETS: int = int(os.getenv("MAX_WEBSOCKETS", "2000"))
     # Empty means "not set"; startup refuses it (see require_allowed_origin).
     ALLOWED_ORIGIN: str = os.getenv("ALLOWED_ORIGIN", "").strip()
     APP_VERSION: str = os.getenv("APP_VERSION", "dev")

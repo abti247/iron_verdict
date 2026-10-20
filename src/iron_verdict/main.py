@@ -327,6 +327,15 @@ async def get_session(
     return JSONResponse(status_code=404, content={"detail": "Session not found"})
 
 
+def _holds_valid_reconnect_token(session_code: str, role: str, token) -> bool:
+    """Whether *token* is the current reconnect token of the judge *role*."""
+    if not token or not role.endswith("_judge"):
+        return False
+    position = role.replace("_judge", "")
+    judge = session_manager.sessions.get(session_code, {}).get("judges", {}).get(position, {})
+    return judge.get("reconnect_token") == token
+
+
 async def _reject_vote(websocket: WebSocket, conn_id: str, session_code: str, role: str, code: str, text: str) -> None:
     logger.info("vote_rejected", extra={
         "conn_id": conn_id,
@@ -409,6 +418,28 @@ async def websocket_endpoint(websocket: WebSocket):
                         "message": "Missing required fields"
                     })
                     continue
+
+                # Global cap (#61), checked before join_session so a rejected judge is
+                # never marked connected. Not exact: concurrent joins may pass it
+                # together. A judge with a valid reconnect token is exempt — it only
+                # replaces its own connection, which may still be counted.
+                if (
+                    not _holds_valid_reconnect_token(session_code, role, message.get("reconnect_token"))
+                    and await connection_manager.count_connections() >= settings.MAX_WEBSOCKETS
+                ):
+                    logger.warning("websocket_cap_reached", extra={
+                        "conn_id": conn_id,
+                        "session_code": session_code,
+                        "role": role,
+                        "limit": settings.MAX_WEBSOCKETS,
+                        "client_ip": _get_ws_client_ip(websocket),
+                    })
+                    await websocket.send_json({
+                        "type": "join_error",
+                        "message": "Server at capacity"
+                    })
+                    await websocket.close(code=1013)
+                    return
 
                 # Validate join
                 result = session_manager.join_session(session_code, role)

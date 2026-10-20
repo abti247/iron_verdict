@@ -32,6 +32,18 @@ def test_vportal_fetch_interval_clamps_to_2000_minimum(monkeypatch):
     assert settings.VPORTAL_FETCH_INTERVAL_MS == 2000
 
 
+def test_max_websockets_defaults_to_2000(monkeypatch):
+    monkeypatch.delenv("MAX_WEBSOCKETS", raising=False)
+    settings = reload_config()
+    assert settings.MAX_WEBSOCKETS == 2000
+
+
+def test_max_websockets_honors_env(monkeypatch):
+    monkeypatch.setenv("MAX_WEBSOCKETS", "3")
+    settings = reload_config()
+    assert settings.MAX_WEBSOCKETS == 3
+
+
 def test_test_mode_defaults_to_false(monkeypatch):
     monkeypatch.delenv("TEST_MODE", raising=False)
     settings = reload_config()

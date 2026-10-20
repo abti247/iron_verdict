@@ -94,6 +94,11 @@ class ConnectionManager:
                 if role.startswith("display_")
             )
 
+    async def count_connections(self) -> int:
+        """Count active connections across all sessions."""
+        async with self._lock:
+            return sum(len(roles) for roles in self.active_connections.values())
+
     async def send_to_displays(self, session_code: str, message: Dict[str, Any]):
         """Send a message to all display connections in a session."""
         async with self._lock:
