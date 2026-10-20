@@ -5,8 +5,8 @@ Starts the app locally on a free port, plays a short example competition in
 headless Chromium and photographs the display in German and English:
 
 - ``result-reasons.webp``: a "No Lift" with the judges' reasons shown
-- ``layout-editor.webp``: the same display in the layout editor (grid,
-  toolbar, the timer hidden to show the hide toggles)
+- ``layout-editor.webp``: the same display in the layout editor (block
+  frames, toolbar, the timer hidden to show the hide toggles)
 
 The images are written as ``<out>/<lang>/<motif>.webp`` (default
 ``src/iron_verdict/static/img/guide``) and committed. They contain example
@@ -39,7 +39,7 @@ def start_server():
     """Run the app in a background thread; return its base URL."""
     # Same settings as the E2E tests: any origin, session snapshot in a
     # throwaway directory instead of /data.
-    os.environ.setdefault("ALLOWED_ORIGIN", "*")
+    os.environ["ALLOWED_ORIGIN"] = "*"
     os.environ["SNAPSHOT_PATH"] = os.path.join(tempfile.mkdtemp(), "sessions.json")
     sys.path.insert(0, str(ROOT / "src"))
     import httpx
@@ -132,6 +132,11 @@ def generate(browser, url, lang, out):
     display.get_by_test_id("join-code-input").press("Enter")
     display.locator(".role-display-btn").click()
     display.locator(".display-full").wait_for(state="visible")
+    # The session names differ per language, so a wrong UI language would
+    # not show up as identical images; check it directly.
+    shown = display.evaluate("document.documentElement.lang")
+    if shown != lang:
+        raise RuntimeError(f"display shows language {shown!r}, expected {lang!r}")
 
     vote(left, "red", with_reason=True)
     vote(head, "white", with_reason=False)

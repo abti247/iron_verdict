@@ -3,7 +3,8 @@
 ``scripts/guide_screenshots.py`` starts the app locally and photographs the
 motifs for the in-app guide in German and English as WebP: the display with
 a "No Lift" result including the reasons, and the display in the layout
-editor (grid, hide toggles). The images contain example data only.
+editor (block frames, hide toggles). The script fails if the display does
+not show the requested language. The images contain example data only.
 """
 
 import base64
@@ -21,8 +22,7 @@ MAX_BYTES = 150_000
 def test_script_writes_both_motifs_in_both_languages_as_webp(page, tmp_path):
     """Run the script into a temporary directory → for DE and EN it writes
     both motifs as WebP files that Chromium decodes at 1280×720 and that stay
-    below the size budget. The German and English images differ (translated
-    labels)."""
+    below the size budget. The German and English images differ."""
     result = subprocess.run(
         [sys.executable, str(SCRIPT), "--out", str(tmp_path)],
         cwd=ROOT, capture_output=True, text=True, timeout=180,
