@@ -92,6 +92,23 @@ def test_display_help_opens_and_closes_in_the_settings_panel_en_de(competition):
         _check_display_help(join_display(competition, lang), lang)
 
 
+def test_display_help_below_the_panel_on_a_narrow_display(competition):
+    """Narrow display (portrait monitor or phone, 390 px wide): there is no
+    room beside the panel, so the explanation opens below it, fully within
+    the width of the screen and without covering the panel's controls."""
+    competition.create_session_and_join_head()
+    page = join_display(competition, "en")
+    page.set_viewport_size({"width": 390, "height": 800})
+    page.locator(".display-settings-gear").click()
+    page.get_by_test_id("display-help-toggle").click()
+    help_box = page.get_by_test_id("display-help")
+    expect(help_box).to_be_visible()
+    panel_box = page.locator(".display-settings-panel").bounding_box()
+    box = help_box.bounding_box()
+    assert box["y"] >= panel_box["y"] + panel_box["height"] - 1
+    assert box["x"] >= 0 and box["x"] + box["width"] <= 390
+
+
 def test_display_help_never_shows_in_the_stream_overlay_while_the_panel_is_closed(competition):
     """Stream overlay: neither the "?" nor the explanation is in the picture.
     "S" opens the panel with the "?"; the explanation opened there disappears

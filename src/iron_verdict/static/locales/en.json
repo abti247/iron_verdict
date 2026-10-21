@@ -400,6 +400,7 @@
             "The overlay has its own layout, separate from the hall display.",
             "A – directly in OBS: right-click the source → Interact → S key → “Edit layout”, arrange the blocks, hide those you do not need, “Save”. The layout is stored in OBS's browser profile.",
             "B – prepare in a browser: open the overlay URL in Chrome, full screen (F11) on a 16:9 monitor, S → “Edit layout”, arrange, “Layout code” and copy the code (IV1.…). Append it to the URL in OBS: &layout=IV1.… Then only this layout applies; to change it, repeat B with the new code. This way the same layout works on another PC or at the next competition.",
+            "If the code in the URL is invalid, the overlay uses its saved (or the default) layout and the panel says so.",
             "Do not stack blocks: their dark panels are translucent. Leave room around the lights for long reasons (two or three lines)."
           ]
         },
@@ -412,7 +413,8 @@
         {
           "title": "VPortal (lifter and attempt info)",
           "items": [
-            "In VPortal sessions the overlay needs its own login, because OBS has its own browser profile: Interact → S → “Connect to comp software”. The login stays stored in the OBS profile."
+            "In VPortal sessions the overlay needs its own login, because OBS has its own browser profile: Interact → S → “Connect to comp software”. The login stays stored in the OBS profile.",
+            "Lifter and attempt info appear within a few seconds; after a reload the panel shows “Connected to … · <platform>”."
           ]
         },
         {

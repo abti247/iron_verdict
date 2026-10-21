@@ -400,6 +400,7 @@
             "Das Overlay hat ein eigenes Layout, getrennt vom Hallen-Display.",
             "A – direkt in OBS: Rechtsklick auf die Quelle → Interagieren → Taste S → „Layout bearbeiten“, Blöcke anordnen, nicht benötigte ausblenden, „Speichern“. Das Layout bleibt im Browser-Profil von OBS gespeichert.",
             "B – im Browser vorbereiten: die Overlay-URL in Chrome im Vollbild (F11) auf einem 16:9-Monitor öffnen, S → „Layout bearbeiten“, anordnen, „Layout-Code“ und den Code (IV1.…) kopieren. In OBS an die URL anhängen: &layout=IV1.… Dann gilt nur dieses Layout; zum Ändern B mit dem neuen Code wiederholen. So lässt sich dasselbe Layout auf einem anderen PC oder beim nächsten Wettkampf nutzen.",
+            "Ist der Code in der URL ungültig, nutzt das Overlay sein gespeichertes (oder das Standard-)Layout und das Panel sagt das.",
             "Blöcke nicht übereinanderlegen: Ihre dunklen Flächen sind durchscheinend. Um die Lichter Platz für lange Gründe lassen (zwei bis drei Zeilen)."
           ]
         },
@@ -412,7 +413,8 @@
         {
           "title": "VPortal (Lifter- und Versuchsdaten)",
           "items": [
-            "In VPortal-Sitzungen braucht das Overlay eine eigene Anmeldung, weil OBS ein eigenes Browser-Profil hat: Interagieren → S → „Mit Wettkampf-Software verbinden“. Die Anmeldung bleibt im OBS-Profil gespeichert."
+            "In VPortal-Sitzungen braucht das Overlay eine eigene Anmeldung, weil OBS ein eigenes Browser-Profil hat: Interagieren → S → „Mit Wettkampf-Software verbinden“. Die Anmeldung bleibt im OBS-Profil gespeichert.",
+            "Lifter- und Versuchsdaten erscheinen nach wenigen Sekunden; nach dem Neuladen zeigt das Panel „Verbunden mit … · <Plattform>“."
           ]
         },
         {

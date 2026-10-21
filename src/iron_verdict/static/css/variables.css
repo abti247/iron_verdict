@@ -18,6 +18,9 @@
     --panel-border-hover: #4a4a4e;
     --panel-text: #d1d5db;
     --panel-text-bright: #f5f5f7;
+    --panel-bg: #131316;
+    --panel-accent: #ef4444;
+    --panel-shadow: rgba(0, 0, 0, 0.5);
     /* Display contrast mode (#105): black background stays, everything on it
        reaches at least 7:1 (WCAG AAA) against it. */
     --contrast-text: #FFFFFF;

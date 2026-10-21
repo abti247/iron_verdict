@@ -860,11 +860,11 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     width: min(380px, calc(100vw - 320px));
     max-height: calc(100vh - 120px);
     overflow-y: auto;
-    background: #131316;
+    background: var(--panel-bg);
     border: 1px solid var(--panel-border);
-    border-top: 2px solid #ef4444;
+    border-top: 2px solid var(--panel-accent);
     padding: 16px 18px;
-    box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+    box-shadow: 0 12px 32px var(--panel-shadow);
 }
 @media (max-width: 640px) {
     .display-help {
