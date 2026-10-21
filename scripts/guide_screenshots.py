@@ -2,8 +2,10 @@
 """Generate the screenshots for the in-app guide (#157).
 
 Starts the app locally on a free port, plays a short example competition in
-headless Chromium and photographs the display in German and English:
+headless Chromium and photographs it in German and English:
 
+- ``judge-reason.webp``: the chief referee's phone with yellow and a reason
+  picked, not yet locked in (#158)
 - ``result-reasons.webp``: a "No Lift" with the judges' reasons shown
 - ``layout-editor.webp``: the same display in the layout editor (block
   frames, toolbar, the timer hidden to show the hide toggles)
@@ -30,6 +32,11 @@ DEFAULT_OUT = ROOT / "src" / "iron_verdict" / "static" / "img" / "guide"
 # Rendered like a Full HD hall display, stored at a smaller size.
 VIEWPORT = {"width": 1920, "height": 1080}
 IMAGE_SIZE = (1280, 720)
+# Rendered like a phone (CSS pixels at twice the density), stored at 4/3 of
+# the CSS size: sharp at the narrow width the guide shows it.
+PHONE_VIEWPORT = {"width": 390, "height": 840}
+PHONE_SCALE = 2
+PHONE_IMAGE_SIZE = (520, 1120)
 WEBP_QUALITY = 0.8
 SESSION_NAMES = {"de": "Beispiel-Meisterschaft", "en": "Example Championship"}
 LOCALES = {"de": "de-DE", "en": "en-US"}
@@ -61,8 +68,12 @@ def start_server():
     raise RuntimeError("server failed to start")
 
 
-def open_page(browser, url, lang):
-    ctx = browser.new_context(locale=LOCALES[lang], viewport=VIEWPORT)
+def open_page(browser, url, lang, phone=False):
+    if phone:
+        ctx = browser.new_context(locale=LOCALES[lang], viewport=PHONE_VIEWPORT,
+                                  device_scale_factor=PHONE_SCALE)
+    else:
+        ctx = browser.new_context(locale=LOCALES[lang], viewport=VIEWPORT)
     page = ctx.new_page()
     page.goto(url)
     return page
@@ -84,8 +95,8 @@ def vote(page, color, with_reason):
     page.locator(".locked-status").wait_for(state="visible")
 
 
-def to_webp(page, png):
-    """Scale a PNG screenshot to IMAGE_SIZE and encode it as WebP with
+def to_webp(page, png, size):
+    """Scale a PNG screenshot to ``size`` and encode it as WebP with
     Chromium's own encoder."""
     data_url = page.evaluate(
         """async ([src, [width, height], quality]) => {
@@ -100,30 +111,40 @@ def to_webp(page, png):
             ctx.drawImage(img, 0, 0, width, height);
             return canvas.toDataURL('image/webp', quality);
         }""",
-        ["data:image/png;base64," + base64.b64encode(png).decode(), IMAGE_SIZE, WEBP_QUALITY],
+        ["data:image/png;base64," + base64.b64encode(png).decode(), size, WEBP_QUALITY],
     )
     if not data_url.startswith("data:image/webp;base64,"):
         raise RuntimeError("Chromium did not encode WebP")
     return base64.b64decode(data_url.split(",", 1)[1])
 
 
-def shoot(page, path):
+def shoot(page, path, size=IMAGE_SIZE):
     page.mouse.move(0, 0)
     # Finite animations jump to their end, infinite ones are stopped, so the
     # image never catches a half-finished transition.
     png = page.screenshot(animations="disabled")
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(to_webp(page, png))
+    path.write_bytes(to_webp(page, png, size))
     print(f"wrote {path} ({path.stat().st_size} bytes)")
 
 
+def check_language(page, lang):
+    # The session names differ per language, so a wrong UI language would
+    # not show up as identical images; check it directly.
+    shown = page.evaluate("document.documentElement.lang")
+    if shown != lang:
+        raise RuntimeError(f"page shows language {shown!r}, expected {lang!r}")
+
+
 def generate(browser, url, lang, out):
-    head = open_page(browser, url, "en")
+    head = open_page(browser, url, lang, phone=True)
     head.get_by_test_id("session-name-input").fill(SESSION_NAMES[lang])
     head.get_by_test_id("session-name-input").press("Enter")
     head.locator(".role-wrap").wait_for(state="visible")
     code = head.locator(".session-tag .code").text_content()
-    head.locator(".role-btn", has_text="Chief Referee").click()
+    head.locator(".role-btn").nth(1).click()  # chief referee (centre)
+    head.get_by_test_id("judge-screen").wait_for(state="visible")
+    check_language(head, lang)
     left = join(browser, url, code, '.role-btn:has-text("Left")')
     right = join(browser, url, code, '.role-btn:has-text("Right")')
 
@@ -132,11 +153,15 @@ def generate(browser, url, lang, out):
     display.get_by_test_id("join-code-input").press("Enter")
     display.locator(".role-display-btn").click()
     display.locator(".display-full").wait_for(state="visible")
-    # The session names differ per language, so a wrong UI language would
-    # not show up as identical images; check it directly.
-    shown = display.evaluate("document.documentElement.lang")
-    if shown != lang:
-        raise RuntimeError(f"display shows language {shown!r}, expected {lang!r}")
+    check_language(display, lang)
+
+    # Squat (the default lift): yellow, "skipped signal" (second reason) picked.
+    head.locator(".vote-btn.vote-yellow").click()
+    head.locator(".reason-item").nth(1).click()
+    head.locator(".reason-item.selected").wait_for(state="visible")
+    head.locator(".lock-btn").wait_for(state="visible")
+    shoot(head, out / lang / "judge-reason.webp", PHONE_IMAGE_SIZE)
+    head.locator(".back-btn").click()
 
     vote(left, "red", with_reason=True)
     vote(head, "white", with_reason=False)

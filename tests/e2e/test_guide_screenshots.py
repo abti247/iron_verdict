@@ -1,9 +1,10 @@
 """Guide screenshots (#157).
 
 ``scripts/guide_screenshots.py`` starts the app locally and photographs the
-motifs for the in-app guide in German and English as WebP: the display with
-a "No Lift" result including the reasons, and the display in the layout
-editor (block frames, hide toggles). The script fails if the display does
+motifs for the in-app guide in German and English as WebP: the chief
+referee's phone with yellow and a reason picked (#158), the display with a
+"No Lift" result including the reasons, and the display in the layout editor
+(block frames, hide toggles). The script fails if the display does
 not show the requested language. The images contain example data only.
 """
 
@@ -14,14 +15,20 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts" / "guide_screenshots.py"
-MOTIFS = ("result-reasons", "layout-editor")
+# Motif → stored size: the display shots are landscape, the judge's phone portrait.
+MOTIFS = {
+    "judge-reason": [520, 1120],
+    "result-reasons": [1280, 720],
+    "layout-editor": [1280, 720],
+}
 LANGS = ("de", "en")
 MAX_BYTES = 150_000
 
 
-def test_script_writes_both_motifs_in_both_languages_as_webp(page, tmp_path):
+def test_script_writes_all_motifs_in_both_languages_as_webp(page, tmp_path):
     """Run the script into a temporary directory → for DE and EN it writes
-    both motifs as WebP files that Chromium decodes at 1280×720 and that stay
+    every motif as a WebP file that Chromium decodes at the motif's size
+    (display 1280×720, judge phone 520×1120) and that stays
     below the size budget. The German and English images differ."""
     result = subprocess.run(
         [sys.executable, str(SCRIPT), "--out", str(tmp_path)],
@@ -45,7 +52,7 @@ def test_script_writes_both_motifs_in_both_languages_as_webp(page, tmp_path):
             }""",
             "data:image/webp;base64," + base64.b64encode(data).decode(),
         )
-        assert size == [1280, 720], name
+        assert size == MOTIFS[name.split("/")[1].removesuffix(".webp")], name
 
     for motif in MOTIFS:
         de = (tmp_path / "de" / f"{motif}.webp").read_bytes()
