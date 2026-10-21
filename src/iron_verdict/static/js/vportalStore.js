@@ -20,6 +20,7 @@ export function createVportalStore({
         federationLabel: '',
         modalOpen: false,
         modalStep: 'federation',
+        helpOpen: false,  // the dialog's "?" explanation (#160)
         loginError: '',
         stageError: '',
         federation: 'BVDK',
@@ -39,6 +40,9 @@ export function createVportalStore({
         openModal() {
             this.modalOpen = true;
             this.modalStep = this.connected ? 'connected' : 'federation';
+            // Every way of closing only sets modalOpen; the explanation is
+            // hidden with the dialog and starts closed on the next opening.
+            this.helpOpen = false;
         },
 
         async doLogin(sessionCode) {

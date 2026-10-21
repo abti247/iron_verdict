@@ -150,6 +150,8 @@ def test_vportal_help_in_the_stream_overlay_closes_with_the_dialog(page, competi
     overlay.locator(".vportal-modal-backdrop").click(position={"x": 5, "y": 5})
     expect(overlay.locator(".vportal-modal")).to_be_hidden()
     expect(help_box).to_be_hidden()
+    # Opening the dialog closed the panel: "S" again to reach the button.
+    overlay.keyboard.press("s")
     overlay.get_by_test_id("overlay-vportal-connect").click()
     expect(overlay.locator(".vportal-modal")).to_be_visible()
     expect(help_box).to_be_hidden()

@@ -428,6 +428,54 @@
           ]
         }
       ]
+    },
+    "vportal": {
+      "title": "Connecting to the competition software",
+      "sections": [
+        {
+          "title": "What for",
+          "items": [
+            "The display shows name, club and class of the current lifter plus lift, attempt and weight – straight from VPortal, for the chosen stage.",
+            "Iron Verdict only reads. The scorekeeper still records the verdicts in VPortal."
+          ]
+        },
+        {
+          "title": "Federation and credentials",
+          "items": [
+            "Federation: BVDK (Germany) or ÖVK (Austria), depending on which VPortal the competition was set up in.",
+            "Username and password of a VPortal account for this competition – the same as for logging in on the VPortal website.",
+            "The credentials are only passed on to VPortal to log in and are not stored on the Iron Verdict server."
+          ]
+        },
+        {
+          "title": "Stage",
+          "items": [
+            "After logging in, choose the stage whose lifters this display should show. With several stages, each display connects to its own."
+          ]
+        },
+        {
+          "title": "One login per device",
+          "items": [
+            "The login only applies to this device and this session. Every display that should show lifter data connects itself – here on role select, before it switches to the display.",
+            "The stream overlay needs its own login because OBS has its own browser profile: in OBS Interact → key S → “Connect to comp software”.",
+            "The login survives a reload. A new session needs a new login."
+          ]
+        },
+        {
+          "title": "Visible in the stream",
+          "items": [
+            "In the stream overlay this dialog is visible in the stream while it is open – including the username you type (the password stays hidden). Connect before going live or hide the source meanwhile."
+          ]
+        },
+        {
+          "title": "Problems and disconnecting",
+          "items": [
+            "Lights, timer and verdicts keep working without VPortal.",
+            "If the connection to VPortal drops, the display shows “VPortal disconnected”; the lifter data is missing until it arrives again or you reconnect.",
+            "Disconnect: open this dialog again and choose “Disconnect”. This removes the login from this device."
+          ]
+        }
+      ]
     }
   }
 }

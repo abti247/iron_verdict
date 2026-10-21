@@ -377,7 +377,27 @@
     <!-- VPortal Connect Modal -->
     <div class="vportal-modal-backdrop" data-testid="vportal-modal" x-show="$store.vportal.modalOpen" x-cloak @click.self="$store.vportal.modalOpen = false">
         <div class="vportal-modal cut-corner" @click.stop>
-            <div class="vportal-modal-title chrome-text" x-text="t('vportal.modalTitle')"></div>
+            <div class="vportal-modal-head">
+                <div class="vportal-modal-title chrome-text" x-text="t('vportal.modalTitle')"></div>
+                <button class="help-toggle" data-testid="vportal-help-toggle"
+                        :aria-expanded="$store.vportal.helpOpen ? 'true' : 'false'"
+                        :aria-label="t('help.toggle')" :title="t('help.toggle')"
+                        @click="$store.vportal.helpOpen = !$store.vportal.helpOpen">?</button>
+            </div>
+            <!-- What the connection is for and how it works (#160), in every step. -->
+            <div class="help-box vportal-help" data-testid="vportal-help" x-show="$store.vportal.helpOpen" x-cloak>
+                <h2 class="help-title" x-text="t('help.vportal.title')"></h2>
+                <template x-for="section in t('help.vportal.sections')" :key="section.title">
+                    <div class="help-section">
+                        <h3 class="help-heading" x-text="section.title"></h3>
+                        <ul class="help-list">
+                            <template x-for="item in section.items" :key="item">
+                                <li x-text="item"></li>
+                            </template>
+                        </ul>
+                    </div>
+                </template>
+            </div>
 
             <!-- Step 1: Federation -->
             <div class="vportal-step-federation" x-show="$store.vportal.modalStep === 'federation'">
