@@ -8,8 +8,9 @@ pytestmark = pytest.mark.remote_safe
 
 
 def test_full_lift_cycle(competition):
-    """Create → 3 judges join → all vote white → results → next lift → vote again
-    (one blue vote: red light with blue card on the display) → end session."""
+    """Create → 3 judges join → all vote white → results → next lift → a break
+    started on the display, ended by the timer start → vote again (one blue
+    vote: red light with blue card on the display) → end session."""
     head, left, right = competition.join_all_judges()
     display = competition.join_as("display")
 
@@ -45,6 +46,19 @@ def test_full_lift_cycle(competition):
         "visibility", "hidden"
     )
     expect(display.locator(".display-status")).to_be_visible()
+
+    # -- Break between groups (#163): started on the display, ended by the timer
+    display.locator(".display-settings-gear").click()
+    display.get_by_test_id("pause-minutes").fill("10")
+    display.get_by_test_id("pause-next-lift").select_option("bench")
+    display.get_by_test_id("pause-start").click()
+    expect(display.get_by_test_id("display-pause")).to_be_visible()
+    expect(display.get_by_test_id("display-pause-next")).to_have_text("Next: Bench Press")
+    expect(display.locator(".display-full .display-lights")).to_be_hidden()
+    head.get_by_role("button", name="Start Timer").click()
+    expect(display.get_by_test_id("display-pause")).to_be_hidden()
+    expect(display.locator(".display-full .display-lights")).to_be_visible()
+    expect(display.locator(".display-timer-big")).to_have_text(re.compile(r"^(60|59|58)$"))
 
     # -- Round 2: mixed votes ------------------------------------------------
     competition.vote_and_lock(head, "white")

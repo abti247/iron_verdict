@@ -49,6 +49,7 @@ Security:
 - `timer_start`, `timer_reset` — head judge controls the 60-second attempt timer.
 - `next_lift` — head judge resets state for the next attempt; broadcasts `reset_for_next_lift` with the new `lift_id`.
 - `end_session_confirmed` — head judge ends the session.
+- `pause_start` `{minutes}` or `{end_at_ms}` (a time of day converted by the display), plus optional `next_lift`; `pause_end` — a **display** starts (or replaces) or ends the session's pause (#163). Answered with a broadcast `pause_update` `{pause, server_now_ms}` (`pause`: `{end_at_ms, mode, next_lift}` or `null`; `pause_end` broadcasts even when no pause ran, so the sender always gets an answer), or to the sender only with `pause_rejected` `{code}`: `past`, `too_long` (> 12 h) or `invalid`. Judges get `error`. See *Pause*.
 - `pong` — client reply to server-initiated heartbeat ping.
 
 A second `join` on a socket that already joined is answered with `error` "Already joined" (logged as `second_join_rejected`); the first role stays registered. *Why:* the client sends one `join` per socket; registering one socket under two roles left an orphaned entry once it closed ([#136](https://github.com/abti247/iron_verdict/issues/136)).
@@ -72,10 +73,10 @@ Two in-process managers, each guarded by its own `asyncio.Lock`. The two locks a
 ### `SessionManager`
 
 - Holds `self.sessions: dict[str, dict]` — domain state per session code.
-- Each session records: `name`, `kind` (`"generic" | "vportal"`, immutable after create), `judges` (left/center/right with vote, reason, locked, connected, reconnect token), `phase`, `state`, `settings` (`show_explanations` default on, `lift_type` default squat, `require_reasons` default off; snapshots keep their stored values), `timer_started_at`, `timer_frozen_ms`, `lift_id` (counter, +1 on every reset for next lift; `0` for snapshots that predate it), `last_activity`.  
+- Each session records: `name`, `kind` (`"generic" | "vportal"`, immutable after create), `judges` (left/center/right with vote, reason, locked, connected, reconnect token), `phase`, `state`, `settings` (`show_explanations` default on, `lift_type` default squat, `require_reasons` default off; snapshots keep their stored values), `timer_started_at`, `timer_frozen_ms`, `lift_id` (counter, +1 on every reset for next lift; `0` for snapshots that predate it), `pause` (`null` or `{id, end_at, mode, next_lift}`, `end_at` in epoch seconds; `null` for snapshots that predate it), `last_activity`.  
 *Why `kind` lives in session state:* drives whether the VPortal connect button appears on Select Role and whether the display screen starts polling. Set at create, read by every consumer via `GET /api/sessions/{code}`.
 - Generates 8-character alphanumeric session codes.
-- Owns business rules: vote-lock state machine, all-judges-locked → results computation (including the IPF rule that a disconnected non-voter blocks results), timer freeze on results, reset for next lift.
+- Owns business rules: vote-lock state machine, all-judges-locked → results computation (including the IPF rule that a disconnected non-voter blocks results), timer freeze on results, reset for next lift, pause validation (`start_pause` / `end_pause`, see *Pause*), and a running pause keeps a session from expiring.
 
 ### `ConnectionManager`
 
@@ -92,6 +93,8 @@ Two in-process managers, each guarded by its own `asyncio.Lock`. The two locks a
 `/data/sessions.json` is a periodic JSON snapshot used **only** for crash recovery, not for state sharing between processes. Checked every 60 seconds by the lifespan task and written only if its content changed since the last write (or since the load at startup); on shutdown it is written once more, unconditionally. On Railway it is volume-backed; on ECS/Fargate it would need EFS.
 
 *Why a JSON file and not a database:* the only requirement is "survive a Railway restart with active sessions intact." A flat file gives that with zero operational overhead — no migrations, no connection pool, no schema. Accepted cost: up to 60 s of mutations lost on crash, no point-in-time recovery, no querying. *Why not skip persistence entirely:* a deploy or OOM mid-event would wipe judges' in-flight votes; the 60 s snapshot bounds the blast radius.
+
+A running pause is part of the snapshot; after loading it `restore_pause_timers` arms its end again (an end already passed fires at once), and a session with a running pause never expires (a pause may outlast the session timeout).
 
 Snapshots exclude reconnect tokens — those exist only in memory and die with the process. Reconnects after a restart are not supported.
 
@@ -119,6 +122,7 @@ Single `lifespan` task runs two periodic operations:
 - **Snapshot save** — every 60 seconds, only if the serialized sessions differ from the last snapshot written (or loaded). Serialization runs in the event loop; the file write runs in a worker thread (`asyncio.to_thread`). Deleting the last session changes the content to `{}`, which is written once. The shutdown save stays synchronous and unconditional.  
 *Why compare content, not a dirty flag:* sessions are mutated in many places (votes, timer, settings, connected flags); a flag would have to be set at every one of them, and a forgotten one means lost state after a restart. Serializing a few kilobytes once a minute is cheap. *Why serialize before the thread:* the thread must not read session dicts the loop mutates at the same time. *Why no timeout on the write:* a thread cannot be cancelled; during normal running a hung disk only stalls the cleanup loop, not voting or the heartbeat. A lock around the file write keeps the shutdown save from interleaving with an in-flight periodic write — on a hung disk the synchronous shutdown save then waits on that lock, as a hung synchronous write did before.
 - **Cleanup expired sessions** — every 30 minutes; deletes sessions with `last_activity` older than 4 hours.
+- **Pause end** — one task per session with a pause (`schedule_pause_end` in `main.py`, registry `_pause_end_tasks`): sleeps until `end_at`, then ends that pause (matched by its `id`, so a replaced pause is left alone) and broadcasts `pause_update` `null`. Re-armed on every start, cancelled on end, timer start and session end. *Why a task and not the heartbeat tick:* the end must show on time on every display; the sleep is the pause the operator chose, not an artificial delay.
 
 A failure in either operation (e.g. `OSError` on a full or read-only volume) is logged (`snapshot_save_failed` / `session_cleanup_failed`) and the loop keeps running; a failed write leaves the last-written snapshot unchanged, so the next tick retries it.  
 *Why catch per operation:* an uncaught exception would end the task silently — no further snapshots, no more expiry — and re-raise from `await task` at shutdown, skipping the heartbeat cancel and the fallback save.
@@ -238,6 +242,7 @@ No-build single-page application. One HTML file served by FastAPI's `StaticFiles
 | `displayStore.js` | `Alpine.store('display')`: phase, lights, reasons and verdict of the display. |
 | `voteLight.js` | Vote → light colour (`white` / `red`) and card colour (`red` / `blue` / `yellow`, none for white); used by the display and judge stores. |
 | `settingsStore.js` | `Alpine.store('settings')`: lift type, show reasons, require reasons. |
+| `pauseStore.js` | `Alpine.store('pause')` (display only): the session's pause as the server sent it, clock offset to the server, the countdown (`PAUSE_TICK_MS` refresh), pending request / rejection, `confirmedChanges`. See *Pause*. |
 | `timer.js` | Module-level countdown interval (`startTimerCountdown`, `stopTimer`) and `Alpine.store('timer')` (shown time, expired; start / freeze / reset). |
 | `voteDelivery.js` | Judge vote state machine (open → sending → confirmed), pending vote in `sessionStorage`, reconciliation after join, `vote_ack` / `vote_rejected` handling; methods of the judge store. |
 | `roleTakeover.js` | Gives up rejoining after 25 s of "Role already taken" with a stale token: role-select with a "position signed in on another device" notice. |
@@ -250,7 +255,8 @@ No-build single-page application. One HTML file served by FastAPI's `StaticFiles
 | `screens/reconnectingScreen.js` | "Connecting…" after a reload; Cancel. |
 | `screens/roleSelectScreen.js` | Role-select: role buttons, QR code, role-taken notice (VPortal button reads `$store.vportal`), stream-overlay URL to copy. |
 | `screens/judgeScreen.js` | Judge screen: reason-list scroll hint, role label, reasons for the chosen colour, head-judge controls (send via the connection). |
-| `screens/displayScreen.js` | Display screen: contrast mode and settings panel (gear, `S`, `Esc`; in the stream overlay also the VPortal connect dialog); mixes in the layout editor. |
+| `screens/displayScreen.js` | Display screen: contrast mode and settings panel (gear, `S`, `Esc`; in the stream overlay also the VPortal connect dialog); mixes in the layout editor and the pause. |
+| `screens/displayPause.js` | Pause, mixed into the display screen component: the pause form of the settings panel (sends `pause_start` / `pause_end` via the connection), what the pause shows, and `paused()`, which hides the lift blocks and shows the pause. See *Pause*. |
 | `screens/displayLayoutEditor.js` | Display layout editor, mixed into the display screen component: saved layout of the device (stream overlay: its own key, or the URL layout, which locks the editor), edit mode (pointer drag/scale, hide, export/import code, Save/Cancel/Reset). See *Display layout*. |
 | `displayLayout.js` | Display layout model: validation (`sanitizeLayout`), `localStorage` load/save (key per hall display / stream overlay), snapping, measuring the default layout, export code. Pure functions, Vitest. |
 | `constants.js` | `CARD_REASONS[liftType][color]` — arrays of i18n reason keys. |
@@ -321,6 +327,7 @@ QR entry point: `?session=XXXX` lands on the landing screen with the code pre-fi
 | `Alpine.store('judge')` / `display` / `timer` / `settings` | — | Vote and result state (`voteLocked` is derived), display lights and phase, shown time, session settings | Page lifetime |
 | Screen components | — | UI-only state: display layout and its edit draft, contrast mode and settings panel, reason-list scroll hint, contact form, demo running / pop-ups blocked | Page lifetime (`x-if` screens: while shown) |
 | `Alpine.store('vportal')` | — | VPortal connection, dialog step, stage list, current lifter on the display | Page lifetime |
+| `Alpine.store('pause')` | — | The session's pause from the server, clock offset to the server, remaining time, a pending request and the last rejection | Page lifetime |
 
 *Why `sessionStorage` (not `localStorage`) for the reconnect token:* tab-scoped lifetime matches the lifetime of a judging session. If the token survived in `localStorage`, an old token could leak into a *new* session opened in the same browser later, leading to confusing "Role already taken" failures (server rejects because the role belongs to a stale judge identity). `localStorage` is reserved for genuinely persistent preferences like language.
 
@@ -340,7 +347,7 @@ Demo windows (`session.isDemo`) show "DEMO" instead of the session code (judge) 
 
 ### Display settings overlay
 
-The display screen has a single interactive control: a low-contrast gear icon (top-left) and `S` keyboard shortcut, both of which open a small overlay with an "Edit layout" button (see *Display layout*) and a contrast-mode switch.
+The display screen has a single interactive control: a low-contrast gear icon (top-left) and `S` keyboard shortcut, both of which open a small overlay with the pause form (see *Pause*), an "Edit layout" button (see *Display layout*) and a contrast-mode switch.
 
 The contrast-mode switch (On/Off, `aria-pressed`) toggles the class `display-contrast` on the display root and persists as `iron-verdict:display-contrast`. All its rules live in `display-contrast.css` and are scoped under `.display-full.display-contrast`, so without the class the display is unchanged: solid light colours with a thick border (an unlit light keeps a visible ring), pure white bold texts (session tag, timer, waiting text, reasons, VPortal corners), filled verdict stamps; every text reaches at least 7:1 (WCAG AAA) against the black background, checked by `test_display_contrast.py`. *Why the background stays black:* the lights glow best on black on most screens; bright halls wash out dim greys and gradients, not the black itself. *Why on/off instead of a slider:* one click under time pressure, no fine-tuning at the venue. The mode is a device setting of its own, independent of the layout.
 
@@ -365,6 +372,14 @@ From the settings overlay the operator opens an edit mode (#106) to arrange the 
 *Why the verdict sits 48 px lower in the default layout:* the editor labels have a fixed size (they do not scale with the display), the verdict label sits above the verdict and the cards label under the cards frame, so with the flow gap of 12 px they covered each other (#162). `display-layout.css` gives the verdict `margin-top: 48px` with an equal negative bottom margin, so the flow keeps its height and only the verdict moves — timer and lights stay put. The editor toolbar is flat and centred by auto margins (not `left: 50%`, which wraps it at half the screen width) and the attempt label grows to the left, so at 1280×720 no label or hide button is covered or off screen; `test_display_layout.py` checks this in English and German.
 *Why only the toolbar ends the edit mode (not `S` / `Esc`):* a stray key under time pressure must neither drop nor save an arrangement.
 *Why an export code instead of server storage:* layouts are per screen; the code copies one to a second device without a new API surface. An OBS browser source keeps its own layout like any display (see *Stream overlay*).
+
+### Pause
+
+A display operator starts a pause for the whole session from the settings panel (#163): by minutes (1–720; the displays count down) or until a time of day (the displays show "until HH:MM"), optionally with the next lift type (shown only; the head judge's lift type is unchanged). While it runs every display of the session, the stream overlay included, shows the pause big in the middle instead of timer, lights, verdict and VPortal lifter/attempt (`paused()`; VPortal polling continues; not while the layout editor is open). *Why not a layout block:* a fixed place in the middle is enough for "until 13:15"; a movable block needed a second editor view (maintainer decision on #163). It ends when its time is up (server task, see *Background work*), when the head judge starts the timer (`timer_start` first broadcasts `pause_update` `null`) or with "End break" on any display; then the displays show the real state again, e.g. a result that was not advanced yet.
+
+- **End time:** stored as an absolute time (epoch seconds) and enforced by the server. Minutes are added to the server clock. For "until" the display converts today's time with its own clock (`endOfTimeToday`); the server only rejects an end not in the future (`past`) or more than 12 h ahead (`too_long`; past midnight only by minutes). *Why the device clock for "until":* devices set their clock automatically, and a minute off is no problem for a break display — not worth a time-zone protocol (maintainer decision on #163). *Why 12 h:* a typo (13:00 instead of 14:00) would otherwise give an almost 24-hour pause.
+- **Countdown:** every `pause_update` and `join_success` carries `server_now_ms`; the store keeps the offset to the device clock, so all displays show the same countdown, and refreshes the remaining time every `PAUSE_TICK_MS` (250 ms, a display refresh, not a delay). At 0:00 the display waits for the server's end. "until HH:MM" is the end in the display's local time.
+- **Nothing dropped silently:** the panel sends only with an open connection (otherwise the buttons are disabled and a note says so), shows "Sending…" until `pause_update` or `pause_rejected` arrives, and shows the rejection. A `join_success` after a reload or reconnect replaces the pause state and clears a pending request. The panel closes when the server confirms this display's request.
 
 ### Stream overlay
 

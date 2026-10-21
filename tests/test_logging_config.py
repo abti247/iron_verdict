@@ -100,3 +100,18 @@ def test_json_formatter_includes_websocket_cap_limit():
     record.limit = 2000
     parsed = json.loads(formatter.format(record))
     assert parsed["limit"] == 2000
+
+
+def test_json_formatter_includes_pause_fields():
+    formatter = JsonFormatter()
+    record = logging.LogRecord(
+        name="iron_verdict", level=logging.INFO, pathname="", lineno=0,
+        msg="pause_started", args=(), exc_info=None
+    )
+    record.pause_mode = "until"
+    record.pause_seconds = 600
+    record.ended_by = "timer_start"
+    parsed = json.loads(formatter.format(record))
+    assert parsed["pause_mode"] == "until"
+    assert parsed["pause_seconds"] == 600
+    assert parsed["ended_by"] == "timer_start"

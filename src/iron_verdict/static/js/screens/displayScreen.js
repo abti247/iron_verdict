@@ -1,6 +1,6 @@
 // Display screen: timer, vote lights with reasons and verdict, the VPortal lifter
-// overlay, and the local settings panel (contrast mode and the layout editor,
-// opened with the gear or "S"). What is shown comes from the display, timer and
+// overlay, the session's pause (displayPause.js), and the settings panel (pause,
+// contrast mode and the layout editor, opened with the gear or "S"). What is shown comes from the display, timer and
 // vportal stores; this component only holds the contrast mode, the layout
 // (displayLayoutEditor.js) and whether the settings panel is open. Both
 // settings are per device (localStorage).
@@ -11,12 +11,14 @@
 // because the overlay never passes role-select.
 
 import { displayLayoutEditor } from './displayLayoutEditor.js';
+import { displayPause } from './displayPause.js';
 
 const DISPLAY_CONTRAST_KEY = 'iron-verdict:display-contrast';
 
 export function displayScreen(conn) {
     return {
         ...displayLayoutEditor(),
+        ...displayPause(conn),
         displaySettingsOpen: false,
         displayContrast: false,
         _displayKeydownHandler: null,
@@ -24,6 +26,7 @@ export function displayScreen(conn) {
         init() {
             this._loadDisplayContrastFromStorage();
             this.initDisplayLayout();
+            this.initDisplayPause();
             this._installDisplayKeyHandler();
             // Any screen change closes the panel.
             this.$watch('$store.nav.screen', () => { this.displaySettingsOpen = false; });

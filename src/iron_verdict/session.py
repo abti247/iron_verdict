@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import math
 import os
 import secrets
 import string
@@ -13,6 +14,13 @@ logger = logging.getLogger("iron_verdict")
 
 VALID_LIFT_TYPES = {"squat", "bench", "deadlift"}
 VALID_SESSION_KINDS = {"generic", "vportal"}
+# A pause lasts at most 12 h: a typo in the end time (13:00 instead of 14:00)
+# would otherwise make a pause of almost 24 h (#163).
+PAUSE_MAX_SECONDS = 12 * 60 * 60
+
+
+def _is_number(value) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
 
 class SessionManager:
@@ -77,6 +85,7 @@ class SessionManager:
                     "lift_type": "squat",
                     "require_reasons": False,
                 },
+                "pause": None,
                 "last_activity": datetime.now(),
             }
             return code
@@ -229,12 +238,81 @@ class SessionManager:
         session["last_activity"] = datetime.now()
         return {"success": True}
 
+    def start_pause(
+        self,
+        code: str,
+        minutes=None,
+        end_at_ms=None,
+        next_lift=None,
+        now: float | None = None,
+    ) -> Dict[str, Any]:
+        """Start (or replace) the session's pause, shown on every display (#163).
+
+        Exactly one of *minutes* (end computed with the server clock) or
+        *end_at_ms* (a time of day the display converted with its own clock)
+        gives the end, stored as epoch seconds. *next_lift* is shown only.
+
+        Errors: "invalid" (malformed input), "past" (end not in the future),
+        "too_long" (more than PAUSE_MAX_SECONDS), "Session not found".
+        """
+        session = self.sessions.get(code)
+        if session is None:
+            return {"success": False, "error": "Session not found"}
+        now = time.time() if now is None else now
+        invalid = {"success": False, "error": "invalid"}
+        try:
+            if next_lift not in VALID_LIFT_TYPES | {None}:
+                return invalid
+        except TypeError:  # unhashable, e.g. a list
+            return invalid
+        if (minutes is None) == (end_at_ms is None):
+            return invalid
+        value = minutes if end_at_ms is None else end_at_ms
+        if not _is_number(value) or (minutes is not None and minutes < 1):
+            return invalid
+        end_at = now + minutes * 60 if end_at_ms is None else end_at_ms / 1000
+        if end_at <= now:
+            return {"success": False, "error": "past"}
+        if end_at - now > PAUSE_MAX_SECONDS:
+            return {"success": False, "error": "too_long"}
+
+        session["pause"] = {
+            "id": secrets.token_hex(4),
+            "end_at": end_at,
+            "mode": "minutes" if end_at_ms is None else "until",
+            "next_lift": next_lift,
+        }
+        session["last_activity"] = datetime.now()
+        return {"success": True, "pause": session["pause"]}
+
+    def end_pause(self, code: str, pause_id: str | None = None) -> bool:
+        """End the session's pause; with *pause_id* only if that pause still runs.
+
+        Returns whether a pause was ended.
+        """
+        session = self.sessions.get(code)
+        if not session or not session.get("pause"):
+            return False
+        if pause_id is not None and session["pause"]["id"] != pause_id:
+            return False
+        session["pause"] = None
+        session["last_activity"] = datetime.now()
+        return True
+
     def get_expired_sessions(self, hours: int = 4) -> List[str]:
-        """Get list of session codes that have expired."""
+        """Get list of session codes that have expired.
+
+        A session with a running pause never expires: a pause may last longer
+        than the timeout (up to PAUSE_MAX_SECONDS) without any other activity.
+        """
         cutoff = datetime.now() - timedelta(hours=hours)
+        now = time.time()
         expired = []
 
         for code, session in self.sessions.items():
+            pause = session.get("pause")
+            if pause is not None and pause["end_at"] > now:
+                continue
             if session["last_activity"] < cutoff:
                 expired.append(code)
 
@@ -311,6 +389,7 @@ class SessionManager:
                 s.setdefault("phase", "voting")
                 s.setdefault("timer_frozen_ms", None)
                 s.setdefault("lift_id", 0)
+                s.setdefault("pause", None)
                 self.sessions[code] = s
             # Baseline is the restored state: the flags reset above are reset again on every load,
             # so the file needs no rewrite until something actually changes.

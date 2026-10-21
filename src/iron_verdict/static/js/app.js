@@ -8,6 +8,7 @@ import { createTimerStore } from './timer.js';
 import { createJudgeStore } from './judgeStore.js';
 import { createDisplayStore } from './displayStore.js';
 import { createVportalStore } from './vportalStore.js';
+import { createPauseStore } from './pauseStore.js';
 import { createConnection } from './connection.js';
 import { landingScreen } from './screens/landingScreen.js';
 import { contactScreen } from './screens/contactScreen.js';
@@ -26,6 +27,7 @@ export function registerApp(Alpine, { lang = 'en', demoParams = null, overlayPar
     Alpine.store('timer', createTimerStore());
     Alpine.store('display', createDisplayStore());
     Alpine.store('vportal', createVportalStore());
+    Alpine.store('pause', createPauseStore());
 
     let conn = null;
     Alpine.store('judge', createJudgeStore({
@@ -44,6 +46,7 @@ export function registerApp(Alpine, { lang = 'en', demoParams = null, overlayPar
             timer: store('timer'),
             settings: store('settings'),
             vportal: store('vportal'),
+            pause: store('pause'),
         },
     });
 

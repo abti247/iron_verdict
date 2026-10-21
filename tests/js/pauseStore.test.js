@@ -1,0 +1,160 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { createPauseStore, formatPauseRemaining, PAUSE_TICK_MS } from '../../src/iron_verdict/static/js/pauseStore.js';
+import { handlePauseUpdate, handleJoinSuccess } from '../../src/iron_verdict/static/js/handlers.js';
+import { endOfTimeToday } from '../../src/iron_verdict/static/js/screens/displayPause.js';
+
+const MIN = 60_000;
+
+describe('formatPauseRemaining', () => {
+    it.each([
+        [-5000, '0:00'],
+        [1, '0:01'],          // rounds up, like the lift timer
+        [9 * MIN + 41_000, '9:41'],
+        [65 * MIN + 5000, '1:05:05'],
+    ])('formats %p ms as %p', (ms, text) => {
+        expect(formatPauseRemaining(ms)).toBe(text);
+    });
+});
+
+describe('pause store', () => {
+    let clock;
+    let store;
+
+    beforeEach(() => {
+        vi.useFakeTimers();
+        clock = 1_000_000;
+        store = createPauseStore({ now: () => clock });
+    });
+
+    afterEach(() => {
+        store.apply(null);
+        vi.useRealTimers();
+    });
+
+    const pause = (overrides = {}) => ({ end_at_ms: 2_000_000 + 10 * MIN, mode: 'minutes', next_lift: 'bench', ...overrides });
+
+    it('starts without a pause', () => {
+        expect(store.active).toBe(false);
+        expect(store.pause).toBe(null);
+    });
+
+    it('counts down against the server clock, not the device clock', () => {
+        // The device clock is 1 000 000 ms behind the server.
+        store.apply(pause(), 2_000_000);
+        expect(store.active).toBe(true);
+        expect(store.pause).toEqual({ endAtMs: 2_000_000 + 10 * MIN, mode: 'minutes', nextLift: 'bench' });
+        expect(store.remainingText()).toBe('10:00');
+        clock += 19_000;
+        vi.advanceTimersByTime(PAUSE_TICK_MS);
+        expect(store.remainingText()).toBe('9:41');
+    });
+
+    it('stops at 0:00 and waits for the server to end the pause', () => {
+        store.apply(pause(), 2_000_000);
+        clock += 11 * MIN;
+        vi.advanceTimersByTime(PAUSE_TICK_MS);
+        expect(store.remainingText()).toBe('0:00');
+        expect(store.active).toBe(true);
+    });
+
+    it('stops ticking when the pause ends', () => {
+        store.apply(pause(), 2_000_000);
+        store.apply(null, 2_000_000);
+        expect(store.active).toBe(false);
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('keeps the last clock offset when an update carries no server time', () => {
+        store.apply(pause(), 2_000_000);
+        store.apply(pause({ end_at_ms: 2_000_000 + 5 * MIN }));
+        expect(store.remainingText()).toBe('5:00');
+    });
+
+    it('confirms a request when the server answers with an update', () => {
+        store.requestSent();
+        expect(store.pending).toBe(true);
+        store.apply(pause(), 2_000_000);
+        expect(store.pending).toBe(false);
+        expect(store.confirmedChanges).toBe(1);
+        // An update this display did not ask for confirms nothing.
+        store.apply(null, 2_000_000);
+        expect(store.confirmedChanges).toBe(1);
+    });
+
+    it('shows a rejection and clears it with the next request', () => {
+        store.requestSent();
+        store.rejected('past');
+        expect(store.pending).toBe(false);
+        expect(store.error).toBe('past');
+        store.requestSent();
+        expect(store.error).toBe('');
+    });
+
+    it('shows an unknown rejection code as invalid input', () => {
+        store.rejected('Session not found');
+        expect(store.error).toBe('invalid');
+    });
+
+    it('takes the state of a (re)join as the truth and drops a pending request', () => {
+        store.requestSent();
+        store.joined(pause(), 2_000_000);
+        expect(store.pending).toBe(false);
+        expect(store.confirmedChanges).toBe(0);
+        expect(store.active).toBe(true);
+        store.joined(null, 2_000_000);
+        expect(store.active).toBe(false);
+    });
+});
+
+describe('pause handlers', () => {
+    let store;
+
+    beforeEach(() => {
+        vi.useFakeTimers();
+        store = createPauseStore({ now: () => 0 });
+    });
+
+    afterEach(() => {
+        store.apply(null);
+        vi.useRealTimers();
+    });
+
+    const conn = (role) => ({ session: { role }, pause: store });
+
+    it('ignores pause_update on a judge device', () => {
+        handlePauseUpdate(conn('left_judge'), { type: 'pause_update', pause: { end_at_ms: MIN, mode: 'minutes', next_lift: null }, server_now_ms: 0 });
+        expect(store.active).toBe(false);
+    });
+
+    it('takes the pause from join_success on a display', () => {
+        store.requestSent();
+        const c = {
+            ...conn('display'),
+            session: { role: 'display', judgeConnected: {} },
+            roleTaken: { reset: () => {} },
+            nav: { navigateTo: () => {} },
+            judge: {},
+            settings: {},
+            storage: { getItem: () => null },
+            timer: { start: () => {} },
+        };
+        handleJoinSuccess(c, {
+            is_head: false,
+            session_state: { pause: { end_at_ms: MIN, mode: 'minutes', next_lift: null }, server_now_ms: 0 },
+        });
+        expect(store.active).toBe(true);
+        expect(store.pending).toBe(false);
+    });
+});
+
+describe('endOfTimeToday', () => {
+    it('turns "HH:MM" into today at that time on this device', () => {
+        const now = new Date(2026, 9, 21, 12, 34, 56);
+        expect(endOfTimeToday('13:15', now)).toBe(new Date(2026, 9, 21, 13, 15, 0).getTime());
+    });
+
+    it('gives null without a time, so the server rejects it', () => {
+        expect(endOfTimeToday('')).toBe(null);
+        expect(endOfTimeToday(undefined)).toBe(null);
+    });
+});

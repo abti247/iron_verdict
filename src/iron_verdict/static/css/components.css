@@ -786,6 +786,41 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .display-settings-gear:hover { color: rgba(220, 220, 230, 0.9); transform: rotate(30deg); }
 .display-settings-gear svg { width: 70%; height: 70%; }
 
+/* ===== PAUSE (#163) ===== */
+/* Always big in the middle of the display (and of the stream overlay). */
+.display-pause {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    white-space: nowrap;
+    line-height: 1;
+}
+.display-pause-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: calc(clamp(40px, 17vmin, 210px) * var(--display-zoom, 1));
+    letter-spacing: 0.08em;
+    color: var(--text-chrome);
+}
+.display-pause-time {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: calc(clamp(28px, 10vmin, 130px) * var(--display-zoom, 1));
+    letter-spacing: 0.04em;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-chrome);
+    margin-top: calc(clamp(4px, 1.5vmin, 20px) * var(--display-zoom, 1));
+}
+.display-pause-next {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+    font-size: calc(clamp(14px, 4.5vmin, 56px) * var(--display-zoom, 1));
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--panel-text);
+    margin-top: calc(clamp(6px, 2.5vmin, 32px) * var(--display-zoom, 1));
+}
+
 .display-settings-panel {
     position: absolute;
     top: clamp(48px, 6vmin, 88px);
@@ -847,4 +882,29 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     background: var(--blood);
     border-color: var(--blood-bright);
     color: var(--contrast-text);
+}
+/* Pause form in the settings panel (#163); buttons reuse the panel's classes. */
+.pause-controls {
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--panel-border);
+}
+.pause-form { display: flex; flex-direction: column; gap: 10px; }
+.pause-mode { display: flex; gap: 6px; }
+.pause-mode .display-settings-toggle { margin-top: 0; justify-content: center; }
+.pause-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--panel-text); }
+.pause-input {
+    background: var(--bg-void);
+    border: 1px solid var(--panel-border);
+    color: var(--panel-text-bright);
+    padding: 6px 8px;
+    font: 15px 'Rajdhani', sans-serif;
+    color-scheme: dark;
+}
+/* Start/End stand out from the other panel buttons: they act on every display. */
+.pause-action { border-color: var(--blood-bright); color: var(--panel-text-bright); }
+.pause-action:hover { border-color: var(--blood-bright); background: var(--blood); }
+.pause-controls .display-settings-layout-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }

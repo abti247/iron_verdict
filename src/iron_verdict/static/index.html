@@ -560,7 +560,8 @@
         <div class="layout-block layout-block--timer" data-layout-block="timer" x-ref="layout-timer"
              :style="layoutBlockStyle('timer')"
              @pointerdown="layoutPointerDown($event, 'timer', 'move')"
-             :class="layoutBlockHidden('timer') && 'layout-hidden'">
+             :class="layoutBlockHidden('timer') && 'layout-hidden'"
+             x-show="!paused()">
             <div class="display-timer-big" :class="$store.timer.expired && 'expired'" x-text="$store.timer.display"></div>
             <div class="layout-frame" x-show="layoutEditing" x-cloak>
                 <span class="layout-frame-label">
@@ -581,7 +582,7 @@
              :style="layoutBlockStyle('lights')"
              @pointerdown="layoutPointerDown($event, 'lights', 'move')"
              :class="[layoutBlockHidden('lights') && 'layout-hidden-lights', layoutBlockHidden('cards') && 'layout-hidden-cards']"
-             x-show="$store.display.phase === 'votes' || $store.display.phase === 'idle'">
+             x-show="($store.display.phase === 'votes' || $store.display.phase === 'idle') && !paused()">
             <div class="display-orb-wrap">
                 <div class="display-orb" x-ref="layoutOrb" :class="$store.display.lightClass('left')"></div>
                 <div class="display-orb-card" :class="$store.display.cardClass('left')"></div>
@@ -637,7 +638,8 @@
         <div class="display-verdict-inline layout-block" data-layout-block="verdict" x-ref="layout-verdict"
              :style="layoutBlockStyle('verdict')"
              @pointerdown="layoutPointerDown($event, 'verdict', 'move')"
-             :class="layoutBlockHidden('verdict') && 'layout-hidden'">
+             :class="layoutBlockHidden('verdict') && 'layout-hidden'"
+             x-show="!paused()">
             <div class="verdict-stamp"
                  :style="$store.display.phase !== 'votes' ? 'visibility:hidden' : ''"
                  :class="$store.display.isValidLift() ? 'valid' : 'invalid'"
@@ -656,13 +658,21 @@
             </div>
         </div>
 
+        <!-- Pause of the session (#163): always big in the middle, instead of
+             timer, lights, verdict and lifter while it runs. -->
+        <div class="display-pause" data-testid="display-pause" x-show="paused()" x-cloak>
+            <div class="display-pause-title" x-text="t('pause.title')"></div>
+            <div class="display-pause-time" data-testid="display-pause-time" x-text="pauseTimeText()"></div>
+            <div class="display-pause-next" data-testid="display-pause-next" x-show="pauseNextText()" x-text="pauseNextText()"></div>
+        </div>
+
         <!-- VPortal lifter (left) and attempt (right); sample text while editing
              without a lifter (cornerAttempt) so they can be placed. -->
         <div class="vportal-corner vportal-corner-left layout-block" data-layout-block="lifter" x-ref="layout-lifter"
              :style="layoutBlockStyle('lifter')"
              @pointerdown="layoutPointerDown($event, 'lifter', 'move')"
              :class="[layoutBlockHidden('lifter') && 'layout-hidden', cornerIsSample() && 'layout-sample']"
-             x-show="cornerAttempt()">
+             x-show="cornerAttempt() && !paused()">
             <div class="vportal-corner-name" x-text="cornerAttempt()?.firstName + ' ' + cornerAttempt()?.lastName"></div>
             <div class="vportal-corner-meta">
                 <span x-text="cornerAttempt()?.club"></span> ·
@@ -685,7 +695,7 @@
              :style="layoutBlockStyle('attempt')"
              @pointerdown="layoutPointerDown($event, 'attempt', 'move')"
              :class="[layoutBlockHidden('attempt') && 'layout-hidden', cornerIsSample() && 'layout-sample']"
-             x-show="cornerAttempt()">
+             x-show="cornerAttempt() && !paused()">
             <div class="vportal-corner-disc">
                 <span x-text="cornerAttempt()?.discipline"></span> ·
                 <span x-text="t('vportal.attemptShort') + ' ' + cornerAttempt()?.attempt"></span>
@@ -725,6 +735,63 @@
              @click.outside="closeDisplaySettings()"
              x-cloak>
             <div class="display-settings-title" x-text="t('displaySettings.title')"></div>
+            <!-- Pause for every display of the session (#163); the server confirms
+                 or rejects, so "Sending…" shows until it answered. -->
+            <div class="pause-controls" data-testid="pause-controls">
+                <div class="display-settings-title" x-text="t('pause.panelTitle')"></div>
+                <template x-if="!$store.pause.active">
+                    <div class="pause-form">
+                        <div class="pause-mode" role="group">
+                            <button class="display-settings-toggle" data-testid="pause-mode-minutes"
+                                    :class="pauseMode === 'minutes' && 'on'"
+                                    :aria-pressed="pauseMode === 'minutes' ? 'true' : 'false'"
+                                    @click="pauseMode = 'minutes'"
+                                    x-text="t('pause.byMinutes')"></button>
+                            <button class="display-settings-toggle" data-testid="pause-mode-until"
+                                    :class="pauseMode === 'until' && 'on'"
+                                    :aria-pressed="pauseMode === 'until' ? 'true' : 'false'"
+                                    @click="pauseMode = 'until'"
+                                    x-text="t('pause.byTime')"></button>
+                        </div>
+                        <label class="pause-field" x-show="pauseMode === 'minutes'">
+                            <span x-text="t('pause.minutesLabel')"></span>
+                            <input type="number" class="pause-input" data-testid="pause-minutes"
+                                   min="1" max="720" step="1" inputmode="numeric" x-model.number="pauseMinutes">
+                        </label>
+                        <label class="pause-field" x-show="pauseMode === 'until'">
+                            <span x-text="t('pause.untilLabel')"></span>
+                            <input type="time" class="pause-input" data-testid="pause-until" x-model="pauseUntil">
+                        </label>
+                        <label class="pause-field">
+                            <span x-text="t('pause.nextLiftLabel')"></span>
+                            <select class="pause-input" data-testid="pause-next-lift" x-model="pauseNextLift">
+                                <option value="" x-text="t('pause.nextLiftNone')"></option>
+                                <option value="squat" x-text="t('liftTypes.squat')"></option>
+                                <option value="bench" x-text="t('liftTypes.bench')"></option>
+                                <option value="deadlift" x-text="t('liftTypes.deadlift')"></option>
+                            </select>
+                        </label>
+                        <button class="display-settings-layout-btn pause-action" data-testid="pause-start"
+                                :disabled="!pauseCanSend()"
+                                @click="startPause()" x-text="t('pause.start')"></button>
+                    </div>
+                </template>
+                <template x-if="$store.pause.active">
+                    <div class="pause-form">
+                        <div class="display-settings-note" data-testid="pause-running"
+                             x-text="t('pause.title') + ' · ' + pauseTimeText()"></div>
+                        <button class="display-settings-layout-btn pause-action" data-testid="pause-end"
+                                :disabled="!pauseCanSend()"
+                                @click="endPause()" x-text="t('pause.end')"></button>
+                    </div>
+                </template>
+                <div class="display-settings-note" data-testid="pause-sending" x-show="$store.pause.pending"
+                     x-text="t('pause.sending')"></div>
+                <div class="display-settings-note" data-testid="pause-offline"
+                     x-show="$store.session.connectionStatus !== 'connected'" x-text="t('pause.offline')"></div>
+                <div class="display-settings-note display-settings-note--error" data-testid="pause-error"
+                     x-show="pauseErrorText()" x-text="pauseErrorText()"></div>
+            </div>
             <button class="display-settings-layout-btn"
                     data-testid="display-layout-edit"
                     x-show="!layoutFromUrl"

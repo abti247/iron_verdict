@@ -271,6 +271,28 @@
     "sampleTag": "Beispiel",
     "saveError": "Konnte auf diesem Gerät nicht gespeichert werden (Browser-Speicher gesperrt oder voll). Nach dem Neuladen wäre das Layout weg."
   },
+  "pause": {
+    "title": "Pause",
+    "remaining": "noch {time}",
+    "until": "bis {time}",
+    "next": "Weiter mit: {lift}",
+    "panelTitle": "Pause (alle Displays)",
+    "byMinutes": "Minuten",
+    "byTime": "Uhrzeit",
+    "minutesLabel": "Dauer in Minuten",
+    "untilLabel": "Ende um",
+    "nextLiftLabel": "Nächste Disziplin (optional)",
+    "nextLiftNone": "Keine Angabe",
+    "start": "Pause starten",
+    "end": "Pause beenden",
+    "sending": "Wird gesendet…",
+    "offline": "Keine Verbindung – die Pause lässt sich gerade nicht steuern.",
+    "errors": {
+      "past": "Uhrzeit liegt in der Vergangenheit",
+      "too_long": "Eine Pause dauert höchstens 12 Stunden (über Mitternacht per Minuten)",
+      "invalid": "Bitte eine Dauer von 1 bis 720 Minuten oder eine Uhrzeit angeben"
+    }
+  },
   "privacy": {
     "link": "Datenschutz & Impressum",
     "title": "Datenschutz & Impressum",

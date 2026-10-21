@@ -11,6 +11,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Layout editor for the display (settings → "Edit layout"): move, resize and hide timer, lights, cards and reasons, verdict and VPortal lifter and attempt info with mouse or touch; saved per device and copyable to another display as a code
 - Adjustable gap between the lights in the display layout editor (handle beside the lights), e.g. for big lights close together in the stream overlay; saved with the layout and in its code, older layouts and codes keep today's gap
 - Upper limit for connected devices across all competitions on one server (`MAX_WEBSOCKETS`, default 2000): above it a new judge or display sees "Server at capacity"; a judge reconnecting to their own position always gets back in
+- Break display: from the display settings (gear or "S") any display starts a break for the whole session, by minutes (countdown) or until a time of day, optionally with the next lift; all displays and the stream overlay show it big in the middle instead of timer, lights, verdict and lifter until the time is up, the head judge starts the timer or someone ends it in the settings
 - Stream overlay for OBS: "Stream overlay (OBS)" on role select gives a URL for an OBS browser source that shows lights, reasons, verdict, timer and lifter info on a transparent background without controls, texts on a dark panel so they stay readable over the camera picture; it has its own layout (or one passed in the URL) and connects to VPortal from its settings ("S")
 
 ### Changed

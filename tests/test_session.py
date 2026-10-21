@@ -828,3 +828,157 @@ def test_save_snapshot_waits_for_in_flight_write(tmp_path):
     assert not shutdown.is_alive()
     with open(path) as f:
         assert json.load(f) == {}
+
+
+# ---- Pause (#163) ----
+
+from datetime import timezone
+
+# 2026-10-20 10:00:00 UTC
+PAUSE_NOW = datetime(2026, 10, 20, 10, 0, tzinfo=timezone.utc).timestamp()
+
+
+async def test_create_session_has_no_pause():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    assert manager.sessions[code]["pause"] is None
+
+
+async def test_start_pause_minutes_stores_absolute_end():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    result = manager.start_pause(code, minutes=10, next_lift="bench", now=PAUSE_NOW)
+    assert result["success"] is True
+    pause = manager.sessions[code]["pause"]
+    assert pause["end_at"] == PAUSE_NOW + 600
+    assert pause["mode"] == "minutes"
+    assert pause["next_lift"] == "bench"
+    assert pause["id"]
+    assert result["pause"] == pause
+
+
+async def test_start_pause_until_takes_the_end_from_the_display():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    result = manager.start_pause(code, end_at_ms=(PAUSE_NOW + 75 * 60) * 1000, now=PAUSE_NOW)
+    assert result["success"] is True
+    pause = manager.sessions[code]["pause"]
+    assert pause["end_at"] == PAUSE_NOW + 75 * 60
+    assert pause["mode"] == "until"
+    assert pause["next_lift"] is None
+
+
+@pytest.mark.parametrize("offset", [-60, 0])  # a minute ago, now
+async def test_start_pause_end_not_in_the_future_is_rejected(offset):
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    result = manager.start_pause(code, end_at_ms=(PAUSE_NOW + offset) * 1000, now=PAUSE_NOW)
+    assert result == {"success": False, "error": "past"}
+    assert manager.sessions[code]["pause"] is None
+
+
+async def test_start_pause_allows_at_most_12_hours():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    twelve_h = 12 * 3600
+    assert manager.start_pause(code, end_at_ms=(PAUSE_NOW + twelve_h + 60) * 1000, now=PAUSE_NOW)["error"] == "too_long"
+    assert manager.start_pause(code, minutes=721, now=PAUSE_NOW)["error"] == "too_long"
+    assert manager.sessions[code]["pause"] is None
+    assert manager.start_pause(code, end_at_ms=(PAUSE_NOW + twelve_h) * 1000, now=PAUSE_NOW)["success"] is True
+    assert manager.start_pause(code, minutes=720, now=PAUSE_NOW)["success"] is True
+
+
+@pytest.mark.parametrize("kwargs", [
+    {},
+    {"minutes": 0},
+    {"minutes": True},
+    {"minutes": "10"},
+    {"minutes": float("nan")},
+    {"minutes": 10, "end_at_ms": (PAUSE_NOW + 600) * 1000},
+    {"end_at_ms": "13:15"},
+    {"end_at_ms": None, "minutes": None},
+    {"minutes": 10, "next_lift": "snatch"},
+    {"minutes": 10, "next_lift": ["bench"]},
+])
+async def test_start_pause_rejects_invalid_input(kwargs):
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    result = manager.start_pause(code, now=PAUSE_NOW, **kwargs)
+    assert result == {"success": False, "error": "invalid"}
+    assert manager.sessions[code]["pause"] is None
+
+
+def test_start_pause_unknown_session_fails():
+    manager = SessionManager()
+    assert manager.start_pause("NOPE1234", minutes=5)["success"] is False
+
+
+async def test_start_pause_replaces_running_pause():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    first = manager.start_pause(code, minutes=10, now=PAUSE_NOW)["pause"]
+    second = manager.start_pause(code, minutes=5, now=PAUSE_NOW)["pause"]
+    assert manager.sessions[code]["pause"] == second
+    assert second["id"] != first["id"]
+
+
+async def test_end_pause_clears_pause_and_reports_whether_one_ran():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    manager.start_pause(code, minutes=10, now=PAUSE_NOW)
+    assert manager.end_pause(code) is True
+    assert manager.sessions[code]["pause"] is None
+    assert manager.end_pause(code) is False
+    assert manager.end_pause("NOPE1234") is False
+
+
+async def test_end_pause_with_id_only_ends_that_pause():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    old = manager.start_pause(code, minutes=10, now=PAUSE_NOW)["pause"]
+    manager.start_pause(code, minutes=5, now=PAUSE_NOW)
+    assert manager.end_pause(code, pause_id=old["id"]) is False
+    assert manager.sessions[code]["pause"] is not None
+
+
+async def test_running_pause_keeps_session_from_expiring():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    manager.start_pause(code, minutes=6 * 60)
+    manager.sessions[code]["last_activity"] = datetime.now() - timedelta(hours=5)
+    assert manager.get_expired_sessions(hours=4) == []
+    manager.end_pause(code)
+    manager.sessions[code]["last_activity"] = datetime.now() - timedelta(hours=5)
+    assert manager.get_expired_sessions(hours=4) == [code]
+
+
+async def test_pause_past_its_end_no_longer_keeps_session_alive():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    manager.start_pause(code, minutes=1, now=time.time() - 120)
+    manager.sessions[code]["last_activity"] = datetime.now() - timedelta(hours=5)
+    assert manager.get_expired_sessions(hours=4) == [code]
+
+
+async def test_pause_survives_snapshot_round_trip(tmp_path):
+    path = str(tmp_path / "sessions.json")
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    pause = manager.start_pause(code, end_at_ms=(PAUSE_NOW + 600) * 1000, next_lift="deadlift", now=PAUSE_NOW)["pause"]
+    manager.save_snapshot(path)
+
+    restored = SessionManager()
+    restored.load_snapshot(path)
+    assert restored.sessions[code]["pause"] == pause
+
+
+async def test_load_snapshot_defaults_missing_pause(tmp_path):
+    path = str(tmp_path / "sessions.json")
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    del manager.sessions[code]["pause"]
+    manager.save_snapshot(path)
+
+    restored = SessionManager()
+    restored.load_snapshot(path)
+    assert restored.sessions[code]["pause"] is None

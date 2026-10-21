@@ -1,6 +1,6 @@
 // One named handler per incoming WebSocket message type, dispatched by
 // connection.js. `c` is the connection: the stores (session, nav, judge, display,
-// timer, settings, vportal) plus its flows, storage, t and alert.
+// timer, settings, vportal, pause) plus its flows, storage, t and alert.
 
 import { rejectionKey } from './voteDelivery.js';
 
@@ -64,6 +64,9 @@ export function handleJoinSuccess(c, message) {
     const trms = message.session_state?.time_remaining_ms;
     if (trms > 0) {
         c.timer.start(trms);
+    }
+    if (session.role === 'display') {
+        c.pause.joined(message.session_state?.pause ?? null, message.session_state?.server_now_ms);
     }
 }
 
@@ -174,6 +177,16 @@ export function handleServerRestarting(c, _message) {
 
 export function handleJudgeStatusUpdate(c, message) {
     c.session.judgeConnected[message.position] = message.connected;
+}
+
+// The pause is shown on displays only; judges receive the broadcast too.
+export function handlePauseUpdate(c, message) {
+    if (c.session.role !== 'display') return;
+    c.pause.apply(message.pause ?? null, message.server_now_ms);
+}
+
+export function handlePauseRejected(c, message) {
+    c.pause.rejected(message.code);
 }
 
 export function handleVoteAck(c, message) {

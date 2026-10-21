@@ -1360,3 +1360,190 @@ async def test_heartbeat_removes_connection_after_stale_close_even_if_close_fail
     messages = [r.getMessage() for r in caplog.records]
     assert messages.count("heartbeat_stale_close") == 1
     assert messages.count("heartbeat_close_failed") == 1
+
+
+# ---- Pause (#163) ----
+
+async def _recv(ws):
+    return await asyncio.wait_for(ws.receive_json(), timeout=1.0)
+
+
+async def test_display_pause_start_broadcasts_pause_update(session_code):
+    async with _ws_client() as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as display, \
+                   httpx_ws.aconnect_ws("ws://test/ws", ac) as judge:
+            await _join(judge, session_code, "center_judge")
+            await _join(display, session_code, "display")
+            before_ms = int(time.time() * 1000)
+            await display.send_json({"type": "pause_start", "minutes": 10, "next_lift": "bench"})
+            for ws in (display, judge):
+                msg = await _recv(ws)
+                assert msg["type"] == "pause_update"
+                assert msg["pause"]["mode"] == "minutes"
+                assert msg["pause"]["next_lift"] == "bench"
+                assert msg["server_now_ms"] >= before_ms
+                assert abs(msg["pause"]["end_at_ms"] - (msg["server_now_ms"] + 600_000)) < 1000
+                assert "id" not in msg["pause"]
+    assert session_manager.sessions[session_code]["pause"] is not None
+
+
+async def test_pause_start_invalid_input_is_rejected_to_sender(session_code):
+    async with _ws_client() as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+            await _join(ws, session_code, "display")
+            await ws.send_json({"type": "pause_start", "minutes": "ten", "next_lift": ["bench"]})
+            assert await _recv(ws) == {"type": "pause_rejected", "code": "invalid"}
+
+
+async def test_judge_cannot_start_or_end_pause(session_code):
+    async with _ws_client() as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+            await _join(ws, session_code, "center_judge")
+            await ws.send_json({"type": "pause_start", "minutes": 5})
+            assert (await _recv(ws))["type"] == "error"
+            await ws.send_json({"type": "pause_end"})
+            assert (await _recv(ws))["type"] == "error"
+    assert session_manager.sessions[session_code]["pause"] is None
+
+
+async def test_display_pause_end_broadcasts_cleared_pause(session_code):
+    session_manager.start_pause(session_code, minutes=10)
+    async with _ws_client() as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as display, \
+                   httpx_ws.aconnect_ws("ws://test/ws", ac) as other:
+            await _join(display, session_code, "display")
+            await _join(other, session_code, "display")
+            await display.send_json({"type": "pause_end"})
+            for ws in (display, other):
+                msg = await _recv(ws)
+                assert msg["type"] == "pause_update"
+                assert msg["pause"] is None
+    assert session_manager.sessions[session_code]["pause"] is None
+
+
+async def test_join_success_includes_running_pause_and_server_time(session_code):
+    session_manager.start_pause(session_code, minutes=30, next_lift="deadlift")
+    async with _ws_client() as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+            msg = await _join(ws, session_code, "display")
+    state = msg["session_state"]
+    assert state["pause"]["mode"] == "minutes"
+    assert state["pause"]["next_lift"] == "deadlift"
+    assert "id" not in state["pause"] and "end_at" not in state["pause"]
+    assert abs(state["pause"]["end_at_ms"] - (state["server_now_ms"] + 30 * 60_000)) < 1000
+
+
+async def test_join_after_pause_end_leaves_the_end_broadcast_to_the_end_task(session_code, monkeypatch):
+    """A join between end_at and the end task must not swallow the end: the
+    task still ends the pause and broadcasts pause_update null (review #163)."""
+    from iron_verdict import main as main_module
+
+    pause = session_manager.start_pause(session_code, minutes=1, now=time.time() - 61)["pause"]
+    async with _ws_client() as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+            msg = await _join(ws, session_code, "display")
+            assert msg["session_state"]["pause"]["end_at_ms"] <= msg["session_state"]["server_now_ms"]
+
+            async def no_sleep(_seconds):
+                pass
+
+            await main_module.end_pause_when_due(session_code, pause["id"], pause["end_at"], sleep=no_sleep)
+            update = await _recv(ws)
+    assert update["type"] == "pause_update" and update["pause"] is None
+    assert session_manager.sessions[session_code]["pause"] is None
+
+
+async def test_timer_start_ends_pause_before_timer_starts(session_code):
+    session_manager.start_pause(session_code, minutes=10)
+    async with _ws_client() as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as head, \
+                   httpx_ws.aconnect_ws("ws://test/ws", ac) as display:
+            await _join(head, session_code, "center_judge")
+            await _join(display, session_code, "display")
+            await head.send_json({"type": "timer_start"})
+            first = await _recv(display)
+            second = await _recv(display)
+    assert first["type"] == "pause_update" and first["pause"] is None
+    assert second["type"] == "timer_start"
+    assert session_manager.sessions[session_code]["pause"] is None
+
+
+async def test_timer_start_without_pause_sends_no_pause_update(session_code):
+    async with _ws_client() as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as head:
+            await _join(head, session_code, "center_judge")
+            await head.send_json({"type": "timer_start"})
+            assert (await _recv(head))["type"] == "timer_start"
+
+
+async def test_end_pause_when_due_ends_and_broadcasts(session_code, monkeypatch):
+    from iron_verdict import main as main_module
+
+    pause = session_manager.start_pause(session_code, minutes=5)["pause"]
+    sent = []
+
+    async def fake_broadcast(code, message):
+        sent.append((code, message))
+
+    slept = []
+
+    async def fake_sleep(seconds):
+        slept.append(seconds)
+
+    monkeypatch.setattr(main_module.connection_manager, "broadcast_to_session", fake_broadcast)
+    await main_module.end_pause_when_due(session_code, pause["id"], pause["end_at"], sleep=fake_sleep)
+
+    assert 299 < slept[0] <= 300
+    assert session_manager.sessions[session_code]["pause"] is None
+    assert sent == [(session_code, {"type": "pause_update", "pause": None, "server_now_ms": sent[0][1]["server_now_ms"]})]
+
+
+async def test_end_pause_when_due_leaves_a_newer_pause_alone(session_code, monkeypatch):
+    from iron_verdict import main as main_module
+
+    old = session_manager.start_pause(session_code, minutes=5)["pause"]
+    session_manager.start_pause(session_code, minutes=10)
+    sent = []
+
+    async def fake_broadcast(code, message):
+        sent.append(message)
+
+    async def fake_sleep(_seconds):
+        pass
+
+    monkeypatch.setattr(main_module.connection_manager, "broadcast_to_session", fake_broadcast)
+    await main_module.end_pause_when_due(session_code, old["id"], old["end_at"], sleep=fake_sleep)
+
+    assert session_manager.sessions[session_code]["pause"] is not None
+    assert sent == []
+
+
+async def test_schedule_pause_end_replaces_previous_timer(session_code):
+    from iron_verdict import main as main_module
+
+    session_manager.start_pause(session_code, minutes=5)
+    main_module.schedule_pause_end(session_code)
+    first = main_module._pause_end_tasks[session_code]
+    session_manager.start_pause(session_code, minutes=10)
+    main_module.schedule_pause_end(session_code)
+    second = main_module._pause_end_tasks[session_code]
+    await asyncio.sleep(0)
+    assert first.cancelled()
+    assert not second.done()
+    session_manager.end_pause(session_code)
+    main_module.schedule_pause_end(session_code)
+    await asyncio.sleep(0)
+    assert second.cancelled()
+    assert session_code not in main_module._pause_end_tasks
+
+
+async def test_restore_pause_timers_schedules_restored_pauses(session_code):
+    from iron_verdict import main as main_module
+
+    session_manager.start_pause(session_code, minutes=5)
+    main_module._pause_end_tasks.pop(session_code, None)
+    main_module.restore_pause_timers()
+    task = main_module._pause_end_tasks[session_code]
+    assert not task.done()
+    task.cancel()
+    main_module._pause_end_tasks.pop(session_code, None)
