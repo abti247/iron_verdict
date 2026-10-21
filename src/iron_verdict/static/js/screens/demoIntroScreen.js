@@ -1,5 +1,6 @@
-// Demo intro screen: explains the demo and opens a real session in four
-// windows (three judges, one display), each joining via ?code=…&demo=<role>.
+// Demo intro screen: explains the demo (with guide screenshots) and opens a
+// real session in four windows (three judges, one display), each joining via
+// ?code=…&demo=<role>.
 
 export function demoIntroScreen() {
     return {
@@ -37,6 +38,11 @@ export function demoIntroScreen() {
                 alert(t('alerts.demoFailed'));
                 console.error('Demo mode error:', error);
             }
+        },
+
+        // Guide screenshot in the current language (served by the app itself).
+        guideImage(motif) {
+            return `/static/img/guide/${Alpine.store('i18n').lang}/${motif}.webp`;
         },
 
         getWindowSpecs(sessionCode) {
