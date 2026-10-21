@@ -38,8 +38,9 @@ One issue per branch, never work on `main`.
 ## 4. Test first, then implement (TDD)
 
 - Backend change: write a failing test in `tests/` first, run it, see it fail for the right reason, then implement.
-- Frontend-visible change: add or extend an E2E test in `tests/e2e/` (with a docstring describing the scenario).
-- Critical-path change (anything after a judge/display joined: voting, timer, results, reconnection, reload): an E2E test is mandatory; network-related changes also need a connection-loss scenario (drop, reconnect, reload).
+- Frontend-visible change: add or extend an E2E test of the user-visible flow in `tests/e2e/` (with a docstring describing the scenario).
+- Test each behavior at the cheapest level that can see it: logic (validation, time math, formatting, state transitions) in backend or Vitest tests; E2E only for what a browser alone can show (screens, flows across devices, connection loss, reload). Do not re-assert in E2E what a unit test already pins down, and do not simulate server internals in E2E (restarts, patched timers).
+- Critical-path change (anything after a judge/display joined: voting, timer, results, reconnection, reload): an E2E test of the user-visible flow is mandatory; network-related changes also need a connection-loss scenario (drop, reconnect, reload).
 - Main-flow change: update `tests/e2e/test_competition_flow.py`.
 - Respect the critical-path rules (no external runtime dependencies, no silently dropped messages, no unjustified delays) and `src/iron_verdict/static/AGENTS.md` for frontend structure.
 - VPortal files: changes to `tests/e2e/fake_vportal.py` only with a justification in `docs/vportal-fake-server-fidelity.md`.
@@ -63,7 +64,7 @@ All green before continuing. Keep the summary (passed/failed counts) for the PR.
 
 ## 7. Independent review
 
-Launch the `live-reliability-reviewer` agent (Agent tool, `subagent_type: live-reliability-reviewer`) on the branch diff against `origin/main`, giving it the issue number. Fix every **blocking** and **should** finding, or record in the PR why one does not apply. Findings marked `[proportionality]` (unneeded mechanisms, simpler alternatives, duplicate tests) are the maintainer's call: either implement them or decline them with a reason — both go into the PR description. Re-run the reviewer after substantial fixes, and re-run the affected tests.
+Launch the `live-reliability-reviewer` agent (Agent tool, `subagent_type: live-reliability-reviewer`) on the branch diff against `origin/main`, giving it the issue number. Fix every **blocking** and **should** finding, or record in the PR why one does not apply. Findings marked `[proportionality]` (unneeded mechanisms, simpler alternatives, duplicate tests — e.g. E2E re-asserting logic a unit test already pins down) are the maintainer's call: either implement them or decline them with a reason — both go into the PR description. Re-run the reviewer after substantial fixes, and re-run the affected tests.
 
 ## 8. Open the PR
 

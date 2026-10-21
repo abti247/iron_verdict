@@ -14,7 +14,9 @@ The critical path is everything from the moment a judge or a display has joined 
 Rules for any change touching the critical path:
 - **No external runtime dependencies** (CDNs, third-party services) in the critical path. Venue Wi-Fi may block or lose them.
 - **No message may be dropped silently.** The user always sees the real state (e.g. a vote is only shown as confirmed once the server confirmed it; a lost connection is visible).
-- **Every change needs an E2E test.** For network-related changes this includes a connection-loss scenario (drop, reconnect, reload).
+- **Every change needs an E2E test of the user-visible flow.** For network-related changes this includes a connection-loss scenario (drop, reconnect, reload).
+- **Test each behavior at the cheapest level that can see it.** Logic (validation, time math, formatting, state transitions) gets backend or Vitest tests; E2E covers what only a browser can show (screens, flows across devices, connection loss, reload). Do not assert the same behavior again in E2E when a unit test already pins it down, and do not rebuild server internals in E2E (no simulated restarts or patched timers) — that tests the simulation, not the app.
+  *Why:* E2E is the slowest and most flake-prone layer (~9 min suite); more E2E means more maintenance, not more stability.
 - **No artificial delays** (`setTimeout`, sleeps, debounces) without a written justification in the code or PR.
 
 ## VPortal Protection
@@ -26,8 +28,9 @@ Protected files:
 - `src/iron_verdict/static/js/vportalQueries.js`
 - `src/iron_verdict/static/js/vportalStore.js`
 - VPortal parts of `src/iron_verdict/static/index.html`, `src/iron_verdict/static/js/app.js` (vportal store registration) and `src/iron_verdict/static/js/screens/landingScreen.js` (staging flag)
-- `src/iron_verdict/static/js/connection.js` (starts and stops the VPortal display overlay on every join/leave path)
+- Every `vportal.*` call in `src/iron_verdict/static/js/connection.js` and the code that decides when it runs (overlay start on join and on login change, overlay stop on every leave path, session info on lookup). Additions elsewhere in the file (e.g. registering a new message type in `DISPATCH`) are not covered.
 - VPortal calls in `src/iron_verdict/static/js/handlers.js` (overlay stop on session end and final join error)
+- The VPortal login watch in `src/iron_verdict/static/js/screens/displayScreen.js` (restarts the display overlay when the login changes)
 - `tests/js/connection.test.js` (overlay start/stop on every join/leave path)
 - `tests/e2e/fake_vportal.py`
 - `tests/e2e/test_vportal_integration.py`
@@ -35,6 +38,8 @@ Protected files:
 - `tests/js/vportalStore.test.js`
 - `tests/test_vportal_proxy.py`
 - `docs/vportal-fake-server-fidelity.md`
+
+A PR touches a protected file only if it changes VPortal behavior or the code paths named above; showing or hiding the VPortal corners in markup without changing when VPortal polls is not a VPortal change.
 
 Rules:
 - Every PR touching one of these files gets the label `vportal` and a checklist in the PR description of what to verify in the next manual test against the BVDK staging environment.
@@ -48,6 +53,8 @@ Rules:
 - Open work is tracked in GitHub Issues (there is no backlog file).
 - **Ask, don't assume.** When a decision belongs to the maintainer, ask before acting on it — never pick an answer from assumptions. This covers anything affecting product behavior, the critical path, VPortal, security, cost, external services, deployment, or scope (doing more or less than asked), and any rule that is ambiguous or contradicts the code.
   - Issues: if an issue has a "Zu klären" section or other open questions, get the answers before implementing the affected parts and record them in the issue so later sessions know them.
+  - Propose the simplest version that meets the issue first; extras (movable/configurable blocks, extra input modes, clock-skew handling) only on the maintainer's request.
+  - Backwards compatibility is only needed for what is released and in use (persisted sessions, stored layouts/codes of released features, the WebSocket protocol during a deploy). Unreleased features (see `[Unreleased]` in `CHANGELOG.md`) may change their stored formats freely.
   - Pure implementation details with an obvious convention in the codebase (naming, file placement, test structure) don't need a question — but state the choice in the PR so it can be reviewed.
 - **Working an issue:** follow the skill `/work-on-issue <n>` (`.claude/skills/work-on-issue/SKILL.md`) — issue → clarification → branch → TDD → full test suite → docs → review → PR.
 - **Independent review:** before opening a PR, run the read-only agent `live-reliability-reviewer` (`.claude/agents/live-reliability-reviewer.md`) on the diff and fix its blocking and should findings. It checks the rules in this file (critical path, dropped messages, external dependencies, delays, VPortal, tests, docs) and whether the solution is proportionate to the issue; `[proportionality]` findings are implemented or declined with a reason in the PR description.
@@ -89,7 +96,7 @@ Rules:
 
 ### When to write tests
 - Backend changes: follow TDD — write a failing test first, then implement
-- Frontend-visible features: add an E2E test in `tests/e2e/`
+- Frontend-visible features: add an E2E test of the user-visible flow in `tests/e2e/`
 
 ### Test categories
 - **Backend unit tests**: test individual modules directly (e.g., SessionManager, ConnectionManager)
@@ -99,7 +106,7 @@ Rules:
 
 ### Regression strategy
 - `test_competition_flow.py` must exercise the full happy-path lifecycle (create session → judges join → vote → display updates → next attempt → end session) and be updated when new features affect the main flow
-- Feature-specific E2E tests cover edge cases and niche behavior
+- Feature-specific E2E tests cover user-visible edge flows (screens, cross-device, connection loss, reload); logic edge cases go to backend or Vitest tests
 - Before merging, run the full test suite — both backend and E2E
 
 ### CI
