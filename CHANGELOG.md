@@ -21,6 +21,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - The verdict sits a little further below the cards and reasons, so in the display layout editor their labels and hide buttons no longer cover each other
 
 ### Fixed
+- A device with a stored VPortal login shows it as connected after a reload, on role select too, so the connect dialog offers "Disconnect" instead of asking for the login again; switching to another session in the same tab no longer shows the previous session's connection
 - Session lookup and creation limits now count per network instead of across all competitions, so a wave of joins or reloads elsewhere can no longer lock judges out with "Too Many Requests"
 - Connections that ended unexpectedly no longer stay registered: they no longer take up display slots, a judge's lost connection always shows as disconnected on the other devices, and the server log no longer repeats the same heartbeat warning every 5 seconds
 

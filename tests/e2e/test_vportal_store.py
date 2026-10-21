@@ -3,7 +3,8 @@
 The connect button and dialog (role-select) and the lifter overlay (display)
 read one VPortal state that is separate from the main app component. These
 tests cover the paths where both sides meet: leaving the display and coming
-back to role-select, and a dropped display connection.
+back to role-select, a dropped display connection, and a login stored before
+a reload or a session switch in the same tab (#172).
 """
 
 import re
@@ -12,6 +13,22 @@ from playwright.sync_api import expect
 
 from tests.e2e.network_switch import NETWORK_SWITCH
 from tests.e2e.test_vportal_integration import _connect_and_open_display
+
+
+CONNECTED_TEXT = "Connected to BVDK · Platform 1"
+CONNECT_TEXT = "Connect to comp software"
+
+
+def _active_group_polls(page):
+    """Record the VPortal poll ticks (one active-group query each) of a page."""
+    polls = []
+    page.on(
+        "request",
+        lambda req: polls.append(req.url)
+        if "/api/vportal/graphql" in req.url and "competitionGroupList" in (req.post_data or "")
+        else None,
+    )
+    return polls
 
 
 def test_connection_shown_on_role_select_after_display_and_disconnect(competition, server_url, fake_vportal_url):
@@ -108,13 +125,7 @@ def test_display_role_select_round_trips_leave_one_poller(competition, server_ur
     corner = page.locator(".vportal-corner-left")
     expect(corner).to_contain_text("MARIA SCHNEIDER", timeout=10000, ignore_case=True)
 
-    polls = []
-    page.on(
-        "request",
-        lambda req: polls.append(req.url)
-        if "/api/vportal/graphql" in req.url and "competitionGroupList" in (req.post_data or "")
-        else None,
-    )
+    polls = _active_group_polls(page)
 
     for _ in range(2):
         page.go_back()
@@ -129,3 +140,111 @@ def test_display_role_select_round_trips_leave_one_poller(competition, server_ur
     polls.clear()
     page.wait_for_timeout(6500)
     assert 1 <= len(polls) <= 3, f"expected one poller, saw {len(polls)} poll ticks in 6.5 s"
+
+
+def test_reloaded_display_shows_stored_login_as_connected_and_disconnect_stops_polling(competition, server_url, fake_vportal_url):
+    """Connect to (fake) VPortal → open the display → reload the display → the
+    overlay runs with the stored login → browser back to role-select → the button says "Connected to BVDK · Platform 1" and the dialog opens
+    on the connected step (issue #172) → reload on role-select → still connected
+    → disconnect → the button offers connecting again and the stored login is
+    gone → back on the display no VPortal polling runs and no lifter shows.
+    Fixed wait: the test measures that no poll request is made."""
+    page = competition.new_context().new_page()
+    _connect_and_open_display(page, server_url, fake_vportal_url)
+    corner = page.locator(".vportal-corner-left")
+    expect(corner).to_contain_text("MARIA SCHNEIDER", timeout=10000, ignore_case=True)
+    code = page.evaluate("Alpine.store('session').code")
+
+    page.reload()
+    page.locator(".display-full").wait_for(state="visible")
+    expect(corner).to_contain_text("MARIA SCHNEIDER", timeout=10000, ignore_case=True)
+
+    page.go_back()
+    page.locator(".role-wrap").wait_for(state="visible")
+    button = page.locator(".vportal-connect-btn")
+    expect(button).to_have_text(CONNECTED_TEXT)
+    expect(button).to_have_class(re.compile(r"\bconnected\b"))
+
+    page.reload()
+    page.locator(".role-wrap").wait_for(state="visible")
+    expect(button).to_have_text(CONNECTED_TEXT)
+    button.click()
+    expect(page.locator(".vportal-step-connected")).to_be_visible()
+    expect(page.locator(".vportal-step-connected")).to_contain_text("Platform 1")
+    expect(page.locator(".vportal-step-federation")).to_be_hidden()
+
+    page.locator(".vportal-step-connected .btn-blood-primary").click()
+    expect(page.locator(".vportal-modal")).to_be_hidden()
+    expect(button).to_have_text(CONNECT_TEXT)
+    expect(button).not_to_have_class(re.compile(r"\bconnected\b"))
+    assert page.evaluate(f"localStorage.getItem('vportal:{code}')") is None
+
+    polls = _active_group_polls(page)
+    page.locator(".role-btn", has_text="Display Screen").click()
+    page.locator(".display-full").wait_for(state="visible")
+    page.wait_for_timeout(3500)
+    assert polls == [], "a disconnected display must not poll VPortal"
+    expect(corner).to_be_hidden()
+
+
+def test_display_reloaded_without_network_shows_stored_login_as_connected(competition, server_url, fake_vportal_url):
+    """VPortal-connected display loses the network (WebSocket cut, session
+    lookup failing) and is reloaded → the reconnecting screen shows → the
+    WebSocket comes back while the session lookup still fails → the display
+    shows the "VPortal disconnected" banner → the lookup works again → the
+    lifter overlay returns without a new login → browser back to role-select →
+    the button shows the stored login as connected."""
+    ctx = competition.new_context()
+    ctx.add_init_script(NETWORK_SWITCH)
+    page = ctx.new_page()
+    _connect_and_open_display(page, server_url, fake_vportal_url)
+    corner = page.locator(".vportal-corner-left")
+    expect(corner).to_contain_text("MARIA SCHNEIDER", timeout=10000, ignore_case=True)
+
+    page.evaluate("window.__ivCutNetwork()")
+    page.route("**/api/sessions/*", lambda route: route.abort())
+    page.reload()
+    expect(page.get_by_test_id("reconnecting-screen")).to_be_visible()
+
+    page.evaluate("window.__ivRestoreNetwork()")
+    page.locator(".display-full").wait_for(state="visible", timeout=15000)
+    expect(page.locator(".vportal-disconnected-banner")).to_be_visible(timeout=10000)
+
+    page.unroute("**/api/sessions/*")
+    expect(corner).to_contain_text("MARIA SCHNEIDER", timeout=10000, ignore_case=True)
+    expect(page.locator(".vportal-disconnected-banner")).to_be_hidden()
+
+    page.go_back()
+    page.locator(".role-wrap").wait_for(state="visible")
+    expect(page.locator(".vportal-connect-btn")).to_have_text(CONNECTED_TEXT)
+
+
+def test_switching_session_in_the_same_tab_shows_no_stale_connection(competition, server_url, fake_vportal_url):
+    """Connect to (fake) VPortal in session A → back to start → create session B
+    in the same tab → its button offers connecting and the dialog starts at the
+    federation step (A's login is not shown) → back to start, join A by its code
+    → A's stored login shows as connected again."""
+    page = competition.new_context().new_page()
+    _connect_and_open_display(page, server_url, fake_vportal_url)
+    code_a = page.evaluate("Alpine.store('session').code")
+    page.go_back()
+    page.locator(".role-wrap").wait_for(state="visible")
+    button = page.locator(".vportal-connect-btn")
+    expect(button).to_have_text(CONNECTED_TEXT)
+
+    page.get_by_role("button", name="Back to start").click()
+    page.get_by_test_id("session-name-input").fill("VP Test B")
+    page.get_by_role("button", name="Create New Session").click()
+    page.locator(".role-wrap").wait_for(state="visible")
+    expect(button).to_have_text(CONNECT_TEXT)
+    expect(button).not_to_have_class(re.compile(r"\bconnected\b"))
+    button.click()
+    expect(page.locator(".vportal-step-federation")).to_be_visible()
+    expect(page.locator(".vportal-step-connected")).to_be_hidden()
+    page.locator(".vportal-step-federation .btn-blood-ghost").click()
+
+    page.get_by_role("button", name="Back to start").click()
+    page.get_by_test_id("join-code-input").fill(code_a)
+    page.get_by_role("button", name="Join Session").click()
+    page.locator(".role-wrap").wait_for(state="visible")
+    expect(button).to_have_text(CONNECTED_TEXT)

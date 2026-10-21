@@ -250,6 +250,7 @@ describe('session lookup and reload recovery', () => {
         expect(fetchFn).toHaveBeenCalledWith('/api/sessions/' + CODE);
         expect(env.stores.session.code).toBe(CODE);
         expect(env.stores.session.kind).toBe('vportal');
+        expect(env.stores.vportal.applySessionInfo).toHaveBeenCalledWith(CODE, { kind: 'vportal' });
         expect(env.stores.nav.screen).toBe('role-select');
     });
 

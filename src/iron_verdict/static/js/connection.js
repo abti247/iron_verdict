@@ -168,10 +168,10 @@ export function createConnection({
                     try {
                         const data = await res.json();
                         session.kind = data.kind || 'generic';
-                        vportal.applySessionInfo(data);
+                        vportal.applySessionInfo(code, data);
                     } catch (_e) {
                         session.kind = 'generic';
-                        vportal.applySessionInfo(null);
+                        vportal.applySessionInfo(code, null);
                     }
                     storage.setItem('iv_session', JSON.stringify(storedEntry({ code })));
                     nav.navigateTo('role-select');

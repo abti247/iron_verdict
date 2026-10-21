@@ -108,12 +108,14 @@ export function createVportalStore({
         },
 
         // Session lookup result (`GET /api/sessions/{code}`), or null if it could not be read.
-        applySessionInfo(info) {
+        applySessionInfo(sessionCode, info) {
+            this._showStoredLogin(sessionCode);
             this.stagingAvailable = !!info?.staging_available;
         },
 
         // Pick up server-side flags (staging_available) for a freshly-created session.
         async loadStagingFlag(sessionCode) {
+            this._showStoredLogin(sessionCode);
             try {
                 const lookup = await fetchFn(`/api/sessions/${sessionCode}`);
                 if (lookup.ok) {
@@ -129,11 +131,14 @@ export function createVportalStore({
         // resolves with null or, during a retry wait, never settles.
         // streamOverlay (OBS browser source, #107): its panel offers the connect
         // dialog only once the kind is known, so a failed lookup is retried even
-        // without a login (no banner then: nothing is missing yet), and a login
-        // stored before a reload shows as connected.
+        // without a login (no banner then: nothing is missing yet).
         async startDisplayOverlay(sessionCode, { streamOverlay = false } = {}) {
             // Never two pollers: a restart replaces whatever the last start left running.
             this.stopDisplayOverlay();
+            // A reloaded display enters the session here, not via the lookup on the
+            // landing screen; before the lookup so a failed one cannot leave the
+            // previous session's state behind.
+            this._showStoredLogin(sessionCode);
             const run = this._displayRun;
             for (;;) {
                 // Authoritative kind check — the caller's session kind may be stale after reload-recovery
@@ -144,7 +149,6 @@ export function createVportalStore({
                     const kind = data.kind || 'generic';
                     this.stagingAvailable = !!data.staging_available;
                     if (kind === 'vportal') {
-                        if (streamOverlay) this._showStoredLogin(sessionCode);
                         this._startPolling(sessionCode);
                     } else this.disconnectedReason = '';
                     return kind;
@@ -199,16 +203,18 @@ export function createVportalStore({
             return stored?.stage_id ? stored : null;
         },
 
-        // A login stored before a reload shows as connected, so the dialog opened
-        // from the stream overlay's panel does not ask for it again. Only for the
-        // overlay: its URL never changes session, so this cannot go stale; the
-        // hall display keeps the state of its own connect dialog.
+        // The connect button and dialog show this device's stored login for the
+        // given session, so after a reload the dialog offers "Disconnect" instead of
+        // asking again (#172), on role-select and in the stream overlay's panel.
+        // Called whenever the page enters a session (create, lookup, display start),
+        // so a tab that switches session never shows the previous session's login.
+        // A login without a stage counts as not connected; an expired token only
+        // shows once a poll fails (banner on the display).
         _showStoredLogin(sessionCode) {
             const stored = this._pollableStored(sessionCode);
-            if (!stored) return;
-            this.connected = true;
-            this.stageName = stored.stage_name || '';
-            this.federationLabel = this._federationForHost(stored.host);
+            this.connected = !!stored;
+            this.stageName = stored?.stage_name || '';
+            if (stored) this.federationLabel = this._federationForHost(stored.host);
         },
 
         _startPolling(sessionCode) {

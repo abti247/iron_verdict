@@ -140,10 +140,54 @@ describe('connect dialog', () => {
 describe('session info', () => {
     it('applies the staging flag from a session lookup', () => {
         const { store } = makeStore();
-        store.applySessionInfo({ kind: 'vportal', staging_available: true });
+        store.applySessionInfo('ABCD1234', { kind: 'vportal', staging_available: true });
         expect(store.stagingAvailable).toBe(true);
-        store.applySessionInfo(null);
+        store.applySessionInfo('ABCD1234', null);
         expect(store.stagingAvailable).toBe(false);
+    });
+
+    it('a session lookup shows the stored login of that session as connected, so the dialog offers "Disconnect"', () => {
+        const client = fakeClient({
+            getStored: vi.fn().mockReturnValue({ host: 'oevk.vportal-online.de', stage_id: 'S1', stage_name: 'Platform A' }),
+        });
+        const { store } = makeStore({ client });
+        store.applySessionInfo('ABCD1234', { kind: 'vportal' });
+        expect(client.getStored).toHaveBeenCalledWith('ABCD1234');
+        expect(store.connected).toBe(true);
+        expect(store.stageName).toBe('Platform A');
+        expect(store.federationLabel).toBe('OEVK');
+        expect(store.loginChanges).toBe(0);
+        store.openModal();
+        expect(store.modalStep).toBe('connected');
+    });
+
+    it('a lookup of another session without a stored login clears a connected state of the previous one', () => {
+        const client = fakeClient({ isConnected: vi.fn((code) => code === 'AAAA1111') });
+        const { store } = makeStore({ client });
+        store.applySessionInfo('AAAA1111', { kind: 'vportal' });
+        expect(store.connected).toBe(true);
+        store.applySessionInfo('BBBB2222', { kind: 'vportal' });
+        expect(store.connected).toBe(false);
+        expect(store.stageName).toBe('');
+        store.openModal();
+        expect(store.modalStep).toBe('federation');
+    });
+
+    it('a stored login without a stage does not show as connected', () => {
+        const client = fakeClient({ getStored: vi.fn().mockReturnValue({ host: 'bvdk.vportal-online.de', stage_id: null }) });
+        const { store } = makeStore({ client });
+        store.applySessionInfo('ABCD1234', { kind: 'vportal' });
+        expect(store.connected).toBe(false);
+    });
+
+    it('a freshly created session clears a connected state of the previous session', async () => {
+        const client = fakeClient({ isConnected: vi.fn().mockReturnValue(false) });
+        const fetchFn = vi.fn().mockResolvedValue(jsonResponse({ kind: 'vportal' }));
+        const { store } = makeStore({ client, fetchFn });
+        Object.assign(store, { connected: true, stageName: 'Platform A' });
+        await store.loadStagingFlag('NEWC0DE1');
+        expect(store.connected).toBe(false);
+        expect(store.stageName).toBe('');
     });
 
     it('loads the staging flag for a freshly created session', async () => {
@@ -222,15 +266,21 @@ describe('display overlay', () => {
 describe('display overlay start and stop', () => {
     afterEach(() => { vi.useRealTimers(); });
 
-    it('hall display: a stored login does not change the connect button state', async () => {
-        const fetchFn = vi.fn().mockResolvedValue(jsonResponse({ kind: 'vportal' }));
+    it('hall display: the display start sets the button from the stored login of its session, before and whatever the lookup', async () => {
+        const fetchFn = vi.fn().mockRejectedValue(new Error('offline'));
         const client = fakeClient({
             getStored: vi.fn().mockReturnValue({ host: 'bvdk.vportal-online.de', stage_id: 'S1', stage_name: 'Platform A' }),
         });
         const { store } = makeStore({ client, fetchFn });
-        await store.startDisplayOverlay('ABCD1234');
-        expect(store.connected).toBe(false);
-        expect(store.stageName).toBe('');
+        vi.useFakeTimers();
+        store.startDisplayOverlay('ABCD1234');
+        await vi.advanceTimersByTimeAsync(0);
+        expect(store.disconnectedReason).toBe('session-lookup-failed');
+        expect(store.connected).toBe(true);
+        expect(store.stageName).toBe('Platform A');
+        expect(store.federationLabel).toBe('BVDK');
+        store.stopDisplayOverlay();
+        expect(store.connected).toBe(true);
     });
 
     it('stream overlay without a login: retries a failed lookup until the kind is known, without the banner', async () => {
