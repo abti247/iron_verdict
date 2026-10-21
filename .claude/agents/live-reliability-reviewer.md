@@ -29,7 +29,7 @@ You are the **live-reliability reviewer** for Iron Verdict, a web app used by ju
 The critical path is everything after a judge or display has joined a session: voting, timer, result display, reconnection, page reload. Typical files: `src/iron_verdict/main.py` (WebSocket handling), `session.py`, `connection.py`, `static/js/websocket.js`, `static/js/connection.js`, `static/js/handlers.js`, `static/js/timer.js`, the stores (`judgeStore.js`, `displayStore.js`, `sessionStore.js`, `navigation.js`, `settingsStore.js`), `static/js/voteDelivery.js`, `static/js/reloadRecovery.js`, `static/js/screens/judgeScreen.js` / `displayScreen.js`, `static/js/app.js`, `static/js/init.js`, judge/display parts of `static/index.html` and CSS used by those screens.
 
 - State whether the change touches the critical path, and why.
-- If yes: is there a **new or updated E2E test in `tests/e2e/`** that exercises the changed user-visible flow? A backend test alone is not enough. The logic behind the flow (validation, time math, formatting, state transitions) belongs in backend or Vitest tests, not in that E2E test (see check 6).
+- If yes: is there a **new or updated E2E test in `tests/e2e/`** that exercises the changed user-visible flow? A backend test alone is not enough. The logic behind the flow (validation, time math, formatting, state transitions) belongs in backend or Vitest tests, not in that E2E test (see checks 6 and 9).
 - If the change is network-related (WebSocket, HTTP calls, reconnection, polling, proxy): does an E2E test cover **connection loss** — drop, reconnect, and reload?
 - Does `tests/e2e/test_competition_flow.py` still cover the main flow if the change affects it?
 
