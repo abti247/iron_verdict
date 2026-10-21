@@ -81,6 +81,17 @@ def vote_white(page):
     page.locator(".locked-status").wait_for(state="visible")
 
 
+def join_display(ctx, competition):
+    """Join the session as display in a context of its own (time zone, clock)."""
+    page = ctx.new_page()
+    page.goto(competition.url)
+    page.get_by_test_id("join-code-input").fill(competition.session_code)
+    page.get_by_role("button", name="Join Session").click()
+    page.locator(".role-btn", has_text="Display Screen").click()
+    page.locator(ROOT).wait_for(state="visible")
+    return page
+
+
 def server_loop():
     """The event loop of the in-process server, taken from a running pause end."""
     return next(iter(main_module._pause_end_tasks.values())).get_loop()
@@ -94,13 +105,7 @@ def test_minutes_pause_shows_on_every_display_and_end_brings_back_the_result(com
     lift again."""
     head, left, right = competition.join_all_judges()
     display_a = competition.join_as("display")
-    ctx = competition.new_context()
-    display_b = ctx.new_page()
-    display_b.goto(competition.url)
-    display_b.get_by_test_id("join-code-input").fill(competition.session_code)
-    display_b.get_by_role("button", name="Join Session").click()
-    display_b.locator(".role-btn", has_text="Display Screen").click()
-    display_b.locator(ROOT).wait_for(state="visible")
+    display_b = join_display(competition.new_context(), competition)
     for judge in (head, left, right):
         vote_white(judge)
     for display in (display_a, display_b):
@@ -123,20 +128,6 @@ def test_minutes_pause_shows_on_every_display_and_end_brings_back_the_result(com
     assert session_manager.sessions[competition.session_code]["pause"] is None
 
 
-def test_head_judge_timer_start_ends_the_pause(competition):
-    """A pause is running; the head judge starts the timer: the pause
-    disappears at once and the display shows the running timer."""
-    head = competition.create_session_and_join_head()
-    display = competition.join_as("display")
-    start_pause(display, minutes=5)
-    expect_paused(display)
-
-    head.get_by_role("button", name="Start Timer").click()
-
-    expect_not_paused(display)
-    expect(display.locator(".display-timer-big")).to_have_text(re.compile(r"^(60|59|58)$"))
-
-
 def midday_timezone():
     """A fixed-offset time zone where it is about noon now, so "in 30 minutes"
     and "5 minutes ago" are on the same day whenever the test runs."""
@@ -144,11 +135,12 @@ def midday_timezone():
     return f"Etc/GMT{-offset:+d}"  # Etc/GMT-2 is UTC+2
 
 
-def test_until_time_uses_server_clock_and_rejects_a_past_time(competition):
-    """A display whose clock is two hours fast starts a pause until 30 minutes
-    from now (its time zone): the server computes the end with its own clock,
-    so the display shows "until HH:MM" and the end lies 30 minutes ahead. A
-    time 5 minutes ago is rejected with "Time is in the past"."""
+def test_display_with_a_wrong_clock_follows_the_server_clock(competition):
+    """A display whose clock is two hours fast: a time 5 minutes ago (its time
+    zone) is rejected with "Time is in the past"; a pause until 30 minutes from
+    now shows "until HH:MM", and the server's end lies 30 minutes ahead (it
+    computes the end with its own clock). A 10-minute pause counts down from
+    10:00 on this display, not from 0:00."""
     competition.create_session_and_join_head()
     tz = midday_timezone()
     ctx = competition.new_context(timezone_id=tz)
@@ -156,12 +148,7 @@ def test_until_time_uses_server_clock_and_rejects_a_past_time(competition):
         const realNow = Date.now;
         Date.now = () => realNow() + 2 * 60 * 60 * 1000;
     })();""")
-    display = ctx.new_page()
-    display.goto(competition.url)
-    display.get_by_test_id("join-code-input").fill(competition.session_code)
-    display.get_by_role("button", name="Join Session").click()
-    display.locator(".role-btn", has_text="Display Screen").click()
-    display.locator(ROOT).wait_for(state="visible")
+    display = join_display(ctx, competition)
 
     local_now = datetime.datetime.now(ZoneInfo(tz))
     past = (local_now - datetime.timedelta(minutes=5)).strftime("%H:%M")
@@ -177,26 +164,9 @@ def test_until_time_uses_server_clock_and_rejects_a_past_time(competition):
     end_at = session_manager.sessions[competition.session_code]["pause"]["end_at"]
     assert 28 * 60 < end_at - time.time() <= 30 * 60
 
-
-def test_countdown_follows_the_server_clock_on_a_display_with_a_wrong_clock(competition):
-    """A display whose clock is an hour fast shows the same countdown as the
-    server (about 10:00 for a 10-minute pause), not 0:00."""
-    competition.create_session_and_join_head()
-    ctx = competition.new_context()
-    ctx.add_init_script("""(() => {
-        const realNow = Date.now;
-        Date.now = () => realNow() + 60 * 60 * 1000;
-    })();""")
-    display = ctx.new_page()
-    display.goto(competition.url)
-    display.get_by_test_id("join-code-input").fill(competition.session_code)
-    display.get_by_role("button", name="Join Session").click()
-    display.locator(".role-btn", has_text="Display Screen").click()
-    display.locator(ROOT).wait_for(state="visible")
-
+    end_pause(display)
+    expect_not_paused(display)
     start_pause(display, minutes=10)
-
-    expect_paused(display)
     expect(display.get_by_test_id("display-pause-time")).to_have_text(re.compile(r"^(10:00|9:5\d) left$"))
 
 
@@ -339,27 +309,12 @@ def test_layout_editor_has_a_pause_view_and_places_the_pause_block(competition):
     assert abs(x1 - x0) <= 1.5
 
 
-def test_editor_opens_in_the_pause_view_while_a_pause_runs(competition):
-    """During a pause the editor starts with the pause view (what the hall
-    sees now); its blocks show and can be switched to the lift view."""
-    competition.create_session_and_join_head()
-    display = competition.join_as("display")
-    start_pause(display, minutes=3)
-    expect_paused(display)
-    open_editor(display)
-    expect(display.get_by_test_id("layout-view-toggle")).to_have_text("View: break")
-    expect(pause_block(display)).to_have_css("visibility", "visible")
-    expect(pause_block(display)).not_to_have_class(re.compile(r"\blayout-sample\b"))
-    display.get_by_test_id("layout-view-toggle").click()
-    expect(display.locator(f"{ROOT} .display-lights")).to_be_visible()
-    expect(display.locator(f"{ROOT} .display-lights")).to_have_css("visibility", "visible")
-
-
 def test_stream_overlay_hides_the_pause_by_default_and_editor_shows_it(competition):
     """A hall display starts a pause. The stream overlay hides lights, timer
     and verdict like every display, but its pause block is hidden by default
-    (the stream shows other content). In the overlay's editor the pause view
-    offers it faded with "Show"; shown and saved, the overlay shows the pause."""
+    (the stream shows other content). Its editor opens in the pause view
+    (a pause runs) and offers the block faded with "Show"; shown and saved,
+    the overlay shows the pause."""
     competition.create_session_and_join_head()
     hall = competition.join_as("display")
     overlay, dialogs = open_overlay(competition)

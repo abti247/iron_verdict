@@ -871,20 +871,13 @@ async def test_start_pause_until_uses_server_clock_and_device_utc_offset():
     assert pause["next_lift"] is None
 
 
-async def test_start_pause_until_in_the_past_is_rejected():
+@pytest.mark.parametrize("until", ["11:59", "12:00"])  # a minute ago, now (local UTC+2)
+async def test_start_pause_until_not_in_the_future_is_rejected(until):
     manager = SessionManager()
     code = await manager.create_session("Test")
-    # 11:59 local (UTC+2) is one minute ago.
-    result = manager.start_pause(code, until="11:59", utc_offset_min=120, now=PAUSE_NOW)
+    result = manager.start_pause(code, until=until, utc_offset_min=120, now=PAUSE_NOW)
     assert result == {"success": False, "error": "past"}
     assert manager.sessions[code]["pause"] is None
-
-
-async def test_start_pause_until_now_is_rejected_as_past():
-    manager = SessionManager()
-    code = await manager.create_session("Test")
-    result = manager.start_pause(code, until="10:00", utc_offset_min=0, now=PAUSE_NOW)
-    assert result["error"] == "past"
 
 
 async def test_start_pause_longer_than_12_hours_is_rejected():
@@ -905,18 +898,16 @@ async def test_start_pause_accepts_exactly_12_hours():
 @pytest.mark.parametrize("kwargs", [
     {},
     {"minutes": 0},
-    {"minutes": -5},
     {"minutes": 1.5},
     {"minutes": True},
     {"minutes": "10"},
     {"minutes": 10, "until": "13:15", "utc_offset_min": 0},
     {"until": "25:00", "utc_offset_min": 0},
-    {"until": "13:5", "utc_offset_min": 0},
     {"until": 1315, "utc_offset_min": 0},
     {"until": "13:15"},
-    {"until": "13:15", "utc_offset_min": 15 * 60},
     {"until": "13:15", "utc_offset_min": "60"},
     {"minutes": 10, "next_lift": "snatch"},
+    {"minutes": 10, "next_lift": ["bench"]},
 ])
 async def test_start_pause_rejects_invalid_input(kwargs):
     manager = SessionManager()

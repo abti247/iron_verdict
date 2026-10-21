@@ -11,7 +11,6 @@
 import { t } from '../i18n.js';
 import { formatPauseRemaining } from '../pauseStore.js';
 
-const PAUSE_MINUTES_MAX = 720;  // 12 h, checked again by the server
 const SAMPLE_PAUSE = { mode: 'minutes', until: null, nextLift: 'bench' };
 const SAMPLE_REMAINING_MS = 10 * 60 * 1000;
 
@@ -21,7 +20,6 @@ export function displayPause(conn) {
         pauseMinutes: 10,
         pauseUntil: '',
         pauseNextLift: '',      // '' = none
-        pauseFormError: '',     // checked here before sending: 'invalid'
 
         initDisplayPause() {
             // The server confirmed this display's start or end: close the panel,
@@ -34,39 +32,29 @@ export function displayPause(conn) {
             return this.$store.session.connectionStatus === 'connected' && !this.$store.pause.pending;
         },
 
+        // The server checks the input and answers pause_update or pause_rejected.
         startPause() {
             if (!this.pauseCanSend()) return;
             const message = { type: 'pause_start', next_lift: this.pauseNextLift || null };
             if (this.pauseMode === 'minutes') {
-                const minutes = Number(this.pauseMinutes);
-                if (!Number.isInteger(minutes) || minutes < 1 || minutes > PAUSE_MINUTES_MAX) {
-                    this.pauseFormError = minutes > PAUSE_MINUTES_MAX ? 'too_long' : 'invalid';
-                    return;
-                }
-                message.minutes = minutes;
+                message.minutes = this.pauseMinutes;
             } else {
-                if (!/^\d{2}:\d{2}$/.test(this.pauseUntil || '')) {
-                    this.pauseFormError = 'invalid';
-                    return;
-                }
                 message.until = this.pauseUntil;
                 // The server computes the end with its own clock in this device's time zone.
                 message.utc_offset_min = -new Date().getTimezoneOffset();
             }
-            this.pauseFormError = '';
             this.$store.pause.requestSent();
             conn.send(message);
         },
 
         endPause() {
             if (!this.pauseCanSend()) return;
-            this.pauseFormError = '';
             this.$store.pause.requestSent();
             conn.send({ type: 'pause_end' });
         },
 
         pauseErrorText() {
-            const code = this.pauseFormError || this.$store.pause.error;
+            const code = this.$store.pause.error;
             return code ? t(`pause.errors.${code}`) : '';
         },
 

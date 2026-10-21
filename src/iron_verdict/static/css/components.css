@@ -878,60 +878,22 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     border-color: var(--blood-bright);
     color: var(--contrast-text);
 }
-/* Pause form in the settings panel (#163). */
+/* Pause form in the settings panel (#163); buttons reuse the panel's classes. */
 .pause-controls {
     margin-bottom: 16px;
     padding-bottom: 16px;
     border-bottom: 1px solid var(--panel-border);
 }
-.pause-controls-title {
-    font-size: 12px;
-    letter-spacing: .12em;
-    text-transform: uppercase;
-    color: var(--panel-text-bright);
-    margin-bottom: 10px;
-}
-.pause-form {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-.pause-mode {
-    display: flex;
-}
-.pause-mode-btn {
-    flex: 1;
-    background: transparent;
-    border: 1px solid var(--panel-border);
-    color: var(--panel-text);
-    padding: 6px 8px;
-    font-family: 'Rajdhani', sans-serif;
-    font-size: 12px;
-    letter-spacing: .1em;
-    text-transform: uppercase;
-    cursor: pointer;
-}
-.pause-mode-btn + .pause-mode-btn { border-left: none; }
-.pause-mode-btn.on {
-    background: var(--blood);
-    border-color: var(--blood-bright);
-    color: var(--contrast-text);
-}
-.pause-field {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    font-size: 12px;
-    letter-spacing: .06em;
-    color: var(--panel-text);
-}
+.pause-form { display: flex; flex-direction: column; gap: 10px; }
+.pause-mode { display: flex; gap: 6px; }
+.pause-mode .display-settings-toggle { margin-top: 0; justify-content: center; }
+.pause-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--panel-text); }
 .pause-input {
     background: var(--bg-void);
     border: 1px solid var(--panel-border);
     color: var(--panel-text-bright);
     padding: 6px 8px;
-    font-family: 'Rajdhani', sans-serif;
-    font-size: 15px;
+    font: 15px 'Rajdhani', sans-serif;
     color-scheme: dark;
 }
 .pause-controls .display-settings-layout-btn:disabled {

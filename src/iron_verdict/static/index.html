@@ -754,25 +754,25 @@
             <!-- Pause for every display of the session (#163); the server confirms
                  or rejects, so "Sending…" shows until it answered. -->
             <div class="pause-controls" data-testid="pause-controls">
-                <div class="pause-controls-title" x-text="t('pause.panelTitle')"></div>
+                <div class="display-settings-title" x-text="t('pause.panelTitle')"></div>
                 <template x-if="!$store.pause.active">
                     <div class="pause-form">
                         <div class="pause-mode" role="group">
-                            <button class="pause-mode-btn" data-testid="pause-mode-minutes"
+                            <button class="display-settings-toggle" data-testid="pause-mode-minutes"
                                     :class="pauseMode === 'minutes' && 'on'"
                                     :aria-pressed="pauseMode === 'minutes' ? 'true' : 'false'"
-                                    @click="pauseMode = 'minutes'; pauseFormError = ''"
+                                    @click="pauseMode = 'minutes'"
                                     x-text="t('pause.byMinutes')"></button>
-                            <button class="pause-mode-btn" data-testid="pause-mode-until"
+                            <button class="display-settings-toggle" data-testid="pause-mode-until"
                                     :class="pauseMode === 'until' && 'on'"
                                     :aria-pressed="pauseMode === 'until' ? 'true' : 'false'"
-                                    @click="pauseMode = 'until'; pauseFormError = ''"
+                                    @click="pauseMode = 'until'"
                                     x-text="t('pause.byTime')"></button>
                         </div>
                         <label class="pause-field" x-show="pauseMode === 'minutes'">
                             <span x-text="t('pause.minutesLabel')"></span>
                             <input type="number" class="pause-input" data-testid="pause-minutes"
-                                   min="1" max="720" step="1" inputmode="numeric" x-model="pauseMinutes">
+                                   min="1" max="720" step="1" inputmode="numeric" x-model.number="pauseMinutes">
                         </label>
                         <label class="pause-field" x-show="pauseMode === 'until'">
                             <span x-text="t('pause.untilLabel')"></span>

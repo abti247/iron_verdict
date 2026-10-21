@@ -2,7 +2,6 @@ import asyncio
 import json
 import logging
 import os
-import re
 import secrets
 import string
 import threading
@@ -17,9 +16,6 @@ VALID_SESSION_KINDS = {"generic", "vportal"}
 # A pause lasts at most 12 h: a typo in the end time (13:00 instead of 14:00)
 # would otherwise make a pause of almost 24 h (#163).
 PAUSE_MAX_SECONDS = 12 * 60 * 60
-_PAUSE_UNTIL_RE = re.compile(r"([01]\d|2[0-3]):([0-5]\d)")
-# UTC offsets in use range from -12:00 to +14:00.
-_UTC_OFFSET_MIN_RANGE = (-12 * 60, 14 * 60)
 
 
 def _is_int(value) -> bool:
@@ -252,51 +248,44 @@ class SessionManager:
     ) -> Dict[str, Any]:
         """Start (or replace) the session's pause, shown on every display (#163).
 
-        Exactly one of *minutes* (1..720) or *until* ("HH:MM" on the device that
-        started it, with its *utc_offset_min*) gives the end. The end is stored as
-        an absolute server time (epoch seconds), computed with the server's clock,
+        Exactly one of *minutes* or *until* ("HH:MM" on the device that started
+        it, with its *utc_offset_min*) gives the end. The end is stored as an
+        absolute server time (epoch seconds), computed with the server's clock,
         so a display with a wrong clock cannot shift it. *next_lift* is shown only.
 
         Errors: "invalid" (malformed input), "past" (until is not in the future),
         "too_long" (more than PAUSE_MAX_SECONDS), "Session not found".
         """
-        if code not in self.sessions:
+        session = self.sessions.get(code)
+        if session is None:
             return {"success": False, "error": "Session not found"}
         now = time.time() if now is None else now
-        if next_lift is not None and next_lift not in VALID_LIFT_TYPES:
-            return {"success": False, "error": "invalid"}
-        if (minutes is None) == (until is None):
-            return {"success": False, "error": "invalid"}
-
-        if minutes is not None:
-            if not _is_int(minutes) or minutes < 1:
-                return {"success": False, "error": "invalid"}
-            seconds = minutes * 60
-            mode = "minutes"
-        else:
-            match = _PAUSE_UNTIL_RE.fullmatch(until) if isinstance(until, str) else None
-            lo, hi = _UTC_OFFSET_MIN_RANGE
-            if not match or not _is_int(utc_offset_min) or not lo <= utc_offset_min <= hi:
-                return {"success": False, "error": "invalid"}
-            local_now = datetime.fromtimestamp(now, timezone(timedelta(minutes=utc_offset_min)))
-            target = local_now.replace(
-                hour=int(match.group(1)), minute=int(match.group(2)), second=0, microsecond=0
-            )
-            # Same day only: over midnight works with minutes (decided in #163).
-            seconds = target.timestamp() - now
-            if seconds <= 0:
-                return {"success": False, "error": "past"}
-            mode = "until"
-
-        if seconds > PAUSE_MAX_SECONDS:
+        invalid = {"success": False, "error": "invalid"}
+        try:
+            if next_lift not in VALID_LIFT_TYPES | {None} or (minutes is None) == (until is None):
+                return invalid
+            if until is None:
+                if not _is_int(minutes) or minutes < 1:
+                    return invalid
+                end_at = now + minutes * 60
+            else:
+                # Same day only: over midnight works with minutes (decided in #163).
+                at = datetime.strptime(until, "%H:%M")
+                local_now = datetime.fromtimestamp(now, timezone(timedelta(minutes=utc_offset_min)))
+                end_at = local_now.replace(hour=at.hour, minute=at.minute, second=0, microsecond=0).timestamp()
+                until = at.strftime("%H:%M")
+        except (TypeError, ValueError):
+            return invalid
+        if end_at <= now:
+            return {"success": False, "error": "past"}
+        if end_at - now > PAUSE_MAX_SECONDS:
             return {"success": False, "error": "too_long"}
 
-        session = self.sessions[code]
         session["pause"] = {
             "id": secrets.token_hex(4),
-            "end_at": now + seconds,
-            "mode": mode,
-            "until": until if mode == "until" else None,
+            "end_at": end_at,
+            "mode": "minutes" if until is None else "until",
+            "until": until,
             "next_lift": next_lift,
         }
         session["last_activity"] = datetime.now()

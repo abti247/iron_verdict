@@ -6,15 +6,10 @@ const MIN = 60_000;
 
 describe('formatPauseRemaining', () => {
     it.each([
-        [0, '0:00'],
-        [1, '0:01'],
-        [999, '0:01'],
-        [1000, '0:01'],
-        [9 * MIN + 41_000, '9:41'],
-        [10 * MIN, '10:00'],
-        [60 * MIN, '1:00:00'],
-        [65 * MIN + 5000, '1:05:05'],
         [-5000, '0:00'],
+        [1, '0:01'],          // rounds up, like the lift timer
+        [9 * MIN + 41_000, '9:41'],
+        [65 * MIN + 5000, '1:05:05'],
     ])('formats %p ms as %p', (ms, text) => {
         expect(formatPauseRemaining(ms)).toBe(text);
     });

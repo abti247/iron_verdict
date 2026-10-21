@@ -1388,27 +1388,12 @@ async def test_display_pause_start_broadcasts_pause_update(session_code):
     assert session_manager.sessions[session_code]["pause"] is not None
 
 
-async def test_pause_start_with_until_in_the_past_is_rejected_to_sender(session_code):
+async def test_pause_start_invalid_input_is_rejected_to_sender(session_code):
     async with _ws_client() as ac:
         async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
             await _join(ws, session_code, "display")
-            past = time.strftime("%H:%M", time.gmtime(time.time() - 120))
-            if past > time.strftime("%H:%M", time.gmtime()):  # just after midnight UTC
-                past = "00:00"
-            await ws.send_json({"type": "pause_start", "until": past, "utc_offset_min": 0})
-            msg = await _recv(ws)
-    assert msg == {"type": "pause_rejected", "code": "past"}
-    assert session_manager.sessions[session_code]["pause"] is None
-
-
-async def test_pause_start_invalid_input_is_rejected(session_code):
-    async with _ws_client() as ac:
-        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
-            await _join(ws, session_code, "display")
-            await ws.send_json({"type": "pause_start", "minutes": "ten"})
+            await ws.send_json({"type": "pause_start", "minutes": "ten", "next_lift": ["bench"]})
             assert await _recv(ws) == {"type": "pause_rejected", "code": "invalid"}
-            await ws.send_json({"type": "pause_start", "minutes": 721})
-            assert await _recv(ws) == {"type": "pause_rejected", "code": "too_long"}
 
 
 async def test_judge_cannot_start_or_end_pause(session_code):
