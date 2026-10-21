@@ -109,13 +109,13 @@ export function createVportalStore({
 
         // Session lookup result (`GET /api/sessions/{code}`), or null if it could not be read.
         applySessionInfo(sessionCode, info) {
-            this.showStoredLogin(sessionCode);
+            this._showStoredLogin(sessionCode);
             this.stagingAvailable = !!info?.staging_available;
         },
 
         // Pick up server-side flags (staging_available) for a freshly-created session.
         async loadStagingFlag(sessionCode) {
-            this.showStoredLogin(sessionCode);
+            this._showStoredLogin(sessionCode);
             try {
                 const lookup = await fetchFn(`/api/sessions/${sessionCode}`);
                 if (lookup.ok) {
@@ -135,9 +135,10 @@ export function createVportalStore({
         async startDisplayOverlay(sessionCode, { streamOverlay = false } = {}) {
             // Never two pollers: a restart replaces whatever the last start left running.
             this.stopDisplayOverlay();
-            // Before the lookup: a display reloaded without network shows the stored
-            // login as connected, also once the device is back on role-select.
-            this.showStoredLogin(sessionCode);
+            // A reloaded display enters the session here, not via the lookup on the
+            // landing screen; before the lookup so a failed one cannot leave the
+            // previous session's state behind.
+            this._showStoredLogin(sessionCode);
             const run = this._displayRun;
             for (;;) {
                 // Authoritative kind check — the caller's session kind may be stale after reload-recovery
@@ -204,12 +205,12 @@ export function createVportalStore({
 
         // The connect button and dialog show this device's stored login for the
         // given session, so after a reload the dialog offers "Disconnect" instead of
-        // asking again (#172), on role-select, the hall display and the stream overlay.
+        // asking again (#172), on role-select and in the stream overlay's panel.
         // Called whenever the page enters a session (create, lookup, display start),
         // so a tab that switches session never shows the previous session's login.
         // A login without a stage counts as not connected; an expired token only
         // shows once a poll fails (banner on the display).
-        showStoredLogin(sessionCode) {
+        _showStoredLogin(sessionCode) {
             const stored = this._pollableStored(sessionCode);
             this.connected = !!stored;
             this.stageName = stored?.stage_name || '';

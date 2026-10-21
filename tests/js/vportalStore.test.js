@@ -266,7 +266,7 @@ describe('display overlay', () => {
 describe('display overlay start and stop', () => {
     afterEach(() => { vi.useRealTimers(); });
 
-    it('hall display: a login stored before a reload shows as connected, also while the lookup fails', async () => {
+    it('hall display: the display start sets the button from the stored login of its session, before and whatever the lookup', async () => {
         const fetchFn = vi.fn().mockRejectedValue(new Error('offline'));
         const client = fakeClient({
             getStored: vi.fn().mockReturnValue({ host: 'bvdk.vportal-online.de', stage_id: 'S1', stage_name: 'Platform A' }),

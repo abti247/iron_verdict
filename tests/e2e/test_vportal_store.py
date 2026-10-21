@@ -3,7 +3,8 @@
 The connect button and dialog (role-select) and the lifter overlay (display)
 read one VPortal state that is separate from the main app component. These
 tests cover the paths where both sides meet: leaving the display and coming
-back to role-select, and a dropped display connection.
+back to role-select, a dropped display connection, and a login stored before
+a reload or a session switch in the same tab (#172).
 """
 
 import re
@@ -12,6 +13,22 @@ from playwright.sync_api import expect
 
 from tests.e2e.network_switch import NETWORK_SWITCH
 from tests.e2e.test_vportal_integration import _connect_and_open_display
+
+
+CONNECTED_TEXT = "Connected to BVDK · Platform 1"
+CONNECT_TEXT = "Connect to comp software"
+
+
+def _active_group_polls(page):
+    """Record the VPortal poll ticks (one active-group query each) of a page."""
+    polls = []
+    page.on(
+        "request",
+        lambda req: polls.append(req.url)
+        if "/api/vportal/graphql" in req.url and "competitionGroupList" in (req.post_data or "")
+        else None,
+    )
+    return polls
 
 
 def test_connection_shown_on_role_select_after_display_and_disconnect(competition, server_url, fake_vportal_url):
@@ -108,13 +125,7 @@ def test_display_role_select_round_trips_leave_one_poller(competition, server_ur
     corner = page.locator(".vportal-corner-left")
     expect(corner).to_contain_text("MARIA SCHNEIDER", timeout=10000, ignore_case=True)
 
-    polls = []
-    page.on(
-        "request",
-        lambda req: polls.append(req.url)
-        if "/api/vportal/graphql" in req.url and "competitionGroupList" in (req.post_data or "")
-        else None,
-    )
+    polls = _active_group_polls(page)
 
     for _ in range(2):
         page.go_back()
@@ -129,22 +140,6 @@ def test_display_role_select_round_trips_leave_one_poller(competition, server_ur
     polls.clear()
     page.wait_for_timeout(6500)
     assert 1 <= len(polls) <= 3, f"expected one poller, saw {len(polls)} poll ticks in 6.5 s"
-
-
-CONNECTED_TEXT = "Connected to BVDK · Platform 1"
-CONNECT_TEXT = "Connect to comp software"
-
-
-def _active_group_polls(page):
-    """Record the VPortal poll ticks (one active-group query each) of a page."""
-    polls = []
-    page.on(
-        "request",
-        lambda req: polls.append(req.url)
-        if "/api/vportal/graphql" in req.url and "competitionGroupList" in (req.post_data or "")
-        else None,
-    )
-    return polls
 
 
 def test_reloaded_display_shows_stored_login_as_connected_and_disconnect_stops_polling(competition, server_url, fake_vportal_url):
