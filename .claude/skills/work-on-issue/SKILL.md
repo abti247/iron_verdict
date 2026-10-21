@@ -61,7 +61,7 @@ All green before continuing. Keep the summary (passed/failed counts) for the PR.
 
 ## 7. Independent review
 
-Launch the `live-reliability-reviewer` agent (Agent tool, `subagent_type: live-reliability-reviewer`) on the branch diff against `origin/main`, giving it the issue number. Handle its findings per `.claude/CLAUDE.md`, "Workflow" (Independent review). A blocking or should finding that does not apply gets the reason recorded in the PR. Re-run the reviewer after substantial fixes, and re-run the affected tests.
+Launch the `live-reliability-reviewer` agent (Agent tool, `subagent_type: live-reliability-reviewer`) on the branch diff against `origin/main`, giving it the issue number. Handle its findings per `.claude/CLAUDE.md`, "Workflow" (Independent review). Re-run the reviewer after substantial fixes, and re-run the affected tests.
 
 ## 8. Open the PR
 
