@@ -517,8 +517,9 @@ def test_overlay_vportal_banner_points_to_the_s_key_when_the_token_expires(
 def test_overlay_reload_while_offline_shows_s_key_banner_and_recovers(
     page, competition, server_url, fake_vportal_url
 ):
-    """OBS reloads the overlay while the venue network is down (socket cut and
-    the VPortal session check failing): the banner says to reconnect with "S".
+    """OBS (German) reloads the overlay while the venue network is down (socket
+    cut and the VPortal session check failing): the banner says to reconnect
+    with "S".
     Network back → without another reload the banner goes away and the lifter
     corners come back from the stored login (#173)."""
     httpx.post(f"http://{fake_vportal_url}/_control/reset")
@@ -533,8 +534,9 @@ def test_overlay_reload_while_offline_shows_s_key_banner_and_recovers(
 
     cut_network(overlay, ".display-tag .conn-dot")
     overlay.route("**/api/sessions/*", lambda route: route.abort())
+    overlay.evaluate("localStorage.setItem('iron-verdict-lang', 'de')")
     overlay.reload()
-    expect(banner).to_have_text(OVERLAY_BANNER, timeout=10000)
+    expect(banner).to_have_text("VPortal getrennt – mit S neu verbinden.", timeout=10000)
     expect(corner).to_be_hidden()
 
     restore_network(overlay)
