@@ -30,20 +30,17 @@ gh api repos/abti247/iron_verdict/issues/$ARGUMENTS/comments
 
 ## 3. Branch
 
-One issue per branch, never work on `main`.
-- Name: `<type>/<n>-<slug>` — conventional-commit type, issue number, short kebab-case slug (e.g. `feat/53-reconnect-within-3s`).
-- Cloud session: ignore the branch the session assigns (`ccr-…`) — the maintainer permits this (see `.claude/CLAUDE.md`, Implementation). Create the branch from up-to-date `origin/main` (`git fetch origin main && git checkout -b <type>/<n>-<slug> origin/main`) and push there.
+One issue per branch, never work on `main`. Name and base: `.claude/CLAUDE.md`, "Implementation".
+- Cloud session: `git fetch origin main && git checkout -b <type>/<n>-<slug> origin/main`, push there.
 - Local session: create a worktree under `.worktrees/` on a branch with that name.
 
 ## 4. Test first, then implement (TDD)
 
-- Backend change: write a failing test in `tests/` first, run it, see it fail for the right reason, then implement.
-- Frontend-visible change: add or extend an E2E test of the user-visible flow in `tests/e2e/` (with a docstring describing the scenario).
-- Test each behavior at the cheapest level that can see it: logic (validation, time math, formatting, state transitions) in backend or Vitest tests; E2E only for what a browser alone can show (screens, flows across devices, connection loss, reload). Do not re-assert in E2E what a unit test already pins down, and do not simulate server internals in E2E (restarts, patched timers).
-- Critical-path change (anything after a judge/display joined: voting, timer, results, reconnection, reload): an E2E test of the user-visible flow is mandatory; network-related changes also need a connection-loss scenario (drop, reconnect, reload).
-- Main-flow change: update `tests/e2e/test_competition_flow.py`.
-- Respect the critical-path rules (no external runtime dependencies, no silently dropped messages, no unjustified delays) and `src/iron_verdict/static/AGENTS.md` for frontend structure.
-- VPortal files: changes to `tests/e2e/fake_vportal.py` only with a justification in `docs/vportal-fake-server-fidelity.md`.
+Test rules: `.claude/CLAUDE.md`, "Critical Path" and "Testing"; conventions (cheapest level, docstrings, selectors): `docs/testing.md`, "Conventions". Also respect `.claude/CLAUDE.md`, "VPortal Protection", and `src/iron_verdict/static/AGENTS.md` for frontend structure.
+
+1. Decide which tests the change needs and at which level.
+2. Write them first, run them, and see them fail for the right reason.
+3. Implement until they pass.
 
 Commit in small, descriptive steps (English messages).
 
@@ -55,16 +52,16 @@ pytest tests/e2e/ --tb=short -v
 npm test   # only if JS modules under test changed or package.json exists with vitest
 ```
 
-All green before continuing. Keep the summary (passed/failed counts) for the PR. If something fails that is unrelated to the change, verify it also fails on `origin/main` and report it — never skip or disable a test.
+All green before continuing. Keep the summary (passed/failed counts) for the PR. If something fails that is unrelated to the change, verify it also fails on `origin/main` and report it (see `.claude/CLAUDE.md`, "Testing", for what never to do about a failing test).
 
 ## 6. CHANGELOG and living docs
 
-- `CHANGELOG.md`: one to three lines under `[Unreleased]` (`Added`/`Changed`/`Fixed`/`Removed`), user perspective, no implementation details, no trailing period. Skip only for changes with no user/deployer-visible effect, and say so in the PR.
-- Review `docs/architecture.md` and `docs/testing.md` for staleness and update them in place.
+- `CHANGELOG.md`: add the entry per `.claude/CLAUDE.md`, "Changelog". Skip only for changes with no user/deployer-visible effect, and say so in the PR.
+- Review `docs/architecture.md` and `docs/testing.md` per `.claude/CLAUDE.md`, "Living documentation".
 
 ## 7. Independent review
 
-Launch the `live-reliability-reviewer` agent (Agent tool, `subagent_type: live-reliability-reviewer`) on the branch diff against `origin/main`, giving it the issue number. Fix every **blocking** and **should** finding, or record in the PR why one does not apply. Findings marked `[proportionality]` (unneeded mechanisms, simpler alternatives, duplicate tests — e.g. E2E re-asserting logic a unit test already pins down) are the maintainer's call: either implement them or decline them with a reason — both go into the PR description. Re-run the reviewer after substantial fixes, and re-run the affected tests.
+Launch the `live-reliability-reviewer` agent (Agent tool, `subagent_type: live-reliability-reviewer`) on the branch diff against `origin/main`, giving it the issue number. Handle its findings as `.claude/CLAUDE.md`, "Workflow" (Independent review) says: fix every **blocking** and **should** finding or record in the PR why one does not apply; implement or decline each `[proportionality]` finding with a reason. Re-run the reviewer after substantial fixes, and re-run the affected tests.
 
 ## 8. Open the PR
 
@@ -76,8 +73,8 @@ Push the branch (`git push -u origin <branch>`), then open the PR against `main`
   - What changed and why, plus implementation choices made without asking (see step 2)
   - **Testnachweis**: commands run and pass/fail counts, new tests named
   - Reviewer result: findings and how each was handled — answer every `[proportionality]` finding explicitly (implemented, or declined with the reason)
-  - If VPortal files were touched: add the `vportal` label and a checklist of what to verify in the next manual test against the BVDK staging environment (start from the reviewer's checklist)
-- If VPortal files were touched: after opening the PR, merge its checklist into issue #151 as `.claude/CLAUDE.md` (VPortal Protection) describes. Read the current body, edit it and write it back: `gh api repos/abti247/iron_verdict/issues/151 -X PATCH -F body=@<file>`.
+  - If VPortal files were touched: the label and staging checklist that `.claude/CLAUDE.md`, "VPortal Protection", requires (start from the reviewer's checklist)
+- If VPortal files were touched: after opening the PR, merge its checklist into issue #151 as that section describes. Read the current body, edit it and write it back: `gh api repos/abti247/iron_verdict/issues/151 -X PATCH -F body=@<file>`.
 - Do not merge — merging needs green CI and the maintainer's approval.
 
 Finally, tell the maintainer the PR link and anything still open.

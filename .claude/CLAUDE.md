@@ -15,8 +15,7 @@ Rules for any change touching the critical path:
 - **No external runtime dependencies** (CDNs, third-party services) in the critical path. Venue Wi-Fi may block or lose them.
 - **No message may be dropped silently.** The user always sees the real state (e.g. a vote is only shown as confirmed once the server confirmed it; a lost connection is visible).
 - **Every change needs an E2E test of the user-visible flow.** For network-related changes this includes a connection-loss scenario (drop, reconnect, reload).
-- **Test each behavior at the cheapest level that can see it.** Logic (validation, time math, formatting, state transitions) gets backend or Vitest tests; E2E covers what only a browser can show (screens, flows across devices, connection loss, reload). Do not assert the same behavior again in E2E when a unit test already pins it down, and do not rebuild server internals in E2E (no simulated restarts or patched timers) — that tests the simulation, not the app.
-  *Why:* E2E is the slowest and most flake-prone layer (~9 min suite); more E2E means more maintenance, not more stability.
+- **Test each behavior at the cheapest level that can see it** — E2E only for what a browser alone can show. What that means in practice, and why: `docs/testing.md`, "Conventions".
 - **No artificial delays** (`setTimeout`, sleeps, debounces) without a written justification in the code or PR.
 
 ## VPortal Protection
@@ -88,36 +87,13 @@ Rules:
 - Match the existing tone — concise, structured, with "Why:" lines for load-bearing decisions. Edit tables and rationale in place rather than appending new sections; if a section becomes incoherent, rewrite it rather than patching.
 
 ## Testing
-
-### Structure
-- Backend tests (unit + integration) live in `tests/` — run with `pytest tests/ --ignore=tests/e2e`
-- E2E tests live in `tests/e2e/` — run with `pytest tests/e2e/`
-- Run all tests: `pytest`
-
-### When to write tests
-- Backend changes: follow TDD — write a failing test first, then implement
-- Frontend-visible features: add an E2E test of the user-visible flow in `tests/e2e/`
-
-### Test categories
-- **Backend unit tests**: test individual modules directly (e.g., SessionManager, ConnectionManager)
-- **Backend integration tests**: test HTTP/WebSocket endpoints via FastAPI TestClient
-- **E2E feature tests**: Playwright tests targeting specific features (e.g., double-vote prevention, reconnection)
-- **E2E regression suite**: `tests/e2e/test_competition_flow.py` — comprehensive end-to-end walkthrough of a full competition; acts as the primary regression gate to catch cross-feature breakage
-
-### Regression strategy
-- `test_competition_flow.py` must exercise the full happy-path lifecycle (create session → judges join → vote → display updates → next attempt → end session) and be updated when new features affect the main flow
-- Feature-specific E2E tests cover user-visible edge flows (screens, cross-device, connection loss, reload); logic edge cases go to backend or Vitest tests
-- Before merging, run the full test suite — both backend and E2E
-
-### CI
-- `.github/workflows/ci.yml` runs on every PR: jobs `backend`, `js` (Vitest) and `e2e`; `.github/workflows/image.yml` adds job `image` (Docker build + `remote_safe` E2E tests against the container via `E2E_BASE_URL`). Branch protection on `main` (set by the maintainer) requires all four. Pushes to `main` publish the tested image to GHCR; a release commit (untagged `pyproject.toml` version) continues, after two maintainer approvals, through E2E on Railway staging to tag and release — see `docs/release.md` and the `/release` skill. On an E2E failure, Playwright traces and screenshots are downloadable as the `playwright-traces` artifact — open extra browser contexts in E2E tests with `competition.new_context()` (not `browser.new_context()`), otherwise they are not traced.
-- Never make CI green by skipping, disabling or retrying a test — fix it or document it in `docs/e2e-known-risks.md`.
-- Cloud sessions get dependencies and Chromium from the environment's setup script (see `docs/testing.md`, "Claude cloud environment setup"). If plain `pytest` fails with `ModuleNotFoundError`, use `python -m pytest`.
-
-### Reporting
-- Use `pytest --tb=short -v` for human-readable pass/fail output
-- Backend tests: rely on descriptive function names (no docstrings needed)
-- E2E tests: add a docstring explaining the scenario, since multi-step flows aren't obvious from the name alone
+`docs/testing.md` is the source for how to run the tests, the test tiers, per-file tables and test conventions. The hard rules:
+- Backend changes follow TDD — write a failing test first, then implement.
+- Frontend-visible features get an E2E test of the user-visible flow in `tests/e2e/`.
+- The regression gate `tests/e2e/test_competition_flow.py` is updated when a change affects the main flow (see `docs/testing.md`, "Regression gate").
+- Before merging, the full suite is green — backend, Vitest and E2E.
+- CI (`.github/workflows/ci.yml` and `image.yml`, described in `docs/testing.md`, "Continuous integration") must be green; branch protection on `main` requires its jobs. Never make CI green by skipping, disabling or retrying a test — fix it or document it in `docs/e2e-known-risks.md`.
+- Cloud sessions get dependencies and Chromium from the environment's setup script (`docs/testing.md`, "Claude cloud environment setup").
 
 ## Security
 - When adding or modifying features, always evaluate whether the change could introduce XSS, injection, or other OWASP Top 10 vulnerabilities.
