@@ -325,6 +325,32 @@
     margin: 0;
 }
 
+.demo-guide-figure {
+    margin: 16px 0 0;
+    text-align: center;
+}
+
+.demo-guide-figure img {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin: 0 auto;
+    border: 1px solid var(--panel-border);
+}
+
+/* The judge's phone is portrait: keep it narrow so the guide stays short. */
+.demo-guide-figure--phone img {
+    max-width: 220px;
+}
+
+.demo-guide-figure figcaption {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-dim);
+    margin-top: 6px;
+}
+
 .demo-popup-note {
     margin-top: 24px;
     border-left: 2px solid var(--blood);

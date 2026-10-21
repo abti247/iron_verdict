@@ -79,6 +79,25 @@
                 <li x-text="t('demo.duringStep6')"></li>
             </ol>
 
+            <figure class="demo-guide-figure demo-guide-figure--phone">
+                <img :src="guideImage('judge-reason')" :alt="t('demo.judgeImageAlt')" width="520" height="1120">
+                <figcaption x-text="t('demo.judgeImageCaption')"></figcaption>
+            </figure>
+            <figure class="demo-guide-figure">
+                <img :src="guideImage('result-reasons')" :alt="t('demo.resultImageAlt')" width="1280" height="720">
+                <figcaption x-text="t('demo.resultImageCaption')"></figcaption>
+            </figure>
+
+            <div class="demo-guide-heading" x-text="t('demo.displayTitle')"></div>
+            <ul class="demo-guide-list" data-testid="demo-guide-display-notes">
+                <li x-text="t('demo.displayCustomize')"></li>
+                <li x-text="t('demo.livestream')"></li>
+            </ul>
+            <figure class="demo-guide-figure">
+                <img :src="guideImage('layout-editor')" :alt="t('demo.editorImageAlt')" width="1280" height="720">
+                <figcaption x-text="t('demo.editorImageCaption')"></figcaption>
+            </figure>
+
             <div x-show="!demoRunning && popupsBlocked === 'none'" class="demo-popup-note" x-text="t('demo.popupNote')"></div>
             <div x-show="popupsBlocked !== 'none'" class="demo-popups-blocked" role="alert" data-testid="demo-popups-blocked"
                  x-text="popupsBlocked === 'all' ? t('demo.popupsBlockedAll') : t('demo.popupsBlockedSome')"></div>
