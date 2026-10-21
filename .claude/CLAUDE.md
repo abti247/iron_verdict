@@ -95,7 +95,7 @@ Rules:
 
 ### When to write tests
 - Backend changes: follow TDD — write a failing test first, then implement
-- Frontend-visible features: add an E2E test in `tests/e2e/`
+- Frontend-visible features: add an E2E test of the user-visible flow in `tests/e2e/`
 
 ### Test categories
 - **Backend unit tests**: test individual modules directly (e.g., SessionManager, ConnectionManager)
@@ -105,7 +105,7 @@ Rules:
 
 ### Regression strategy
 - `test_competition_flow.py` must exercise the full happy-path lifecycle (create session → judges join → vote → display updates → next attempt → end session) and be updated when new features affect the main flow
-- Feature-specific E2E tests cover edge cases and niche behavior
+- Feature-specific E2E tests cover user-visible edge flows (screens, cross-device, connection loss, reload); logic edge cases go to backend or Vitest tests
 - Before merging, run the full test suite — both backend and E2E
 
 ### CI

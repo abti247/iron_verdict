@@ -75,7 +75,7 @@ A PR touches a protected file only if it changes VPortal behavior or the code pa
 ### 6. Tests
 - Backend change without a backend test (TDD rule) → finding.
 - Frontend-visible change without an E2E test of the user-visible flow → finding.
-- Each behavior is tested at the cheapest level that can see it: logic (validation, time math, formatting, state transitions) only reachable in an E2E test although a backend/Vitest test could pin it down → finding. E2E tests that rebuild server internals (simulated restarts, patched timers) instead of driving the app → finding.
+- Each behavior is tested at the cheapest level that can see it: logic (validation, time math, formatting, state transitions) tested only in E2E although a backend/Vitest test could pin it down → **should** (missing cheaper test). E2E tests that duplicate a unit test or simulate server internals are reported under check 9, not here.
 - New E2E tests need a docstring explaining the scenario.
 - Skipped, disabled, `xfail`-ed or deleted tests → blocking unless clearly justified.
 
@@ -93,7 +93,7 @@ Every extra mechanism on the critical path is one more thing that can break duri
 
 1. **Traceability.** Each new mechanism — state, message type, storage location, fallback, retry, configuration option, flag — must trace to an acceptance criterion of the issue or a documented maintainer decision (issue comment such as "Geklärte Fragen", PR description). A mechanism that traces to neither → finding; name the mechanism and where it lives.
 2. **Simpler alternative.** Is there a clearly simpler solution that meets the same acceptance criteria? If so, name it concretely: what would be removed, and which acceptance criteria stay met. Only report an alternative you can describe this precisely.
-3. **Duplicate tests.** Tests that check the same behavior without adding protection, at the same level, or an E2E test that asserts logic a backend/Vitest test already pins down (prefer the cheaper test). E2E tests that simulate server internals (restart, timers) instead of driving the app are a finding too. Name both tests.
+3. **Duplicate tests.** Tests that check the same behavior without adding protection, at the same level, or an E2E test that asserts logic a backend/Vitest test already pins down (prefer the cheaper test). E2E tests that simulate server internals (restart, timers) instead of driving the app are a finding too. For a duplicate, name both tests.
 
 Guardrails:
 - **No line-count criterion.** The size of the diff is never a finding by itself.
