@@ -87,6 +87,7 @@ def test_demo_guide_shows_screenshots_per_language_from_same_origin(page, server
             page.wait_for_function('(img) => img.complete && img.naturalWidth > 0', arg=img.element_handle())
 
         notes = screen.get_by_test_id('demo-guide-display-notes').locator('li')
+        expect(notes).to_have_count(len(note_texts))
         for note, text in zip(notes.all(), note_texts):
             expect(note).to_contain_text(text)
             expect(note).to_contain_text('?')
