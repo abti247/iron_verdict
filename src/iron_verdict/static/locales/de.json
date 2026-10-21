@@ -428,6 +428,54 @@
           ]
         }
       ]
+    },
+    "vportal": {
+      "title": "Verbindung zur Wettkampf-Software",
+      "sections": [
+        {
+          "title": "Wofür",
+          "items": [
+            "Das Display zeigt Name, Verein und Klasse des aktuellen Lifters sowie Disziplin, Versuch und Gewicht – direkt aus VPortal, für die gewählte Plattform.",
+            "Iron Verdict liest nur. Die Wertungen trägt weiterhin die Protokollführung in VPortal ein."
+          ]
+        },
+        {
+          "title": "Verband und Zugangsdaten",
+          "items": [
+            "Verband: BVDK (Deutschland) oder ÖVK (Österreich), je nachdem, in welchem VPortal der Wettkampf angelegt ist.",
+            "Benutzername und Passwort eines VPortal-Zugangs für diesen Wettkampf – dieselben Daten wie für die Anmeldung auf der VPortal-Website.",
+            "Die Zugangsdaten werden nur zur Anmeldung an VPortal weitergereicht und nicht auf dem Iron-Verdict-Server gespeichert."
+          ]
+        },
+        {
+          "title": "Plattform",
+          "items": [
+            "Nach der Anmeldung die Plattform wählen, deren Lifter dieses Display zeigen soll. Bei mehreren Plattformen verbindet sich jedes Display mit seiner eigenen."
+          ]
+        },
+        {
+          "title": "Eine Anmeldung pro Gerät",
+          "items": [
+            "Die Anmeldung gilt nur für dieses Gerät und diese Sitzung. Jedes Display, das Lifterdaten zeigen soll, verbindet sich selbst: ein Hallen-Display auf der Rollenwahl, bevor es zum Display wechselt.",
+            "Das Stream-Overlay braucht eine eigene Anmeldung, weil OBS ein eigenes Browser-Profil hat: in OBS Interagieren → Taste S → „Mit Wettkampf-Software verbinden“.",
+            "Nach dem Neuladen zeigt das Display die Lifterdaten weiter. Ein neu geladenes Hallen-Display fragt im Dialog aber erneut nach der Anmeldung; eine neue Anmeldung ersetzt die gespeicherte. Für eine neue Sitzung ist eine neue Anmeldung nötig."
+          ]
+        },
+        {
+          "title": "Im Stream sichtbar",
+          "items": [
+            "Im Stream-Overlay ist dieser Dialog im Stream zu sehen, solange er offen ist – auch der eingegebene Benutzername (das Passwort bleibt verdeckt). Vor dem Livegang verbinden oder die Quelle so lange ausblenden."
+          ]
+        },
+        {
+          "title": "Störungen und Trennen",
+          "items": [
+            "Lichter, Timer und Wertungen laufen auch ohne VPortal normal weiter.",
+            "Bricht die Verbindung zu VPortal ab, erscheint am Display „VPortal getrennt“; die Lifterdaten fehlen, bis sie wieder ankommen oder neu verbunden wird.",
+            "Trennen: diesen Dialog erneut öffnen und „Trennen“ wählen; das löscht die Anmeldung auf diesem Gerät. Auf einem neu geladenen Hallen-Display bietet der Dialog kein „Trennen“ an."
+          ]
+        }
+      ]
     }
   }
 }

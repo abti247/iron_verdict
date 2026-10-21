@@ -703,10 +703,29 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     border-top: 2px solid #ef4444;
     padding: 24px;
     width: 360px; max-width: 90vw;
+    /* With the "?" open on a short screen (phone in landscape) the dialog
+       scrolls instead of being cut off (#160). */
+    max-height: 100vh;
+    overflow-y: auto;
     color: #e8e8ea;
     font-family: 'Rajdhani', sans-serif;
 }
 .vportal-modal-title { font-size: 18px; letter-spacing: .12em; margin-bottom: 18px; }
+.vportal-modal-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+}
+/* Dialog explanation (#160): scrolls on its own so the step's fields and
+   buttons below it stay on screen, also on a phone. */
+.vportal-help {
+    max-height: calc(100vh - 380px);
+    min-height: 120px;
+    overflow-y: auto;
+    margin-bottom: 8px;
+    padding-right: 4px;
+}
 .vportal-label {
     display: block; font-size: 11px; letter-spacing: .12em;
     text-transform: uppercase; color: #9ca3af; margin: 10px 0 4px;

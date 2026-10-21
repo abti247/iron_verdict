@@ -41,6 +41,16 @@ describe('connect dialog', () => {
         expect(store.modalStep).toBe('connected');
     });
 
+    it('opens with the explanation closed, even if it was open when the dialog closed', () => {
+        const { store } = makeStore();
+        store.openModal();
+        expect(store.helpOpen).toBe(false);
+        store.helpOpen = true;
+        store.modalOpen = false;
+        store.openModal();
+        expect(store.helpOpen).toBe(false);
+    });
+
     it('logs in with the host of the chosen federation, then lists stages and preselects the first', async () => {
         const { store, client } = makeStore();
         store.federation = 'OEVK';
