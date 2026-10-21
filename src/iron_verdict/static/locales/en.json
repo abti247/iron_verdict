@@ -456,9 +456,9 @@
         {
           "title": "One login per device",
           "items": [
-            "The login only applies to this device and this session. Every display that should show lifter data connects itself – here on role select, before it switches to the display.",
+            "The login only applies to this device and this session. Every display that should show lifter data connects itself: a hall display on role select, before it switches to the display.",
             "The stream overlay needs its own login because OBS has its own browser profile: in OBS Interact → key S → “Connect to comp software”.",
-            "The login survives a reload. A new session needs a new login."
+            "After a reload the display keeps showing the lifter data. A reloaded hall display asks for the login again in the dialog, though; a new login replaces the stored one. A new session needs a new login."
           ]
         },
         {
@@ -472,7 +472,7 @@
           "items": [
             "Lights, timer and verdicts keep working without VPortal.",
             "If the connection to VPortal drops, the display shows “VPortal disconnected”; the lifter data is missing until it arrives again or you reconnect.",
-            "Disconnect: open this dialog again and choose “Disconnect”. This removes the login from this device."
+            "Disconnect: open this dialog again and choose “Disconnect”; this removes the login from this device. On a reloaded hall display the dialog offers no “Disconnect”."
           ]
         }
       ]

@@ -114,8 +114,9 @@ def test_vportal_help_closed_after_reload(competition, server_url):
 
 
 def test_vportal_help_on_a_phone_keeps_the_dialog_buttons_reachable(competition, server_url):
-    """Phone (390 × 640): with the explanation open the dialog stays within
-    the screen, the explanation scrolls, and the dialog buttons stay usable."""
+    """Phone (390 × 640, then landscape 640 × 360): with the explanation open
+    the dialog stays within the screen, the explanation (in landscape the
+    dialog) scrolls, and the dialog buttons stay reachable."""
     page = _new_vportal_session(competition, server_url, "de")
     page.set_viewport_size({"width": 390, "height": 640})
     page.locator(".vportal-connect-btn").click()
@@ -129,6 +130,14 @@ def test_vportal_help_on_a_phone_keeps_the_dialog_buttons_reachable(competition,
     assert help_box.evaluate("el => el.scrollHeight > el.clientHeight")
     page.locator(".vportal-step-federation .vportal-next-btn").click()
     expect(page.locator(".vportal-step-credentials")).to_be_visible()
+
+    # Landscape (640 × 360): the dialog scrolls instead of being cut off.
+    page.set_viewport_size({"width": 640, "height": 360})
+    modal = page.locator(".vportal-modal").bounding_box()
+    assert modal["y"] >= 0 and modal["y"] + modal["height"] <= 360
+    login = page.locator(".vportal-step-credentials .vportal-next-btn")
+    login.scroll_into_view_if_needed()
+    expect(login).to_be_in_viewport()
 
 
 def test_vportal_help_in_the_stream_overlay_closes_with_the_dialog(page, competition, server_url):

@@ -456,9 +456,9 @@
         {
           "title": "Eine Anmeldung pro Gerät",
           "items": [
-            "Die Anmeldung gilt nur für dieses Gerät und diese Sitzung. Jedes Display, das Lifterdaten zeigen soll, verbindet sich selbst – hier auf der Rollenwahl, bevor es zum Display wechselt.",
+            "Die Anmeldung gilt nur für dieses Gerät und diese Sitzung. Jedes Display, das Lifterdaten zeigen soll, verbindet sich selbst: ein Hallen-Display auf der Rollenwahl, bevor es zum Display wechselt.",
             "Das Stream-Overlay braucht eine eigene Anmeldung, weil OBS ein eigenes Browser-Profil hat: in OBS Interagieren → Taste S → „Mit Wettkampf-Software verbinden“.",
-            "Nach dem Neuladen bleibt die Anmeldung erhalten. Für eine neue Sitzung ist eine neue Anmeldung nötig."
+            "Nach dem Neuladen zeigt das Display die Lifterdaten weiter. Ein neu geladenes Hallen-Display fragt im Dialog aber erneut nach der Anmeldung; eine neue Anmeldung ersetzt die gespeicherte. Für eine neue Sitzung ist eine neue Anmeldung nötig."
           ]
         },
         {
@@ -472,7 +472,7 @@
           "items": [
             "Lichter, Timer und Wertungen laufen auch ohne VPortal normal weiter.",
             "Bricht die Verbindung zu VPortal ab, erscheint am Display „VPortal getrennt“; die Lifterdaten fehlen, bis sie wieder ankommen oder neu verbunden wird.",
-            "Trennen: diesen Dialog erneut öffnen und „Trennen“ wählen. Die Anmeldung auf diesem Gerät wird dabei gelöscht."
+            "Trennen: diesen Dialog erneut öffnen und „Trennen“ wählen; das löscht die Anmeldung auf diesem Gerät. Auf einem neu geladenen Hallen-Display bietet der Dialog kein „Trennen“ an."
           ]
         }
       ]

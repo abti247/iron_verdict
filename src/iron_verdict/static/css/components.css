@@ -703,6 +703,10 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     border-top: 2px solid #ef4444;
     padding: 24px;
     width: 360px; max-width: 90vw;
+    /* With the "?" open on a short screen (phone in landscape) the dialog
+       scrolls instead of being cut off (#160). */
+    max-height: 100vh;
+    overflow-y: auto;
     color: #e8e8ea;
     font-family: 'Rajdhani', sans-serif;
 }
