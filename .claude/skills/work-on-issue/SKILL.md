@@ -49,7 +49,7 @@ Commit in small, descriptive steps (English messages).
 ```bash
 pytest tests/ --ignore=tests/e2e --tb=short -v
 pytest tests/e2e/ --tb=short -v
-npm test   # only if JS modules under test changed or package.json exists with vitest
+npm test
 ```
 
 All green before continuing. Keep the summary (passed/failed counts) for the PR. If something fails that is unrelated to the change, verify it also fails on `origin/main` and report it (see `.claude/CLAUDE.md`, "Testing", for what never to do about a failing test).
@@ -61,7 +61,7 @@ All green before continuing. Keep the summary (passed/failed counts) for the PR.
 
 ## 7. Independent review
 
-Launch the `live-reliability-reviewer` agent (Agent tool, `subagent_type: live-reliability-reviewer`) on the branch diff against `origin/main`, giving it the issue number. Handle its findings as `.claude/CLAUDE.md`, "Workflow" (Independent review) says: fix every **blocking** and **should** finding or record in the PR why one does not apply; implement or decline each `[proportionality]` finding with a reason. Re-run the reviewer after substantial fixes, and re-run the affected tests.
+Launch the `live-reliability-reviewer` agent (Agent tool, `subagent_type: live-reliability-reviewer`) on the branch diff against `origin/main`, giving it the issue number. Handle its findings per `.claude/CLAUDE.md`, "Workflow" (Independent review). A blocking or should finding that does not apply gets the reason recorded in the PR. Re-run the reviewer after substantial fixes, and re-run the affected tests.
 
 ## 8. Open the PR
 
