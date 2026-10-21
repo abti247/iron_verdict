@@ -244,8 +244,6 @@
     "save": "Speichern",
     "cancel": "Abbrechen",
     "reset": "Auf Standard zurücksetzen",
-    "viewLift": "Ansicht: Versuch",
-    "viewPause": "Ansicht: Pause",
     "codeButton": "Layout-Code",
     "codeExportLabel": "Code dieses Layouts (auf ein anderes Display kopieren)",
     "codeDefault": "Standard-Layout – nichts zu kopieren",
@@ -260,8 +258,7 @@
       "cards": "Karten + Gründe",
       "verdict": "Gültig/Ungültig",
       "lifter": "Lifter",
-      "attempt": "Versuch",
-      "pause": "Pause"
+      "attempt": "Versuch"
     },
     "sample": {
       "firstName": "Max",

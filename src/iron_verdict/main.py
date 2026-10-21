@@ -110,7 +110,6 @@ def public_pause(pause) -> dict | None:
     return {
         "end_at_ms": int(pause["end_at"] * 1000),
         "mode": pause["mode"],
-        "until": pause["until"],
         "next_lift": pause["next_lift"],
     }
 
@@ -858,8 +857,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     result = session_manager.start_pause(
                         session_code,
                         minutes=message.get("minutes"),
-                        until=message.get("until"),
-                        utc_offset_min=message.get("utc_offset_min"),
+                        end_at_ms=message.get("end_at_ms"),
                         next_lift=message.get("next_lift"),
                     )
                     if not result["success"]:

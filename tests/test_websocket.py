@@ -1380,7 +1380,6 @@ async def test_display_pause_start_broadcasts_pause_update(session_code):
                 msg = await _recv(ws)
                 assert msg["type"] == "pause_update"
                 assert msg["pause"]["mode"] == "minutes"
-                assert msg["pause"]["until"] is None
                 assert msg["pause"]["next_lift"] == "bench"
                 assert msg["server_now_ms"] >= before_ms
                 assert abs(msg["pause"]["end_at_ms"] - (msg["server_now_ms"] + 600_000)) < 1000

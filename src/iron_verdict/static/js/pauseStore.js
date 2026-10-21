@@ -24,7 +24,7 @@ export function createPauseStore({ now = () => Date.now() } = {}) {
     let ticker = null;
 
     return {
-        pause: null,          // { endAtMs, mode: 'minutes' | 'until', until, nextLift } or null
+        pause: null,          // { endAtMs, mode: 'minutes' | 'until', nextLift } or null
         offsetMs: 0,          // server clock minus this device's clock
         remainingMs: 0,
         pending: false,       // this display sent pause_start / pause_end, no answer yet
@@ -41,7 +41,6 @@ export function createPauseStore({ now = () => Date.now() } = {}) {
             this.pause = pause ? {
                 endAtMs: pause.end_at_ms,
                 mode: pause.mode,
-                until: pause.until,
                 nextLift: pause.next_lift,
             } : null;
             if (this.pending) {

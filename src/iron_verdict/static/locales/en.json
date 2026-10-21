@@ -244,8 +244,6 @@
     "save": "Save",
     "cancel": "Cancel",
     "reset": "Reset to default",
-    "viewLift": "View: lift",
-    "viewPause": "View: break",
     "codeButton": "Layout code",
     "codeExportLabel": "Code of this layout (copy it to another display)",
     "codeDefault": "Default layout – nothing to copy",
@@ -260,8 +258,7 @@
       "cards": "Cards + reasons",
       "verdict": "Verdict",
       "lifter": "Lifter",
-      "attempt": "Attempt",
-      "pause": "Break"
+      "attempt": "Attempt"
     },
     "sample": {
       "firstName": "Max",

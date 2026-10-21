@@ -213,7 +213,7 @@ describe('incoming messages reach the stores', () => {
         expect(env.stores.pause.error).toBe('past');
         socket.onMessage({
             type: 'pause_update',
-            pause: { end_at_ms: Date.now() + 60000, mode: 'minutes', until: null, next_lift: null },
+            pause: { end_at_ms: Date.now() + 60000, mode: 'minutes', next_lift: null },
             server_now_ms: Date.now(),
         });
         expect(env.stores.pause.active).toBe(true);

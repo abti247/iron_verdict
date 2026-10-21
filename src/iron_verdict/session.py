@@ -1,12 +1,13 @@
 import asyncio
 import json
 import logging
+import math
 import os
 import secrets
 import string
 import threading
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Dict, Any, List
 
 logger = logging.getLogger("iron_verdict")
@@ -18,8 +19,8 @@ VALID_SESSION_KINDS = {"generic", "vportal"}
 PAUSE_MAX_SECONDS = 12 * 60 * 60
 
 
-def _is_int(value) -> bool:
-    return isinstance(value, int) and not isinstance(value, bool)
+def _is_number(value) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
 
 class SessionManager:
@@ -241,19 +242,17 @@ class SessionManager:
         self,
         code: str,
         minutes=None,
-        until=None,
-        utc_offset_min=None,
+        end_at_ms=None,
         next_lift=None,
         now: float | None = None,
     ) -> Dict[str, Any]:
         """Start (or replace) the session's pause, shown on every display (#163).
 
-        Exactly one of *minutes* or *until* ("HH:MM" on the device that started
-        it, with its *utc_offset_min*) gives the end. The end is stored as an
-        absolute server time (epoch seconds), computed with the server's clock,
-        so a display with a wrong clock cannot shift it. *next_lift* is shown only.
+        Exactly one of *minutes* (end computed with the server clock) or
+        *end_at_ms* (a time of day the display converted with its own clock)
+        gives the end, stored as epoch seconds. *next_lift* is shown only.
 
-        Errors: "invalid" (malformed input), "past" (until is not in the future),
+        Errors: "invalid" (malformed input), "past" (end not in the future),
         "too_long" (more than PAUSE_MAX_SECONDS), "Session not found".
         """
         session = self.sessions.get(code)
@@ -262,20 +261,16 @@ class SessionManager:
         now = time.time() if now is None else now
         invalid = {"success": False, "error": "invalid"}
         try:
-            if next_lift not in VALID_LIFT_TYPES | {None} or (minutes is None) == (until is None):
+            if next_lift not in VALID_LIFT_TYPES | {None}:
                 return invalid
-            if until is None:
-                if not _is_int(minutes) or minutes < 1:
-                    return invalid
-                end_at = now + minutes * 60
-            else:
-                # Same day only: over midnight works with minutes (decided in #163).
-                at = datetime.strptime(until, "%H:%M")
-                local_now = datetime.fromtimestamp(now, timezone(timedelta(minutes=utc_offset_min)))
-                end_at = local_now.replace(hour=at.hour, minute=at.minute, second=0, microsecond=0).timestamp()
-                until = at.strftime("%H:%M")
-        except (TypeError, ValueError):
+        except TypeError:  # unhashable, e.g. a list
             return invalid
+        if (minutes is None) == (end_at_ms is None):
+            return invalid
+        value = minutes if end_at_ms is None else end_at_ms
+        if not _is_number(value) or (minutes is not None and minutes < 1):
+            return invalid
+        end_at = now + minutes * 60 if end_at_ms is None else end_at_ms / 1000
         if end_at <= now:
             return {"success": False, "error": "past"}
         if end_at - now > PAUSE_MAX_SECONDS:
@@ -284,8 +279,7 @@ class SessionManager:
         session["pause"] = {
             "id": secrets.token_hex(4),
             "end_at": end_at,
-            "mode": "minutes" if until is None else "until",
-            "until": until,
+            "mode": "minutes" if end_at_ms is None else "until",
             "next_lift": next_lift,
         }
         session["last_activity"] = datetime.now()

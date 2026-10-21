@@ -560,7 +560,7 @@
         <div class="layout-block layout-block--timer" data-layout-block="timer" x-ref="layout-timer"
              :style="layoutBlockStyle('timer')"
              @pointerdown="layoutPointerDown($event, 'timer', 'move')"
-             :class="[layoutBlockHidden('timer') && 'layout-hidden', layoutOffView('timer') && 'layout-off-view']"
+             :class="layoutBlockHidden('timer') && 'layout-hidden'"
              x-show="!paused()">
             <div class="display-timer-big" :class="$store.timer.expired && 'expired'" x-text="$store.timer.display"></div>
             <div class="layout-frame" x-show="layoutEditing" x-cloak>
@@ -581,7 +581,7 @@
         <div class="display-lights layout-block" data-layout-block="lights" x-ref="layout-lights"
              :style="layoutBlockStyle('lights')"
              @pointerdown="layoutPointerDown($event, 'lights', 'move')"
-             :class="[layoutBlockHidden('lights') && 'layout-hidden-lights', layoutBlockHidden('cards') && 'layout-hidden-cards', layoutOffView('lights') && 'layout-off-view']"
+             :class="[layoutBlockHidden('lights') && 'layout-hidden-lights', layoutBlockHidden('cards') && 'layout-hidden-cards']"
              x-show="($store.display.phase === 'votes' || $store.display.phase === 'idle') && !paused()">
             <div class="display-orb-wrap">
                 <div class="display-orb" x-ref="layoutOrb" :class="$store.display.lightClass('left')"></div>
@@ -638,7 +638,7 @@
         <div class="display-verdict-inline layout-block" data-layout-block="verdict" x-ref="layout-verdict"
              :style="layoutBlockStyle('verdict')"
              @pointerdown="layoutPointerDown($event, 'verdict', 'move')"
-             :class="[layoutBlockHidden('verdict') && 'layout-hidden', layoutOffView('verdict') && 'layout-off-view']"
+             :class="layoutBlockHidden('verdict') && 'layout-hidden'"
              x-show="!paused()">
             <div class="verdict-stamp"
                  :style="$store.display.phase !== 'votes' ? 'visibility:hidden' : ''"
@@ -658,28 +658,12 @@
             </div>
         </div>
 
-        <!-- Pause of the session (#163): replaces timer, lights, verdict and lifter
-             while it runs; a sample while editing without a pause. -->
-        <div class="display-pause layout-block layout-block--pause" data-layout-block="pause" data-testid="display-pause"
-             x-ref="layout-pause"
-             :style="layoutBlockStyle('pause')"
-             @pointerdown="layoutPointerDown($event, 'pause', 'move')"
-             :class="[layoutBlockHidden('pause') && 'layout-hidden', pauseIsSample() && 'layout-sample', layoutOffView('pause') && 'layout-off-view']"
-             x-show="pauseBlockShown()" x-cloak>
+        <!-- Pause of the session (#163): always big in the middle, instead of
+             timer, lights, verdict and lifter while it runs. -->
+        <div class="display-pause" data-testid="display-pause" x-show="paused()" x-cloak>
             <div class="display-pause-title" x-text="t('pause.title')"></div>
             <div class="display-pause-time" data-testid="display-pause-time" x-text="pauseTimeText()"></div>
             <div class="display-pause-next" data-testid="display-pause-next" x-show="pauseNextText()" x-text="pauseNextText()"></div>
-            <div class="layout-frame" x-show="layoutEditing" x-cloak>
-                <span class="layout-frame-label">
-                    <span x-text="t('displayLayout.blocks.pause') + (pauseIsSample() ? ' · ' + t('displayLayout.sampleTag') : '')"></span>
-                    <button class="layout-hide-toggle" data-testid="layout-hide-pause"
-                            :aria-pressed="layoutBlockHidden('pause') ? 'true' : 'false'"
-                            @pointerdown.stop=""
-                            @click="toggleLayoutBlockHidden('pause')"
-                            x-text="layoutBlockHidden('pause') ? t('displayLayout.show') : t('displayLayout.hide')"></button>
-                </span>
-                <span class="layout-scale-handle" @pointerdown.stop="layoutPointerDown($event, 'pause', 'scale')"></span>
-            </div>
         </div>
 
         <!-- VPortal lifter (left) and attempt (right); sample text while editing
@@ -687,7 +671,7 @@
         <div class="vportal-corner vportal-corner-left layout-block" data-layout-block="lifter" x-ref="layout-lifter"
              :style="layoutBlockStyle('lifter')"
              @pointerdown="layoutPointerDown($event, 'lifter', 'move')"
-             :class="[layoutBlockHidden('lifter') && 'layout-hidden', cornerIsSample() && 'layout-sample', layoutOffView('lifter') && 'layout-off-view']"
+             :class="[layoutBlockHidden('lifter') && 'layout-hidden', cornerIsSample() && 'layout-sample']"
              x-show="cornerAttempt() && !paused()">
             <div class="vportal-corner-name" x-text="cornerAttempt()?.firstName + ' ' + cornerAttempt()?.lastName"></div>
             <div class="vportal-corner-meta">
@@ -710,7 +694,7 @@
         <div class="vportal-corner vportal-corner-right layout-block" data-layout-block="attempt" x-ref="layout-attempt"
              :style="layoutBlockStyle('attempt')"
              @pointerdown="layoutPointerDown($event, 'attempt', 'move')"
-             :class="[layoutBlockHidden('attempt') && 'layout-hidden', cornerIsSample() && 'layout-sample', layoutOffView('attempt') && 'layout-off-view']"
+             :class="[layoutBlockHidden('attempt') && 'layout-hidden', cornerIsSample() && 'layout-sample']"
              x-show="cornerAttempt() && !paused()">
             <div class="vportal-corner-disc">
                 <span x-text="cornerAttempt()?.discipline"></span> ·
@@ -846,9 +830,6 @@
                         @click="cancelLayoutEdit()" x-text="t('displayLayout.cancel')"></button>
                 <button class="layout-toolbar-btn" data-testid="layout-reset"
                         @click="resetLayoutEdit()" x-text="t('displayLayout.reset')"></button>
-                <button class="layout-toolbar-btn" data-testid="layout-view-toggle"
-                        @click="toggleLayoutView()"
-                        x-text="layoutView === 'pause' ? t('displayLayout.viewPause') : t('displayLayout.viewLift')"></button>
                 <button class="layout-toolbar-btn" data-testid="layout-code-toggle"
                         :aria-expanded="layoutCodeOpen ? 'true' : 'false'"
                         @click="layoutCodeOpen = !layoutCodeOpen" x-text="t('displayLayout.codeButton')"></button>

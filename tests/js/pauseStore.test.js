@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createPauseStore, formatPauseRemaining, PAUSE_TICK_MS } from '../../src/iron_verdict/static/js/pauseStore.js';
 import { handlePauseUpdate, handleJoinSuccess } from '../../src/iron_verdict/static/js/handlers.js';
+import { endOfTimeToday } from '../../src/iron_verdict/static/js/screens/displayPause.js';
 
 const MIN = 60_000;
 
@@ -30,7 +31,7 @@ describe('pause store', () => {
         vi.useRealTimers();
     });
 
-    const pause = (overrides = {}) => ({ end_at_ms: 2_000_000 + 10 * MIN, mode: 'minutes', until: null, next_lift: 'bench', ...overrides });
+    const pause = (overrides = {}) => ({ end_at_ms: 2_000_000 + 10 * MIN, mode: 'minutes', next_lift: 'bench', ...overrides });
 
     it('starts without a pause', () => {
         expect(store.active).toBe(false);
@@ -41,7 +42,7 @@ describe('pause store', () => {
         // The device clock is 1 000 000 ms behind the server.
         store.apply(pause(), 2_000_000);
         expect(store.active).toBe(true);
-        expect(store.pause).toEqual({ endAtMs: 2_000_000 + 10 * MIN, mode: 'minutes', until: null, nextLift: 'bench' });
+        expect(store.pause).toEqual({ endAtMs: 2_000_000 + 10 * MIN, mode: 'minutes', nextLift: 'bench' });
         expect(store.remainingText()).toBe('10:00');
         clock += 19_000;
         vi.advanceTimersByTime(PAUSE_TICK_MS);
@@ -121,7 +122,7 @@ describe('pause handlers', () => {
     const conn = (role) => ({ session: { role }, pause: store });
 
     it('ignores pause_update on a judge device', () => {
-        handlePauseUpdate(conn('left_judge'), { type: 'pause_update', pause: { end_at_ms: MIN, mode: 'minutes', until: null, next_lift: null }, server_now_ms: 0 });
+        handlePauseUpdate(conn('left_judge'), { type: 'pause_update', pause: { end_at_ms: MIN, mode: 'minutes', next_lift: null }, server_now_ms: 0 });
         expect(store.active).toBe(false);
     });
 
@@ -139,9 +140,21 @@ describe('pause handlers', () => {
         };
         handleJoinSuccess(c, {
             is_head: false,
-            session_state: { pause: { end_at_ms: MIN, mode: 'minutes', until: null, next_lift: null }, server_now_ms: 0 },
+            session_state: { pause: { end_at_ms: MIN, mode: 'minutes', next_lift: null }, server_now_ms: 0 },
         });
         expect(store.active).toBe(true);
         expect(store.pending).toBe(false);
+    });
+});
+
+describe('endOfTimeToday', () => {
+    it('turns "HH:MM" into today at that time on this device', () => {
+        const now = new Date(2026, 9, 21, 12, 34, 56);
+        expect(endOfTimeToday('13:15', now)).toBe(new Date(2026, 9, 21, 13, 15, 0).getTime());
+    });
+
+    it('gives null without a time, so the server rejects it', () => {
+        expect(endOfTimeToday('')).toBe(null);
+        expect(endOfTimeToday(undefined)).toBe(null);
     });
 });

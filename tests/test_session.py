@@ -852,60 +852,51 @@ async def test_start_pause_minutes_stores_absolute_end():
     pause = manager.sessions[code]["pause"]
     assert pause["end_at"] == PAUSE_NOW + 600
     assert pause["mode"] == "minutes"
-    assert pause["until"] is None
     assert pause["next_lift"] == "bench"
     assert pause["id"]
     assert result["pause"] == pause
 
 
-async def test_start_pause_until_uses_server_clock_and_device_utc_offset():
+async def test_start_pause_until_takes_the_end_from_the_display():
     manager = SessionManager()
     code = await manager.create_session("Test")
-    # Device in UTC+2: server now is 12:00 local, so 13:15 local is 75 minutes away.
-    result = manager.start_pause(code, until="13:15", utc_offset_min=120, now=PAUSE_NOW)
+    result = manager.start_pause(code, end_at_ms=(PAUSE_NOW + 75 * 60) * 1000, now=PAUSE_NOW)
     assert result["success"] is True
     pause = manager.sessions[code]["pause"]
     assert pause["end_at"] == PAUSE_NOW + 75 * 60
     assert pause["mode"] == "until"
-    assert pause["until"] == "13:15"
     assert pause["next_lift"] is None
 
 
-@pytest.mark.parametrize("until", ["11:59", "12:00"])  # a minute ago, now (local UTC+2)
-async def test_start_pause_until_not_in_the_future_is_rejected(until):
+@pytest.mark.parametrize("offset", [-60, 0])  # a minute ago, now
+async def test_start_pause_end_not_in_the_future_is_rejected(offset):
     manager = SessionManager()
     code = await manager.create_session("Test")
-    result = manager.start_pause(code, until=until, utc_offset_min=120, now=PAUSE_NOW)
+    result = manager.start_pause(code, end_at_ms=(PAUSE_NOW + offset) * 1000, now=PAUSE_NOW)
     assert result == {"success": False, "error": "past"}
     assert manager.sessions[code]["pause"] is None
 
 
-async def test_start_pause_longer_than_12_hours_is_rejected():
+async def test_start_pause_allows_at_most_12_hours():
     manager = SessionManager()
     code = await manager.create_session("Test")
-    assert manager.start_pause(code, until="22:01", utc_offset_min=0, now=PAUSE_NOW)["error"] == "too_long"
+    twelve_h = 12 * 3600
+    assert manager.start_pause(code, end_at_ms=(PAUSE_NOW + twelve_h + 60) * 1000, now=PAUSE_NOW)["error"] == "too_long"
     assert manager.start_pause(code, minutes=721, now=PAUSE_NOW)["error"] == "too_long"
     assert manager.sessions[code]["pause"] is None
-
-
-async def test_start_pause_accepts_exactly_12_hours():
-    manager = SessionManager()
-    code = await manager.create_session("Test")
-    assert manager.start_pause(code, until="22:00", utc_offset_min=0, now=PAUSE_NOW)["success"] is True
+    assert manager.start_pause(code, end_at_ms=(PAUSE_NOW + twelve_h) * 1000, now=PAUSE_NOW)["success"] is True
     assert manager.start_pause(code, minutes=720, now=PAUSE_NOW)["success"] is True
 
 
 @pytest.mark.parametrize("kwargs", [
     {},
     {"minutes": 0},
-    {"minutes": 1.5},
     {"minutes": True},
     {"minutes": "10"},
-    {"minutes": 10, "until": "13:15", "utc_offset_min": 0},
-    {"until": "25:00", "utc_offset_min": 0},
-    {"until": 1315, "utc_offset_min": 0},
-    {"until": "13:15"},
-    {"until": "13:15", "utc_offset_min": "60"},
+    {"minutes": float("nan")},
+    {"minutes": 10, "end_at_ms": (PAUSE_NOW + 600) * 1000},
+    {"end_at_ms": "13:15"},
+    {"end_at_ms": None, "minutes": None},
     {"minutes": 10, "next_lift": "snatch"},
     {"minutes": 10, "next_lift": ["bench"]},
 ])
@@ -973,7 +964,7 @@ async def test_pause_survives_snapshot_round_trip(tmp_path):
     path = str(tmp_path / "sessions.json")
     manager = SessionManager()
     code = await manager.create_session("Test")
-    pause = manager.start_pause(code, until="13:15", utc_offset_min=120, next_lift="deadlift", now=PAUSE_NOW)["pause"]
+    pause = manager.start_pause(code, end_at_ms=(PAUSE_NOW + 600) * 1000, next_lift="deadlift", now=PAUSE_NOW)["pause"]
     manager.save_snapshot(path)
 
     restored = SessionManager()

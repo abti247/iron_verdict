@@ -787,7 +787,12 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .display-settings-gear svg { width: 70%; height: 70%; }
 
 /* ===== PAUSE (#163) ===== */
+/* Always big in the middle of the display (and of the stream overlay). */
 .display-pause {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
     text-align: center;
     white-space: nowrap;
     line-height: 1;

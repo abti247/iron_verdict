@@ -1,18 +1,24 @@
 // Pause of the session (#163), mixed into the display screen component: the
 // pause form of the settings panel (minutes or a time of day, optional next
-// lift type; "End pause") and what the pause block shows. The pause itself is
+// lift type; "End pause") and what the pause shows. The pause itself is
 // server state in Alpine.store('pause'); this file only holds the form and
 // sends pause_start / pause_end through the connection.
 //
 // While a pause runs, the timer, lights, verdict and VPortal lifter are hidden
-// (paused()); in the layout editor every block shows, the pause block with a
-// sample if no pause runs, so all of them can be placed.
+// and the pause shows big in the middle (paused()); not while editing the layout.
 
 import { t } from '../i18n.js';
-import { formatPauseRemaining } from '../pauseStore.js';
 
-const SAMPLE_PAUSE = { mode: 'minutes', until: null, nextLift: 'bench' };
-const SAMPLE_REMAINING_MS = 10 * 60 * 1000;
+const pad = (n) => String(n).padStart(2, '0');
+
+// End of today's "HH:MM" on this device's clock, in epoch ms; null if not a time.
+export function endOfTimeToday(hhmm, now = new Date()) {
+    const match = /^(\d{2}):(\d{2})$/.exec(hhmm || '');
+    if (!match) return null;
+    const end = new Date(now);
+    end.setHours(Number(match[1]), Number(match[2]), 0, 0);
+    return end.getTime();
+}
 
 export function displayPause(conn) {
     return {
@@ -36,13 +42,8 @@ export function displayPause(conn) {
         startPause() {
             if (!this.pauseCanSend()) return;
             const message = { type: 'pause_start', next_lift: this.pauseNextLift || null };
-            if (this.pauseMode === 'minutes') {
-                message.minutes = this.pauseMinutes;
-            } else {
-                message.until = this.pauseUntil;
-                // The server computes the end with its own clock in this device's time zone.
-                message.utc_offset_min = -new Date().getTimezoneOffset();
-            }
+            if (this.pauseMode === 'minutes') message.minutes = this.pauseMinutes;
+            else message.end_at_ms = endOfTimeToday(this.pauseUntil);
             this.$store.pause.requestSent();
             conn.send(message);
         },
@@ -58,34 +59,22 @@ export function displayPause(conn) {
             return code ? t(`pause.errors.${code}`) : '';
         },
 
-        // A running pause hides the lift blocks; never while editing the layout.
         paused() {
             return this.$store.pause.active && !this.layoutEditing;
         },
 
-        pauseBlockShown() {
-            if (this.layoutEditing) return true;
-            return this.$store.pause.active && !this.layoutBlockHidden('pause');
-        },
-
-        pauseIsSample() {
-            return this.layoutEditing && !this.$store.pause.active;
-        },
-
-        _pauseView() {
-            return this.$store.pause.pause || (this.layoutEditing ? SAMPLE_PAUSE : null);
-        },
-
         pauseTimeText() {
-            const pause = this._pauseView();
+            const pause = this.$store.pause.pause;
             if (!pause) return '';
-            if (pause.mode === 'until') return t('pause.until').replace('{time}', pause.until);
-            const remaining = this.$store.pause.active ? this.$store.pause.remainingText() : formatPauseRemaining(SAMPLE_REMAINING_MS);
-            return t('pause.remaining').replace('{time}', remaining);
+            if (pause.mode === 'until') {
+                const end = new Date(pause.endAtMs);
+                return t('pause.until').replace('{time}', `${pad(end.getHours())}:${pad(end.getMinutes())}`);
+            }
+            return t('pause.remaining').replace('{time}', this.$store.pause.remainingText());
         },
 
         pauseNextText() {
-            const lift = this._pauseView()?.nextLift;
+            const lift = this.$store.pause.pause?.nextLift;
             return lift ? t('pause.next').replace('{lift}', t(`liftTypes.${lift}`)) : '';
         },
     };

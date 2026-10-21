@@ -52,7 +52,7 @@ html.display-overlay .display-pause {
 /* The editor fades a hidden or sample block's children (display-layout.css);
    the corners carry the panel on the block itself, so fade it here too, or a
    hidden corner would look as if it still showed in the stream. */
-html.display-overlay .display-layout-editing :is(.vportal-corner, .display-pause):is(.layout-hidden, .layout-sample) {
+html.display-overlay .display-layout-editing .vportal-corner:is(.layout-hidden, .layout-sample) {
     background-color: var(--overlay-panel-bg-faded);
     box-shadow: 0 0 0 calc(clamp(6px, 1vmin, 16px) * var(--display-zoom, 1)) var(--overlay-panel-bg-faded);
 }

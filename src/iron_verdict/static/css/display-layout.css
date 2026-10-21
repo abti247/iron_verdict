@@ -60,15 +60,6 @@
     pointer-events: auto;   /* the VPortal corners are click-through otherwise */
 }
 
-/* The editor shows either the lift blocks or the pause block (#163); the
-   other view stays in the page, invisible, so it can still be measured. */
-.display-layout-editing .layout-off-view {
-    visibility: hidden;
-}
-.display-layout-editing .layout-off-view :is(.layout-frame, .layout-cards-frame) {
-    display: none;
-}
-
 /* Hidden blocks stay visible but faded while editing, to switch them on
    again; so does the sample text of the VPortal blocks without a lifter. */
 .display-layout-editing .layout-sample > :not(.layout-frame),
