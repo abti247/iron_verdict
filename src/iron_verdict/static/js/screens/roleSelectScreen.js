@@ -1,6 +1,6 @@
 // Role-select screen: session code and QR code, the four role buttons, the
 // role-taken notice, (VPortal sessions) the VPortal connect button and the
-// stream-overlay URL for OBS to copy.
+// stream-overlay URL for OBS to copy with its "?" explaining the OBS setup.
 
 import { roleTakenNotice } from '../roleTakeover.js';
 
@@ -8,11 +8,13 @@ export function roleSelectScreen(conn) {
     return {
         overlayLinkOpen: false,
         overlayLinkCopied: false,
+        overlayHelpOpen: false,
 
         init() {
             this.$watch('$store.nav.screen', (value) => {
                 this.overlayLinkOpen = false;
                 this.overlayLinkCopied = false;
+                this.overlayHelpOpen = false;
                 if (value === 'role-select' && this.$store.session.code) {
                     // Delay kept unchanged from before the split (app.js): lets x-show reveal
                     // the screen before the QR code is drawn.

@@ -671,8 +671,10 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* Role-select: the stream-overlay URL for OBS (#107), to open and copy. */
 .overlay-link-wrap { margin-top: 14px; }
+.overlay-link-head { display: flex; gap: 8px; }
 .overlay-link-btn {
-    width: 100%;
+    flex: 1;
+    min-width: 0;
     background: transparent;
     color: var(--panel-text);
     border: 1px dashed var(--panel-border);
@@ -842,6 +844,36 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     color: #f5f5f7;
     margin-bottom: 14px;
 }
+.display-settings-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+}
+.display-settings-head .display-settings-title { margin-bottom: 14px; }
+/* Display explanation (#159): beside the panel (inside its element, so
+   @click.outside does not fire), below it where the screen is too narrow. */
+.display-help {
+    position: absolute;
+    top: -2px;
+    left: calc(100% + 8px);
+    width: min(380px, calc(100vw - 320px));
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    border-top: 2px solid var(--panel-accent);
+    padding: 16px 18px;
+    box-shadow: 0 12px 32px var(--panel-shadow);
+}
+@media (max-width: 640px) {
+    .display-help {
+        top: calc(100% + 8px);
+        left: -1px;
+        width: min(380px, calc(100vw - 32px));
+        max-height: 60vh;
+    }
+}
 /* Opens the layout editor (#106); looks like the contrast switch below. */
 .display-settings-layout-btn {
     display: block;
@@ -908,3 +940,44 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     opacity: 0.5;
     cursor: not-allowed;
 }
+
+/* "?" explanations (#159): a small round button that opens the full text in
+   place; the text is set with x-text only. */
+.help-toggle {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: transparent;
+    border: 1px solid var(--panel-border);
+    color: var(--panel-text);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+}
+.help-toggle:hover,
+.help-toggle[aria-expanded="true"] { border-color: var(--panel-border-hover); color: var(--panel-text-bright); }
+.help-box {
+    text-align: left;
+    color: var(--panel-text);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 14px;
+    line-height: 1.4;
+}
+.overlay-help { margin-top: 10px; }
+.help-title {
+    font-size: 15px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--panel-text-bright);
+    margin: 0 0 8px;
+}
+.help-heading {
+    font-size: 14px;
+    color: var(--panel-text-bright);
+    margin: 12px 0 4px;
+}
+.help-list { margin: 0; padding-left: 18px; }
+.help-list li + li { margin-top: 4px; }

@@ -326,5 +326,108 @@
     "linkHint": "Diese URL in OBS als Browserquelle eintragen (1920 × 1080). Sie öffnet das Display ohne Bedienelemente auf transparentem Hintergrund.",
     "copy": "Kopieren",
     "copied": "Kopiert"
+  },
+  "help": {
+    "toggle": "Erklärung ein-/ausblenden",
+    "display": {
+      "title": "So funktioniert das Display",
+      "sections": [
+        {
+          "title": "Einstellungen öffnen",
+          "items": [
+            "Zahnrad oben links oder Taste S öffnet und schließt dieses Panel, Esc schließt es.",
+            "Im Stream-Overlay gibt es kein Zahnrad: Dort öffnet nur Taste S das Panel (in OBS: Rechtsklick auf die Quelle → Interagieren).",
+            "Layout und Kontrast-Modus gelten nur für dieses Gerät und bleiben nach dem Neuladen erhalten. Die Pause gilt für alle Displays der Sitzung."
+          ]
+        },
+        {
+          "title": "Pause (alle Displays)",
+          "items": [
+            "Startet eine Pause auf allen Displays der Sitzung: für eine Anzahl Minuten (Countdown) oder bis zu einer Uhrzeit.",
+            "Optional die nächste Disziplin angeben – das Display zeigt dann „Weiter mit: …“.",
+            "Die Pause endet automatisch nach Ablauf, sobald der Haupt-KaRi den Timer startet, oder mit „Pause beenden“.",
+            "„Wird gesendet…“ steht da, bis der Server die Pause bestätigt hat. Ohne Verbindung lässt sich die Pause nicht steuern."
+          ]
+        },
+        {
+          "title": "Layout bearbeiten",
+          "items": [
+            "„Layout bearbeiten“ öffnet den Editor. Einen Block ziehen verschiebt ihn, an seiner Ecke ziehen ändert die Größe.",
+            "Der Griff seitlich der Lichter stellt den Abstand zwischen den Lichtern ein.",
+            "„Ausblenden“ / „Einblenden“ an jedem Block blendet ihn aus oder wieder ein, z. B. den Timer.",
+            "Änderungen gelten erst mit „Speichern“. „Abbrechen“ verwirft sie, „Auf Standard zurücksetzen“ stellt die Standardanordnung wieder her (gespeichert mit „Speichern“).",
+            "Lifter und Versuch zeigen im Editor Beispieldaten; im Wettkampf erscheinen sie nur in VPortal-Sitzungen."
+          ]
+        },
+        {
+          "title": "Layout-Code (Export / Import)",
+          "items": [
+            "Im Editor zeigt „Layout-Code“ den Code des aktuellen Layouts (IV1.…) zum Kopieren.",
+            "Auf einem anderen Display: Editor öffnen, „Layout-Code“, den Code einfügen, „Übernehmen“, dann „Speichern“."
+          ]
+        },
+        {
+          "title": "Kontrast-Modus",
+          "items": [
+            "Für helle Hallen: kräftige Farben statt Verläufen, ein klarer Rand um die Lichter, weißer und fetterer Text. Der Hintergrund bleibt schwarz."
+          ]
+        }
+      ]
+    },
+    "obs": {
+      "title": "Stream-Overlay in OBS",
+      "sections": [
+        {
+          "title": "1. URL kopieren",
+          "items": [
+            "„Stream-Overlay (OBS)“ öffnen und die URL kopieren. Sie enthält den Sitzungscode – nur auf dem Streaming-PC verwenden; im Stream ist sie nie zu sehen."
+          ]
+        },
+        {
+          "title": "2. Browserquelle anlegen",
+          "items": [
+            "OBS → Quellen → + → Browser.",
+            "URL: die kopierte URL. Breite 1920, Höhe 1080 (andere Größen gehen auch, Seitenverhältnis des Streams beibehalten).",
+            "Benutzerdefiniertes CSS leer lassen. „Quelle herunterfahren, wenn nicht sichtbar“ aus lassen, damit das Overlay verbunden bleibt.",
+            "Die Quelle in der Quellenliste über die Kamera legen.",
+            "Das Overlay verbindet sich selbst und zählt als ein Display. Nach einem OBS-Neustart, Neuladen der Quelle oder Verbindungsverlust verbindet es sich von allein neu; solange die Verbindung fehlt, zeigt ein kleiner Punkt oben rechts das an.",
+            "Zeigt das Overlay „Session beendet“ oder „Session nicht gefunden“: die URL der neuen Sitzung in die Quelle eintragen."
+          ]
+        },
+        {
+          "title": "3. Overlay anordnen",
+          "items": [
+            "Das Overlay hat ein eigenes Layout, getrennt vom Hallen-Display.",
+            "A – direkt in OBS: Rechtsklick auf die Quelle → Interagieren → Taste S → „Layout bearbeiten“, Blöcke anordnen, nicht benötigte ausblenden, „Speichern“. Das Layout bleibt im Browser-Profil von OBS gespeichert.",
+            "B – im Browser vorbereiten: die Overlay-URL in Chrome im Vollbild (F11) auf einem 16:9-Monitor öffnen, S → „Layout bearbeiten“, anordnen, „Layout-Code“ und den Code (IV1.…) kopieren. In OBS an die URL anhängen: &layout=IV1.… Dann gilt nur dieses Layout; zum Ändern B mit dem neuen Code wiederholen. So lässt sich dasselbe Layout auf einem anderen PC oder beim nächsten Wettkampf nutzen.",
+            "Ist der Code in der URL ungültig, nutzt das Overlay sein gespeichertes (oder das Standard-)Layout und das Panel sagt das.",
+            "Blöcke nicht übereinanderlegen: Ihre dunklen Flächen sind durchscheinend. Um die Lichter Platz für lange Gründe lassen (zwei bis drei Zeilen)."
+          ]
+        },
+        {
+          "title": "Im Stream sichtbar",
+          "items": [
+            "Editor (mit Schachbrett und Rahmen), Einstellungs-Panel und Verbindungsdialog sind im Stream zu sehen, solange sie offen sind – vor dem Livegang einrichten oder die Quelle so lange ausblenden."
+          ]
+        },
+        {
+          "title": "VPortal (Lifter- und Versuchsdaten)",
+          "items": [
+            "In VPortal-Sitzungen braucht das Overlay eine eigene Anmeldung, weil OBS ein eigenes Browser-Profil hat: Interagieren → S → „Mit Wettkampf-Software verbinden“. Die Anmeldung bleibt im OBS-Profil gespeichert.",
+            "Lifter- und Versuchsdaten erscheinen nach wenigen Sekunden; nach dem Neuladen zeigt das Panel „Verbunden mit … · <Plattform>“."
+          ]
+        },
+        {
+          "title": "Checkliste vor dem Livegang",
+          "items": [
+            "Quelle 1920 × 1080, über der Kamera",
+            "Eine Testwertung zeigt Lichter und Gültig/Ungültig in der Vorschau, der Hintergrund ist transparent",
+            "Layout angeordnet (A oder B), keine Blöcke übereinander, Schachbrett weg (Editor geschlossen)",
+            "VPortal-Sitzungen: Lifter- und Versuchsdaten sichtbar",
+            "Rechtsklick → „Cache der aktuellen Seite aktualisieren“: Das Overlay kommt von selbst wieder"
+          ]
+        }
+      ]
+    }
   }
 }

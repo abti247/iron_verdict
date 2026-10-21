@@ -326,5 +326,108 @@
     "linkHint": "Add this URL in OBS as a browser source (1920 × 1080). It opens the display without controls on a transparent background.",
     "copy": "Copy",
     "copied": "Copied"
+  },
+  "help": {
+    "toggle": "Show/hide explanation",
+    "display": {
+      "title": "How the display works",
+      "sections": [
+        {
+          "title": "Opening the settings",
+          "items": [
+            "The gear in the top left corner or the S key opens and closes this panel, Esc closes it.",
+            "The stream overlay has no gear: there only the S key opens the panel (in OBS: right-click the source → Interact).",
+            "Layout and contrast mode apply to this device only and survive a reload. The break applies to every display of the session."
+          ]
+        },
+        {
+          "title": "Break (all displays)",
+          "items": [
+            "Starts a break on every display of the session: for a number of minutes (countdown) or until a time of day.",
+            "Optionally set the next lift – the display then shows “Next: …”.",
+            "The break ends by itself when the time is up, as soon as the chief referee starts the timer, or with “End break”.",
+            "“Sending…” shows until the server confirmed the break. Without a connection the break cannot be controlled."
+          ]
+        },
+        {
+          "title": "Edit layout",
+          "items": [
+            "“Edit layout” opens the editor. Drag a block to move it, drag its corner to resize it.",
+            "The handle beside the lights sets the gap between the lights.",
+            "“Hide” / “Show” on each block hides it or shows it again, e.g. the timer.",
+            "Changes apply only with “Save”. “Cancel” drops them, “Reset to default” brings back the default arrangement (stored with “Save”).",
+            "Lifter and attempt show sample data in the editor; during a competition they only appear in VPortal sessions."
+          ]
+        },
+        {
+          "title": "Layout code (export / import)",
+          "items": [
+            "In the editor, “Layout code” shows the code of the current layout (IV1.…) to copy.",
+            "On another display: open the editor, “Layout code”, paste the code, “Apply”, then “Save”."
+          ]
+        },
+        {
+          "title": "Contrast mode",
+          "items": [
+            "For bright halls: full colours instead of gradients, a clear border around the lights, whiter and bolder text. The background stays black."
+          ]
+        }
+      ]
+    },
+    "obs": {
+      "title": "Stream overlay in OBS",
+      "sections": [
+        {
+          "title": "1. Copy the URL",
+          "items": [
+            "Open “Stream overlay (OBS)” and copy the URL. It contains the session code – use it on the streaming PC only; it is never visible in the stream."
+          ]
+        },
+        {
+          "title": "2. Add the browser source",
+          "items": [
+            "OBS → Sources → + → Browser.",
+            "URL: the copied URL. Width 1920, height 1080 (other sizes work too; keep the aspect ratio of your stream).",
+            "Leave Custom CSS empty. Leave “Shutdown source when not visible” off, so the overlay stays connected.",
+            "Put the source above the camera in the source list.",
+            "The overlay connects by itself and counts as one display. After an OBS restart, a reload of the source or a connection loss it reconnects on its own; while the connection is down, a small dot shows in the top right corner.",
+            "If the overlay shows “Session ended” or “Session not found”: enter the URL of the new session in the source."
+          ]
+        },
+        {
+          "title": "3. Arrange the overlay",
+          "items": [
+            "The overlay has its own layout, separate from the hall display.",
+            "A – directly in OBS: right-click the source → Interact → S key → “Edit layout”, arrange the blocks, hide those you do not need, “Save”. The layout is stored in OBS's browser profile.",
+            "B – prepare in a browser: open the overlay URL in Chrome, full screen (F11) on a 16:9 monitor, S → “Edit layout”, arrange, “Layout code” and copy the code (IV1.…). Append it to the URL in OBS: &layout=IV1.… Then only this layout applies; to change it, repeat B with the new code. This way the same layout works on another PC or at the next competition.",
+            "If the code in the URL is invalid, the overlay uses its saved (or the default) layout and the panel says so.",
+            "Do not stack blocks: their dark panels are translucent. Leave room around the lights for long reasons (two or three lines)."
+          ]
+        },
+        {
+          "title": "Visible in the stream",
+          "items": [
+            "The editor (with checkerboard and frames), the settings panel and the connect dialog show in the stream while they are open – set up before going live or hide the source meanwhile."
+          ]
+        },
+        {
+          "title": "VPortal (lifter and attempt info)",
+          "items": [
+            "In VPortal sessions the overlay needs its own login, because OBS has its own browser profile: Interact → S → “Connect to comp software”. The login stays stored in the OBS profile.",
+            "Lifter and attempt info appear within a few seconds; after a reload the panel shows “Connected to … · <platform>”."
+          ]
+        },
+        {
+          "title": "Checklist before going live",
+          "items": [
+            "Source 1920 × 1080, above the camera",
+            "A test vote shows the lights and the verdict in the preview, the background is transparent",
+            "Layout arranged (A or B), no blocks on top of each other, checkerboard gone (editor closed)",
+            "VPortal sessions: lifter and attempt info visible",
+            "Right-click → “Refresh cache of current page”: the overlay comes back by itself"
+          ]
+        }
+      ]
+    }
   }
 }

@@ -347,13 +347,23 @@ Demo windows (`session.isDemo`) show "DEMO" instead of the session code (judge) 
 
 ### Display settings overlay
 
-The display screen has a single interactive control: a low-contrast gear icon (top-left) and `S` keyboard shortcut, both of which open a small overlay with the pause form (see *Pause*), an "Edit layout" button (see *Display layout*) and a contrast-mode switch.
+The display screen has a single interactive control: a low-contrast gear icon (top-left) and `S` keyboard shortcut, both of which open a small overlay with the pause form (see *Pause*), an "Edit layout" button (see *Display layout*) and a contrast-mode switch, and a "?" that explains the panel (see *In-place explanations*).
 
 The contrast-mode switch (On/Off, `aria-pressed`) toggles the class `display-contrast` on the display root and persists as `iron-verdict:display-contrast`. All its rules live in `display-contrast.css` and are scoped under `.display-full.display-contrast`, so without the class the display is unchanged: solid light colours with a thick border (an unlit light keeps a visible ring), pure white bold texts (session tag, timer, waiting text, reasons, VPortal corners), filled verdict stamps; every text reaches at least 7:1 (WCAG AAA) against the black background, checked by `test_display_contrast.py`. *Why the background stays black:* the lights glow best on black on most screens; bright halls wash out dim greys and gradients, not the black itself. *Why on/off instead of a slider:* one click under time pressure, no fine-tuning at the venue. The mode is a device setting of its own, independent of the layout.
 
 *Why a low-contrast gear plus a keyboard shortcut:* the display is mixed-deployment — sometimes the operator knows the app, sometimes a volunteer is at the keyboard. A faint gear is invisible at projector distance but discoverable on the operator laptop; `S` exists as the power-user path. There is no other interactive control on the display screen, so a single conventional dismiss model (`Escape`, click-outside) suffices.
 
 *Why per-browser localStorage:* the same laptop typically goes to the same venue, so the settings should outlive a session; screen sizes and light conditions differ per screen, so layout and contrast are per device too. A new laptop re-tunes once. Server-side per-session storage would add a new API surface for a per-device UI preference — out of proportion with the value.
+
+### In-place explanations
+
+Two "?" buttons open a full explanation right where the question comes up (#159), with no link to another page: in the display settings panel (the panel itself: opening it, pause, layout editor, layout code, contrast mode) and beside "Stream overlay (OBS)" on role-select (the OBS setup, formerly `docs/obs-overlay.md`). The texts are structured locale entries (`help.display` / `help.obs`: a title and sections of `title` + `items`), rendered with `x-for` and `x-text` only — no HTML from the locales. Open state is UI state of the screen component (`displayHelpOpen`, `overlayHelpOpen`).
+
+- **Display:** the box sits beside the panel (below it on narrow screens) but inside the panel's element, so `@click.outside` does not close the panel when it is clicked; it closes whenever the panel closes and starts closed the next time. It is therefore never on the free display or in the stream overlay unless the panel is open. The layout editor toolbar keeps its own hint and has no "?".
+- **Role-select:** the "?" opens the OBS guide below the button, independent of the URL box; leaving role-select closes it.
+- No help elements on the judge screen.
+
+*Why in the app instead of a docs page:* operators look for help on the device in front of them, often under time pressure and without access to the repository; one text in two languages is maintained in one place.
 
 ### Display layout
 
@@ -383,7 +393,7 @@ A display operator starts a pause for the whole session from the settings panel 
 
 ### Stream overlay
 
-The display as an OBS browser source over the camera picture (#107; setup guide in [obs-overlay.md](obs-overlay.md)). `/?session=CODE&overlay=1[&layout=IV1…]` is a fixed URL that opens the display of the session without a click; role-select offers it to copy ("Stream overlay (OBS)"; clipboard API on HTTPS, else the URL is selected).
+The display as an OBS browser source over the camera picture (#107; the OBS setup guide is the "?" beside the button, see *In-place explanations*). `/?session=CODE&overlay=1[&layout=IV1…]` is a fixed URL that opens the display of the session without a click; role-select offers it to copy ("Stream overlay (OBS)"; clipboard API on HTTPS, else the URL is selected).
 
 - **Start:** `init.js` reads the params, sets `display-overlay` on `<html>` and hands them to `app.js`, which leaves the URL as it is; the connection's `startOverlay` sets `session.overlay`, puts the screen on *display* and calls `joinSession('display')` — the same join as the hall display (counts against `DISPLAY_CAP`, VPortal overlay started, reconnect by `websocket.js`). It takes precedence over a session stored in `sessionStorage`. No landing, role-select or *reconnecting* screen and no history entry: `join_success` finds the screen already on *display*.
 - **Look:** `display-overlay.css`, scoped under `html.display-overlay`: transparent `html`, `body`, boot screen and display root (also in contrast mode), no decorative lines, no "Waiting…" text. Timer, reasons, verdict and the VPortal corners sit on a translucent dark panel (`--overlay-panel-bg`) with white, bolder text, so they read on any camera picture; the panel grows by a `box-shadow` spread (timer: `clip-path` against its negative bottom margin) instead of padding, so no block changes height and the lights never move. The lights stay without a panel. The markup hides the gear and the session name; the session tag with its dot appears only while the connection is not `connected` or the server announced a restart. `S` still opens the panel (OBS: "Interact"). While editing a layout the root shows a dark checkerboard, so white texts stay visible in a normal browser.
