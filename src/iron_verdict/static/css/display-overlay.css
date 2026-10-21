@@ -49,6 +49,10 @@ html.display-overlay .vportal-corner,
 html.display-overlay .display-pause {
     box-shadow: 0 0 0 calc(clamp(6px, 1vmin, 16px) * var(--display-zoom, 1)) var(--overlay-panel-bg);
 }
+/* Room around the pause text; the widest line ("Next: …") would touch the panel's edge otherwise. */
+html.display-overlay .display-pause {
+    padding: clamp(8px, 1.5vmin, 24px) clamp(12px, 2vmin, 32px);
+}
 /* The editor fades a hidden or sample block's children (display-layout.css);
    the corners carry the panel on the block itself, so fade it here too, or a
    hidden corner would look as if it still showed in the stream. */
