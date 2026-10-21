@@ -1,8 +1,10 @@
 // Display screen: timer, vote lights with reasons and verdict, the VPortal lifter
 // overlay, the session's pause (displayPause.js), and the settings panel (pause,
-// contrast mode and the layout editor, opened with the gear or "S"). What is shown comes from the display, timer and
+// contrast mode and the layout editor, opened with the gear or "S"; its "?"
+// explains the panel). What is shown comes from the display, timer and
 // vportal stores; this component only holds the contrast mode, the layout
-// (displayLayoutEditor.js) and whether the settings panel is open. Both
+// (displayLayoutEditor.js) and whether the settings panel and its explanation
+// are open. Both
 // settings are per device (localStorage).
 //
 // As stream overlay (session.overlay, OBS browser source) the same screen runs
@@ -20,6 +22,7 @@ export function displayScreen(conn) {
         ...displayLayoutEditor(),
         ...displayPause(conn),
         displaySettingsOpen: false,
+        displayHelpOpen: false,
         displayContrast: false,
         _displayKeydownHandler: null,
 
@@ -30,6 +33,8 @@ export function displayScreen(conn) {
             this._installDisplayKeyHandler();
             // Any screen change closes the panel.
             this.$watch('$store.nav.screen', () => { this.displaySettingsOpen = false; });
+            // The explanation lives in the panel: it closes with it and starts closed next time.
+            this.$watch('displaySettingsOpen', (open) => { if (!open) this.displayHelpOpen = false; });
             // Connected or disconnected in the dialog while on the display: poll with the new login.
             this.$watch('$store.vportal.loginChanges', () => conn.restartDisplayOverlay());
         },

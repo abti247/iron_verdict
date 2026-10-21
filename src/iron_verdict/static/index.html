@@ -331,10 +331,30 @@
             </template>
             <!-- Stream overlay: the URL for an OBS browser source, to copy. -->
             <div class="overlay-link-wrap">
-                <button class="overlay-link-btn" data-testid="overlay-link-toggle"
-                        :aria-expanded="overlayLinkOpen ? 'true' : 'false'"
-                        @click="toggleOverlayLink()"
-                        x-text="t('overlay.linkButton')"></button>
+                <div class="overlay-link-head">
+                    <button class="overlay-link-btn" data-testid="overlay-link-toggle"
+                            :aria-expanded="overlayLinkOpen ? 'true' : 'false'"
+                            @click="toggleOverlayLink()"
+                            x-text="t('overlay.linkButton')"></button>
+                    <button class="help-toggle" data-testid="overlay-help-toggle"
+                            :aria-expanded="overlayHelpOpen ? 'true' : 'false'"
+                            :aria-label="t('help.toggle')" :title="t('help.toggle')"
+                            @click="overlayHelpOpen = !overlayHelpOpen">?</button>
+                </div>
+                <!-- How to add the overlay to OBS (#159), independent of the URL box. -->
+                <div class="help-box overlay-help" data-testid="overlay-help" x-show="overlayHelpOpen" x-cloak>
+                    <h2 class="help-title" x-text="t('help.obs.title')"></h2>
+                    <template x-for="section in t('help.obs.sections')" :key="section.title">
+                        <div class="help-section">
+                            <h3 class="help-heading" x-text="section.title"></h3>
+                            <ul class="help-list">
+                                <template x-for="item in section.items" :key="item">
+                                    <li x-text="item"></li>
+                                </template>
+                            </ul>
+                        </div>
+                    </template>
+                </div>
                 <div class="overlay-link-box" x-show="overlayLinkOpen" x-cloak>
                     <p class="overlay-link-hint" x-text="t('overlay.linkHint')"></p>
                     <div class="overlay-link-row">
@@ -754,7 +774,28 @@
              x-show="displaySettingsOpen"
              @click.outside="closeDisplaySettings()"
              x-cloak>
-            <div class="display-settings-title" x-text="t('displaySettings.title')"></div>
+            <div class="display-settings-head">
+                <div class="display-settings-title" x-text="t('displaySettings.title')"></div>
+                <button class="help-toggle" data-testid="display-help-toggle"
+                        :aria-expanded="displayHelpOpen ? 'true' : 'false'"
+                        :aria-label="t('help.toggle')" :title="t('help.toggle')"
+                        @click="displayHelpOpen = !displayHelpOpen">?</button>
+            </div>
+            <!-- Explanation of this panel (#159): beside it, inside its element so a
+                 click in it does not count as outside; closes with the panel. -->
+            <div class="help-box display-help" data-testid="display-help" x-show="displayHelpOpen" x-cloak>
+                <h2 class="help-title" x-text="t('help.display.title')"></h2>
+                <template x-for="section in t('help.display.sections')" :key="section.title">
+                    <div class="help-section">
+                        <h3 class="help-heading" x-text="section.title"></h3>
+                        <ul class="help-list">
+                            <template x-for="item in section.items" :key="item">
+                                <li x-text="item"></li>
+                            </template>
+                        </ul>
+                    </div>
+                </template>
+            </div>
             <!-- Pause for every display of the session (#163); the server confirms
                  or rejects, so "Sending…" shows until it answered. -->
             <div class="pause-controls" data-testid="pause-controls">
