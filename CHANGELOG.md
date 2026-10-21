@@ -15,6 +15,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Stream overlay for OBS: "Stream overlay (OBS)" on role select gives a URL for an OBS browser source that shows lights, reasons, verdict, timer and lifter info on a transparent background without controls, texts on a dark panel so they stay readable over the camera picture; it has its own layout (or one passed in the URL) and connects to VPortal from its settings ("S")
 - Demo guide with screenshots of the judge screen picking a reason, the display result with reasons and the layout editor, plus short notes on customising the display, breaks and the stream overlay for live streams
 - "?" explanations in place: in the display settings (gear or "S") for the break, layout editor, layout code and contrast mode, and beside "Stream overlay (OBS)" on role select for setting up the overlay in OBS, in English and German
+- "?" in the VPortal connect dialog that explains the connection to the competition software in every step: what it is for, which credentials, stage choice, one login per device (the stream overlay needs its own), that the dialog shows in the stream while open there, and what happens when VPortal drops out; in English and German
 
 ### Changed
 - The verdict sits a little further below the cards and reasons, so in the display layout editor their labels and hide buttons no longer cover each other
