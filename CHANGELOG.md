@@ -13,7 +13,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Upper limit for connected devices across all competitions on one server (`MAX_WEBSOCKETS`, default 2000): above it a new judge or display sees "Server at capacity"; a judge reconnecting to their own position always gets back in
 - Break display: from the display settings (gear or "S") any display starts a break for the whole session, by minutes (countdown) or until a time of day, optionally with the next lift; all displays and the stream overlay show it big in the middle instead of timer, lights, verdict and lifter until the time is up, the head judge starts the timer or someone ends it in the settings
 - Stream overlay for OBS: "Stream overlay (OBS)" on role select gives a URL for an OBS browser source that shows lights, reasons, verdict, timer and lifter info on a transparent background without controls, texts on a dark panel so they stay readable over the camera picture; it has its own layout (or one passed in the URL) and connects to VPortal from its settings ("S")
-- Demo guide with screenshots of the judge screen picking a reason, the display result with reasons and the layout editor, plus short notes on customising the display and on the stream overlay for live streams
+- Demo guide with screenshots of the judge screen picking a reason, the display result with reasons and the layout editor, plus short notes on customising the display, breaks and the stream overlay for live streams
 
 ### Changed
 - The verdict sits a little further below the cards and reasons, so in the display layout editor their labels and hide buttons no longer cover each other

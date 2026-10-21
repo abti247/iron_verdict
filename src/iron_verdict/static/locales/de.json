@@ -58,6 +58,7 @@
     "resultImageCaption": "Display nach einem ungültigen Versuch: Lichter, Karten und Gründe",
     "displayTitle": "Display & Livestream",
     "displayCustomize": "Das Display lässt sich anpassen: Zahnrad oben links → „Layout bearbeiten“. Blöcke verschieben, skalieren oder ausblenden. Mehr dazu beim „?“ in den Display-Einstellungen.",
+    "pauseNote": "Pausen: In den Display-Einstellungen „Pause starten“ – für alle Displays, als Countdown oder bis zu einer Uhrzeit. Mehr dazu beim „?“ in den Display-Einstellungen.",
     "livestream": "Für den Livestream gibt es ein Stream-Overlay für OBS: Rollenwahl → „Stream-Overlay (OBS)“. Mehr dazu beim „?“ dort.",
     "editorImageAlt": "Anzeigebildschirm im Layout-Editor: gestrichelte Rahmen um die Blöcke, Leiste mit Speichern und Abbrechen, der Timer ist ausgeblendet",
     "editorImageCaption": "Layout-Editor: Blöcke mit Rahmen, Timer ausgeblendet",

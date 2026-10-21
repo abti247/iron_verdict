@@ -55,7 +55,7 @@ def test_demo_guide_shows_screenshots_per_language_from_same_origin(page, server
     """Open the demo guide in German: the three screenshots (chief referee
     picking a reason, display result with reasons, layout editor) are shown,
     loaded from the German image folder of the app itself, and the short notes
-    on display customisation and the stream overlay point to the "?". Switch
+    on display customisation, breaks and the stream overlay point to the "?". Switch
     to English: the same images come from the English folder. No request
     leaves the app's origin."""
     origin = urlsplit(server_url).netloc
@@ -69,8 +69,8 @@ def test_demo_guide_shows_screenshots_per_language_from_same_origin(page, server
     images = screen.locator('.demo-guide-figure img')
 
     for lang, button, note_texts in (
-        ('Deutsch', 'Demo starten', ['Layout bearbeiten', 'Stream-Overlay (OBS)']),
-        ('English', 'Start Demo', ['Edit layout', 'Stream overlay (OBS)']),
+        ('Deutsch', 'Demo starten', ['Layout bearbeiten', 'Pause starten', 'Stream-Overlay (OBS)']),
+        ('English', 'Start Demo', ['Edit layout', 'Start break', 'Stream overlay (OBS)']),
     ):
         page.locator('.lang-option', has_text=lang).click()
         page.get_by_role('button', name=button).click()
