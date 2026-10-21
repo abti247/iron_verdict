@@ -901,6 +901,9 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     font: 15px 'Rajdhani', sans-serif;
     color-scheme: dark;
 }
+/* Start/End stand out from the other panel buttons: they act on every display. */
+.pause-action { border-color: var(--blood-bright); color: var(--panel-text-bright); }
+.pause-action:hover { border-color: var(--blood-bright); background: var(--blood); }
 .pause-controls .display-settings-layout-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;

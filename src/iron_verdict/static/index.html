@@ -771,7 +771,7 @@
                                 <option value="deadlift" x-text="t('liftTypes.deadlift')"></option>
                             </select>
                         </label>
-                        <button class="display-settings-layout-btn" data-testid="pause-start"
+                        <button class="display-settings-layout-btn pause-action" data-testid="pause-start"
                                 :disabled="!pauseCanSend()"
                                 @click="startPause()" x-text="t('pause.start')"></button>
                     </div>
@@ -780,7 +780,7 @@
                     <div class="pause-form">
                         <div class="display-settings-note" data-testid="pause-running"
                              x-text="t('pause.title') + ' · ' + pauseTimeText()"></div>
-                        <button class="display-settings-layout-btn" data-testid="pause-end"
+                        <button class="display-settings-layout-btn pause-action" data-testid="pause-end"
                                 :disabled="!pauseCanSend()"
                                 @click="endPause()" x-text="t('pause.end')"></button>
                     </div>
