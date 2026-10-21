@@ -11,7 +11,8 @@ Three tiers, kept honest by tooling boundaries:
 ```
 pytest tests/ --ignore=tests/e2e   # backend unit + integration
 pytest tests/e2e/                  # E2E
-pytest                             # everything
+pytest                             # everything (backend + E2E)
+npm test                           # JS unit tests (Vitest)
 pytest --tb=short -v               # readable pass/fail
 ```
 
@@ -78,7 +79,7 @@ Requirements and caveats:
 
 - `pyproject.toml` sets `asyncio_mode = "auto"` — every `async def test_*` is automatically run as an asyncio test. No `@pytest.mark.asyncio` decorator needed.
 - Backend tests rely on descriptive function names (no docstrings).
-- Each behavior is tested at the cheapest level that can see it: logic (validation, time math, formatting, state transitions) in backend or Vitest tests, E2E only for what a browser alone can show (screens, flows across devices, connection loss, reload). E2E tests drive the app — they don't re-assert logic a unit test already pins down and don't simulate server internals (restarts, patched timers). **Why:** E2E is the slowest and most flake-prone layer; more E2E means more maintenance, not more stability.
+- Each behavior is tested at the cheapest level that can see it: logic (validation, time math, formatting, state transitions) in backend or Vitest tests, E2E only for what a browser alone can show (screens, flows across devices, connection loss, reload). E2E tests drive the app — they don't re-assert logic a unit test already pins down and don't simulate server internals (restarts, server-side patched timers — a client clock set wrong on purpose, like `Date.now` in `test_display_pause.py`, is a real device condition and fine). **Why:** E2E is the slowest and most flake-prone layer (~9 min suite); more E2E means more maintenance, not more stability.
 - E2E tests get a docstring — multi-step flows aren't obvious from the name alone.
 - E2E tests find elements by `data-testid` (`get_by_test_id`), role, text or domain CSS classes (`.vote-btn`, `.lock-btn`) — never by Alpine attributes (`x-model`, `x-show`, `x-if`, `x-data`) and never through `_x_dataStack`. They set up state the way a user would (e.g. the head judge picks the lift type in the settings select), not by writing into the component. Screen roots carry `data-testid="<screen>-screen"`. **Why:** the frontend is split into several Alpine components (#65–#67) without visible change; tests tied to Alpine internals would break and could no longer prove that.
 - An expected alert (`alert`/`confirm`) is accepted by a handler registered before the action that triggers it (`page.on` / `page.once`), also when `expect_event("dialog")` captures its text. **Why:** an alert that opens while the action is still running (e.g. a fast server answer while a click waits for scheduled navigations) blocks the page, and an action that only gets accepted after it returns never returns (seen in `test_websocket_cap.py`).
