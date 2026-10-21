@@ -69,6 +69,25 @@ def create_vportal_session(page, competition, server_url, name):
     competition.session_code = page.locator(".session-tag .code").text_content()
 
 
+def connect_overlay_vportal(overlay, fake_vportal_url):
+    """Connect VPortal from the overlay's panel ("S"); returns the panel's connect button."""
+    overlay.keyboard.press("s")
+    connect = overlay.get_by_test_id("overlay-vportal-connect")
+    expect(connect).to_be_visible()
+    expect(connect).to_have_text("Connect to comp software")
+    connect.click()
+    overlay.evaluate(f"() => {{ window._testVportalHost = '{fake_vportal_url}'; }}")
+    overlay.get_by_test_id("vportal-federation-select").select_option("BVDK")
+    overlay.locator(".vportal-step-federation .vportal-next-btn").click()
+    overlay.get_by_test_id("vportal-identity-input").fill("u")
+    overlay.get_by_test_id("vportal-credential-input").fill("p")
+    overlay.locator(".vportal-step-credentials .vportal-next-btn").click()
+    overlay.locator(".vportal-step-stage").wait_for(state="visible")
+    overlay.get_by_test_id("vportal-stage-select").select_option("STAGE-1")
+    overlay.locator(".vportal-step-stage .vportal-next-btn").click()
+    return connect
+
+
 def wait_joined(page, name="Test Session"):
     # join_success sets the session name (not shown in the overlay).
     page.wait_for_function(f"Alpine.store('session').name === {json.dumps(name)}")
@@ -303,20 +322,7 @@ def test_overlay_connects_vportal_from_the_panel_and_keeps_it_after_reload(
     overlay, _ = open_overlay(competition, name="VP Overlay")
     expect(overlay.locator(".vportal-corner-left")).to_be_hidden()
 
-    overlay.keyboard.press("s")
-    connect = overlay.get_by_test_id("overlay-vportal-connect")
-    expect(connect).to_be_visible()
-    expect(connect).to_have_text("Connect to comp software")
-    connect.click()
-    overlay.evaluate(f"() => {{ window._testVportalHost = '{fake_vportal_url}'; }}")
-    overlay.get_by_test_id("vportal-federation-select").select_option("BVDK")
-    overlay.locator(".vportal-step-federation .vportal-next-btn").click()
-    overlay.get_by_test_id("vportal-identity-input").fill("u")
-    overlay.get_by_test_id("vportal-credential-input").fill("p")
-    overlay.locator(".vportal-step-credentials .vportal-next-btn").click()
-    overlay.locator(".vportal-step-stage").wait_for(state="visible")
-    overlay.get_by_test_id("vportal-stage-select").select_option("STAGE-1")
-    overlay.locator(".vportal-step-stage .vportal-next-btn").click()
+    connect = connect_overlay_vportal(overlay, fake_vportal_url)
 
     expect(overlay.locator(".vportal-corner-left")).to_be_visible(timeout=10000)
     expect(overlay.locator(".vportal-corner-right")).to_be_visible()
@@ -484,3 +490,55 @@ def assert_reasons_readable(page, german=False):
     }""", [breaks])
     assert result["broken"] == [], result
     assert all(g > 4 for g in result["gaps"]), result
+
+
+OVERLAY_BANNER = "VPortal disconnected — press S to reconnect."
+
+
+def test_overlay_vportal_banner_points_to_the_s_key_when_the_token_expires(
+    page, competition, server_url, fake_vportal_url
+):
+    """VPortal rejects the overlay's token: the lifter corners disappear and the
+    banner, visible in the stream, says to reconnect with "S" – the overlay has
+    no role-select to point to (#173)."""
+    httpx.post(f"http://{fake_vportal_url}/_control/reset")
+    httpx.post(f"http://{fake_vportal_url}/_control/restore_attempt")
+    create_vportal_session(page, competition, server_url, "VP Banner")
+    overlay, _ = open_overlay(competition, name="VP Banner")
+    connect_overlay_vportal(overlay, fake_vportal_url)
+    expect(overlay.locator(".vportal-corner-left")).to_be_visible(timeout=10000)
+
+    httpx.post(f"http://{fake_vportal_url}/_control/force_token_invalid")
+    expect(overlay.locator(".vportal-corner-left")).to_be_hidden(timeout=10000)
+    expect(overlay.locator(".vportal-disconnected-banner")).to_have_text(OVERLAY_BANNER)
+    httpx.post(f"http://{fake_vportal_url}/_control/reset")
+
+
+def test_overlay_reload_while_offline_shows_s_key_banner_and_recovers(
+    page, competition, server_url, fake_vportal_url
+):
+    """OBS reloads the overlay while the venue network is down (socket cut and
+    the VPortal session check failing): the banner says to reconnect with "S".
+    Network back → without another reload the banner goes away and the lifter
+    corners come back from the stored login (#173)."""
+    httpx.post(f"http://{fake_vportal_url}/_control/reset")
+    httpx.post(f"http://{fake_vportal_url}/_control/restore_attempt")
+    create_vportal_session(page, competition, server_url, "VP Offline")
+    overlay, _ = open_overlay(competition, name="VP Offline", network_switch=True)
+    connect_overlay_vportal(overlay, fake_vportal_url)
+    overlay.keyboard.press("Escape")
+    corner = overlay.locator(".vportal-corner-left")
+    banner = overlay.locator(".vportal-disconnected-banner")
+    expect(corner).to_be_visible(timeout=10000)
+
+    cut_network(overlay, ".display-tag .conn-dot")
+    overlay.route("**/api/sessions/*", lambda route: route.abort())
+    overlay.reload()
+    expect(banner).to_have_text(OVERLAY_BANNER, timeout=10000)
+    expect(corner).to_be_hidden()
+
+    restore_network(overlay)
+    overlay.unroute("**/api/sessions/*")
+    wait_joined(overlay, "VP Offline")
+    expect(corner).to_be_visible(timeout=10000)
+    expect(banner).to_be_hidden()

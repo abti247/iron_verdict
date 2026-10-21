@@ -238,6 +238,7 @@
     "errorStagesFailed": "Die Plattformen konnten nicht von VPortal geladen werden. Abbrechen und neu verbinden.",
     "loadingStages": "Plattformen werden geladen…",
     "disconnectedBanner": "VPortal getrennt – auf Rollenauswahl erneut verbinden.",
+    "disconnectedBannerOverlay": "VPortal getrennt – mit S neu verbinden.",
     "attemptShort": "Vers"
   },
   "displaySettings": {

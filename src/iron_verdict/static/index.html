@@ -774,7 +774,7 @@
             </div>
         </div>
         <div class="vportal-disconnected-banner" x-show="$store.vportal.disconnectedReason"
-             x-text="t('vportal.disconnectedBanner')"></div>
+             x-text="t($store.session.overlay ? 'vportal.disconnectedBannerOverlay' : 'vportal.disconnectedBanner')"></div>
 
         <!-- Display settings: gear + panel -->
         <button class="display-settings-gear"

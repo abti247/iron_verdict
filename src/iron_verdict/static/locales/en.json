@@ -238,6 +238,7 @@
     "errorStagesFailed": "Could not load the stages from VPortal. Cancel and connect again.",
     "loadingStages": "Loading stages…",
     "disconnectedBanner": "VPortal disconnected — open Select Role to reconnect.",
+    "disconnectedBannerOverlay": "VPortal disconnected — press S to reconnect.",
     "attemptShort": "Att"
   },
   "displaySettings": {
