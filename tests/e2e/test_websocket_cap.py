@@ -24,12 +24,13 @@ def _try_join_display(competition):
     page.get_by_test_id("join-code-input").fill(competition.session_code)
     page.get_by_role("button", name="Join Session").click()
     page.locator(".role-wrap").wait_for(state="visible")
+    # The alert must be accepted as it opens: if the server's rejection arrives
+    # while the click still waits for scheduled navigations, an open alert
+    # blocks the page and the click never returns (seen on CI).
     with page.expect_event("dialog") as dialog_info:
+        page.once("dialog", lambda dialog: dialog.accept())
         page.locator(".role-btn", has_text=competition.ROLE_LABELS["display"]).click()
-    dialog = dialog_info.value
-    message = dialog.message
-    dialog.accept()
-    return page, message
+    return page, dialog_info.value.message
 
 
 def test_cap_rejects_new_device_but_admits_judge_reconnect_and_reload(competition, monkeypatch):
