@@ -73,7 +73,10 @@ def test_token_expiry_hides_overlay_and_shows_banner(page, server_url, fake_vpor
     # Force fake VPortal to start rejecting tokens
     httpx.post(f"http://{fake_vportal_url}/_control/force_token_invalid")
     expect(page.locator(".vportal-corner-left")).not_to_be_visible(timeout=10000)
-    expect(page.locator(".vportal-disconnected-banner")).to_be_visible()
+    # Hall display: reconnect happens on role-select (the overlay's text differs, #173)
+    expect(page.locator(".vportal-disconnected-banner")).to_have_text(
+        "VPortal disconnected — open Select Role to reconnect."
+    )
     # Cleanup
     httpx.post(f"http://{fake_vportal_url}/_control/reset")
 
