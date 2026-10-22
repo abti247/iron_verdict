@@ -15,6 +15,7 @@ function fakeVportal() {
         startDisplayOverlay: vi.fn().mockResolvedValue(null),
         stopDisplayOverlay: vi.fn(),
         applySessionInfo: vi.fn(),
+        showStoredLogin: vi.fn(),
     };
 }
 
@@ -274,6 +275,74 @@ describe('session lookup and reload recovery', () => {
         expect(env.stores.nav.screen).toBe('judge');
         // The reload keeps the back-stack depth: the screen change replaces the entry.
         expect(env.history.replaceState).toHaveBeenCalledWith({ screen: 'judge' }, '', '/');
+    });
+});
+
+describe('the session kind survives a reload (#175)', () => {
+    it('is stored with the joined session and restored before any lookup, with the stored VPortal login', () => {
+        const env = setup();
+        env.stores.session.kind = 'vportal';
+        joined(env, 'left_judge');
+        expect(JSON.parse(sessionStorage.getItem('iv_session'))).toMatchObject({ code: CODE, role: 'left_judge', kind: 'vportal' });
+
+        const reloaded = setup();
+        reloaded.conn.start();
+        expect(reloaded.stores.session.kind).toBe('vportal');
+        expect(reloaded.stores.vportal.showStoredLogin).toHaveBeenCalledWith(CODE);
+    });
+
+    it('is kept when going back to role-select', () => {
+        const env = setup();
+        env.stores.session.kind = 'vportal';
+        joined(env, 'display');
+        env.conn.returnToRoleSelection();
+        expect(JSON.parse(sessionStorage.getItem('iv_session'))).toEqual({ code: CODE, kind: 'vportal' });
+    });
+
+    it('is stored from a session lookup', async () => {
+        const fetchFn = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ kind: 'vportal' }) });
+        const env = setup({ fetchFn });
+        env.stores.session.joinCode = CODE;
+        await env.conn.lookupSession();
+        expect(JSON.parse(sessionStorage.getItem('iv_session'))).toEqual({ code: CODE, kind: 'vportal' });
+    });
+
+    it('a generic session, an entry stored before #175 or an unknown kind restore as generic', () => {
+        for (const entry of [{ code: CODE, role: 'display' }, { code: CODE, role: 'display', kind: 'other' }]) {
+            sessionStorage.setItem('iv_session', JSON.stringify(entry));
+            const env = setup();
+            env.stores.session.kind = 'vportal';
+            env.conn.start();
+            expect(env.stores.session.kind).toBe('generic');
+            expect(JSON.parse(sessionStorage.getItem('iv_session')).kind).toBeUndefined();
+        }
+    });
+
+    it('the kind from the display start lookup corrects the stored kind', async () => {
+        const env = setup();
+        env.stores.session.kind = 'vportal';
+        env.stores.vportal.startDisplayOverlay.mockResolvedValue('generic');
+        joined(env, 'display');
+        await vi.waitFor(() => expect(env.stores.session.kind).toBe('generic'));
+        expect(JSON.parse(sessionStorage.getItem('iv_session')).kind).toBeUndefined();
+
+        env.conn.returnToRoleSelection();
+        env.stores.vportal.startDisplayOverlay.mockResolvedValue('vportal');
+        joined(env, 'display');
+        await vi.waitFor(() => expect(env.stores.session.kind).toBe('vportal'));
+        expect(JSON.parse(sessionStorage.getItem('iv_session'))).toMatchObject({ code: CODE, role: 'display', kind: 'vportal' });
+    });
+
+    it('a display start lookup answering after the session was left writes no entry', async () => {
+        const env = setup();
+        let resolve;
+        env.stores.vportal.startDisplayOverlay.mockReturnValue(new Promise((r) => { resolve = r; }));
+        joined(env, 'display');
+        env.conn.returnToLanding();
+        resolve('vportal');
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(sessionStorage.getItem('iv_session')).toBeNull();
     });
 });
 

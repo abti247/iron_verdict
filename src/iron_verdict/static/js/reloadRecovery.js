@@ -10,9 +10,9 @@
 export function restoreStoredSession(c) {
     const stored = c.storage.getItem('iv_session');
     if (!stored) return false;
-    let code, role, demo;
+    let code, role, demo, kind;
     try {
-        ({ code, role, demo } = JSON.parse(stored));
+        ({ code, role, demo, kind } = JSON.parse(stored));
     } catch (_e) {
         code = null;
     }
@@ -24,6 +24,10 @@ export function restoreStoredSession(c) {
     c.session.code = code;
     c.session.joinCode = code;
     c.session.isDemo = demo === true;
+    // Until a session lookup answers, the stored kind decides whether role-select shows
+    // the VPortal button, with this device's stored login (#175).
+    c.session.kind = kind === 'vportal' ? 'vportal' : 'generic';
+    c.vportal.showStoredLogin(code);
     // Set before the first render, so no other screen is ever painted.
     c.nav.screen = 'reconnecting';
     // The next screen change replaces the history entry instead of pushing one,

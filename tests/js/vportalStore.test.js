@@ -173,6 +173,19 @@ describe('session info', () => {
         expect(store.modalStep).toBe('federation');
     });
 
+    it('a reloaded device shows its stored login before any lookup succeeds (#175)', () => {
+        const client = fakeClient({
+            getStored: vi.fn().mockReturnValue({ host: 'bvdk.vportal-online.de', stage_id: 'S1', stage_name: 'Platform 1' }),
+        });
+        const fetchFn = vi.fn();
+        const { store } = makeStore({ client, fetchFn });
+        store.showStoredLogin('ABCD1234');
+        expect(fetchFn).not.toHaveBeenCalled();
+        expect(store.connected).toBe(true);
+        expect(store.stageName).toBe('Platform 1');
+        expect(store.federationLabel).toBe('BVDK');
+    });
+
     it('a stored login without a stage does not show as connected', () => {
         const client = fakeClient({ getStored: vi.fn().mockReturnValue({ host: 'bvdk.vportal-online.de', stage_id: null }) });
         const { store } = makeStore({ client });

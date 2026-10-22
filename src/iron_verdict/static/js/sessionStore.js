@@ -7,7 +7,7 @@ export function createSessionStore() {
     return {
         code: '',
         name: '',
-        kind: 'generic',  // 'generic' | 'vportal' — set at create/lookup, corrected on display start
+        kind: 'generic',  // 'generic' | 'vportal' — set at create/lookup/reload (stored in iv_session), corrected on display start
         role: '',
         isHead: false,
         isDemo: false,  // joined from a demo window (?code=…&demo=<role>)

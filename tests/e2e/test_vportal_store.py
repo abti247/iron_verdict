@@ -248,3 +248,87 @@ def test_switching_session_in_the_same_tab_shows_no_stale_connection(competition
     page.get_by_role("button", name="Join Session").click()
     page.locator(".role-wrap").wait_for(state="visible")
     expect(button).to_have_text(CONNECTED_TEXT)
+
+
+def test_display_reloaded_while_lookup_fails_shows_vportal_button_on_role_select(competition, server_url, fake_vportal_url):
+    """VPortal-connected display loses the network and is reloaded → the
+    WebSocket comes back while the session lookup keeps failing → back to
+    role-select → the button shows the stored login as connected and the dialog
+    offers disconnecting (#175) → close the dialog, open the display again →
+    the lookup works again → the lifter overlay returns and role-select still
+    shows the connection."""
+    ctx = competition.new_context()
+    ctx.add_init_script(NETWORK_SWITCH)
+    page = ctx.new_page()
+    _connect_and_open_display(page, server_url, fake_vportal_url)
+    corner = page.locator(".vportal-corner-left")
+    expect(corner).to_contain_text("MARIA SCHNEIDER", timeout=10000, ignore_case=True)
+
+    page.evaluate("window.__ivCutNetwork()")
+    page.route("**/api/sessions/*", lambda route: route.abort())
+    page.reload()
+    expect(page.get_by_test_id("reconnecting-screen")).to_be_visible()
+    page.evaluate("window.__ivRestoreNetwork()")
+    page.locator(".display-full").wait_for(state="visible", timeout=15000)
+    expect(page.locator(".vportal-disconnected-banner")).to_be_visible(timeout=10000)
+
+    page.go_back()
+    page.locator(".role-wrap").wait_for(state="visible")
+    button = page.locator(".vportal-connect-btn")
+    expect(button).to_have_text(CONNECTED_TEXT)
+    button.click()
+    expect(page.locator(".vportal-step-connected")).to_be_visible()
+    expect(page.locator(".vportal-step-connected .btn-blood-primary")).to_have_text("Disconnect")
+    page.locator(".vportal-step-connected .btn-blood-ghost").click()
+    expect(page.locator(".vportal-modal")).to_be_hidden()
+
+    page.unroute("**/api/sessions/*")
+    page.locator(".role-btn", has_text="Display Screen").click()
+    expect(corner).to_contain_text("MARIA SCHNEIDER", timeout=10000, ignore_case=True)
+    page.go_back()
+    page.locator(".role-wrap").wait_for(state="visible")
+    expect(button).to_have_text(CONNECTED_TEXT)
+
+
+def test_judge_reloaded_while_lookup_fails_shows_vportal_button_on_role_select(competition, server_url, fake_vportal_url):
+    """VPortal login made on this device → it joins as left judge → reloaded
+    while the session lookup fails → back to role-select → the button shows the
+    stored login as connected (#175)."""
+    page = competition.new_context().new_page()
+    _connect_and_open_display(page, server_url, fake_vportal_url)
+    page.go_back()
+    page.locator(".role-wrap").wait_for(state="visible")
+    page.locator(".role-btn", has_text="Left Judge").click()
+    page.get_by_test_id("judge-screen").wait_for(state="visible")
+
+    page.route("**/api/sessions/*", lambda route: route.abort())
+    page.reload()
+    page.get_by_test_id("judge-screen").wait_for(state="visible", timeout=15000)
+    page.go_back()
+    page.locator(".role-wrap").wait_for(state="visible")
+    expect(page.locator(".vportal-connect-btn")).to_have_text(CONNECTED_TEXT)
+
+
+def test_generic_session_display_reloaded_offline_shows_no_vportal_button(competition, server_url):
+    """Generic session → display → network lost and the session lookup failing
+    → reload → network back → back to role-select → no VPortal button (#175)."""
+    ctx = competition.new_context()
+    ctx.add_init_script(NETWORK_SWITCH)
+    page = ctx.new_page()
+    page.goto(server_url)
+    page.get_by_test_id("session-name-input").fill("Generic Test")
+    page.get_by_role("button", name="Create New Session").click()
+    page.locator(".role-wrap").wait_for(state="visible")
+    page.locator(".role-btn", has_text="Display Screen").click()
+    page.locator(".display-full").wait_for(state="visible")
+
+    page.evaluate("window.__ivCutNetwork()")
+    page.route("**/api/sessions/*", lambda route: route.abort())
+    page.reload()
+    expect(page.get_by_test_id("reconnecting-screen")).to_be_visible()
+    page.evaluate("window.__ivRestoreNetwork()")
+    page.locator(".display-full").wait_for(state="visible", timeout=15000)
+
+    page.go_back()
+    page.locator(".role-wrap").wait_for(state="visible")
+    expect(page.locator(".vportal-connect-btn")).to_have_count(0)
