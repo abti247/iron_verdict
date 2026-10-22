@@ -63,12 +63,30 @@ export function createConnection({
     let ws = null;
     const { session, nav, judge, timer, vportal } = stores;
 
-    // The demo flag is stored with the session so a reloaded demo window keeps showing "DEMO".
-    const storedEntry = (entry) => (session.isDemo ? { ...entry, demo: true } : entry);
+    // The demo flag is stored with the session so a reloaded demo window keeps showing "DEMO";
+    // the VPortal kind so a reloaded device shows the VPortal button on role-select even
+    // while the session lookup still fails (#175).
+    const storedEntry = (entry) => ({
+        ...entry,
+        ...(session.isDemo ? { demo: true } : {}),
+        ...(session.kind === 'vportal' ? { kind: 'vportal' } : {}),
+    });
+
+    // The server's kind corrects the stored one, if this session is still stored.
+    const storeKind = (code) => {
+        let entry;
+        try { entry = JSON.parse(storage.getItem('iv_session')); } catch (_e) { return; }
+        if (entry?.code !== code) return;
+        delete entry.kind;
+        if (session.kind === 'vportal') entry.kind = 'vportal';
+        storage.setItem('iv_session', JSON.stringify(entry));
+    };
 
     const startDisplayOverlay = (code) => {
         vportal.startDisplayOverlay(code, { streamOverlay: session.overlay }).then((kind) => {
-            if (kind) session.kind = kind;
+            if (!kind) return;
+            session.kind = kind;
+            storeKind(code);
         }).catch((err) => console.warn('VPortal display overlay failed to start', err));
     };
 
