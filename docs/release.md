@@ -62,7 +62,7 @@ Pushing a `v*` tag by hand starts nothing: no release bypasses staging.
 1. Railway → service `iron_verdict` → **Settings → Source → Source Image** → edit (pencil).
 2. Change the tag of `ghcr.io/abti247/iron_verdict:<old>` to the new `vX.Y.Z`, save.
 3. Deploy the change (if Railway stages it as a pending change, apply/deploy it). Wait until the new deployment is *Active*.
-4. Check: `https://iron-verdict.com/health` answers `{"status":"ok"}`, the landing page footer shows the `sha-<commit>` of the release (job summary of the Release workflow), create a test session and join as a judge, and `/static/js/app.js` answers `cache-control: no-cache` (browser network tab → `app.js` → Response headers, or `curl -sI`). The deploy log shows `allowed_origin_configured` with `https://iron-verdict.com`; a missing `ALLOWED_ORIGIN` makes the deployment fail with `allowed_origin_missing`.
+4. Check: `https://iron-verdict.com/health` answers `{"status":"ok"}`, the landing page footer shows the `sha-<commit>` of the release (job summary of the Release workflow), create a test session and join as a judge, and `/static/js/app.js` answers `cache-control: no-cache` (browser network tab → `app.js` → Response headers, or `curl -sI`). The deploy log shows `allowed_origin_configured` with `https://iron-verdict.com`; a missing `ALLOWED_ORIGIN` makes the deployment fail with `allowed_origin_missing`. It also shows `metrics_enabled` (with `METRICS_TOKEN` set, see [monitoring.md](monitoring.md)); `metrics_disabled` means Grafana gets no metrics.
 
 The `/data` volume and all variables stay attached; active sessions survive via the snapshot written on shutdown.
 
