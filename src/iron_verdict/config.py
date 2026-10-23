@@ -80,6 +80,9 @@ class Settings:
     VPORTAL_FETCH_INTERVAL_MS: int = _read_fetch_interval()
     RATE_LIMIT_SESSION_CREATE: str = _read_rate_limit("RATE_LIMIT_SESSION_CREATE", "10/hour")
     RATE_LIMIT_SESSION_LOOKUP: str = _read_rate_limit("RATE_LIMIT_SESSION_LOOKUP", "30/minute")
+    RATE_LIMIT_METRICS: str = _read_rate_limit("RATE_LIMIT_METRICS", "30/minute")
+    # Bearer token Grafana sends to GET /metrics (#133). Empty means the endpoint is off.
+    METRICS_TOKEN: str = os.getenv("METRICS_TOKEN", "").strip()
     TEST_MODE: bool = os.getenv("TEST_MODE") == "1"
     EXPOSE_VPORTAL_STAGING: bool = os.getenv("EXPOSE_VPORTAL_STAGING") == "1"
 
