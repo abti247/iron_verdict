@@ -87,15 +87,17 @@ def test_metrics_rate_limited(monkeypatch):
     assert client.get("/metrics", headers={"Authorization": f"Bearer {TOKEN}"}).status_code == 429
 
 
-def test_startup_logs_metrics_disabled_without_token(monkeypatch, caplog):
+def test_startup_logs_metrics_disabled_without_token(monkeypatch, caplog, tmp_path):
     monkeypatch.setattr(settings, "METRICS_TOKEN", "")
+    monkeypatch.setattr(settings, "SNAPSHOT_PATH", str(tmp_path / "sessions.json"))
     with caplog.at_level(logging.INFO, logger="iron_verdict"):
         with TestClient(app):
             pass
     assert "metrics_disabled" in [r.getMessage() for r in caplog.records]
 
 
-def test_startup_logs_metrics_enabled_with_token(caplog):
+def test_startup_logs_metrics_enabled_with_token(monkeypatch, caplog, tmp_path):
+    monkeypatch.setattr(settings, "SNAPSHOT_PATH", str(tmp_path / "sessions.json"))
     with caplog.at_level(logging.INFO, logger="iron_verdict"):
         with TestClient(app):
             pass
