@@ -18,6 +18,8 @@ Served by FastAPI directly:
 - `GET /vportal` — alternate landing page for VPortal-integrated sessions; serves the identical HTML as `/`. The client infers session kind from `location.pathname` at create time. No server-side marker.
 - `GET /health` — single endpoint used by Railway. Currently conflates liveness + readiness.  
 *Why one endpoint:* Railway consumes a single health URL; splitting earned nothing on this platform. Cost: on ECS/K8s, a slow snapshot save could trip a "not ready" signal and cause an unnecessary restart loop — those platforms want `/livez` (is the process up?) separated from `/readyz` (can it serve traffic?).
+- `GET /metrics` — Prometheus text format for Grafana Cloud, which scrapes it once a minute with `Authorization: Bearer <METRICS_TOKEN>` (see [Observability](#observability)). A missing or wrong token answers 404 like an unknown path (compared with `secrets.compare_digest`); without `METRICS_TOKEN` the endpoint is off (404) and startup logs `metrics_disabled` (`metrics_enabled` otherwise) — the app starts either way. Rate-limited per client IP, `RATE_LIMIT_METRICS` (default `30/minute`).  
+*Why 404 instead of 401:* the endpoint does not reveal that it exists. *Why optional, unlike `ALLOWED_ORIGIN`:* a missing token only loses monitoring, never opens a hole.
 - `POST /api/sessions` — create a session. Accepts optional `kind: "generic" | "vportal"` (default `generic`); rejects other values with 422. Rate-limited per client IP via slowapi (see *Client IP* below), `RATE_LIMIT_SESSION_CREATE` (default `10/hour`).
 - `GET /api/sessions/{code}` — look up an active session. Returns `{"exists": true, "kind": ..., "staging_available": ...}` on 200 or 404 with `{"detail": "Session not found"}`. Path pattern `^[A-Z0-9]{8}$` rejects malformed codes with 422 before touching the session map. Rate-limited per client IP via slowapi, `RATE_LIMIT_SESSION_LOOKUP` (default `30/minute`). Both limits are logged at startup (`rate_limits_configured`); an invalid value refuses startup. *Why configurable:* Railway staging runs the E2E subset from one runner IP and cannot reset the limiter from outside, so it raises them only as far as a run and a re-run need (`60/hour`, `120/minute`; staging is public and has no Cloudflare in front); production keeps the defaults. Deliberately not tied to `TEST_MODE`, which must never be set on a deployment.  
 *Why a separate endpoint instead of validating at WebSocket join:* fail-fast UX. Without it, a typo gets the user as far as the role-selection screen before failing — at a live competition that's a real cost.  
@@ -171,6 +173,19 @@ Optional, pull-only overlay of the current lifter on the display screen for sess
 
 **Reference:** [docs/vportal-fake-server-fidelity.md](vportal-fake-server-fidelity.md) — pre-staging risks and what was resolved against the referee codebase.
 
+## Observability
+
+Grafana Cloud (free tier, EU) pulls everything; the app opens no outbound connection for monitoring, so a Grafana outage cannot affect a competition. Setup, alert rules and the weekly review: [docs/monitoring.md](monitoring.md).
+
+- **Logs:** JSON lines on stdout (`logging_config.py`, whitelisted fields only), read in Railway.
+- **Metrics:** `GET /metrics` (`metrics.py`, `prometheus_client`, own `CollectorRegistry`):
+  - Counted on scrape by `LiveStateCollector` from `SessionManager` / `ConnectionManager`: `iron_verdict_sessions_active{kind}`, `iron_verdict_judges_connected`, `iron_verdict_displays_connected`.
+  - Counters at the code path: `iron_verdict_votes_total` (stored votes; idempotent resends not counted), `iron_verdict_votes_rejected_total{code}`, `iron_verdict_ws_disconnects_total{reason}` (`client`, `heartbeat_stale`, `heartbeat_send_failed`, `flood`, `replaced` — a token reconnect took over a still registered socket, `error` — the handler raised; a session ended by the head judge is not a disconnect; counted where the socket is released, so each loss once), `iron_verdict_snapshot_failures_total`, `iron_verdict_unhandled_exceptions_total` (HTTP handler and WebSocket handler), `iron_verdict_http_requests_total{status_class}` (pure ASGI middleware; an unhandled exception counts as `5xx`; WebSockets are not counted).
+  - `iron_verdict_snapshot_last_ok_timestamp_seconds` — set after every successful `save_snapshot_if_changed`, also when nothing changed and nothing was written.
+  - `iron_verdict_build_info{version}` and the process metrics (`process_resident_memory_bytes`, CPU, open files).
+
+*Why counted on scrape for sessions and connections:* same reason as "compare content, not a dirty flag" for the snapshot — a forgotten join or leave path cannot make the number wrong. *Why `snapshot_last_ok` also without a write:* otherwise the "snapshot too old" alert would fire in every quiet phase. *Why only totals as labels:* no session codes, names, IPs or paths — for privacy, and because every label value is its own time series (free tier: 10,000). *Why an own registry:* the default registry would also collect whatever imported libraries register and rejects a second registration when a test reloads a module. *Why pull, not push:* nothing in the critical path waits on Grafana.
+
 ## Edge
 
 - Cloudflare proxy (orange cloud) sits in front of Railway. SSL/TLS Full (strict), Bot Fight Mode on.
@@ -201,7 +216,6 @@ These block multi-instance deployment. Listed for the Phase 6 AWS migration, not
 | `/data/sessions.json` | Needs EFS or persistent volume on ECS. |
 | `/health` conflates liveness + readiness | ECS/Kubernetes prefer separate `/livez` + `/readyz`. Tracked in [#64](https://github.com/abti247/iron_verdict/issues/64). |
 | `_handle_shutdown` does not drain WebSockets | Clients flap on rolling deploys. Tracked in [#63](https://github.com/abti247/iron_verdict/issues/63). |
-| No Prometheus metrics surface | Phase 3 work on the roadmap. |
 
 ## Frontend
 
