@@ -216,19 +216,28 @@ async def test_flood_disconnect_counted_as_flood_not_client():
     assert _value("iron_verdict_ws_disconnects_total", reason="client") == before_client
 
 
-async def test_reconnect_with_token_counts_replaced_once():
+async def test_reconnect_with_token_counts_replaced_once(caplog):
     code = await session_manager.create_session("A")
     before_replaced = _value("iron_verdict_ws_disconnects_total", reason="replaced")
     before_client = _value("iron_verdict_ws_disconnects_total", reason="client")
-    async with _ws_client() as c1, _ws_client() as c2:
-        async with httpx_ws.aconnect_ws("ws://test/ws", c1) as old_ws:
-            token = (await _join(old_ws, code, "left_judge"))["reconnect_token"]
-            async with httpx_ws.aconnect_ws("ws://test/ws", c2) as new_ws:
-                assert (await _join(new_ws, code, "left_judge", token))["type"] == "join_success"
-                await asyncio.sleep(0.05)
-                assert _value("iron_verdict_ws_disconnects_total", reason="replaced") == before_replaced + 1
-                # The replaced socket's handler ending is not a second disconnect.
-                assert _value("iron_verdict_ws_disconnects_total", reason="client") == before_client
+    with caplog.at_level(logging.INFO, logger="iron_verdict"):
+        async with _ws_client() as c1, _ws_client() as c2:
+            async with httpx_ws.aconnect_ws("ws://test/ws", c1) as old_ws:
+                token = (await _join(old_ws, code, "left_judge"))["reconnect_token"]
+                async with httpx_ws.aconnect_ws("ws://test/ws", c2) as new_ws:
+                    assert (await _join(new_ws, code, "left_judge", token))["type"] == "join_success"
+                    assert _value("iron_verdict_ws_disconnects_total", reason="replaced") == before_replaced + 1
+        # Wait until the replaced socket's handler has ended (it logs this on its way out).
+        for _ in range(100):
+            if "stale_disconnect_ignored" in [r.getMessage() for r in caplog.records]:
+                break
+            await asyncio.sleep(0.01)
+        else:
+            pytest.fail("replaced socket's handler did not end")
+    await _wait_until_released(code)
+    # Only the new socket's close counts as client; the replaced one is not counted again.
+    assert _value("iron_verdict_ws_disconnects_total", reason="client") == before_client + 1
+    assert _value("iron_verdict_ws_disconnects_total", reason="replaced") == before_replaced + 1
 
 
 async def test_heartbeat_disconnects_counted_by_reason():

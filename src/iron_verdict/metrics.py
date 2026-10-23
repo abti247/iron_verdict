@@ -35,7 +35,7 @@ votes_rejected = Counter(
     "iron_verdict_votes_rejected", "Votes answered with vote_rejected", ["code"], registry=registry
 )
 ws_disconnects = Counter(
-    "iron_verdict_ws_disconnects", "Joined WebSockets lost, by reason", ["reason"], registry=registry
+    "iron_verdict_ws_disconnects", "WebSockets lost, by reason (flood also before a join)", ["reason"], registry=registry
 )
 snapshot_last_ok = Gauge(
     "iron_verdict_snapshot_last_ok_timestamp_seconds",

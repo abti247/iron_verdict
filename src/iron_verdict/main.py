@@ -389,7 +389,8 @@ async def get_metrics(request: Request):
     """Prometheus metrics for Grafana Cloud (#133).
 
     Without the configured bearer token — or when METRICS_TOKEN is not set —
-    the endpoint answers 404 like an unknown path, so it does not reveal itself.
+    the endpoint answers 404 like an unknown path, so it does not advertise itself
+    (the rate limit runs first, so request 31 in a minute still gets 429).
     """
     if not _holds_metrics_token(request):
         return JSONResponse(status_code=404, content={"detail": "Not Found"})
