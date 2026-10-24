@@ -16,7 +16,7 @@ Served by FastAPI directly:
 
 - `GET /` — landing page (static HTML + Alpine.js).
 - `GET /vportal` — alternate landing page for VPortal-integrated sessions; serves the identical HTML as `/`. The client infers session kind from `location.pathname` at create time. No server-side marker.
-- `GET /health` — single endpoint used by Railway. Currently conflates liveness + readiness.  
+- `GET /health` — single endpoint used by Railway (only during a deploy) and by the external uptime check (see *Observability*). Currently conflates liveness + readiness.  
 *Why one endpoint:* Railway consumes a single health URL; splitting earned nothing on this platform. Cost: on ECS/K8s, a slow snapshot save could trip a "not ready" signal and cause an unnecessary restart loop — those platforms want `/livez` (is the process up?) separated from `/readyz` (can it serve traffic?).
 - `POST /api/sessions` — create a session. Accepts optional `kind: "generic" | "vportal"` (default `generic`); rejects other values with 422. Rate-limited per client IP via slowapi (see *Client IP* below), `RATE_LIMIT_SESSION_CREATE` (default `10/hour`).
 - `GET /api/sessions/{code}` — look up an active session. Returns `{"exists": true, "kind": ..., "staging_available": ...}` on 200 or 404 with `{"detail": "Session not found"}`. Path pattern `^[A-Z0-9]{8}$` rejects malformed codes with 422 before touching the session map. Rate-limited per client IP via slowapi, `RATE_LIMIT_SESSION_LOOKUP` (default `30/minute`). Both limits are logged at startup (`rate_limits_configured`); an invalid value refuses startup. *Why configurable:* Railway staging runs the E2E subset from one runner IP and cannot reset the limiter from outside, so it raises them only as far as a run and a re-run need (`60/hour`, `120/minute`; staging is public and has no Cloudflare in front); production keeps the defaults. Deliberately not tied to `TEST_MODE`, which must never be set on a deployment.  
@@ -178,6 +178,13 @@ Optional, pull-only overlay of the current lifter on the display screen for sess
 - Domain: `iron-verdict.com` → CNAME → Railway.
 - **Client IP:** rate limits and every `client_ip` log field (HTTP and WebSocket) use `CF-Connecting-IP`, falling back to the TCP peer (`request.client.host`) when the header is absent. `X-Forwarded-For` is ignored.  
 *Why:* in production the TCP peer is Railway's edge proxy — an address from `100.64.0.0/10` that varies even for one client (seen in the PROD log, #124) — so counting it limited neither per client nor reliably globally. Cloudflare sets `CF-Connecting-IP` itself and overwrites a client-sent value; the first `X-Forwarded-For` entry is whatever the client sends. Production has no Railway domain that bypasses Cloudflare. *Accepted cost:* staging has no Cloudflare in front, so a client there can choose its own `CF-Connecting-IP` and sidestep the limits; staging only carries test sessions. Several competitions in one hall behind one public IP share the limits.
+
+## Observability
+
+- **Uptime from outside:** Grafana Cloud (free tier, region EU) Synthetic Monitoring calls `https://iron-verdict.com/health` every minute from 2 EU locations and expects 200 with `"status":"ok"`. When both locations fail in 2 consecutive minutes, an alert rule with `severity=critical` sends "PROD nicht erreichbar" to the maintainer's phone via Telegram, and a resolved message once it is green again. If the check stops delivering data or the query fails, the same route sends a `DatasourceNoData`/`DatasourceError` alert (monitoring broken, not PROD down). Only `severity=critical` is delivered; everything else is muted and reviewed in the dashboard. No e-mail delivery. Setup and test alert: [docs/monitoring.md](monitoring.md).
+- **Railway checks `/health` only during a deploy** (it decides whether the new deployment goes live), never afterwards. A process that hangs or dies later is only caught by the external check.
+
+*Why from outside, through `iron-verdict.com`:* the check takes the judges' path (DNS, Cloudflare, TLS, app), so an outage of any of them alerts, not only of the process. Production has no Railway domain that bypasses Cloudflare (see *Edge*). *Why only critical alerts:* the maintainer is at the venue during competitions and must be able to act on every message (rollback, switch the organiser to the laptop fallback); a phone that also buzzes for warnings gets ignored. *Accepted cost:* the check sees only reachability of `/health` — not WebSocket, voting or VPortal; metrics follow in #133, logs in #134.
 
 ## Build and deployment
 

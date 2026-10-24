@@ -104,7 +104,7 @@ Production runs the image built and tested by CI, not a build from source:
 2. Add a **Volume** mounted at `/data` (Railway dashboard → Storage).
 3. Set the `ALLOWED_ORIGIN` environment variable to your Railway-assigned domain (e.g. `https://iron-verdict.up.railway.app`). It is required: without it the app logs `allowed_origin_missing` and does not start. The startup log shows the value in use (`allowed_origin_configured`).
 
-All other settings default to sensible production values. Deploying a new version or rolling back means changing the image tag in the service's **Source Image** setting — see [docs/release.md](docs/release.md) for release, deploy and rollback.
+All other settings default to sensible production values. Deploying a new version or rolling back means changing the image tag in the service's **Source Image** setting — see [docs/release.md](docs/release.md) for release, deploy and rollback. Production is watched from outside by a Grafana uptime check with Telegram alerts — see [docs/monitoring.md](docs/monitoring.md).
 
 ### Prebuilt images
 

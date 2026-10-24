@@ -64,6 +64,8 @@ Pushing a `v*` tag by hand starts nothing: no release bypasses staging.
 3. Deploy the change (if Railway stages it as a pending change, apply/deploy it). Wait until the new deployment is *Active*.
 4. Check: `https://iron-verdict.com/health` answers `{"status":"ok"}`, the landing page footer shows the `sha-<commit>` of the release (job summary of the Release workflow), create a test session and join as a judge, and `/static/js/app.js` answers `cache-control: no-cache` (browser network tab → `app.js` → Response headers, or `curl -sI`). The deploy log shows `allowed_origin_configured` with `https://iron-verdict.com`; a missing `ALLOWED_ORIGIN` makes the deployment fail with `allowed_origin_missing`.
 
+After the deploy the Grafana uptime check keeps watching `/health` ([docs/monitoring.md](monitoring.md)); Railway itself checks it only during the deploy.
+
 The `/data` volume and all variables stay attached; active sessions survive via the snapshot written on shutdown.
 
 ## Rollback
@@ -81,6 +83,7 @@ Same as a deploy, with the **previous** version tag (the one before the faulty r
 - [ ] No deploy planned during the competition.
 - [ ] Once, for the first competition on a release after v0.2.1: hard-reload every judge and display device (Ctrl+Shift+R, or clear the site data on phones). Static files are revalidated on every load since then (#135, #145); devices may still hold older files the browser considers fresh.
 - [ ] `https://iron-verdict.com/static/js/app.js` answers `cache-control: no-cache` (network tab or `curl -sI`; if it shows `max-age=…`, fix Cloudflare as described under One-time setup).
+- [ ] Uptime check green in Grafana, and a test alert arrived on the phone via Telegram (Firing and Resolved; [docs/monitoring.md](monitoring.md), Test alert).
 - [ ] `/health` ok; a test session works end to end: 3 judges + display, vote, result, Next Lift, reload of a judge.
 - [ ] For VPortal competitions: `/vportal` session connects to the federation and shows the current lifter on the display.
 - [ ] Fallback known: the app can run locally on a laptop on the venue Wi-Fi (README, "Running locally on competition WiFi").
