@@ -34,7 +34,7 @@ Menu names follow the Grafana Cloud UI as of October 2026 and may move; the sett
 
 1. In Telegram, open **@BotFather** → `/newbot` → name (e.g. "Iron Verdict Alerts") and username (must end in `bot`). BotFather answers with the **bot token** (`123456:ABC…`). Store it in the password manager.
 2. Open the new bot in Telegram and send it `/start` (a bot cannot write to a chat that never wrote to it).
-3. Get the **chat ID**: open `https://api.telegram.org/bot<token>/getUpdates` in a browser and read `result[0].message.chat.id` (a number). The URL contains the token — do not share it or paste it anywhere else. If `result` is empty, send the bot another message and reload.
+3. Get the **chat ID**: open `https://api.telegram.org/bot<token>/getUpdates` in a private browser window and read `result[0].message.chat.id` (a number). The URL contains the token — do not share it or paste it anywhere else. If `result` is empty, send the bot another message and reload.
 
 ### 3. Contact point
 
@@ -80,26 +80,26 @@ Alerts & IRM → Alerting → **Alert rules** → *New alert rule*:
 - Data source: the stack's Prometheus (`grafanacloud-<stack>-prom`), query (code mode):
 
   ```promql
-  max by (job) (probe_success{job="iron-verdict-prod"})
+  max by (job) (last_over_time(probe_success{job="iron-verdict-prod"}[90s]))
   ```
 
-  `probe_success` is 1 per location for a passed run and 0 for a failed one; the maximum over the locations is 0 only when **both** failed.
+  `probe_success` is 1 per location for a passed run and 0 for a failed one; the maximum over the locations is 0 only when **both** failed. `last_over_time(…[90s])` takes each location's latest run (one per minute) and drops a series that stopped reporting; a plain instant query would keep a stopped series at its last value for 5 minutes. Check the query in Explore during setup: it shows `1` while the check is green.
 - Condition (threshold): `IS BELOW 1`
 - Folder `Iron Verdict`, evaluation group `uptime` with interval **1m**
 - Pending period: **1m** — the first failed evaluation goes to *Pending*, the second one a minute later fires. That is 2 failed runs in a row.
-- *Configure no data and error handling*: as preset (*No Data* / *Error*). If the check stops delivering data, the rule sends its own "no data" alert with the same labels — monitoring that silently stopped is worth knowing about.
+- *Configure no data and error handling*: as preset (*No Data* / *Error*). If the check stops delivering data, the rule sends its own "no data" alert with the same labels — monitoring that silently stopped is worth knowing about. Likewise a query error sends a `DatasourceError` alert. Both carry `severity=critical` and reach Telegram: a message named `DatasourceNoData` or `DatasourceError` means "monitoring broken", not "PROD down" — check Grafana, not the app.
 - Labels: `severity` = `critical`
 - Annotations: *Summary* `PROD nicht erreichbar: https://iron-verdict.com/health antwortet nicht`; *Description* `Rollback: docs/release.md, Rollback. Fallback: Laptop im Hallen-WLAN (README).`
 - Notifications: use the notification policy (not a fixed contact point). Save.
 
-The job filter deliberately leaves out `instance` (the URL), so the test alert below still matches while the check points at another path.
+The job filter deliberately leaves out `instance` (the URL), so the test alert below still matches while the check points at another path. Changing the target starts a new series; the old one drops out of the query after 90 s thanks to `last_over_time`.
 
 ## Test alert
 
 Run after the setup and before every competition (see [docs/release.md](release.md), *Checklist before a competition*):
 
 1. Edit the check: change the target to `https://iron-verdict.com/health-test-404` (does not exist, answers 404). Save.
-2. After about 3 minutes (2 failed runs, then grouping) Telegram shows **Firing: PROD nicht erreichbar**.
+2. After about 3–4 minutes (old series drops out, 2 failed runs, then grouping; replace with the time observed at the first test) Telegram shows **Firing: PROD nicht erreichbar**.
 3. Set the target back to `https://iron-verdict.com/health`. Save.
 4. A few minutes later Telegram shows **Resolved**, and the check is green again.
 
