@@ -115,6 +115,7 @@ Forgetting step 3 leaves the alert firing — the Telegram message is the remind
 Reading the message:
 
 - `Value: A=0, C=1` — `A` is the query (0 = both locations failed, 1 = at least one passed), `C` the condition `IS BELOW 1` (1 = met, the rule fires). The resolved message shows `A=1, C=0`. The *summary* line says the same in words.
+- In a real outage the message arrives about 2–3½ minutes after the app stopped answering: 2 evaluations with both locations failed, plus up to 30 s grouping (the test takes longer because the old series first has to drop out). Evaluations are not synchronised with the runs, so rarely one failed run per location is enough — an early alert, never a missed one.
 - One Firing per outage, repeated every 4 hours while it lasts (*repeat interval* of the default policy), then one Resolved. Outages shorter than 2 minutes stay *Pending* and send nothing.
 - The Resolved message exists because *Disable resolved message* is off on the contact point.
 - *Silence* links to a silence for this alert: while it is active, a real outage sends nothing either. Use it only for planned maintenance, with a short duration.
