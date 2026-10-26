@@ -16,7 +16,7 @@ Served by FastAPI directly:
 
 - `GET /` — landing page (static HTML + Alpine.js).
 - `GET /vportal` — alternate landing page for VPortal-integrated sessions; serves the identical HTML as `/`. The client infers session kind from `location.pathname` at create time. No server-side marker.
-- `GET /health` — single endpoint used by Railway. Currently conflates liveness + readiness.  
+- `GET /health` — single endpoint used by Railway (only during a deploy) and by the external uptime check (see *Observability*). Currently conflates liveness + readiness.  
 *Why one endpoint:* Railway consumes a single health URL; splitting earned nothing on this platform. Cost: on ECS/K8s, a slow snapshot save could trip a "not ready" signal and cause an unnecessary restart loop — those platforms want `/livez` (is the process up?) separated from `/readyz` (can it serve traffic?).
 - `GET /metrics` — Prometheus text format for Grafana Cloud, which scrapes it once a minute with `Authorization: Bearer <METRICS_TOKEN>` (see [Observability](#observability)). A missing or wrong token answers 404 like an unknown path (compared with `secrets.compare_digest`); without `METRICS_TOKEN` the endpoint is off (404) and startup logs `metrics_disabled` (`metrics_enabled` otherwise) — the app starts either way. Rate-limited per client IP, `RATE_LIMIT_METRICS` (default `30/minute`).  
 *Why 404 instead of 401:* the endpoint does not advertise itself to casual probes. The rate limit runs before the token check, so a 31st request within a minute gets 429 — accepted, nothing is exposed. *Why optional, unlike `ALLOWED_ORIGIN`:* a missing token only loses monitoring, never opens a hole.
@@ -177,6 +177,8 @@ Optional, pull-only overlay of the current lifter on the display screen for sess
 
 Grafana Cloud (free tier, EU) pulls everything; the app opens no outbound connection for monitoring, so a Grafana outage cannot affect a competition. Setup, alert rules and the weekly review: [docs/monitoring.md](monitoring.md).
 
+- **Uptime from outside:** Grafana Cloud (free tier, region EU) Synthetic Monitoring calls `https://iron-verdict.com/health` every minute from 2 EU locations and expects 200 with `"status":"ok"`. When both locations fail in 2 consecutive minutes, an alert rule with `severity=critical` sends "PROD nicht erreichbar" to the maintainer's phone via Telegram, and a resolved message once it is green again. If the check stops delivering data or the query fails, the same route sends a `DatasourceNoData`/`DatasourceError` alert (monitoring broken, not PROD down). Only `severity=critical` is delivered; everything else is muted and reviewed in the dashboard. No e-mail delivery. Setup and test alert: [docs/monitoring.md](monitoring.md).
+- **Railway checks `/health` only during a deploy** (it decides whether the new deployment goes live), never afterwards. A process that hangs or dies later is only caught by the external check.
 - **Logs:** JSON lines on stdout (`logging_config.py`, whitelisted fields only), read in Railway.
 - **Metrics:** `GET /metrics` (`metrics.py`, `prometheus_client`, own `CollectorRegistry`):
   - Counted on scrape by `LiveStateCollector` from `SessionManager` / `ConnectionManager`: `iron_verdict_sessions_active{kind}`, `iron_verdict_judges_connected`, `iron_verdict_displays_connected`.
@@ -185,6 +187,8 @@ Grafana Cloud (free tier, EU) pulls everything; the app opens no outbound connec
   - `iron_verdict_build_info{version}` and the process metrics (`process_resident_memory_bytes`, CPU, open files).
 
 *Why counted on scrape for sessions and connections:* same reason as "compare content, not a dirty flag" for the snapshot — a forgotten join or leave path cannot make the number wrong. *Why `snapshot_last_ok` also without a write:* otherwise the "snapshot too old" alert would fire in every quiet phase. *Why only totals as labels:* no session codes, names, IPs or paths — for privacy, and because every label value is its own time series (free tier: 10,000). *Why an own registry:* the default registry would also collect whatever imported libraries register and rejects a second registration when a test reloads a module. *Why pull, not push:* nothing in the critical path waits on Grafana.
+
+*Why from outside, through `iron-verdict.com`:* the check takes the judges' path (DNS, Cloudflare, TLS, app), so an outage of any of them alerts, not only of the process. Production has no Railway domain that bypasses Cloudflare (see *Edge*). *Why only critical alerts:* the maintainer is at the venue during competitions and must be able to act on every message (rollback, switch the organiser to the laptop fallback); a phone that also buzzes for warnings gets ignored. *Accepted cost:* the uptime check sees only reachability of `/health` — voting, connections and snapshots come from the metrics below; logs follow in #134.
 
 ## Edge
 
