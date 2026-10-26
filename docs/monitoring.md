@@ -108,9 +108,16 @@ Run after the setup and before every competition (see [docs/release.md](release.
 1. Edit the check: change the target to `https://iron-verdict.com/health-test-404` (does not exist, answers 404). Save.
 2. After about 3½ minutes (old series drops out, 2 failed runs, then grouping; observed at the first test on 2026-10-26) Telegram shows **Firing** with the labels, summary, description and runbook link. The `**Firing**` asterisks are Grafana's markdown, shown as plain text — harmless.
 3. Set the target back to `https://iron-verdict.com/health`. Save.
-4. A few minutes later Telegram shows **Resolved**, and the check is green again.
+4. About 4 minutes later (observed 2026-10-26) Telegram shows **Resolved**, and the check is green again. The rule is back to *Normal* after the first green run; Grafana sends changes to an alert it already reported at most every 5 minutes (*group interval* of the default policy), so Resolved takes 1–5 minutes.
 
 Forgetting step 3 leaves the alert firing — the Telegram message is the reminder.
+
+Reading the message:
+
+- `Value: A=0, C=1` — `A` is the query (0 = both locations failed, 1 = at least one passed), `C` the condition `IS BELOW 1` (1 = met, the rule fires). The resolved message shows `A=1, C=0`. The *summary* line says the same in words.
+- One Firing per outage, repeated every 4 hours while it lasts (*repeat interval* of the default policy), then one Resolved. Outages shorter than 2 minutes stay *Pending* and send nothing.
+- The Resolved message exists because *Disable resolved message* is off on the contact point.
+- *Silence* links to a silence for this alert: while it is active, a real outage sends nothing either. Use it only for planned maintenance, with a short duration.
 
 ## Cloudflare Bot Fight Mode
 
