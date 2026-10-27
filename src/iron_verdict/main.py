@@ -6,6 +6,8 @@ from iron_verdict.config import require_allowed_origin, settings
 from iron_verdict.session import SessionManager
 from iron_verdict.connection import ConnectionManager
 from iron_verdict.vportal_proxy import router as vportal_router
+from iron_verdict import metrics
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 import asyncio
 import signal
 from contextlib import asynccontextmanager
@@ -68,12 +70,14 @@ async def heartbeat_sweep(manager: ConnectionManager, now: float) -> None:
                 await ws.close(code=1001)
             except Exception as exc:
                 logger.warning("heartbeat_close_failed", extra={"reason": str(exc)})
-            await release_connection(manager, session_code, role, ws)
+            if await release_connection(manager, session_code, role, ws):
+                metrics.ws_disconnects.labels(reason="heartbeat_stale").inc()
             continue
         try:
             await ws.send_json({"type": "ping"})
         except Exception as exc:
             if await release_connection(manager, session_code, role, ws):
+                metrics.ws_disconnects.labels(reason="heartbeat_send_failed").inc()
                 logger.warning("heartbeat_dead_connection_removed", extra={
                     "session_code": session_code,
                     "role": log_role,
@@ -93,7 +97,11 @@ async def cleanup_loop(manager: SessionManager, snapshot_path: str, timeout_hour
         elapsed += 60
         try:
             await manager.save_snapshot_if_changed(snapshot_path)
+            # Also when nothing changed: the file is up to date either way, and a
+            # quiet phase must not look like a stuck snapshot to the alert.
+            metrics.snapshot_last_ok.set_to_current_time()
         except Exception as exc:
+            metrics.snapshot_failures.inc()
             logger.exception("snapshot_save_failed", extra={"error": str(exc)})
         if elapsed >= 30 * 60:
             elapsed = 0
@@ -210,6 +218,38 @@ _CSP = (
 )
 
 
+class HttpMetricsMiddleware:
+    """Count every HTTP response by status class (WebSockets are not counted).
+
+    Pure ASGI instead of BaseHTTPMiddleware: an unhandled exception passes
+    through here before the global handler turns it into the 500 response,
+    so it is counted as 5xx on the way out.
+    """
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        counted = False
+
+        async def counting_send(message):
+            nonlocal counted
+            if message["type"] == "http.response.start" and not counted:
+                counted = True
+                metrics.http_requests.labels(status_class=metrics.status_class(message["status"])).inc()
+            await send(message)
+
+        try:
+            await self.app(scope, receive, counting_send)
+        except Exception:
+            if not counted:
+                metrics.http_requests.labels(status_class="5xx").inc()
+            raise
+
+
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         response = await call_next(request)
@@ -224,6 +264,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 limiter = Limiter(key_func=_get_http_client_ip)
 session_manager = SessionManager()
 connection_manager = ConnectionManager()
+metrics.register_live_state(session_manager, connection_manager, settings.APP_VERSION)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -233,6 +274,8 @@ async def lifespan(app: FastAPI):
         "session_create": settings.RATE_LIMIT_SESSION_CREATE,
         "session_lookup": settings.RATE_LIMIT_SESSION_LOOKUP,
     })
+    # Metrics are optional: without a token the endpoint is off, the app still starts.
+    logger.info("metrics_enabled" if settings.METRICS_TOKEN else "metrics_disabled")
     session_manager.load_snapshot(settings.SNAPSHOT_PATH)
     restore_pause_timers()
 
@@ -296,12 +339,14 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Iron Verdict", lifespan=lifespan)
 app.include_router(vportal_router)
 app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(HttpMetricsMiddleware)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
+    metrics.unhandled_exceptions.inc()
     logger.exception("unhandled_exception", extra={"client_ip": _get_http_client_ip(request)})
     return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
@@ -328,6 +373,28 @@ app.mount("/static", RevalidatedStaticFiles(directory=static_dir), name="static"
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+def _holds_metrics_token(request: Request) -> bool:
+    expected = settings.METRICS_TOKEN
+    scheme, _, token = request.headers.get("authorization", "").partition(" ")
+    if not expected or scheme.lower() != "bearer":
+        return False
+    return secrets.compare_digest(token.strip().encode(), expected.encode())
+
+
+@app.get("/metrics", include_in_schema=False)
+@limiter.limit(settings.RATE_LIMIT_METRICS)
+async def get_metrics(request: Request):
+    """Prometheus metrics for Grafana Cloud (#133).
+
+    Without the configured bearer token — or when METRICS_TOKEN is not set —
+    the endpoint answers 404 like an unknown path, so it does not advertise itself
+    (the rate limit runs first, so request 31 in a minute still gets 429).
+    """
+    if not _holds_metrics_token(request):
+        return JSONResponse(status_code=404, content={"detail": "Not Found"})
+    return Response(content=generate_latest(metrics.registry), media_type=CONTENT_TYPE_LATEST)
 
 
 def _serve_index() -> Response:
@@ -399,6 +466,7 @@ def _holds_valid_reconnect_token(session_code: str, role: str, token) -> bool:
 
 
 async def _reject_vote(websocket: WebSocket, conn_id: str, session_code: str, role: str, code: str, text: str) -> None:
+    metrics.votes_rejected.labels(code=code).inc()
     logger.info("vote_rejected", extra={
         "conn_id": conn_id,
         "session_code": session_code,
@@ -432,6 +500,8 @@ async def websocket_endpoint(websocket: WebSocket):
 
     msg_count = 0
     window_start = time.monotonic()
+    # Why this socket was lost, counted in the finally block if it was still registered.
+    disconnect_reason = "client"
 
     try:
         while True:
@@ -445,6 +515,9 @@ async def websocket_endpoint(websocket: WebSocket):
                 msg_count += 1
             if msg_count > 20:
                 logger.warning("message_flood_disconnect", extra={"conn_id": conn_id, "client_ip": _get_ws_client_ip(websocket)})
+                disconnect_reason = "flood"
+                if not registered:
+                    metrics.ws_disconnects.labels(reason="flood").inc()
                 await websocket.close(code=1008)
                 return
 
@@ -517,6 +590,7 @@ async def websocket_endpoint(websocket: WebSocket):
                             old_ws = await connection_manager.get_connection(session_code, role)
                             if old_ws:
                                 await connection_manager.remove_connection(session_code, role)
+                                metrics.ws_disconnects.labels(reason="replaced").inc()
                                 try:
                                     await old_ws.close()
                                 except Exception:
@@ -663,6 +737,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     continue
 
                 if result["success"]:
+                    metrics.votes.inc()
                     logger.info("vote_locked", extra={
                         "conn_id": conn_id,
                         "session_code": session_code,
@@ -889,6 +964,10 @@ async def websocket_endpoint(websocket: WebSocket):
 
     except WebSocketDisconnect:
         pass
+    except Exception:
+        metrics.unhandled_exceptions.inc()
+        disconnect_reason = "error"
+        raise
     finally:
         if registered:
             log_extra = {
@@ -897,6 +976,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 "role": "display" if role.startswith("display_") else role,
             }
             if await release_connection(connection_manager, session_code, role, websocket):
+                metrics.ws_disconnects.labels(reason=disconnect_reason).inc()
                 logger.info("role_disconnected", extra=log_extra)
             else:
                 # Replaced by a reconnect or already removed by the heartbeat

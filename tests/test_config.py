@@ -130,12 +130,14 @@ def test_run_py_exits_nonzero_without_allowed_origin(tmp_path):
 def test_rate_limits_default_to_10_per_hour_and_30_per_minute(monkeypatch):
     monkeypatch.delenv("RATE_LIMIT_SESSION_CREATE", raising=False)
     monkeypatch.delenv("RATE_LIMIT_SESSION_LOOKUP", raising=False)
+    monkeypatch.delenv("RATE_LIMIT_METRICS", raising=False)
     settings = reload_config()
     assert settings.RATE_LIMIT_SESSION_CREATE == "10/hour"
     assert settings.RATE_LIMIT_SESSION_LOOKUP == "30/minute"
+    assert settings.RATE_LIMIT_METRICS == "30/minute"
 
 
-@pytest.mark.parametrize("name", ["RATE_LIMIT_SESSION_CREATE", "RATE_LIMIT_SESSION_LOOKUP"])
+@pytest.mark.parametrize("name", ["RATE_LIMIT_SESSION_CREATE", "RATE_LIMIT_SESSION_LOOKUP", "RATE_LIMIT_METRICS"])
 def test_invalid_rate_limit_refuses_to_start(monkeypatch, name):
     monkeypatch.setenv(name, "lots")
     with pytest.raises(RuntimeError, match=name):
@@ -170,3 +172,12 @@ print(create, lookup)
     )
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip() == "[200, 200, 429] [404, 404, 429]"
+
+
+def test_metrics_token_defaults_to_empty_and_is_stripped(monkeypatch):
+    monkeypatch.delenv("METRICS_TOKEN", raising=False)
+    assert reload_config().METRICS_TOKEN == ""
+    monkeypatch.setenv("METRICS_TOKEN", "  abc  ")
+    assert reload_config().METRICS_TOKEN == "abc"
+    monkeypatch.delenv("METRICS_TOKEN")
+    reload_config()
