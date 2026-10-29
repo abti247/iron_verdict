@@ -7,6 +7,16 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+### Removed
+
+## [0.4.0] - 2026-10-29
+
+### Added
 - Contrast mode for bright halls in the display settings (gear or "S"): solid light colours with a clear border and pure white, bolder texts on the black background; remembered per device
 - Layout editor for the display (settings → "Edit layout"): move, resize and hide timer, lights, cards and reasons, verdict and VPortal lifter and attempt info with mouse or touch; saved per device and copyable to another display as a code
 - Adjustable gap between the lights in the display layout editor (handle beside the lights), e.g. for big lights close together in the stream overlay; saved with the layout and in its code, older layouts and codes keep today's gap
@@ -29,6 +39,8 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Removed
 - Display zoom slider: sizes are now set per block in the layout editor; a previously set zoom is reset to the default size
+
+[0.4.0]: https://github.com/abti247/iron_verdict/compare/v0.3.0...v0.4.0
 
 ## [0.3.0] - 2026-10-18
 
