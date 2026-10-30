@@ -85,4 +85,4 @@ def test_metrics_match_competition_after_connection_loss_and_reload(competition,
     assert competition.session_code not in httpx.get(
         f"{server_url}/metrics", headers={"Authorization": f"Bearer {TOKEN}"}
     ).text
-    assert httpx.get(f"{server_url}/metrics").status_code == 404
+    assert httpx.get(f"{server_url}/metrics").status_code == 401

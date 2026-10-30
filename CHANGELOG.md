@@ -11,6 +11,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ### Changed
 
 ### Fixed
+- Grafana Cloud can scrape `/metrics`: without a valid token it now answers "401 Unauthorized" instead of "404 Not Found", so Grafana sends its token
 
 ### Removed
 

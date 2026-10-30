@@ -69,9 +69,12 @@ def test_metrics_with_valid_token_returns_prometheus_text():
     {"Authorization": TOKEN},
     {"Authorization": f"Basic {TOKEN}"},
 ])
-def test_metrics_without_or_with_wrong_token_returns_404(headers):
+def test_metrics_without_or_with_wrong_token_returns_401_challenge(headers):
+    """Grafana's Metrics Endpoint first asks without credentials and sends the
+    token only after a 401 with WWW-Authenticate (#185); a 404 made it give up."""
     r = client.get("/metrics", headers=headers)
-    assert r.status_code == 404
+    assert r.status_code == 401
+    assert r.headers["www-authenticate"] == "Bearer"
     assert "iron_verdict" not in r.text
 
 

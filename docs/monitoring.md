@@ -132,7 +132,7 @@ Production has Bot Fight Mode on (see [docs/architecture.md](architecture.md), *
 
 1. Generate a token: `openssl rand -hex 32`. Never commit it.
 2. Railway → service `iron_verdict` → environment **production** → Variables → `METRICS_TOKEN=<token>` → deploy. The deploy log shows `metrics_enabled` (without it: `metrics_disabled`, the endpoint answers 404).
-3. Check: `curl -s -H "Authorization: Bearer <token>" https://iron-verdict.com/metrics | head` shows lines starting with `# HELP iron_verdict_…`. Without the header the answer is 404.
+3. Check: `curl -s -H "Authorization: Bearer <token>" https://iron-verdict.com/metrics | head` shows lines starting with `# HELP` (process metrics first, `iron_verdict_…` further down). Without the header, or with a wrong token, the answer is 401.
 4. Grafana → **Connections → Add new connection → Metrics Endpoint**:
    - Scrape job name: `iron-verdict-prod-metrics` (not `iron-verdict-prod` — that is the uptime check's job, and both would share the `job` label)
    - Scrape job URL: `https://iron-verdict.com/metrics`
