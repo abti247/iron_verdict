@@ -376,11 +376,10 @@ async def health():
 
 
 def _holds_metrics_token(request: Request) -> bool:
-    expected = settings.METRICS_TOKEN
     scheme, _, token = request.headers.get("authorization", "").partition(" ")
-    if not expected or scheme.lower() != "bearer":
+    if scheme.lower() != "bearer":
         return False
-    return secrets.compare_digest(token.strip().encode(), expected.encode())
+    return secrets.compare_digest(token.strip().encode(), settings.METRICS_TOKEN.encode())
 
 
 @app.get("/metrics", include_in_schema=False)
@@ -388,12 +387,20 @@ def _holds_metrics_token(request: Request) -> bool:
 async def get_metrics(request: Request):
     """Prometheus metrics for Grafana Cloud (#133).
 
-    Without the configured bearer token — or when METRICS_TOKEN is not set —
-    the endpoint answers 404 like an unknown path, so it does not advertise itself
-    (the rate limit runs first, so request 31 in a minute still gets 429).
+    When METRICS_TOKEN is not set the endpoint is off and answers 404 like an
+    unknown path. With it set, a missing or wrong bearer token gets 401 with
+    WWW-Authenticate: Grafana's Metrics Endpoint first asks without credentials
+    and sends the token only after that challenge (#185). The rate limit runs
+    first, so request 31 in a minute still gets 429.
     """
-    if not _holds_metrics_token(request):
+    if not settings.METRICS_TOKEN:
         return JSONResponse(status_code=404, content={"detail": "Not Found"})
+    if not _holds_metrics_token(request):
+        return JSONResponse(
+            status_code=401,
+            content={"detail": "Unauthorized"},
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     return Response(content=generate_latest(metrics.registry), media_type=CONTENT_TYPE_LATEST)
 
 
