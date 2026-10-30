@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "iron-verdict"
-version = "0.4.0"
+version = "0.4.1"
 description = "Powerlifting competition judging application"
 authors = [{name = "Alex", email = "iron.verdict.judging@gmail.com"}]
 license = {text = "MIT"}

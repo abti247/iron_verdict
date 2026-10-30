@@ -11,9 +11,15 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ### Changed
 
 ### Fixed
-- Grafana Cloud can scrape `/metrics`: without a valid token it now answers "401 Unauthorized" instead of "404 Not Found", so Grafana sends its token
 
 ### Removed
+
+## [0.4.1] - 2026-10-30
+
+### Fixed
+- Grafana Cloud can scrape `/metrics`: without a valid token it now answers "401 Unauthorized" instead of "404 Not Found", so Grafana sends its token
+
+[0.4.1]: https://github.com/abti247/iron_verdict/compare/v0.4.0...v0.4.1
 
 ## [0.4.0] - 2026-10-29
 
