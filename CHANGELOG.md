@@ -9,6 +9,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ### Added
 
 ### Changed
+- The Grafana dashboard marks the snapshot age orange from 3 minutes instead of 2, since up to about 2½ minutes is normal with a scrape every minute
 
 ### Fixed
 

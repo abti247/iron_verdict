@@ -128,7 +128,11 @@ Production has Bot Fight Mode on (see [docs/architecture.md](architecture.md), *
 
 **Result (2026-10-26, #132):** the probes pass with Bot Fight Mode on — both locations reach the app through Cloudflare (log: Cloudflare IP, status 200). Bot Fight Mode stays on. If a later check run shows `403` or a challenge page, the fallback is to turn Bot Fight Mode off (Security → Bots); the app has its own rate limits and origin check. A Railway domain as a way around Cloudflare is not an option (see *Why `iron-verdict.com`* above).
 
+**Metrics scrape (2026-10-30, #133):** Grafana's Metrics Endpoint scrape also passes with Bot Fight Mode on (requests reach the app, log: `GET /metrics` 200).
+
 ## Metrics scrape
+
+Menu names and screens as seen at the setup on 2026-10-30/31 (#133).
 
 1. Generate a token: `openssl rand -hex 32`. Never commit it.
 2. Railway → service `iron_verdict` → environment **production** → Variables → `METRICS_TOKEN=<token>` → deploy. The deploy log shows `metrics_enabled` (without it: `metrics_disabled`, the endpoint answers 404).
@@ -138,8 +142,10 @@ Production has Bot Fight Mode on (see [docs/architecture.md](architecture.md), *
    - Scrape job URL: `https://iron-verdict.com/metrics`
    - Scrape interval: every minute
    - Authentication: **Bearer**, token from step 1
-   - **Test Connection** → must succeed. A 403 or a challenge page means Cloudflare's Bot Fight Mode blocks Grafana — it did not block the uptime probes (see *Cloudflare Bot Fight Mode* above), so record the result there and in #133. Then **Save scrape job**.
-5. Grafana → Explore → `iron_verdict_build_info` shows the running version within two minutes.
+   - **Test Connection** → "All good! Successfully scraped metrics from URL". Then **Save Scrape Job** (and **Install** if offered).
+     - Test Connection first asks *without* the token and sends it only after a `401` with `WWW-Authenticate` (#185). Every regular scrape sends the token right away, so the scrape adds no 401s to the 4xx curve.
+     - It failing with "did not return a valid response": find the `GET /metrics` lines of that click in the Railway log. None → Cloudflare blocks Grafana (did not happen on 2026-10-30: Bot Fight Mode lets the scrape through). `401` without a following `200` → the token in Grafana differs from `METRICS_TOKEN`.
+5. Grafana → Explore → `iron_verdict_build_info` shows the running version within two minutes. Note its `job` label: Grafana prefixes the scrape job name, in production `integrations/metrics_endpoint/3711045-metrics-endpoint-iron-verdict-prod-metrics` (the label `scrape_job` keeps the plain name). The alert rules below filter on this full value.
 
 Staging stays without `METRICS_TOKEN` (endpoint off), so it neither counts towards the free tier nor raises alerts.
 
@@ -149,29 +155,34 @@ Staging stays without `METRICS_TOKEN` (endpoint off), so it neither counts towar
 
 The dashboard is versioned in the repo: [grafana/iron-verdict-dashboard.json](grafana/iron-verdict-dashboard.json).
 
-- Import: Grafana → **Dashboards → New → Import** → upload the file → keep the uid `iron-verdict` → **Import**. Pick the Prometheus data source of the stack (`grafanacloud-<stack>-prom`) in the *Data source* selector at the top; *Job* defaults to all jobs that report `iron_verdict_build_info`.
+- Import: Grafana → **Dashboards → New → Import** → upload the file → keep the uid `iron-verdict` → *Folder* **`Iron Verdict`** (the alert folder; importing into the top level clashes with that folder's name: "A dashboard or a folder with the same name already exists" — do not click *Import (Overwrite)* for that) → **Import**. Pick the Prometheus data source of the stack (`grafanacloud-<stack>-prom`) in the *Data source* selector at the top; *Job* defaults to all jobs that report `iron_verdict_build_info`.
 - Update: edit in Grafana, then **Share → Export → Export for sharing externally: off → Save to file**, replace the JSON in the repo and commit it in the same PR as the change that needs it. Importing a newer file over the old one (same uid) overwrites it.
 
 Sections:
 
 | Section | Content |
 |---|---|
-| Now | Status tiles (scrape up, sessions, judges, displays, version, snapshot age), **What stands out now** (every firing or pending alert rule, critical and warning), votes per minute and rejections, lost connections by reason, memory (orange from 512 MB, red from 3 GB), HTTP status classes, errors, CPU, sessions/judges/displays over time |
+| Now | Status tiles (scrape up, sessions, judges, displays, version, snapshot age — orange from 3 min, red from 5 min: the app sets it every minute and Grafana scrapes every minute, so up to about 2½ min is normal), **What stands out now** (every firing or pending alert rule, critical and warning), votes per minute and rejections, lost connections by reason, memory (orange from 512 MB, red from 3 GB), HTTP status classes, errors, CPU, sessions/judges/displays over time |
 | Weekly review (last 7 days) | Fixed 7-day window regardless of the time picker: scrape availability, max sessions, votes, rejected votes, unhandled exceptions, snapshot failures, max memory, max snapshot age, lost connections and HTTP responses by class, plus the week as curves |
 
 Shown only as curves, never as alert rules: single heartbeat drops (normal on venue Wi-Fi), rate-limit hits and unknown session codes (both in 4xx), rejected cross-site connections (in the logs).
 
 ## Metrics alert rules
 
-Create them in Grafana → **Alerting → Alert rules → New alert rule**, data source = the stack's Prometheus, folder `Iron Verdict`, evaluation group `iron-verdict` every 1 minute. The label `severity` decides delivery via the notification policy (*One-time setup*, step 4); enter it with *Add labels* → type the key, Enter → type the value, Enter. Notifications: recipient **Default policy**, as for the uptime rule.
+Create them in Grafana → **Alerts & IRM → Alerting → Alert rules → New alert rule**, data source = the stack's Prometheus, editor **Code**, folder `Iron Verdict`, evaluation group **`metrics`** every 1 minute (next to the uptime rule's group `uptime`). The label `severity` decides delivery via the notification policy (*One-time setup*, step 4); enter it with *Add labels* → type the key, Enter → type the value, Enter. Every rule needs it — check that the rule's page shows *Labels: severity …* after saving. Notifications: *Advanced options* → recipient **Default policy**, as for the uptime rule.
 
-Replace `JOB` with the scrape job name from *Metrics scrape* (`iron-verdict-prod-metrics`; Grafana may prefix it — check `up` in Explore).
+Replace `JOB` with the full `job` label from *Metrics scrape*, step 5 (production: `integrations/metrics_endpoint/3711045-metrics-endpoint-iron-verdict-prod-metrics`).
+
+How the condition is set, and why it differs between the first rule and the rest:
+
+- **PROD metrics unreachable:** the query has no comparison; *Alert condition* `WHEN QUERY IS BELOW 1`; *no data* → **Alerting** (the series vanishing, e.g. a deleted scrape job, is also an alert). With `< 1` in the query instead, a healthy scrape returns no rows and *no data → Alerting* fires all the time.
+- **All other rules:** the comparison is in the query, which returns a row only when something is wrong; *Alert condition* stays at the preset `IS ABOVE 0`; *Run queries* shows **No data** when healthy. Under *Configure no data and error handling*: *no data* → **OK** (Normal), *error* → **Error**. With *no data* → *NoData*, Grafana sends a `DatasourceNoData` alert with the rule's labels — for a critical rule a Telegram message every night without a competition.
 
 **Critical** (`severity=critical` → Telegram). All except the first apply only while a session exists, so nights without a competition stay quiet.
 
-| Name | Query (alert when true) | Pending period | No data |
+| Name | Query | Pending period | No data |
 |---|---|---|---|
-| PROD metrics unreachable | `max(up{job="JOB"}) < 1` | 3m | Alerting |
+| PROD metrics unreachable | `max(up{job="JOB"})`, condition `IS BELOW 1` | 3m | Alerting |
 | Snapshot older than 5 minutes | `(time() - max(iron_verdict_snapshot_last_ok_timestamp_seconds{job="JOB"})) > 300 and on() sum(iron_verdict_sessions_active{job="JOB"}) > 0` | 2m | OK |
 | Memory above 3 GB | `max(process_resident_memory_bytes{job="JOB"}) > 3 * 1024^3 and on() sum(iron_verdict_sessions_active{job="JOB"}) > 0` | 5m | OK |
 
@@ -186,7 +197,11 @@ Replace `JOB` with the scrape job name from *Metrics scrape* (`iron-verdict-prod
 | Memory above 512 MB | `max(process_resident_memory_bytes{job="JOB"}) > 512 * 1024^2` | 15m |
 | Many 5xx | `sum(increase(iron_verdict_http_requests_total{job="JOB", status_class="5xx"}[10m])) > 5` | 0s |
 
-**Test alert:** in the *Memory above 3 GB* rule temporarily change the threshold to `> 1` and the condition `sum(iron_verdict_sessions_active…) > 0` to `>= 0`, save, wait for the Telegram message, then restore both and wait for the resolved message.
+Summaries used in production (German, like the uptime rule): *PROD-Metriken nicht abrufbar: Grafana erreicht /metrics seit 3 Minuten nicht*; *Sitzungs-Sicherung älter als 5 Minuten, während ein Wettkampf läuft*; *Speicher über 3 GB während eines Wettkampfs, Absturz droht (Limit 4 GB)*; the warnings carry the name in German. The critical rules also have a description with the first thing to check.
+
+After saving, the list shows all rules *Normal* under `Iron Verdict` → `metrics`. A rule saved with a wrong condition shows *Firing* in the preview below the threshold — fix it before the pending period runs out.
+
+**Test alert:** in the *Memory above 3 GB* rule temporarily change the threshold to `> 1` and the condition `sum(iron_verdict_sessions_active…) > 0` to `>= 0`, save. *Firing* arrives on Telegram after about 6 minutes (5 min pending period plus grouping; observed 2026-11-01). Restore both, save; *Resolved* follows within 1–5 minutes.
 
 ## Weekly review (Monday morning)
 

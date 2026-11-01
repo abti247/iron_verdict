@@ -377,7 +377,7 @@
       "type": "stat",
       "id": 7,
       "title": "Snapshot age",
-      "description": "Seconds since the last snapshot check that left the file up to date. Normally below 60 s.",
+      "description": "Seconds since the last snapshot check that left the file up to date. Normally below about 2½ min (set every minute, scraped every minute).",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -413,7 +413,7 @@
               },
               {
                 "color": "orange",
-                "value": 120
+                "value": 180
               },
               {
                 "color": "red",
@@ -1501,7 +1501,7 @@
               },
               {
                 "color": "orange",
-                "value": 120
+                "value": 180
               },
               {
                 "color": "red",

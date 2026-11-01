@@ -34,7 +34,7 @@ The footer of the app shows `sha-<commit>` of the running image (baked in at bui
 ### Staging and approvals (set up 2026-10-16, #71)
 
 - **Railway staging:** environment `staging` in the production project, same service, domain `https://ironverdict-staging.up.railway.app` (Railway subdomain, no Cloudflare), runs permanently, own `/data` volume. Variables as production, except `ALLOWED_ORIGIN=https://ironverdict-staging.up.railway.app`, `RATE_LIMIT_SESSION_CREATE=60/hour` and `RATE_LIMIT_SESSION_LOOKUP=120/minute`. No `APP_VERSION` variable — the release chain checks the footer for `sha-<commit>`.
-- **Railway project token** of environment `staging` (Project Settings → Tokens). It may set the source image and deploy (checked 2026-10-16), and reaches nothing outside staging.
+- **Railway project token** of environment `staging` (Project Settings → Tokens). It may set the source image and deploy (checked 2026-10-16), and reaches nothing outside staging. Railway can invalidate it: on 2026-10-29 the `staging` job failed at its first call with `Railway API: Not Authorized` (`serviceInstanceUpdate`), and Project Settings → Tokens showed "Token invalid, please issue a new token". Then create a new token for environment `staging`, replace the secret `RAILWAY_TOKEN` in the GitHub environment `Release-Kandidat`, delete the invalid token and *Re-run failed jobs*.
 - **GitHub environments** (Settings → Environments), both with required reviewer `abti247` and deployment branches limited to `main`:
   - `Release-Kandidat` — secret `RAILWAY_TOKEN` (the project token). Approving it deploys to staging.
   - `Release` — no secrets. Approving it tags and releases.
