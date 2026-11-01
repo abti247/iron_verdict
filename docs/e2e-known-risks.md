@@ -1,6 +1,6 @@
 # E2E Test Suite — Known Risks
 
-Four places have latent timing/race risks that could surface as intermittent failures (flakes). They all pass reliably today. This doc exists so that **when a test starts failing after a code change**, you can quickly check whether it's a known risk with a ready-to-apply fix.
+Five places have latent timing/race risks that could surface as intermittent failures (flakes). They pass today; Risk 5 failed once in CI and passed on the re-run. This doc exists so that **when a test starts failing after a code change**, you can quickly check whether it's a known risk with a ready-to-apply fix.
 
 ## When to consult this doc
 
@@ -24,6 +24,7 @@ Any failure out of 10 = flaky. Apply the fix documented below.
 | Role rejection race | `test_cannot_join_taken_role` | Role locking, WebSocket reconnect, `handleJoinError` |
 | Display orphan | `test_display_reconnects_after_refresh` | Display WS handling, connection cleanup, `display_XXXX` IDs |
 | Teardown connection error on staging | `created_sessions` / `_end_session` (any external-mode test) | Session cleanup in `tests/e2e/conftest.py`, staging proxy/TLS setup |
+| First page load timeout in CI | `test_pause_is_right_after_connection_loss_and_reload` | Static files loaded by the start page, test server startup in `tests/e2e/conftest.py` |
 
 ---
 
@@ -109,6 +110,18 @@ Or fix server-side: in the WebSocket handler, when a display reconnects with the
 **Mitigation (in place):** A `httpx.TransportError` (or `WebSocketNetworkError`, as httpx_ws reports the same fault on an open socket) starts the attempt over on a fresh client within the 20 s join deadline; only the cleanup is retried, never a test. If it still fails, the teardown error lists every error with its step (`connect`, `join`, `end_session_confirmed`, `lookup`).
 
 **If it recurs:** read the step in the error. A `WebSocketNetworkError()` from `join` or `end_session_confirmed` carries no cause: httpx_ws drops it, so it does not tell a TLS fault from a plain EOF. Repeated failures at the same step are not a flake — investigate that step (e.g. proxy behaviour on WebSocket close) instead of widening the deadline.
+
+---
+
+## Risk 5: First page load times out in CI — `test_pause_is_right_after_connection_loss_and_reload`
+
+**File:** `tests/e2e/test_display_pause.py` (fails in `competition.create_session_and_join_head()` → `page.goto(self.url)`, `tests/e2e/conftest.py`)
+
+**What it does:** Opens the start page of the in-process test server before the test's own steps.
+
+**Why it could flake:** In the CI run of PR #186 (2026-10-30) `page.goto("http://127.0.0.1:<port>/")` waited 30 s for `load` and timed out; 199 of 200 E2E tests passed, the failure was in the first line of the test, before any of its own steps. The PR only changed `/metrics`, which the start page never calls. Locally the file passed 3 times in a row, and the one re-run of the job was green. Cause unknown — a stalled request of the page (one of its ~40 static files) on a loaded runner is the most likely reading.
+
+**If it recurs:** keep the Playwright trace (artifact `playwright-traces`) and look at which request of the page never finished. Repeated failures on the same request are not a flake — investigate that request instead of raising the navigation timeout.
 
 ---
 

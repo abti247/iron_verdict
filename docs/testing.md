@@ -174,11 +174,13 @@ The images for the in-app guide (`src/iron_verdict/static/img/guide/{de,en}/*.we
 
 ## Known flakiness risks
 
-Three E2E tests have latent timing/race risks documented in [docs/e2e-known-risks.md](docs/e2e-known-risks.md). They pass today but should be re-checked with `pytest-repeat --count=10` when nearby code is modified:
+These latent timing/race risks are documented in [docs/e2e-known-risks.md](docs/e2e-known-risks.md). They pass today (one failed once in CI, see below) but should be re-checked with `pytest-repeat --count=10` when nearby code is modified:
 
 - `test_timer_flow` — timer assertion race.
 - `test_cannot_join_taken_role` — role rejection + auto-reconnect.
 - `test_display_reconnects_after_refresh` — display orphan connections.
+- `_end_session` (external mode) — connection error while ending a test session on staging.
+- `test_pause_is_right_after_connection_loss_and_reload` — first page load timed out once in CI (cause unknown).
 
 `test_timer_flow` is also `remote_safe`: against staging, network latency to Railway adds to its timer race. A staging failure there is checked against this risk first. "Re-run failed jobs" on the staging job is meant for Railway outages, not for retrying a flaky test.
 
