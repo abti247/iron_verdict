@@ -1,10 +1,14 @@
-"""Competition flow — happy path: full lift cycles, reasons, timer."""
+"""Competition flow — happy path: full lift cycles, reasons, timer.
+
+``remote_safe`` and ``prod_safe``: also runs against Railway staging before a
+release and against production after the release deploy (release chain).
+"""
 
 import re
 import pytest
 from playwright.sync_api import expect
 
-pytestmark = pytest.mark.remote_safe
+pytestmark = [pytest.mark.remote_safe, pytest.mark.prod_safe]
 
 
 def test_full_lift_cycle(competition):

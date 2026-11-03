@@ -40,4 +40,5 @@ testpaths = ["tests"]
 pythonpath = ["src"]
 markers = [
     "remote_safe: E2E test that also runs against a deployed server (E2E_BASE_URL): the image check and Railway staging run only these",
+    "prod_safe: remote_safe E2E test that the release chain also runs against production after the deploy (production-check); keep it to a few sessions, the production limit is 10 new sessions/hour/IP",
 ]

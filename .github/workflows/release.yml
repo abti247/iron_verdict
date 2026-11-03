@@ -4,8 +4,8 @@ name: Release
 # staging. Behind the approval of environment Release: tags the commit
 # vX.Y.Z, promotes the image main.yml already built and tested for it
 # (sha-<commit>) to vX.Y.Z without rebuilding, then creates the GitHub release
-# from the CHANGELOG section. Deploying to production stays manual: point the
-# Railway service at the new tag (docs/release.md).
+# from the CHANGELOG section. The production deploy follows in main.yml
+# behind its own approval (Produktion), see docs/release.md.
 #
 # Why no tag trigger: every release must pass staging. And a tag pushed with
 # GITHUB_TOKEN starts no workflow, so this runs inside the chain instead.

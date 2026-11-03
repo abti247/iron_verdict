@@ -3,8 +3,10 @@ name: Main
 # Every push to main: the same checks as a PR (ci.yml), the image build and
 # container smoke test (image.yml), and only if all are green, push of that
 # tested image to GHCR as sha-<commit> and main. For a release commit the
-# chain continues (release-check, staging, release): two approvals, Railway
-# staging E2E in between, then release.yml re-tags the image (no rebuild).
+# chain continues (release-check, staging, release, production,
+# production-check): three approvals, Railway staging E2E after the first,
+# release.yml re-tags the image after the second (no rebuild), the production
+# deploy and a short E2E check against production after the third.
 on:
   push:
     branches: [main]
@@ -15,6 +17,7 @@ permissions:
 env:
   IMAGE_REPO: ghcr.io/abti247/iron_verdict
   STAGING_URL: https://ironverdict-staging.up.railway.app
+  PRODUCTION_URL: https://iron-verdict.com
 
 jobs:
   ci:
@@ -234,3 +237,97 @@ jobs:
     permissions:
       contents: write
       packages: write
+
+  # Approval 3 (environment Produktion): deploy vX.Y.Z to Railway production.
+  # Separate from approval Release: "Release" means the version is good,
+  # "Produktion" means now is a good moment. A deploy restarts the container
+  # and every device reconnects, so it must not happen during a competition;
+  # the approval may stay open for days (it fails after 30 days). Rollback
+  # stays manual (docs/release.md).
+  production:
+    needs: [release-check, release]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: Produktion
+      url: ${{ env.PRODUCTION_URL }}
+    concurrency:
+      group: railway-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: scripts
+
+      # The release tag vX.Y.Z (same digest as sha-<commit>), so production
+      # runs a release tag as the competition checklist requires; the footer
+      # still shows the baked-in sha-<commit>.
+      - name: Deploy v${{ needs.release-check.outputs.version }} to Railway production
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_PROD_TOKEN }}
+          RAILWAY_SERVICE_ID: ${{ vars.RAILWAY_SERVICE_ID }}
+          RAILWAY_ENVIRONMENT_ID: ${{ vars.RAILWAY_PROD_ENVIRONMENT_ID }}
+          VERSION: ${{ needs.release-check.outputs.version }}
+        run: |
+          scripts/railway_deploy.sh "$IMAGE_REPO:v$VERSION" "$PRODUCTION_URL" "sha-${GITHUB_SHA::7}"
+          echo "Production runs \`v$VERSION\` (\`sha-${GITHUB_SHA::7}\`): $PRODUCTION_URL" >> "$GITHUB_STEP_SUMMARY"
+
+  # Production check right after the deploy: only the prod_safe tests (about
+  # 7 sessions; the production limit is 10 new sessions/hour/IP), each ends
+  # its sessions afterwards. Own job without environment, so the production
+  # token never reaches the test code, and "Re-run failed jobs" on a red
+  # check repeats only the tests, not the deploy. Red means: decide on a
+  # manual rollback (docs/release.md); nothing is rolled back automatically.
+  production-check:
+    needs: production
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install test dependencies
+        run: python -m pip install -e ".[dev]"
+
+      - name: Get Playwright version
+        id: playwright
+        run: echo "version=$(python -c 'import importlib.metadata as m; print(m.version("playwright"))')" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+
+      - name: Install Chromium with system dependencies
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: python -m playwright install --with-deps chromium
+
+      - name: Install Chromium system dependencies (browser cached)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: python -m playwright install-deps chromium
+
+      - name: E2E tests against production (prod_safe)
+        env:
+          E2E_BASE_URL: ${{ env.PRODUCTION_URL }}
+        run: |
+          export E2E_EXPECTED_APP_VERSION="sha-${GITHUB_SHA::7}"
+          python -m pytest tests/e2e/ -m prod_safe --tb=short -v \
+            --tracing retain-on-failure \
+            --screenshot only-on-failure \
+            --output test-results
+
+      - name: Upload Playwright traces and screenshots
+        if: failure() || cancelled()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-traces-production
+          path: test-results/
+          retention-days: 14
+          if-no-files-found: ignore
