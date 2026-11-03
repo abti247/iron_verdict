@@ -15,7 +15,6 @@ import {
     withBlockHidden,
     blockStyle,
     pauseStyle,
-    scaledPause,
     encodeLayout,
     decodeLayout,
 } from '../../src/iron_verdict/static/js/displayLayout.js';
@@ -40,7 +39,7 @@ function validLayout() {
             verdict: { x: 40, y: 80, s: 1, hidden: true },
             lifter: { x: 2, y: 88, s: 1, hidden: false },
             attempt: { x: 80, y: 88, s: 0.8, hidden: false },
-            pause: { s: 1.2 },
+            pause: { x: 50, y: 40, s: 1.2, hidden: false },
         },
     };
 }
@@ -60,19 +59,17 @@ describe('sanitizeLayout', () => {
         expect(sanitizeLayout(raw).blocks.lights.gap).toBe(1);
     });
 
-    it('gives a layout without a pause zoom (saved before #190) the default size', () => {
+    it('gives a layout without a pause (saved before #190) the default pause: middle, unscaled, shown', () => {
         const raw = validLayout();
         delete raw.blocks.pause;
-        expect(sanitizeLayout(raw).blocks.pause).toEqual({ s: 1 });
+        expect(sanitizeLayout(raw).blocks.pause).toEqual({ x: 50, y: 50, s: 1, hidden: false });
     });
 
-    it('limits the pause zoom to 0.3-2, keeps only its zoom and rejects one that is not a number', () => {
+    it('treats the pause like the other free blocks: clamped, rejected when not numbers', () => {
         const raw = validLayout();
-        raw.blocks.pause = { s: 9, x: 10, hidden: true };
-        expect(sanitizeLayout(raw).blocks.pause).toEqual({ s: 2 });
-        raw.blocks.pause = { s: 0 };
-        expect(sanitizeLayout(raw).blocks.pause).toEqual({ s: 0.3 });
-        raw.blocks.pause = { s: '2; color: red' };
+        raw.blocks.pause = { x: 120, y: -5, s: 9, hidden: true };
+        expect(sanitizeLayout(raw).blocks.pause).toEqual({ x: 100, y: 0, s: 3, hidden: true });
+        raw.blocks.pause = { x: 50, y: 50, s: '2; color: red' };
         expect(sanitizeLayout(raw)).toBe(null);
         raw.blocks.pause = 'big';
         expect(sanitizeLayout(raw)).toBe(null);
@@ -195,7 +192,8 @@ describe('layoutFromRects', () => {
         expect(layout.blocks.lights).toEqual({ x: 50, y: 30, s: 1, hidden: false, gap: 1 });
         expect(layout.blocks.lifter).toEqual({ x: 2, y: 90, s: 1, hidden: false });
         expect(layout.blocks.attempt).toEqual({ x: 98, y: 90, s: 1, hidden: false });
-        expect(layout.blocks.pause).toEqual({ s: 1 });
+        // Not measured (it is not shown outside a pause): the middle of the display.
+        expect(layout.blocks.pause).toEqual({ x: 50, y: 50, s: 1, hidden: false });
     });
 
     it('gives the cards the gap of the default layout (0.1 light sizes, #188), so they do not jump when editing starts', () => {
@@ -250,12 +248,6 @@ describe('block edits', () => {
         expect(lightsWithGap(lights, 50).gap).toBe(2);
     });
 
-    it('scales the pause in 5 % steps from 0.3 to 2', () => {
-        expect(scaledPause({ s: 1 }, 1.33)).toEqual({ s: 1.35 });
-        expect(scaledPause({ s: 1 }, 0.01).s).toBe(0.3);
-        expect(scaledPause({ s: 1 }, 100).s).toBe(2);
-    });
-
     it('hides and shows a block without touching the others', () => {
         const layout = validLayout();
         const out = withBlockHidden(layout, 'timer', true);
@@ -284,12 +276,13 @@ describe('blockStyle', () => {
 });
 
 describe('pauseStyle', () => {
-    it('sets only the zoom of the pause, which always stays in the middle', () => {
-        expect(pauseStyle({ s: 1.5 })).toEqual({ '--display-zoom': '1.5' });
+    it('positions the pause by its centre (x and y) and scales it', () => {
+        expect(pauseStyle({ x: 30, y: 70, s: 1.5, hidden: false }))
+            .toEqual({ left: '30%', top: '70%', '--display-zoom': '1.5' });
     });
 
-    it('unsets the zoom without a layout', () => {
-        expect(pauseStyle(undefined)).toEqual({ '--display-zoom': '' });
+    it('unsets every property without a layout', () => {
+        expect(pauseStyle(undefined)).toEqual({ left: '', top: '', '--display-zoom': '' });
     });
 });
 

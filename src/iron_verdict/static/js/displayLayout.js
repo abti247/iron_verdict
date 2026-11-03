@@ -11,9 +11,11 @@
 // three lights (#154), a factor on the default gap of layout.css; layouts
 // and codes from before it get the default (1). The cards block (card colours and
 // reasons under the lights) follows the lights: it only has a gap, in
-// multiples of the light size. Every block can be hidden, except the pause
-// (#190): it always sits in the middle and only has a zoom; layouts and codes
-// from before it get the default size (1).
+// multiples of the light size. Every block can be hidden. The pause (#190) is
+// a free block too, shown only during a pause (and in the editor's pause
+// preview); its y is its centre, not its top edge, so its default (the middle
+// of the display, 50/50) needs no measuring. Layouts and codes from before it
+// get that default.
 
 export const LAYOUT_STORAGE_KEY = 'iron-verdict:display-layout';
 // The stream overlay (OBS browser source) keeps its own layout, so opening the
@@ -22,8 +24,9 @@ export const OVERLAY_LAYOUT_STORAGE_KEY = 'iron-verdict:display-layout:overlay';
 export const FREE_BLOCKS = ['timer', 'lights', 'verdict', 'lifter', 'attempt'];
 export const LAYOUT_BLOCKS = [...FREE_BLOCKS, 'cards', 'pause'];
 export const BLOCK_ANCHORS = {
-    timer: 'center', lights: 'center', verdict: 'center', lifter: 'left', attempt: 'right',
+    timer: 'center', lights: 'center', verdict: 'center', lifter: 'left', attempt: 'right', pause: 'center',
 };
+const PAUSE_DEFAULT = { x: 50, y: 50, s: 1, hidden: false };
 
 const VERSION = 1;
 const CODE_PREFIX = 'IV1.';
@@ -32,9 +35,6 @@ const Y_MAX = 99;             // the top edge stays on screen
 const SCALE_MIN = 0.3;
 const SCALE_MAX = 3;
 const SCALE_STEP = 0.05;
-// Above 2 the pause would only grow on a wide landscape screen: the CSS stops
-// it at the screen edge anyway (--pause-unit in components.css).
-const PAUSE_SCALE_MAX = 2;
 const GAP_MAX = 2;
 const GAP_STEP = 0.05;
 // Below 0.4 the reasons of neighbouring lights touch (comparison matrix in #154).
@@ -78,12 +78,6 @@ function sanitizeCards(raw) {
     return { gap: clamp(raw.gap, 0, GAP_MAX), hidden: raw.hidden === true };
 }
 
-function sanitizePause(raw) {
-    if (raw === undefined) return { s: 1 };
-    if (!raw || typeof raw !== 'object' || !isNum(raw.s)) return null;
-    return { s: clamp(raw.s, SCALE_MIN, PAUSE_SCALE_MAX) };
-}
-
 // Returns a clean copy of a layout, or null if it is not a complete, known
 // layout. Only numbers and booleans survive, so a stored or imported layout
 // can never inject CSS into blockStyle().
@@ -98,7 +92,7 @@ export function sanitizeLayout(raw) {
     }
     blocks.cards = sanitizeCards(src.cards);
     if (!blocks.cards) return null;
-    blocks.pause = sanitizePause(src.pause);
+    blocks.pause = src.pause === undefined ? { ...PAUSE_DEFAULT } : sanitizeFree(src.pause);
     if (!blocks.pause) return null;
     return { v: VERSION, blocks };
 }
@@ -156,7 +150,8 @@ export function layoutFromRects(root, rects) {
     }
     blocks.lights.gap = LIGHTS_GAP_DEFAULT;
     blocks.cards = { gap: CARDS_GAP_DEFAULT, hidden: false };
-    blocks.pause = { s: 1 };
+    // Not on screen outside a pause, so not measured: the default middle.
+    blocks.pause = { ...PAUSE_DEFAULT };
     return { v: VERSION, blocks };
 }
 
@@ -171,10 +166,6 @@ export function movedBlock(block, dx, dy) {
 
 export function scaledBlock(block, ratio) {
     return { ...block, s: clamp(snap(block.s * ratio, SCALE_STEP), SCALE_MIN, SCALE_MAX) };
-}
-
-export function scaledPause(pause, ratio) {
-    return { s: clamp(snap(pause.s * ratio, SCALE_STEP), SCALE_MIN, PAUSE_SCALE_MAX) };
 }
 
 export function cardsWithGap(cards, gap) {
@@ -203,9 +194,11 @@ export function blockStyle(block, anchor) {
     };
 }
 
-// The pause only scales; components.css keeps it in the middle.
+// The pause is placed by its centre: components.css shifts it by -50 % both
+// ways. Without a layout it keeps the CSS default (the middle).
 export function pauseStyle(pause) {
-    return { '--display-zoom': pause ? String(pause.s) : '' };
+    if (!pause) return { left: '', top: '', '--display-zoom': '' };
+    return { left: `${pause.x}%`, top: `${pause.y}%`, '--display-zoom': String(pause.s) };
 }
 
 // Export code: "IV1." + base64url(JSON). Layouts hold only ASCII, so btoa is safe.

@@ -723,19 +723,28 @@
             </div>
         </div>
 
-        <!-- Pause of the session (#163): always big in the middle, instead of
-             timer, lights, verdict and lifter while it runs. In the layout
-             editor's pause preview it only scales, from its centre (#190). -->
-        <div class="display-pause" data-testid="display-pause" x-ref="layout-pause"
-             :style="layoutPauseStyle()" x-show="pauseShown()" x-cloak>
+        <!-- Pause of the session (#163): big in the middle by default, instead
+             of timer, lights, verdict and lifter while it runs. A layout block
+             like the others, edited in the layout editor's pause preview (#190). -->
+        <div class="display-pause layout-block" data-testid="display-pause" data-layout-block="pause" x-ref="layout-pause"
+             :style="layoutPauseStyle()"
+             @pointerdown="layoutPointerDown($event, 'pause', 'move')"
+             :class="layoutBlockHidden('pause') && 'layout-hidden'"
+             x-show="pauseShown()" x-cloak>
             <div class="display-pause-title" x-text="t('pause.title')"></div>
             <div class="display-pause-time" data-testid="display-pause-time" x-text="pauseTimeText()"></div>
             <div class="display-pause-next" data-testid="display-pause-next" x-show="pauseNextText()" x-text="pauseNextText()"></div>
             <div class="layout-frame" x-show="layoutEditing" x-cloak>
-                <span class="layout-frame-label"
-                      x-text="t('displayLayout.blocks.pause') + (pauseIsSample() ? ' · ' + t('displayLayout.sampleTag') : '')"></span>
+                <span class="layout-frame-label">
+                    <span x-text="t('displayLayout.blocks.pause') + (pauseIsSample() ? ' · ' + t('displayLayout.sampleTag') : '')"></span>
+                    <button class="layout-hide-toggle" data-testid="layout-hide-pause"
+                            :aria-pressed="layoutBlockHidden('pause') ? 'true' : 'false'"
+                            @pointerdown.stop=""
+                            @click="toggleLayoutBlockHidden('pause')"
+                            x-text="layoutBlockHidden('pause') ? t('displayLayout.show') : t('displayLayout.hide')"></button>
+                </span>
                 <span class="layout-scale-handle" data-testid="layout-pause-scale-handle"
-                      @pointerdown.stop="layoutPointerDown($event, 'pause', 'pauseScale')"></span>
+                      @pointerdown.stop="layoutPointerDown($event, 'pause', 'scale')"></span>
             </div>
         </div>
 

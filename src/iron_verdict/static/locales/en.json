@@ -256,7 +256,7 @@
     "cancel": "Cancel",
     "reset": "Reset to default",
     "pausePreview": "Break preview",
-    "pauseHint": "Drag the corner to resize the break; it always stays in the middle. Changes apply with Save.",
+    "pauseHint": "Drag the break to move it, drag its corner to resize it. Hidden, this display shows nothing during a break. Changes apply with Save.",
     "codeButton": "Layout code",
     "codeExportLabel": "Code of this layout (copy it to another display)",
     "codeDefault": "Default layout – nothing to copy",
@@ -361,7 +361,7 @@
             "“Hide” / “Show” on each block hides it or shows it again, e.g. the timer.",
             "Changes apply only with “Save”. “Cancel” drops them, “Reset to default” brings back the default arrangement (stored with “Save”).",
             "Lifter and attempt show sample data in the editor; during a competition they only appear in VPortal sessions.",
-            "“Break preview” shows the break instead of the other blocks: drag its corner to resize it; it always stays in the middle."
+            "“Break preview” shows the break instead of the other blocks. Move, resize and hide it like them; hidden, this display shows nothing during a break."
           ]
         },
         {

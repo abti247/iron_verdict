@@ -230,12 +230,9 @@
    transparent, not removed, so they can still be measured when the first
    change leaves the default layout; opacity, not visibility, which the cards
    and reasons set back to visible. Their frames and handles catch no pointer. */
-.layout-pause-preview .layout-block,
-.layout-pause-preview .layout-block * {
+.layout-pause-preview .layout-block:not(.display-pause),
+.layout-pause-preview .layout-block:not(.display-pause) * {
     opacity: 0;
-    pointer-events: none;
-}
-.display-layout-editing .display-pause .layout-frame-label {
     pointer-events: none;
 }
 
