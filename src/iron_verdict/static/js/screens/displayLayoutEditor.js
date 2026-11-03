@@ -1,6 +1,7 @@
 // Display layout editor, mixed into the display screen component: the saved
 // layout of this device and the edit mode that changes it (drag, scale at the
-// handle, hide, export/import code; Save/Cancel/Reset). The model and its
+// handle, hide, export/import code; Save/Cancel/Reset). The pause preview
+// (#190) shows the pause instead of the other blocks, to set its zoom. The model and its
 // rules live in displayLayout.js; this file only turns pointer input into
 // layout changes. Nothing here touches the connection or the stores, so the
 // display keeps showing votes, timer and VPortal data while editing.
@@ -11,7 +12,7 @@
 
 import {
     loadLayout, saveLayout, clearLayout, layoutFromRects,
-    movedBlock, scaledBlock, cardsWithGap, lightsWithGap, withBlockHidden, blockStyle,
+    movedBlock, scaledBlock, scaledPause, cardsWithGap, lightsWithGap, withBlockHidden, blockStyle, pauseStyle,
     encodeLayout, decodeLayout, FREE_BLOCKS, BLOCK_ANCHORS,
     LAYOUT_STORAGE_KEY, OVERLAY_LAYOUT_STORAGE_KEY,
 } from '../displayLayout.js';
@@ -28,6 +29,7 @@ export function displayLayoutEditor() {
         layoutDraft: null,      // layout being edited; null = default
         layoutEditing: false,
         layoutCodeOpen: false,
+        layoutPausePreview: false, // editor shows the pause instead of the other blocks
         layoutCodeInput: '',
         layoutCodeError: false,
         layoutSaveError: false,
@@ -65,6 +67,11 @@ export function displayLayoutEditor() {
             return style;
         },
 
+        layoutPauseStyle() {
+            const layout = this.activeLayout();
+            return pauseStyle(layout && layout.blocks.pause);
+        },
+
         layoutBlockHidden(id) {
             const layout = this.activeLayout();
             return !!(layout && layout.blocks[id].hidden);
@@ -96,6 +103,7 @@ export function displayLayoutEditor() {
             this.displaySettingsOpen = false;
             this.layoutDraft = this.layout ? JSON.parse(JSON.stringify(this.layout)) : null;
             this.layoutCodeOpen = false;
+            this.layoutPausePreview = false;
             this.layoutCodeInput = '';
             this.layoutCodeError = false;
             this.layoutSaveError = false;
@@ -141,7 +149,7 @@ export function displayLayoutEditor() {
         },
 
         // mode: 'move' (free blocks), 'scale' (handle), 'gap' (cards block),
-        // 'lightsGap' (side handle of the lights).
+        // 'lightsGap' (side handle of the lights), 'pauseScale' (handle of the pause).
         layoutPointerDown(event, id, mode) {
             if (!this.layoutEditing || this._layoutDrag) return;
             event.preventDefault();
@@ -158,8 +166,10 @@ export function displayLayoutEditor() {
                 rootW: root.width,
                 rootH: root.height,
                 // Scaling keeps the anchor (left edge, centre or right edge) in place.
-                anchorX: anchor === 'left' ? rect.left : anchor === 'right' ? rect.right : rect.left + rect.width / 2,
-                h: rect.height,
+                anchorX: mode === 'pauseScale' ? rect.left + rect.width / 2
+                    : anchor === 'left' ? rect.left : anchor === 'right' ? rect.right : rect.left + rect.width / 2,
+                // The pause grows from its centre: its handle moves by half the change.
+                h: mode === 'pauseScale' ? rect.height / 2 : rect.height,
                 orb: this.$refs.layoutOrb.getBoundingClientRect().height,
                 // The lights are centred, so the side handle moves by as much
                 // as the gap changes.
@@ -176,10 +186,11 @@ export function displayLayoutEditor() {
             let next;
             if (d.mode === 'move') {
                 next = movedBlock(d.block, (dx / d.rootW) * 100, (dy / d.rootH) * 100);
-            } else if (d.mode === 'scale') {
+            } else if (d.mode === 'scale' || d.mode === 'pauseScale') {
                 const fromAnchor = d.startX - d.anchorX;
                 const rx = Math.abs(fromAnchor) >= 1 ? (event.clientX - d.anchorX) / fromAnchor : 0;
-                next = scaledBlock(d.block, Math.max(rx, (d.h + dy) / d.h));
+                const ratio = Math.max(rx, (d.h + dy) / d.h);
+                next = d.mode === 'pauseScale' ? scaledPause(d.block, ratio) : scaledBlock(d.block, ratio);
             } else if (d.mode === 'lightsGap') {
                 next = lightsWithGap(d.block, d.block.gap * (d.columnGap + dx) / d.columnGap);
             } else {
@@ -198,7 +209,9 @@ export function displayLayoutEditor() {
         },
 
         // The default layout has no positions: measure where the blocks are
-        // now, so the first change does not move anything else.
+        // now, so the first change does not move anything else. The pause
+        // preview only makes them invisible (layout-pause-preview), so they
+        // can still be measured.
         _materializeDraft() {
             if (!this.layoutDraft) {
                 const rects = {};
@@ -214,6 +227,7 @@ export function displayLayoutEditor() {
             this.layoutDraft = null;
             this._layoutDrag = null;
             this.layoutCodeOpen = false;
+            this.layoutPausePreview = false;
         },
     };
 }

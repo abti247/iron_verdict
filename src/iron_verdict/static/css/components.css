@@ -809,8 +809,17 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .display-settings-gear svg { width: 70%; height: 70%; }
 
 /* ===== PAUSE (#163) ===== */
-/* Always big in the middle of the display (and of the stream overlay). */
+/* Always big in the middle of the display (and of the stream overlay).
+   Every size is a multiple of --pause-unit (#190): 1vmin within the px limits
+   of the other display texts, times the pause zoom of the layout, but never
+   more than fits the screen, so the widest line ("Weiter mit: Bankdrücken",
+   bold in contrast mode, with the overlay's panel) and the whole block stay
+   on screen at any zoom and aspect ratio. Measured: that line is 75 units
+   wide, 81 with the overlay's padding and panel; the block 56 units high with
+   them. 1.15vw and 1.65vh leave about 7 % to spare (test_display_pause.py
+   checks it); lower them with a longer text or a wider font. */
 .display-pause {
+    --pause-unit: min(calc(clamp(2.35px, 1vmin, 12px) * var(--display-zoom, 1)), 1.15vw, 1.65vh);
     position: absolute;
     left: 50%;
     top: 50%;
@@ -821,26 +830,26 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 .display-pause-title {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: calc(clamp(40px, 17vmin, 210px) * var(--display-zoom, 1));
+    font-size: calc(26 * var(--pause-unit));
     letter-spacing: 0.08em;
     color: var(--text-chrome);
 }
 .display-pause-time {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: calc(clamp(28px, 10vmin, 130px) * var(--display-zoom, 1));
+    font-size: calc(15 * var(--pause-unit));
     letter-spacing: 0.04em;
     font-variant-numeric: tabular-nums;
     color: var(--text-chrome);
-    margin-top: calc(clamp(4px, 1.5vmin, 20px) * var(--display-zoom, 1));
+    margin-top: calc(1.5 * var(--pause-unit));
 }
 .display-pause-next {
     font-family: 'Rajdhani', sans-serif;
     font-weight: 600;
-    font-size: calc(clamp(14px, 4.5vmin, 56px) * var(--display-zoom, 1));
+    font-size: calc(6 * var(--pause-unit));
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--panel-text);
-    margin-top: calc(clamp(6px, 2.5vmin, 32px) * var(--display-zoom, 1));
+    margin-top: calc(2.5 * var(--pause-unit));
 }
 
 .display-settings-panel {

@@ -45,13 +45,15 @@ html.display-overlay .display-timer-big {
     clip-path: inset(0 0 0.15em 0 round 0.15em);
 }
 html.display-overlay .display-orb-reason { box-shadow: 0 0 0 0.12em var(--overlay-panel-bg); }
-html.display-overlay .vportal-corner,
-html.display-overlay .display-pause {
+html.display-overlay .vportal-corner {
     box-shadow: 0 0 0 calc(clamp(6px, 1vmin, 16px) * var(--display-zoom, 1)) var(--overlay-panel-bg);
 }
-/* Room around the pause text; the widest line ("Next: …") would touch the panel's edge otherwise. */
+/* Room around the pause text; the widest line ("Next: …") would touch the
+   panel's edge otherwise. In pause units (components.css), so the panel grows
+   with the pause zoom and stays on screen with it. */
 html.display-overlay .display-pause {
-    padding: clamp(8px, 1.5vmin, 24px) clamp(12px, 2vmin, 32px);
+    box-shadow: 0 0 0 var(--pause-unit) var(--overlay-panel-bg);
+    padding: calc(1.5 * var(--pause-unit)) calc(2 * var(--pause-unit));
 }
 /* The editor fades a hidden or sample block's children (display-layout.css);
    the corners carry the panel on the block itself, so fade it here too, or a

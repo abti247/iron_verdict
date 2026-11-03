@@ -226,6 +226,19 @@
     background: var(--layout-frame-cards);
 }
 
+/* Pause preview (#190): the pause instead of the other blocks. They are only
+   transparent, not removed, so they can still be measured when the first
+   change leaves the default layout; opacity, not visibility, which the cards
+   and reasons set back to visible. Their frames and handles catch no pointer. */
+.layout-pause-preview .layout-block,
+.layout-pause-preview .layout-block * {
+    opacity: 0;
+    pointer-events: none;
+}
+.display-layout-editing .display-pause .layout-frame-label {
+    pointer-events: none;
+}
+
 /* ===== EDITOR TOOLBAR ===== */
 /* Centred by auto margins between left and right, not by left: 50% plus a
    transform: that would give it only half the screen width and wrap the
@@ -277,6 +290,10 @@
     cursor: pointer;
 }
 .layout-toolbar-btn:hover { border-color: var(--panel-border-hover); color: var(--panel-text-bright); }
+.layout-toolbar-btn[aria-pressed="true"] {
+    border-color: var(--layout-frame);
+    color: var(--panel-text-bright);
+}
 .layout-toolbar-btn--primary {
     background: var(--blood);
     border-color: var(--blood-bright);
