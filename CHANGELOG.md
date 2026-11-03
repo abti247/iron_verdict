@@ -11,6 +11,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Releases are deployed to production by the release pipeline after a separate third approval, followed by an automatic short check against iron-verdict.com; rollback stays manual
 
 ### Changed
+- The break on the display and the stream overlay is larger by default and can be resized in the layout editor with "Break preview"; it stays in the middle and never runs off the screen, also in portrait. Saved layouts and layout codes without a break size keep the new default
 - The Grafana dashboard marks the snapshot age orange from 3 minutes instead of 2, since up to about 2½ minutes is normal with a scrape every minute
 - More room on the display without a saved layout (also the stream overlay and "Reset to default" in the layout editor): the timer stands further from the lights and the cards a little lower under them; saved layouts and layout codes stay as they are
 
