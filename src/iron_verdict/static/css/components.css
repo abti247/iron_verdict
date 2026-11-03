@@ -398,7 +398,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     gap: 0.5rem;
     width: var(--orb-size);
     /* light + card (20 % of the light) + 2 gaps + 2 reason lines, plus the
-       card gap of a saved layout (#106; 0 by default) */
+       card gap (default layout 0.1, #188; a saved layout its own, #106) */
     min-height: calc(var(--orb-size) * (1.2 + var(--orb-card-gap, 0)) + 1rem + 2 * 1.3 * var(--orb-reason-size));
 }
 
@@ -463,7 +463,8 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .display-orb-card {
     width: 40%;
     aspect-ratio: 2 / 1;
-    /* Extra gap to the light from a saved layout (#106), in light sizes. */
+    /* Extra gap to the light, in light sizes: on the display from the
+       default layout (#188) or a saved layout (#106); 0 elsewhere. */
     margin-top: calc(var(--orb-size, 0px) * var(--orb-card-gap, 0));
     border-radius: calc(4px * var(--display-zoom, 1));
     visibility: hidden;

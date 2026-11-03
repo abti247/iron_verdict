@@ -152,6 +152,28 @@
     pointer-events: auto;
 }
 
+/* The timer's label sits under its frame (#188): above it, the editor
+   toolbar covers it on screens up to 768px high. In the default layout it
+   lies in the room between timer and lights (--display-timer-room). It ends
+   left of the scale handle (bottom right corner), so the handle never covers
+   its hide button: the handle reaches 12px into the frame (right: -12px,
+   24px wide), the label ends 14px from its edge, 2px clear (change both
+   together). Under a narrow timer it grows to the left.
+   While editing the timer lies one layer above the other blocks: each block
+   paints as a whole in DOM order (in a saved layout its transform makes it a
+   stacking context), the timer comes first, so a timer scaled up or moved
+   close to the lights would have its label under them. Gear, panel and
+   toolbar stay above it. */
+.layout-block--timer .layout-frame-label {
+    top: 100%;
+    bottom: auto;
+    left: auto;
+    right: 14px;
+}
+.display-layout-editing .layout-block--timer {
+    z-index: 1;
+}
+
 /* The attempt block is anchored at its right edge: scale it from the left,
    and its label grows to the left, so it stays on screen (#162). */
 .vportal-corner-right .layout-frame-label {
@@ -207,8 +229,9 @@
 /* ===== EDITOR TOOLBAR ===== */
 /* Centred by auto margins between left and right, not by left: 50% plus a
    transform: that would give it only half the screen width and wrap the
-   German buttons into three rows. Kept flat so at 1280×720 it ends above
-   the timer label (#162). */
+   German buttons into three rows. Kept flat, so it covers as little as
+   possible of the blocks below it (#162; the timer label sits under the
+   timer since #188). */
 .layout-toolbar {
     position: absolute;
     top: 6px;

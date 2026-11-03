@@ -174,7 +174,13 @@ describe('layoutFromRects', () => {
         expect(layout.blocks.lights).toEqual({ x: 50, y: 30, s: 1, hidden: false, gap: 1 });
         expect(layout.blocks.lifter).toEqual({ x: 2, y: 90, s: 1, hidden: false });
         expect(layout.blocks.attempt).toEqual({ x: 98, y: 90, s: 1, hidden: false });
-        expect(layout.blocks.cards).toEqual({ gap: 0, hidden: false });
+    });
+
+    it('gives the cards the gap of the default layout (0.1 light sizes, #188), so they do not jump when editing starts', () => {
+        const root = { left: 0, top: 0, width: 1000, height: 500 };
+        const r = rect(0, 0, 100);
+        const layout = layoutFromRects(root, { timer: r, lights: r, verdict: r, lifter: r, attempt: r });
+        expect(layout.blocks.cards).toEqual({ gap: 0.1, hidden: false });
     });
 
     it('measures relative to the display, not the page', () => {
