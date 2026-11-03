@@ -303,6 +303,83 @@ def test_reset_restores_default_layout(page, server_url):
     assert abs(x - default_timer[0]) < 0.1 and abs(y - default_timer[1]) < 0.1
 
 
+CENTER_LINES = "layout-center-lines"
+
+
+def center_line_offsets(page):
+    """Distance in px of the horizontal line's middle from the display's
+    vertical centre and of the vertical line's middle from its horizontal
+    centre, plus the lines' thickness (height of h, width of v)."""
+    return page.evaluate(
+        """() => {
+            const root = document.querySelector('.display-full').getBoundingClientRect();
+            const h = document.querySelector('.layout-center-line--h').getBoundingClientRect();
+            const v = document.querySelector('.layout-center-line--v').getBoundingClientRect();
+            return [ Math.abs(h.top + h.height / 2 - (root.top + root.height / 2)),
+                     Math.abs(v.left + v.width / 2 - (root.left + root.width / 2)),
+                     h.width, v.height ];
+        }"""
+    )
+
+
+@pytest.mark.parametrize("size", [(1920, 1080), (1080, 1920)])
+def test_center_lines_show_only_while_editing(page, server_url, size):
+    """A dashed horizontal and vertical line through the middle of the screen
+    helps to centre blocks (#189). They show when the editor opens — across
+    the whole display, landscape and portrait — and are gone again after
+    "Save", after "Cancel" and on the normal display."""
+    open_display(page, server_url, size)
+    lines = page.get_by_test_id(CENTER_LINES)
+    expect(lines).to_be_hidden()
+
+    open_editor(page)
+    expect(lines).to_be_visible()
+    dy, dx, h_width, v_height = center_line_offsets(page)
+    assert dy <= 1 and dx <= 1, (dy, dx)
+    assert h_width == size[0] and v_height == size[1], (h_width, v_height)
+    save(page)
+    expect(lines).to_be_hidden()
+
+    open_editor(page)
+    expect(lines).to_be_visible()
+    page.get_by_test_id("layout-cancel").click()
+    expect(page.locator(ROOT)).not_to_have_class(EDITING)
+    expect(lines).to_be_hidden()
+
+
+def test_blocks_on_the_center_lines_stay_editable(page, server_url):
+    """The lines lie behind the blocks and catch no pointer: the timer, which
+    sits on the vertical line, is grabbed right on it, dragged, scaled and
+    hidden as without the lines (#189)."""
+    open_display(page, server_url)
+    open_editor(page)
+    timer = block(page, "timer")
+    box = timer.bounding_box()
+    center_x = page.viewport_size["width"] / 2
+    on_line = [center_x, box["y"] + box["height"] / 2]
+    assert box["x"] < center_x < box["x"] + box["width"]
+    hit = page.evaluate(
+        "([x, y]) => !!document.elementFromPoint(x, y).closest('[data-layout-block=\"timer\"]')", on_line
+    )
+    assert hit
+
+    timer_x, timer_y = block_pos(page, "timer")[:2]
+    page.mouse.move(*on_line)
+    page.mouse.down()
+    page.mouse.move(on_line[0] + 192, on_line[1], steps=4)
+    page.mouse.up()
+    width = block_pos(page, "timer")[2]
+    drag(page, timer.locator(".layout-scale-handle"), width * 0.25, 0)
+    page.get_by_test_id("layout-hide-timer").click()
+    save(page)
+
+    layout = stored_layout(page)
+    assert layout["blocks"]["timer"]["x"] == round(timer_x + 10)
+    assert layout["blocks"]["timer"]["y"] == round(timer_y)
+    assert layout["blocks"]["timer"]["s"] > 1.2
+    assert layout["blocks"]["timer"]["hidden"] is True
+
+
 def test_hidden_blocks_stay_hidden_but_show_faded_in_editor(competition):
     """Hide the timer and the cards + reasons → after saving and a reload the
     timer is gone and a red light shows no card or reason; in the editor both
