@@ -425,6 +425,10 @@ def test_default_layout_gives_timer_and_cards_room_on_display_and_overlay(compet
         expect(page.locator(ROOT)).not_to_have_class(CUSTOM)
         assert_default_spacing(page, sizes)
 
+
+CENTER_LINES = "layout-center-lines"
+
+
 def center_line_offsets(page):
     """Distance in px of the horizontal line's middle from the display's
     vertical centre and of the vertical line's middle from its horizontal
