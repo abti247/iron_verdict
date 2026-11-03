@@ -419,9 +419,9 @@ def decode_code(code):
 def expect_whole_pause_on_screen(page, spread=0):
     """Pause block (plus the overlay panel's spread) and every line inside the viewport."""
     size = page.viewport_size
-    for locator in [pause_block(page)] + [page.locator(f"{ROOT} {s}") for s in PAUSE_LINES]:
+    blocks = [(pause_block(page), spread)] + [(page.locator(f"{ROOT} {s}"), 0) for s in PAUSE_LINES]
+    for locator, pad in blocks:
         box = locator.bounding_box()
-        pad = spread if locator == pause_block(page) else 0
         assert box["x"] - pad >= 0 and box["y"] - pad >= 0, box
         assert box["x"] + box["width"] + pad <= size["width"], (box, size)
         assert box["y"] + box["height"] + pad <= size["height"], (box, size)
