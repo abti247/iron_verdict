@@ -11,7 +11,9 @@ The gap between the three lights is set at a handle on the side of the
 lights block (#154).
 Every block can be hidden. "Save" stores the layout on this device, "Cancel"
 drops the changes, "Reset" brings back the default. A layout can be copied to
-another device as a code. Without a saved layout the display looks as before.
+another device as a code. Without a saved layout the display shows the
+default flow layout, with room between timer and lights and between lights
+and cards (#188); a saved layout keeps its own spacing.
 While editing, the display keeps showing votes, timer and VPortal data.
 """
 
@@ -23,6 +25,8 @@ import pytest
 from playwright.sync_api import expect
 
 from tests.e2e.network_switch import cut_network, join_with_network_switch, restore_network
+from tests.e2e.test_display_overlay import open_overlay
+from tests.e2e.test_red_light_card import resize
 from tests.e2e.test_vportal_integration import _connect_and_open_display
 
 LAYOUT_KEY = "iron-verdict:display-layout"
@@ -136,17 +140,25 @@ def test_without_saved_layout_display_is_unchanged(page, server_url):
     assert stored_layout(page) is None
 
 
+def card_top(page):
+    """Top of the first light's card in px (in the layout also without a card)."""
+    return page.locator(f"{ROOT} .display-orb-card").first.bounding_box()["y"]
+
+
 def test_entering_edit_mode_does_not_move_blocks(page, server_url):
     """Opening the editor and grabbing a block without moving it keeps every
-    block exactly where the default layout put it."""
+    block exactly where the default layout put it, the cards under the
+    lights included (their default gap, #188)."""
     open_display(page, server_url)
     before = {b: block_pos(page, b)[:2] for b in ("timer", "lights", "verdict")}
+    card_before = card_top(page)
     open_editor(page)
     drag(page, block(page, "verdict"), 0, 0)
     expect(page.locator(ROOT)).to_have_class(CUSTOM)
     for b, (x, y) in before.items():
         nx, ny = block_pos(page, b)[:2]
         assert abs(nx - x) < 0.6 and abs(ny - y) < 0.6, (b, (x, y), (nx, ny))
+    assert abs(card_top(page) - card_before) < 1, (card_before, card_top(page))
 
 
 def test_move_and_scale_then_save_survives_reload(page, server_url):
@@ -280,20 +292,35 @@ def test_cancel_discards_changes(page, server_url):
     expect(block(page, "timer")).to_be_visible()
 
 
+def default_positions(page):
+    """Tops of timer, lights and verdict in percent of the display and of the
+    first card in px."""
+    return [block_pos(page, b)[1] for b in ("timer", "lights", "verdict")] + [card_top(page)]
+
+
+def assert_same_positions(page, expected):
+    for before, now in zip(expected, default_positions(page)):
+        assert abs(now - before) < 0.1, (expected, default_positions(page))
+
+
 def test_reset_restores_default_layout(page, server_url):
-    """"Reset" in the editor shows the default layout; after "Save" no layout
+    """"Reset" in the editor shows the default layout with its spacing (timer,
+    lights, cards and verdict where they were, #188); after "Save" no layout
     is stored and the display is the default flow layout again, also after a
     reload."""
     open_display(page, server_url)
     default_timer = block_pos(page, "timer")[:2]
+    default = default_positions(page)
     open_editor(page)
     drag(page, block(page, "timer"), 300, 200)
+    drag(page, block(page, "cards"), 0, 60)
     save(page)
     assert stored_layout(page) is not None
 
     open_editor(page)
     page.get_by_test_id("layout-reset").click()
     expect(page.locator(ROOT)).not_to_have_class(CUSTOM)
+    assert_same_positions(page, default)
     save(page)
     assert stored_layout(page) is None
     page.reload()
@@ -301,6 +328,117 @@ def test_reset_restores_default_layout(page, server_url):
     expect(page.locator(ROOT)).not_to_have_class(CUSTOM)
     x, y = block_pos(page, "timer")[:2]
     assert abs(x - default_timer[0]) < 0.1 and abs(y - default_timer[1]) < 0.1
+    assert_same_positions(page, default)
+
+
+# Default layout spacing (#188): the timer keeps 5.5 vmin more than the flow
+# gap (12 px) from the lights, the cards 0.1 light sizes more than the gap in
+# a light's column (0.5rem = 8 px) — the spacing the maintainer chose (1B).
+FLOW_GAP = 12
+COLUMN_GAP = 8
+TIMER_ROOM_VMIN = 0.055
+CARD_GAP_LIGHTS = 0.1
+
+SPACING_JS = """() => {
+    const root = document.querySelector('.display-full');
+    const box = (el) => el.getBoundingClientRect();
+    const timer = box(root.querySelector('[data-layout-block="timer"]'));
+    const wraps = [...root.querySelectorAll('.display-lights .display-orb-wrap')];
+    const orbs = wraps.map((w) => box(w.querySelector('.display-orb')));
+    const reasons = wraps.map((w) => w.querySelector('.display-orb-reason'))
+        .filter((el) => getComputedStyle(el).display !== 'none');
+    const verdict = box(root.querySelector('.verdict-stamp'));
+    return {
+        timerTop: timer.top,
+        timerBottom: timer.bottom,
+        orbTop: Math.min(...orbs.map((o) => o.top)),
+        cardGaps: wraps.map((w, i) => box(w.querySelector('.display-orb-card')).top - orbs[i].bottom),
+        orbSize: orbs[0].height,
+        reasons: reasons.map((el) => {
+            const r = box(el);
+            return [r.left, r.top, r.right, r.bottom,
+                    Math.round(r.height / parseFloat(getComputedStyle(el).lineHeight))];
+        }),
+        verdict: [verdict.left, verdict.top, verdict.right, verdict.bottom],
+    };
+}"""
+
+
+def assert_default_spacing(page, sizes):
+    """At every size: timer and cards have their room, and timer, lights,
+    reasons (at least one of three lines) and verdict lie on screen without
+    overlapping each other."""
+    for width, height in sizes:
+        resize(page, width, height)
+        m = page.evaluate(SPACING_JS)
+        where = (width, height, m)
+        vmin = min(width, height)
+        assert abs(m["orbTop"] - m["timerBottom"] - (FLOW_GAP + TIMER_ROOM_VMIN * vmin)) <= 1, where
+        for gap in m["cardGaps"]:
+            assert abs(gap - (COLUMN_GAP + CARD_GAP_LIGHTS * m["orbSize"])) <= 1, where
+        assert max(r[4] for r in m["reasons"]) >= 3, where
+        assert m["timerTop"] >= 0 and m["timerBottom"] <= m["orbTop"], where
+        v_left, v_top, v_right, v_bottom = m["verdict"]
+        assert v_left >= 0 and v_right <= width and v_bottom <= height, where
+        for left, _, right, bottom, _ in m["reasons"]:
+            assert left >= 0 and right <= width and bottom <= v_top, where
+
+
+def german_reload(page):
+    page.evaluate("localStorage.setItem('iron-verdict-lang', 'de')")
+    page.reload()
+
+
+def test_default_layout_gives_timer_and_cards_room_on_display_and_overlay(competition):
+    """Default layout (no saved layout), German display and stream overlay,
+    bench press with the two longest German reasons (three lines each): the
+    timer stands 5.5 vmin further from the lights and the cards 0.1 light
+    sizes further below them than the plain flow gaps (#188). Timer, lights,
+    cards, reasons and verdict fit the screen without overlapping at 16:9
+    (1920×1080, 1280×720) and in portrait (1080×1920, 720×1280), on the hall
+    display and in the overlay."""
+    head, left, right = competition.join_all_judges()
+    display = competition.join_as("display")
+    german_reload(display)
+    display.locator(ROOT).wait_for(state="visible")
+    overlay, _ = open_overlay(
+        competition,
+        before_goto=lambda p: p.add_init_script("localStorage.setItem('iron-verdict-lang', 'de')"),
+    )
+
+    head.get_by_test_id("lift-type-select").select_option("bench")
+    competition.vote_and_lock(head, "white")
+    competition.vote_and_lock(left, "yellow", "Bar contact with rack supports")
+    competition.vote_and_lock(right, "blue", "Arms not locked at completion")
+
+    sizes = ((1920, 1080), (1280, 720), (1080, 1920), (720, 1280))
+    for page in (display, overlay):
+        expect(page.locator(".verdict-stamp")).to_have_text("Ungültiger Versuch")
+        expect(page.locator(f"{ROOT} .display-orb-reason", has_text="Hantelständern")).to_be_visible()
+        expect(page.locator(ROOT)).not_to_have_class(CUSTOM)
+        assert_default_spacing(page, sizes)
+
+
+def test_saved_layout_keeps_its_spacing(page, server_url):
+    """A layout saved before #188 (timer at 10 %, lights at 30 %, cards
+    without extra gap) shows exactly as saved: the new default spacing does
+    not touch it."""
+    open_display(page, server_url)
+    page.evaluate(f"""localStorage.setItem('{LAYOUT_KEY}', JSON.stringify({{v: 1, blocks: {{
+        timer: {{x: 50, y: 10, s: 1, hidden: false}},
+        lights: {{x: 50, y: 30, s: 1, hidden: false, gap: 1}},
+        cards: {{gap: 0, hidden: false}},
+        verdict: {{x: 50, y: 80, s: 1, hidden: false}},
+        lifter: {{x: 2, y: 88, s: 1, hidden: false}},
+        attempt: {{x: 98, y: 88, s: 1, hidden: false}}}}}}))""")
+    page.reload()
+    page.locator(ROOT).wait_for(state="visible")
+    expect(page.locator(ROOT)).to_have_class(CUSTOM)
+    for block_id, (x, y) in {"timer": (50, 10), "lights": (50, 30), "verdict": (50, 80)}.items():
+        bx, by = block_pos(page, block_id)[:2]
+        assert abs(bx - x) < 0.1 and abs(by - y) < 0.1, (block_id, bx, by)
+    for gap in page.evaluate(SPACING_JS)["cardGaps"]:
+        assert abs(gap - COLUMN_GAP) <= 0.5, gap
 
 
 CENTER_LINES = "layout-center-lines"
@@ -669,22 +807,25 @@ def test_save_failure_is_shown_and_keeps_editor_open(page, server_url):
 @pytest.mark.parametrize("lang", ["en", "de"])
 @pytest.mark.parametrize("size", [(1920, 1080), (1280, 720)])
 def test_editor_labels_do_not_overlap_in_default_layout(competition, size, lang):
-    """A no lift with reasons on a display in the default layout, editor open,
-    in English and German (longer labels and verdict) (#162): no two block
-    labels overlap, and every hide/show button lies fully on screen,
-    uncovered by the toolbar or anything else, so it can be clicked. Before
-    the fix the verdict label covered the label of the cards + reasons
-    (under the cards frame), and at 1280×720 the toolbar covered the timer
-    label and the attempt button stuck out on the right."""
+    """A no lift with the longest bench reasons (three lines in German) on a
+    display in the default layout, editor open, in English and German
+    (longer labels and verdict) (#162): no two block labels overlap, and
+    every hide/show button lies fully on screen, uncovered by the toolbar or
+    anything else, so it can be clicked. Before the fix the verdict label
+    covered the label of the cards + reasons (under the cards frame), and at
+    1280×720 the toolbar covered the timer label and the attempt button stuck
+    out on the right. Since the timer stands further from the lights (#188)
+    its label sits under the timer, where the toolbar cannot cover it."""
     head, left, right = competition.join_all_judges()
     display = competition.join_as("display")
     display.set_viewport_size({"width": size[0], "height": size[1]})
     display.evaluate(f"localStorage.setItem('iron-verdict-lang', '{lang}')")
     display.reload()
     display.locator(ROOT).wait_for(state="visible")
-    vote(head, "white")
-    vote(left, "red", with_reason=True)
-    vote(right, "blue", with_reason=True)
+    head.get_by_test_id("lift-type-select").select_option("bench")
+    competition.vote_and_lock(head, "white")
+    competition.vote_and_lock(left, "yellow", "Bar contact with rack supports")
+    competition.vote_and_lock(right, "blue", "Arms not locked at completion")
     expect(display.locator(".verdict-stamp")).to_have_class(re.compile(r"\binvalid\b"))
     expect(display.locator(f"{ROOT} .display-orb-reason").first).to_be_visible()
     open_editor(display)

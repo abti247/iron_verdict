@@ -37,6 +37,10 @@ const GAP_STEP = 0.05;
 const LIGHTS_GAP_MIN = 0.4;
 const LIGHTS_GAP_MAX = 2;
 const LIGHTS_GAP_DEFAULT = 1;
+// The cards' gap in the default flow layout (--display-card-gap in
+// variables.css, #188): a layout made from the default keeps it, so the cards
+// do not jump when editing starts.
+const CARDS_GAP_DEFAULT = 0.1;
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 // Two decimals hide float noise (1.5 * 1.1 → 1.6500000000000001).
@@ -139,7 +143,7 @@ export function layoutFromRects(root, rects) {
         };
     }
     blocks.lights.gap = LIGHTS_GAP_DEFAULT;
-    blocks.cards = { gap: 0, hidden: false };
+    blocks.cards = { gap: CARDS_GAP_DEFAULT, hidden: false };
     return { v: VERSION, blocks };
 }
 

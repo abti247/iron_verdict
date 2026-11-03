@@ -279,6 +279,18 @@
     column-gap: var(--orb-reason-gap);
 }
 
+/* Default flow layout (no saved layout, #188): room between the timer and the
+   lights, and the cards a little below the lights. The flow stays centred,
+   so the timer moves up and the verdict down by half the added height. A
+   saved layout places every block itself and sets its own card gap
+   (inline --orb-card-gap, display-layout.css). */
+.display-full:not(.display-layout-custom) .layout-block--timer {
+    margin-bottom: var(--display-timer-room);
+}
+.display-full:not(.display-layout-custom) .display-lights {
+    --orb-card-gap: var(--display-card-gap);
+}
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 600px) {
     .judge-timer { font-size: 48px; }

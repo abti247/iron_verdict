@@ -43,6 +43,13 @@
     /* Extra room above the verdict in the default layout for the cards and
        verdict editor labels (27px each, see .layout-frame-label) (#162). */
     --layout-verdict-room: 48px;
+    /* Default display layout (#188): room between timer and lights, on top of
+       the 12px flow gap (5.5vmin, bounded over the same vmin range as the
+       timer's font size), and the cards' gap under the lights, in light
+       sizes. displayLayout.js gives a layout made from the default the same
+       card gap (CARDS_GAP_DEFAULT). */
+    --display-timer-room: clamp(11px, 5.5vmin, 66px);
+    --display-card-gap: 0.1;
     /* Stream overlay (#107): checkerboard behind the blocks while editing,
        notice when the overlay has no session. */
     --overlay-checker-a: #1a1a1f;
