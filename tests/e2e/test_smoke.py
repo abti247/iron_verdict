@@ -3,7 +3,8 @@
 Also the container smoke test: CI runs this file with ``E2E_BASE_URL``
 against the freshly built Docker image (see ``.github/workflows/image.yml``),
 so it must not depend on in-process server state. Like every ``remote_safe``
-test it also runs against Railway staging before a release.
+test it also runs against Railway staging before a release, and as
+``prod_safe`` against production after the release deploy.
 """
 
 import json
@@ -15,7 +16,7 @@ from httpx_ws import connect_ws
 import pytest
 from playwright.sync_api import expect
 
-pytestmark = pytest.mark.remote_safe
+pytestmark = [pytest.mark.remote_safe, pytest.mark.prod_safe]
 
 
 def test_health_endpoint_reports_ok(server_url):
