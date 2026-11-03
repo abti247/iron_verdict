@@ -23,7 +23,7 @@ pytest --tb=short -v               # readable pass/fail
 | Job | What it runs |
 |---|---|
 | `backend` | Python 3.13 (same as the Dockerfile), `pip install -e ".[dev]"`, `pytest tests/ --ignore=tests/e2e` |
-| `js` | Node LTS, `npm ci`, `npx vitest run` |
+| `js` | Node 24 (pinned, so a new Node major cannot change the test environment unannounced), `npm ci`, `npx vitest run` |
 | `e2e` | Same Python setup + Chromium with its system packages (`playwright install --with-deps chromium`; only `install-deps` when the browser is cached), `pytest tests/e2e/` with `--tracing retain-on-failure --screenshot only-on-failure` |
 
 - pip, npm and the Playwright browser download are cached. The browser cache key is the resolved Playwright version, because each Playwright release pins its own Chromium build.

@@ -179,7 +179,10 @@ describe('vote delivery edge cases', () => {
 
     it('resends from memory when sessionStorage could not store the pending vote', () => {
         const app = makeApp({ selectedVote: 'white' });
-        const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+        // The prototype of the global sessionStorage, not Storage.prototype:
+        // with Node's built-in Web Storage (default from Node 25) the global
+        // is Node's Storage, not jsdom's, and Storage.prototype misses it.
+        const setItem = vi.spyOn(Object.getPrototypeOf(sessionStorage), 'setItem').mockImplementation(() => {
             throw new Error('QuotaExceededError');
         });
         try {
