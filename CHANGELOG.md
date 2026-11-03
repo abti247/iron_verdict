@@ -7,6 +7,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Releases are deployed to production by the release pipeline after a separate third approval, followed by an automatic short check against iron-verdict.com; rollback stays manual
 
 ### Changed
 - The Grafana dashboard marks the snapshot age orange from 3 minutes instead of 2, since up to about 2½ minutes is normal with a scrape every minute

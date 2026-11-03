@@ -1,6 +1,6 @@
 ---
 name: release
-description: 'Cut a release of Iron Verdict: turn CHANGELOG [Unreleased] into a version section, bump pyproject.toml, open the release PR, then guide the maintainer through the two approvals of the release chain (Railway staging E2E, then tag + release) and the Railway deploy and rollback. Use when asked to release, "Release erstellen" or `/release 0.2.0`.'
+description: 'Cut a release of Iron Verdict: turn CHANGELOG [Unreleased] into a version section, bump pyproject.toml, open the release PR, then guide the maintainer through the three approvals of the release chain (Railway staging E2E, tag + release, production deploy + production check) and the manual rollback. Use when asked to release, "Release erstellen" or `/release 0.2.0`.'
 argument-hint: <version, e.g. 0.2.0>
 ---
 
@@ -8,7 +8,7 @@ argument-hint: <version, e.g. 0.2.0>
 
 `.claude/CLAUDE.md` and [docs/release.md](../../../docs/release.md) are the rule sources; this skill walks through the runbook. Talk to the maintainer in **German**; CHANGELOG, commit messages and code stay in **English**.
 
-A release never builds anything: it promotes the image the Main workflow already tested (`sha-<commit>`) to `vX.Y.Z`, after it passed the E2E tests on Railway staging. The session never pushes a tag — the release chain in `main.yml` creates it after the maintainer's second approval. Deploying to production stays a manual step of the maintainer.
+A release never builds anything: it promotes the image the Main workflow already tested (`sha-<commit>`) to `vX.Y.Z`, after it passed the E2E tests on Railway staging. The session never pushes a tag — the release chain in `main.yml` creates it after the maintainer's second approval, and deploys to production after the third. Only the rollback is a manual step of the maintainer.
 
 ## 1. Decide the version
 
@@ -28,25 +28,28 @@ On the session branch (cloud) or a new branch `release/vX.Y.Z` from up-to-date `
 - Commit (`chore(release): vX.Y.Z`), push, open the PR (German prose, no `Closes`). Show the maintainer the release notes preview.
 - The maintainer merges after green CI. Do not merge yourself.
 
-## 3. Release chain: two approvals by the maintainer
+## 3. Release chain: three approvals by the maintainer
 
 After the merge, the **Main** workflow of the merge commit runs CI and the image check, publishes `ghcr.io/abti247/iron_verdict:sha-<7-char commit>` and stops at **approval Release-Kandidat** (job `staging`). Tell the maintainer, in German, with the link to the run:
 
 1. **Release-Kandidat freigeben** (run → *Review deployments*): deploys `sha-<commit>` to Railway staging (`https://ironverdict-staging.up.railway.app`) and runs the `remote_safe` E2E tests against it.
 2. Only if `staging` is green: **Release freigeben**. `release.yml` re-tags the image as `vX.Y.Z` (same digest), creates the tag `vX.Y.Z` and the GitHub release.
+3. Only if `release` is green, and **only when no competition runs or is about to start on production**: **Produktion freigeben**. Job `production` deploys `vX.Y.Z` to `https://iron-verdict.com` and waits for the footer `sha-<commit>`; job `production-check` then runs the `prod_safe` E2E tests (smoke + competition flow, about 7 sessions, ended afterwards) against it. Say plainly that this approval is independent of *Release*, restarts the container (every device reconnects) and may stay open for days.
 
 Check the run (GitHub tools) and report:
 
 - `release-check` skipped the chain (`vX.Y.Z` already exists, or `main` moved on): say so; with a newer head, its run carries the release.
 - `staging` red: no tag, no release. Read the failing step and the `playwright-traces-staging` artifact. Railway outage → the maintainer fixes it and uses *Re-run failed jobs*. Code defect → a normal fix PR, then a new release PR with a new version (step 1). Never retry a failing test until it passes.
 - `release` green: its job summary shows the digests of `sha-<commit>` and `vX.Y.Z` — identical. GitHub → Releases shows `vX.Y.Z` with the CHANGELOG section and `docker pull ghcr.io/abti247/iron_verdict:vX.Y.Z`.
+- `production` red: production keeps the previous version. `Not Authorized` → the token `RAILWAY_PROD_TOKEN` is invalid (renewal in `docs/release.md`); Railway outage → *Re-run failed jobs*.
+- `production-check` red: production already runs `vX.Y.Z`; nothing is rolled back automatically. Read the failing test and the `playwright-traces-production` artifact and tell the maintainer whether it looks like a real defect (→ rollback, step 4) or a network/Railway/Cloudflare hiccup (→ *Re-run failed jobs* repeats only the tests). Never retry a failing test until it passes.
+- `production-check` green: remind the maintainer of the one manual check left: `/static/js/app.js` answers `cache-control: no-cache` (if it shows `max-age=…`, Cloudflare's Browser Cache TTL must be set back to *Respect Existing Headers* and the cache purged, see `docs/release.md`).
 
 Do not push a tag yourself: a pushed tag starts nothing, and the chain would then skip the release because the tag exists.
 
-## 4. Hand over deploy and rollback
+## 4. Hand over the rollback
 
 Tell the maintainer, in German, with the concrete values filled in:
 
-- **Deploy:** Railway → service `iron_verdict` → Settings → Source → Source Image → tag from `v<previous>` to `vX.Y.Z` → save and deploy. Then check `/health`, the footer shows `sha-<commit>`, a test session works, and `/static/js/app.js` answers `cache-control: no-cache` (if it shows `max-age=…`, Cloudflare's Browser Cache TTL must be set back to *Respect Existing Headers* and the cache purged, see `docs/release.md`).
-- **Rollback:** same place, tag back to `v<previous>`, deploy. About one minute, no build.
-- Not on a competition day unless it is a rollback; checklist in `docs/release.md`.
+- **Rollback (manual):** Railway → service `iron_verdict` → environment `production` → Settings → Source → Source Image → tag from `vX.Y.Z` back to `v<previous>` → save and deploy. About one minute, no build. Then check `/health` and that the footer shows the `sha-<commit>` of `v<previous>`.
+- No approval *Produktion* on a competition day; checklist in `docs/release.md`.
