@@ -10,19 +10,29 @@ test_competition_flow.py), when its time is up (decided by the server;
 backend tests) or with "End break" on any display; afterwards the displays
 show the real state again. A past time is rejected. The pause survives
 reload and connection loss.
+
+Its size and place (#190): 26 / 15 / 6 vmin in the middle by default; in the
+layout editor's "Break preview" it is moved, scaled and hidden like the other
+blocks, stored per device with the layout and in its code, and never larger
+than the screen.
 """
 
+import base64
 import datetime
+import json
 import re
 import time
 from zoneinfo import ZoneInfo
 
 import httpx
+import pytest
 from playwright.sync_api import expect
 
 from iron_verdict.main import session_manager
 from tests.e2e.network_switch import cut_network, join_with_network_switch, restore_network
-from tests.e2e.test_display_overlay import open_overlay
+from tests.e2e.test_display_contrast import contrast_of, turn_contrast_on
+from tests.e2e.test_display_layout import german_reload, open_editor, save, stored_layout
+from tests.e2e.test_display_overlay import open_overlay, wait_joined
 from tests.e2e.test_vportal_integration import _connect_and_open_display
 
 ROOT = ".display-full"
@@ -241,3 +251,278 @@ def test_stream_overlay_shows_the_pause_in_the_middle(competition):
     box, size = pause_block(overlay).bounding_box(), overlay.viewport_size
     assert abs(box["x"] + box["width"] / 2 - size["width"] / 2) <= 2
     assert dialogs == []
+
+
+# ===== Pause size and zoom (#190) =====
+# Default 26 / 15 / 6 vmin (title / time / "Next: …") in the middle; the layout
+# editor's pause preview edits it like the other blocks, stored per device.
+
+SIZES = (26, 15, 6)
+PAUSE_LINES = (".display-pause-title", ".display-pause-time", ".display-pause-next")
+
+
+def pause_font_sizes(page):
+    return page.evaluate(
+        """(sels) => sels.map((s) => parseFloat(getComputedStyle(
+            document.querySelector(`.display-full ${s}`)).fontSize))""",
+        list(PAUSE_LINES),
+    )
+
+
+def expect_pause_size(page, zoom=1):
+    vmin = min(page.viewport_size["width"], page.viewport_size["height"]) / 100
+    sizes = pause_font_sizes(page)
+    for size, units in zip(sizes, SIZES):
+        assert abs(size - units * vmin * zoom) <= 0.5, (sizes, zoom)
+
+
+def pause_center(page):
+    box = pause_block(page).bounding_box()
+    return box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+
+
+def assert_pause_centred(page):
+    size = page.viewport_size
+    x, y = pause_center(page)
+    assert abs(x - size["width"] / 2) <= 2 and abs(y - size["height"] / 2) <= 2, (x, y)
+
+
+def drag_by(page, locator, dx, dy):
+    box = locator.bounding_box()
+    x, y = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+    page.mouse.move(x, y)
+    page.mouse.down()
+    page.mouse.move(x + dx, y + dy, steps=4)
+    page.mouse.up()
+
+
+def open_pause_preview(page):
+    open_editor(page)
+    page.get_by_test_id("layout-pause-preview").click()
+    expect(page.get_by_test_id("layout-pause-preview")).to_have_attribute("aria-pressed", "true")
+    expect(pause_block(page)).to_be_visible()
+
+
+def scale_handle(page):
+    return page.get_by_test_id("layout-pause-scale-handle")
+
+
+def test_pause_is_bigger_by_default_on_display_and_overlay(competition):
+    """Without a saved layout the pause shows at 26 / 15 / 6 vmin (title,
+    time, next lift) in the middle of the hall display and of the stream
+    overlay."""
+    competition.create_session_and_join_head()
+    hall = competition.join_as("display")
+    overlay, _ = open_overlay(competition)
+
+    start_pause(hall, minutes=10, next_lift="bench")
+
+    for page in (hall, overlay):
+        expect_paused(page)
+        expect_pause_size(page)
+        assert_pause_centred(page)
+
+
+def test_pause_is_edited_like_a_block_in_the_editor_preview_and_survives_save_and_reload(competition):
+    """In the layout editor, "Break preview" shows the pause with sample text
+    instead of the other blocks. Its corner scales it from the middle; dragged,
+    it moves. Cancel drops both; Save keeps them (the other blocks stay where
+    they were) and puts them into the layout code; after a reload a real pause
+    shows at that size and place. "Reset to default" and Save bring back the
+    default size in the middle."""
+    competition.create_session_and_join_head()
+    display = competition.join_as("display")
+    size = display.viewport_size
+    timer = display.locator(f"{ROOT} .layout-block--timer")
+    timer_box = timer.bounding_box()
+
+    open_pause_preview(display)
+    expect(display.get_by_test_id("display-pause-time")).to_have_text("10:00 left")
+    expect(display.get_by_test_id("display-pause-next")).to_have_text("Next: Bench Press")
+    expect(pause_block(display).locator(".layout-frame-label")).to_contain_text("Break · sample")
+    expect(display.get_by_test_id("layout-hint")).to_contain_text("Drag the break to move it")
+    # Transparent, not removed (still measured when the layout is created).
+    for block_id in ("timer", "lights", "verdict"):
+        expect(display.locator(f'{ROOT} [data-layout-block="{block_id}"]')).to_have_css("opacity", "0")
+    expect_pause_size(display)
+
+    drag_by(display, scale_handle(display), 140, 0)
+    title_size = pause_font_sizes(display)[0]
+    zoom = round(title_size / (26 * min(size.values()) / 100) / 0.05) * 0.05
+    assert 1.3 <= zoom <= 1.6, zoom
+    expect_pause_size(display, zoom)
+    assert_pause_centred(display)
+    drag_by(display, display.locator(f"{ROOT} .display-pause-title"), 200, 100)
+    x, y = pause_center(display)
+    assert abs(x - (size["width"] / 2 + 200)) <= size["width"] / 100
+    assert abs(y - (size["height"] / 2 + 100)) <= size["height"] / 100
+
+    display.get_by_test_id("layout-cancel").click()
+    assert stored_layout(display) is None
+    open_pause_preview(display)
+    expect_pause_size(display)
+    assert_pause_centred(display)
+
+    # Downwards this time: the pause grows both ways, so the handle moves by
+    # half the height change.
+    half_height = pause_block(display).bounding_box()["height"] / 2
+    drag_by(display, scale_handle(display), 0, (zoom - 1) * half_height)
+    expect_pause_size(display, zoom)
+    assert_pause_centred(display)
+    drag_by(display, display.locator(f"{ROOT} .display-pause-title"), 200, 100)
+    moved = pause_center(display)
+    display.get_by_test_id("layout-code-toggle").click()
+    code = display.get_by_test_id("layout-code-export").input_value()
+    pause = decode_code(code)["blocks"]["pause"]
+    assert pause["s"] == zoom and pause["x"] > 50 and pause["y"] > 50 and pause["hidden"] is False
+    save(display)
+    assert stored_layout(display)["blocks"]["pause"] == pause
+    expect(pause_block(display)).to_be_hidden()
+    expect(timer).to_be_visible()
+    expect(timer).to_have_css("opacity", "1")
+    new_box = timer.bounding_box()
+    assert abs(new_box["x"] - timer_box["x"]) <= 2 and abs(new_box["y"] - timer_box["y"]) <= 2
+
+    display.reload()
+    display.locator(ROOT).wait_for(state="visible")
+    start_pause(display, minutes=10)
+    expect_paused(display)
+    expect_pause_size(display, zoom)
+    x, y = pause_center(display)
+    assert abs(x - moved[0]) <= 2 and abs(y - moved[1]) <= 2
+
+    open_editor(display)
+    display.get_by_test_id("layout-reset").click()
+    save(display)
+    assert stored_layout(display) is None
+    expect_paused(display)
+    expect_pause_size(display)
+    assert_pause_centred(display)
+
+
+def test_pause_zoom_stops_at_the_screen_edge_in_the_editor(competition):
+    """Dragging the pause's corner far beyond the screen: the pause grows
+    until it reaches the screen edge (the whole block stays on screen) and
+    the zoom stops there, so the layout code holds the zoom that shows.
+    Dragging back a little (towards the middle) shrinks it at once."""
+    competition.create_session_and_join_head()
+    display = competition.join_as("display")
+    vmin = min(display.viewport_size.values()) / 100
+
+    open_pause_preview(display)
+    drag_by(display, scale_handle(display), 1000, 1000)
+    expect_whole_pause_on_screen(display)
+    title = pause_font_sizes(display)[0]
+    shown_zoom = title / (26 * vmin)
+    assert shown_zoom > 1.3
+    display.get_by_test_id("layout-code-toggle").click()
+    stored_zoom = decode_code(display.get_by_test_id("layout-code-export").input_value())["blocks"]["pause"]["s"]
+    assert shown_zoom - 0.05 <= stored_zoom <= shown_zoom + 0.001, (stored_zoom, shown_zoom)
+
+    drag_by(display, scale_handle(display), -40, -40)
+    assert pause_font_sizes(display)[0] < title
+
+
+def test_hidden_pause_shows_nothing_on_this_display_only(competition):
+    """Display A (German, the longest toolbar hint) hides the pause in the
+    editor's preview (faded there, so it can be shown again; its hide button
+    is not covered by the toolbar) and saves. During a pause A shows nothing (no pause,
+    no timer, no lights), display B shows the pause as usual. Shown again on
+    A, the pause is back."""
+    competition.create_session_and_join_head()
+    display_a = competition.join_as("display")
+    display_b = competition.join_as("display")
+    german_reload(display_a)
+    display_a.locator(ROOT).wait_for(state="visible")
+
+    open_pause_preview(display_a)
+    display_a.get_by_test_id("layout-hide-pause").click()
+    expect(display_a.locator(f"{ROOT} .display-pause-title")).to_have_css("opacity", "0.3")
+    save(display_a)
+    assert stored_layout(display_a)["blocks"]["pause"]["hidden"] is True
+
+    start_pause(display_b, minutes=10)
+    expect_paused(display_b)
+    expect(pause_block(display_a)).to_be_hidden()
+    expect(display_a.locator(f"{ROOT} .layout-block--timer")).to_be_hidden()
+    expect(display_a.locator(f"{ROOT} .display-lights")).to_be_hidden()
+
+    open_editor(display_a)
+    display_a.get_by_test_id("layout-pause-preview").click()
+    display_a.get_by_test_id("layout-hide-pause").click()
+    save(display_a)
+    expect_paused(display_a)
+    assert_pause_centred(display_a)
+
+
+def layout_code_with_pause_zoom(zoom):
+    blocks = {
+        "timer": {"x": 50, "y": 5, "s": 1, "hidden": False},
+        "lights": {"x": 50, "y": 35, "s": 1, "hidden": False, "gap": 1},
+        "cards": {"gap": 0.1, "hidden": False},
+        "verdict": {"x": 50, "y": 80, "s": 1, "hidden": False},
+        "lifter": {"x": 2, "y": 88, "s": 1, "hidden": False},
+        "attempt": {"x": 98, "y": 88, "s": 1, "hidden": False},
+        "pause": {"x": 50, "y": 50, "s": zoom, "hidden": False},
+    }
+    raw = json.dumps({"v": 1, "blocks": blocks}).encode()
+    return "IV1." + base64.urlsafe_b64encode(raw).decode().rstrip("=")
+
+
+def decode_code(code):
+    body = code.removeprefix("IV1.")
+    return json.loads(base64.urlsafe_b64decode(body + "=" * (-len(body) % 4)))
+
+
+def expect_whole_pause_on_screen(page, spread=0):
+    """Pause block (plus the overlay panel's spread) and every line inside the viewport."""
+    size = page.viewport_size
+    blocks = [(pause_block(page), spread)] + [(page.locator(f"{ROOT} {s}"), 0) for s in PAUSE_LINES]
+    for locator, pad in blocks:
+        box = locator.bounding_box()
+        assert box["x"] - pad >= 0 and box["y"] - pad >= 0, box
+        assert box["x"] + box["width"] + pad <= size["width"], (box, size)
+        assert box["y"] + box["height"] + pad <= size["height"], (box, size)
+
+
+@pytest.mark.parametrize("size", [(1920, 1080), (1080, 1920)], ids=["16x9", "portrait"])
+def test_longest_line_stays_on_screen_at_maximum_zoom(competition, size):
+    """German hall display in contrast mode (bold text) and German stream
+    overlay, each with the pause in the middle at maximum zoom (3; display:
+    layout code pasted in the editor, overlay: code in its URL), on 16:9 and
+    portrait: the pause with the longest line ("Weiter mit: Bankdrücken")
+    stays whole and centred on screen, and the contrast mode still shows it in
+    high-contrast text."""
+    viewport = {"width": size[0], "height": size[1]}
+    competition.create_session_and_join_head()
+    display = join_display(competition.new_context(viewport=viewport), competition)
+    german_reload(display)
+    display.locator(ROOT).wait_for(state="visible")
+    turn_contrast_on(display)
+
+    code = layout_code_with_pause_zoom(3)
+    open_editor(display)
+    display.get_by_test_id("layout-code-toggle").click()
+    display.get_by_test_id("layout-code-import").fill(code)
+    display.get_by_test_id("layout-code-apply").click()
+    save(display)
+    assert stored_layout(display)["blocks"]["pause"]["s"] == 3
+
+    overlay, _ = open_overlay(competition, layout_code=code)
+    german_reload(overlay)
+    wait_joined(overlay)
+    overlay.set_viewport_size(viewport)
+
+    start_pause(display, minutes=10, next_lift="bench", panel=True)
+    for page in (display, overlay):
+        expect_paused(page)
+        expect(page.get_by_test_id("display-pause-next")).to_have_text("Weiter mit: Bankdrücken")
+        spread = pause_font_sizes(page)[2] / 6 if page is overlay else 0
+        expect_whole_pause_on_screen(page, spread)
+        assert_pause_centred(page)
+    # At maximum zoom the pause is still bigger than the default on both formats.
+    vmin = min(size) / 100
+    assert pause_font_sizes(display)[0] > 26 * vmin * 1.1
+    next_line = display.get_by_test_id("display-pause-next")
+    assert contrast_of(next_line) >= 7
+    assert next_line.evaluate("el => getComputedStyle(el).fontWeight") == "700"

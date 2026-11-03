@@ -600,7 +600,7 @@
          layout editor (displayLayoutEditor.js); without a saved layout they
          stay in the default flow layout. -->
     <div class="display-full" data-testid="display-screen" x-data="displayScreen" x-show="$store.nav.screen === 'display'" x-cloak
-         :class="[displayContrast && 'display-contrast', activeLayout() && 'display-layout-custom', layoutEditing && 'display-layout-editing']"
+         :class="[displayContrast && 'display-contrast', activeLayout() && 'display-layout-custom', layoutEditing && 'display-layout-editing', layoutEditing && layoutPausePreview && 'layout-pause-preview']"
          @pointermove="layoutPointerMove($event)"
          @pointerup="layoutPointerUp($event)"
          @pointercancel="layoutPointerUp($event)"
@@ -723,12 +723,29 @@
             </div>
         </div>
 
-        <!-- Pause of the session (#163): always big in the middle, instead of
-             timer, lights, verdict and lifter while it runs. -->
-        <div class="display-pause" data-testid="display-pause" x-show="paused()" x-cloak>
+        <!-- Pause of the session (#163): big in the middle by default, instead
+             of timer, lights, verdict and lifter while it runs. A layout block
+             like the others, edited in the layout editor's pause preview (#190). -->
+        <div class="display-pause layout-block" data-testid="display-pause" data-layout-block="pause" x-ref="layout-pause"
+             :style="layoutPauseStyle()"
+             @pointerdown="layoutPointerDown($event, 'pause', 'move')"
+             :class="layoutBlockHidden('pause') && 'layout-hidden'"
+             x-show="pauseShown()" x-cloak>
             <div class="display-pause-title" x-text="t('pause.title')"></div>
             <div class="display-pause-time" data-testid="display-pause-time" x-text="pauseTimeText()"></div>
             <div class="display-pause-next" data-testid="display-pause-next" x-show="pauseNextText()" x-text="pauseNextText()"></div>
+            <div class="layout-frame" x-show="layoutEditing" x-cloak>
+                <span class="layout-frame-label">
+                    <span x-text="t('displayLayout.blocks.pause') + (pauseIsSample() ? ' · ' + t('displayLayout.sampleTag') : '')"></span>
+                    <button class="layout-hide-toggle" data-testid="layout-hide-pause"
+                            :aria-pressed="layoutBlockHidden('pause') ? 'true' : 'false'"
+                            @pointerdown.stop=""
+                            @click="toggleLayoutBlockHidden('pause')"
+                            x-text="layoutBlockHidden('pause') ? t('displayLayout.show') : t('displayLayout.hide')"></button>
+                </span>
+                <span class="layout-scale-handle" data-testid="layout-pause-scale-handle"
+                      @pointerdown.stop="layoutPointerDown($event, 'pause', 'scale')"></span>
+            </div>
         </div>
 
         <!-- VPortal lifter (left) and attempt (right); sample text while editing
@@ -916,11 +933,15 @@
                         @click="cancelLayoutEdit()" x-text="t('displayLayout.cancel')"></button>
                 <button class="layout-toolbar-btn" data-testid="layout-reset"
                         @click="resetLayoutEdit()" x-text="t('displayLayout.reset')"></button>
+                <button class="layout-toolbar-btn" data-testid="layout-pause-preview"
+                        :aria-pressed="layoutPausePreview ? 'true' : 'false'"
+                        @click="layoutPausePreview = !layoutPausePreview" x-text="t('displayLayout.pausePreview')"></button>
                 <button class="layout-toolbar-btn" data-testid="layout-code-toggle"
                         :aria-expanded="layoutCodeOpen ? 'true' : 'false'"
                         @click="layoutCodeOpen = !layoutCodeOpen" x-text="t('displayLayout.codeButton')"></button>
             </div>
-            <div class="layout-toolbar-hint" x-text="t('displayLayout.hint')"></div>
+            <div class="layout-toolbar-hint" data-testid="layout-hint"
+                 x-text="layoutPausePreview ? t('displayLayout.pauseHint') : t('displayLayout.hint')"></div>
             <div class="layout-code" x-show="layoutCodeOpen">
                 <label class="layout-code-label" x-text="t('displayLayout.codeExportLabel')"></label>
                 <textarea class="layout-code-field" data-testid="layout-code-export" readonly rows="2"

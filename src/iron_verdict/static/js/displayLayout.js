@@ -11,17 +11,22 @@
 // three lights (#154), a factor on the default gap of layout.css; layouts
 // and codes from before it get the default (1). The cards block (card colours and
 // reasons under the lights) follows the lights: it only has a gap, in
-// multiples of the light size. Every block can be hidden.
+// multiples of the light size. Every block can be hidden. The pause (#190) is
+// a free block too, shown only during a pause (and in the editor's pause
+// preview); its y is its centre, not its top edge, so its default (the middle
+// of the display, 50/50) needs no measuring. Layouts and codes from before it
+// get that default.
 
 export const LAYOUT_STORAGE_KEY = 'iron-verdict:display-layout';
 // The stream overlay (OBS browser source) keeps its own layout, so opening the
 // overlay in a browser that is also a hall display changes neither layout.
 export const OVERLAY_LAYOUT_STORAGE_KEY = 'iron-verdict:display-layout:overlay';
 export const FREE_BLOCKS = ['timer', 'lights', 'verdict', 'lifter', 'attempt'];
-export const LAYOUT_BLOCKS = [...FREE_BLOCKS, 'cards'];
+export const LAYOUT_BLOCKS = [...FREE_BLOCKS, 'cards', 'pause'];
 export const BLOCK_ANCHORS = {
-    timer: 'center', lights: 'center', verdict: 'center', lifter: 'left', attempt: 'right',
+    timer: 'center', lights: 'center', verdict: 'center', lifter: 'left', attempt: 'right', pause: 'center',
 };
+const PAUSE_DEFAULT = { x: 50, y: 50, s: 1, hidden: false };
 
 const VERSION = 1;
 const CODE_PREFIX = 'IV1.';
@@ -87,6 +92,8 @@ export function sanitizeLayout(raw) {
     }
     blocks.cards = sanitizeCards(src.cards);
     if (!blocks.cards) return null;
+    blocks.pause = src.pause === undefined ? { ...PAUSE_DEFAULT } : sanitizeFree(src.pause);
+    if (!blocks.pause) return null;
     return { v: VERSION, blocks };
 }
 
@@ -143,6 +150,8 @@ export function layoutFromRects(root, rects) {
     }
     blocks.lights.gap = LIGHTS_GAP_DEFAULT;
     blocks.cards = { gap: CARDS_GAP_DEFAULT, hidden: false };
+    // Not on screen outside a pause, so not measured: the default middle.
+    blocks.pause = { ...PAUSE_DEFAULT };
     return { v: VERSION, blocks };
 }
 
@@ -183,6 +192,27 @@ export function blockStyle(block, anchor) {
         transform: `translateX(${ANCHOR_SHIFT[anchor]})`,
         '--display-zoom': String(block.s),
     };
+}
+
+// The pause never grows beyond the screen (--pause-unit in components.css:
+// min(clamp(2.35px, 1vmin, 12px) * zoom, 1.15vw, 1.65vh); change both
+// together). This is the zoom at which it stops growing on a screen of
+// width × height CSS px, rounded down to a scale step, so the editor stops
+// there too: the handle stays at the pointer and only what shows is stored.
+const PAUSE_UNIT_PX = { min: 2.35, max: 12 };
+const PAUSE_FIT = { vw: 1.15, vh: 1.65 };
+export function pauseScaleLimit(width, height) {
+    const unit = clamp(Math.min(width, height) / 100, PAUSE_UNIT_PX.min, PAUSE_UNIT_PX.max);
+    const fit = Math.min(width * PAUSE_FIT.vw, height * PAUSE_FIT.vh) / 100;
+    const steps = Math.floor(fit / unit / SCALE_STEP + 1e-9);
+    return clamp(tidy(steps * SCALE_STEP), SCALE_MIN, SCALE_MAX);
+}
+
+// The pause is placed by its centre: components.css shifts it by -50 % both
+// ways. Without a layout it keeps the CSS default (the middle).
+export function pauseStyle(pause) {
+    if (!pause) return { left: '', top: '', '--display-zoom': '' };
+    return { left: `${pause.x}%`, top: `${pause.y}%`, '--display-zoom': String(pause.s) };
 }
 
 // Export code: "IV1." + base64url(JSON). Layouts hold only ASCII, so btoa is safe.
