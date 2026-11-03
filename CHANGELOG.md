@@ -7,6 +7,16 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+### Removed
+
+## [0.5.0] - 2026-11-03
+
+### Added
 - The layout editor's "Break preview" shows the break, which can then be moved, resized and hidden like the other blocks; saved layouts and layout codes without it show the break in the middle at the new default size
 - Dashed centre lines in the display layout editor (hall display and stream overlay) to place blocks in the middle of the screen; only shown while editing
 - Releases are deployed to production by the release pipeline after a separate third approval, followed by an automatic short check against iron-verdict.com; rollback stays manual
@@ -19,7 +29,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ### Fixed
 - Layout editor: the toolbar no longer covers the timer's hide button on screens up to 768 pixels high; the timer's label now sits below the timer
 
-### Removed
+[0.5.0]: https://github.com/abti247/iron_verdict/compare/v0.4.1...v0.5.0
 
 ## [0.4.1] - 2026-10-30
 
