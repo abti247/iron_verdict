@@ -270,6 +270,25 @@ def test_overlay_edits_its_own_layout_on_a_checkerboard(competition):
     expect(overlay.locator('[data-layout-block="timer"]')).to_be_hidden()
 
 
+def test_overlay_shows_center_lines_only_while_editing(competition):
+    """The stream never shows the centre lines; the overlay's own editor does,
+    like the hall display's (#189)."""
+    competition.create_session_and_join_head()
+    overlay, _ = open_overlay(competition)
+    lines = overlay.get_by_test_id("layout-center-lines")
+    expect(lines).to_be_hidden()
+
+    overlay.keyboard.press("s")
+    overlay.get_by_test_id("display-layout-edit").click()
+    expect(overlay.get_by_test_id("layout-toolbar")).to_be_visible()
+    expect(lines).to_be_visible()
+
+    overlay.get_by_test_id("layout-save").click()
+    expect(overlay.get_by_test_id("layout-toolbar")).to_be_hidden()
+    expect(lines).to_be_hidden()
+    expect_transparent(overlay)
+
+
 def _open_role_select(competition, insecure=False):
     ctx = competition.new_context()
     if insecure:

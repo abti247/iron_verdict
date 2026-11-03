@@ -37,6 +37,9 @@
     --layout-frame: #38BDF8;
     --layout-frame-cards: #FACC15;
     --layout-frame-text: #0A0A0A;
+    /* Dashed centre lines behind the blocks while editing (#189): the frame
+       colour, faded so they do not compete with the frames. */
+    --layout-center-line: rgba(56, 189, 248, 0.5);
     /* Extra room above the verdict in the default layout for the cards and
        verdict editor labels (27px each, see .layout-frame-label) (#162). */
     --layout-verdict-room: 48px;

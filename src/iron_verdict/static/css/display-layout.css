@@ -70,6 +70,31 @@
     opacity: 0.3;
 }
 
+/* Centre lines (#189): a dashed horizontal and vertical line through the
+   middle of the display, to centre blocks by eye. First child of the display,
+   so the blocks (positioned too while editing) paint over them; they catch no
+   pointer, so a block on a line is grabbed as anywhere else. Fixed px like
+   the frames. Shown only while editing (x-show). */
+.layout-center-lines {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+.layout-center-line--h {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(50% - 1px);
+    border-top: 2px dashed var(--layout-center-line);
+}
+.layout-center-line--v {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: calc(50% - 1px);
+    border-left: 2px dashed var(--layout-center-line);
+}
+
 /* Frame chrome has fixed sizes: it must not scale with the block. */
 .layout-frame {
     position: absolute;
