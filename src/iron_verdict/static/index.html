@@ -605,6 +605,11 @@
          @pointerup="layoutPointerUp($event)"
          @pointercancel="layoutPointerUp($event)"
          @lostpointercapture="layoutPointerUp($event)">
+        <!-- Centre lines of the layout editor (#189): first, so every block lies above them. -->
+        <div class="layout-center-lines" data-testid="layout-center-lines" x-show="layoutEditing" x-cloak aria-hidden="true">
+            <span class="layout-center-line--h"></span>
+            <span class="layout-center-line--v"></span>
+        </div>
         <!-- In the stream overlay only a connection problem shows here (no session name). -->
         <div class="display-tag" data-testid="display-tag"
              x-show="!$store.session.overlay || $store.session.connectionStatus !== 'connected' || $store.session.serverRestarting">
