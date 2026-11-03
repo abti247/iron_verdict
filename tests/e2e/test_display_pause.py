@@ -363,7 +363,12 @@ def test_pause_is_edited_like_a_block_in_the_editor_preview_and_survives_save_an
     expect_pause_size(display)
     assert_pause_centred(display)
 
-    drag_by(display, scale_handle(display), 140, 0)
+    # Downwards this time: the pause grows both ways, so the handle moves by
+    # half the height change.
+    half_height = pause_block(display).bounding_box()["height"] / 2
+    drag_by(display, scale_handle(display), 0, (zoom - 1) * half_height)
+    expect_pause_size(display, zoom)
+    assert_pause_centred(display)
     drag_by(display, display.locator(f"{ROOT} .display-pause-title"), 200, 100)
     moved = pause_center(display)
     display.get_by_test_id("layout-code-toggle").click()
@@ -396,13 +401,16 @@ def test_pause_is_edited_like_a_block_in_the_editor_preview_and_survives_save_an
 
 
 def test_hidden_pause_shows_nothing_on_this_display_only(competition):
-    """Display A hides the pause in the editor's preview (faded there, so it
-    can be shown again) and saves. During a pause A shows nothing (no pause,
+    """Display A (German, the longest toolbar hint) hides the pause in the
+    editor's preview (faded there, so it can be shown again; its hide button
+    is not covered by the toolbar) and saves. During a pause A shows nothing (no pause,
     no timer, no lights), display B shows the pause as usual. Shown again on
     A, the pause is back."""
     competition.create_session_and_join_head()
     display_a = competition.join_as("display")
     display_b = competition.join_as("display")
+    german_reload(display_a)
+    display_a.locator(ROOT).wait_for(state="visible")
 
     open_pause_preview(display_a)
     display_a.get_by_test_id("layout-hide-pause").click()
