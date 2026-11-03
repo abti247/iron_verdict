@@ -1,8 +1,7 @@
 // Display layout: where each block of the display screen sits and how large it
 // is, stored per device (localStorage; the stream overlay under its own key). Pure functions only; the editor in
 // screens/displayLayoutEditor.js drives them. No layout (null) means the
-// default flow layout of layout.css, so a display that never edits looks as
-// before.
+// default flow layout of layout.css.
 //
 // Free blocks have x/y (percent of the display) and s (scale, applied as the
 // block's --display-zoom). y is the top edge; x is the block's anchor: its

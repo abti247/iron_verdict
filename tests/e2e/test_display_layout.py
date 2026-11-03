@@ -126,7 +126,7 @@ def vote(page, color, with_reason=False):
     page.locator(".locked-status").wait_for(state="visible")
 
 
-def test_without_saved_layout_display_is_unchanged(page, server_url):
+def test_without_saved_layout_display_uses_flow_layout(page, server_url):
     """A display that never used the editor keeps the default flow layout: no
     custom positions, no frames, no zoom slider any more."""
     open_display(page, server_url)
@@ -256,7 +256,9 @@ def test_lights_gap_set_at_side_handle_with_mouse_and_touch_survives_reload(page
 
 def test_layout_without_lights_gap_keeps_default_gap(page, server_url):
     """A layout saved before #154 has no lights gap: it stays valid and the
-    lights keep the gap of before (128 px)."""
+    lights keep the gap of before (128 px). Saved before #188, it also keeps
+    its positions and cards without extra gap: the new default spacing does
+    not touch a saved layout."""
     open_display(page, server_url)
     page.evaluate(f"""localStorage.setItem('{LAYOUT_KEY}', JSON.stringify({{v: 1, blocks: {{
         timer: {{x: 50, y: 5, s: 1, hidden: false}},
@@ -270,6 +272,11 @@ def test_layout_without_lights_gap_keeps_default_gap(page, server_url):
     expect(page.locator(ROOT)).to_have_class(CUSTOM)
     expect(block(page, "lights")).to_have_attribute("style", re.compile(r"--display-zoom: 0\.8"))
     assert lights_gap(page) == 128
+    for block_id, (x, y) in {"timer": (50, 5), "lights": (50, 40), "verdict": (50, 80)}.items():
+        bx, by = block_pos(page, block_id)[:2]
+        assert abs(bx - x) < 0.1 and abs(by - y) < 0.1, (block_id, bx, by)
+    for gap in page.evaluate(SPACING_JS)["cardGaps"]:
+        assert abs(gap - COLUMN_GAP) <= 0.5, gap
 
 
 def test_cancel_discards_changes(page, server_url):
@@ -418,32 +425,6 @@ def test_default_layout_gives_timer_and_cards_room_on_display_and_overlay(compet
         expect(page.locator(ROOT)).not_to_have_class(CUSTOM)
         assert_default_spacing(page, sizes)
 
-
-def test_saved_layout_keeps_its_spacing(page, server_url):
-    """A layout saved before #188 (timer at 10 %, lights at 30 %, cards
-    without extra gap) shows exactly as saved: the new default spacing does
-    not touch it."""
-    open_display(page, server_url)
-    page.evaluate(f"""localStorage.setItem('{LAYOUT_KEY}', JSON.stringify({{v: 1, blocks: {{
-        timer: {{x: 50, y: 10, s: 1, hidden: false}},
-        lights: {{x: 50, y: 30, s: 1, hidden: false, gap: 1}},
-        cards: {{gap: 0, hidden: false}},
-        verdict: {{x: 50, y: 80, s: 1, hidden: false}},
-        lifter: {{x: 2, y: 88, s: 1, hidden: false}},
-        attempt: {{x: 98, y: 88, s: 1, hidden: false}}}}}}))""")
-    page.reload()
-    page.locator(ROOT).wait_for(state="visible")
-    expect(page.locator(ROOT)).to_have_class(CUSTOM)
-    for block_id, (x, y) in {"timer": (50, 10), "lights": (50, 30), "verdict": (50, 80)}.items():
-        bx, by = block_pos(page, block_id)[:2]
-        assert abs(bx - x) < 0.1 and abs(by - y) < 0.1, (block_id, bx, by)
-    for gap in page.evaluate(SPACING_JS)["cardGaps"]:
-        assert abs(gap - COLUMN_GAP) <= 0.5, gap
-
-
-CENTER_LINES = "layout-center-lines"
-
-
 def center_line_offsets(page):
     """Distance in px of the horizontal line's middle from the display's
     vertical centre and of the vertical line's middle from its horizontal
@@ -488,7 +469,9 @@ def test_center_lines_show_only_while_editing(page, server_url, size):
 def test_blocks_on_the_center_lines_stay_editable(page, server_url):
     """The lines catch no pointer: the timer, which sits on the vertical
     line, is grabbed right on it, dragged, scaled and hidden as without the
-    lines (#189)."""
+    lines (#189). Scaled up, the timer's label (under the timer since #188)
+    lies on the lights, so the hide click after scaling also proves the
+    timer lies above the lights while editing — keep it after the scale."""
     open_display(page, server_url)
     open_editor(page)
     timer = block(page, "timer")
