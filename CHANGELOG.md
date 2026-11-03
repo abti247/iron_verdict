@@ -12,8 +12,10 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Changed
 - The Grafana dashboard marks the snapshot age orange from 3 minutes instead of 2, since up to about 2½ minutes is normal with a scrape every minute
+- More room on the display without a saved layout (also the stream overlay and "Reset to default" in the layout editor): the timer stands further from the lights and the cards a little lower under them; saved layouts and layout codes stay as they are
 
 ### Fixed
+- Layout editor: the toolbar no longer covers the timer's hide button on screens up to 768 pixels high; the timer's label now sits below the timer
 
 ### Removed
 
