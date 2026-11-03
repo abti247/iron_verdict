@@ -348,9 +348,9 @@ def test_center_lines_show_only_while_editing(page, server_url, size):
 
 
 def test_blocks_on_the_center_lines_stay_editable(page, server_url):
-    """The lines lie behind the blocks and catch no pointer: the timer, which
-    sits on the vertical line, is grabbed right on it, dragged, scaled and
-    hidden as without the lines (#189)."""
+    """The lines catch no pointer: the timer, which sits on the vertical
+    line, is grabbed right on it, dragged, scaled and hidden as without the
+    lines (#189)."""
     open_display(page, server_url)
     open_editor(page)
     timer = block(page, "timer")
