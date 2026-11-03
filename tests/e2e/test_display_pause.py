@@ -400,6 +400,29 @@ def test_pause_is_edited_like_a_block_in_the_editor_preview_and_survives_save_an
     assert_pause_centred(display)
 
 
+def test_pause_zoom_stops_at_the_screen_edge_in_the_editor(competition):
+    """Dragging the pause's corner far beyond the screen: the pause grows
+    until it reaches the screen edge (the whole block stays on screen) and
+    the zoom stops there, so the layout code holds the zoom that shows.
+    Dragging back a little (towards the middle) shrinks it at once."""
+    competition.create_session_and_join_head()
+    display = competition.join_as("display")
+    vmin = min(display.viewport_size.values()) / 100
+
+    open_pause_preview(display)
+    drag_by(display, scale_handle(display), 1000, 1000)
+    expect_whole_pause_on_screen(display)
+    title = pause_font_sizes(display)[0]
+    shown_zoom = title / (26 * vmin)
+    assert shown_zoom > 1.3
+    display.get_by_test_id("layout-code-toggle").click()
+    stored_zoom = decode_code(display.get_by_test_id("layout-code-export").input_value())["blocks"]["pause"]["s"]
+    assert shown_zoom - 0.05 <= stored_zoom <= shown_zoom + 0.001, (stored_zoom, shown_zoom)
+
+    drag_by(display, scale_handle(display), -40, -40)
+    assert pause_font_sizes(display)[0] < title
+
+
 def test_hidden_pause_shows_nothing_on_this_display_only(competition):
     """Display A (German, the longest toolbar hint) hides the pause in the
     editor's preview (faded there, so it can be shown again; its hide button

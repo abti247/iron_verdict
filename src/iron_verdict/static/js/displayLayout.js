@@ -194,6 +194,20 @@ export function blockStyle(block, anchor) {
     };
 }
 
+// The pause never grows beyond the screen (--pause-unit in components.css:
+// min(clamp(2.35px, 1vmin, 12px) * zoom, 1.15vw, 1.65vh); change both
+// together). This is the zoom at which it stops growing on a screen of
+// width × height CSS px, rounded down to a scale step, so the editor stops
+// there too: the handle stays at the pointer and only what shows is stored.
+const PAUSE_UNIT_PX = { min: 2.35, max: 12 };
+const PAUSE_FIT = { vw: 1.15, vh: 1.65 };
+export function pauseScaleLimit(width, height) {
+    const unit = clamp(Math.min(width, height) / 100, PAUSE_UNIT_PX.min, PAUSE_UNIT_PX.max);
+    const fit = Math.min(width * PAUSE_FIT.vw, height * PAUSE_FIT.vh) / 100;
+    const steps = Math.floor(fit / unit / SCALE_STEP + 1e-9);
+    return clamp(tidy(steps * SCALE_STEP), SCALE_MIN, SCALE_MAX);
+}
+
 // The pause is placed by its centre: components.css shifts it by -50 % both
 // ways. Without a layout it keeps the CSS default (the middle).
 export function pauseStyle(pause) {

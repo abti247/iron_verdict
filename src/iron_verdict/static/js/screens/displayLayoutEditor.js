@@ -12,7 +12,7 @@
 
 import {
     loadLayout, saveLayout, clearLayout, layoutFromRects,
-    movedBlock, scaledBlock, cardsWithGap, lightsWithGap, withBlockHidden, blockStyle, pauseStyle,
+    movedBlock, scaledBlock, cardsWithGap, lightsWithGap, withBlockHidden, blockStyle, pauseStyle, pauseScaleLimit,
     encodeLayout, decodeLayout, FREE_BLOCKS, BLOCK_ANCHORS,
     LAYOUT_STORAGE_KEY, OVERLAY_LAYOUT_STORAGE_KEY,
 } from '../displayLayout.js';
@@ -158,6 +158,12 @@ export function displayLayoutEditor() {
             const root = this.$root.getBoundingClientRect();
             const rect = this.$refs[`layout-${id === 'cards' ? 'lights' : id}`].getBoundingClientRect();
             const anchor = BLOCK_ANCHORS[id];
+            // The pause stops growing at the screen edge (vw/vh of the
+            // window): scale only up to there, starting from what shows.
+            const pauseLimit = id === 'pause' && mode === 'scale'
+                ? pauseScaleLimit(window.innerWidth, window.innerHeight) : null;
+            let block = draft.blocks[id];
+            if (pauseLimit !== null) block = { ...block, s: Math.min(block.s, pauseLimit) };
             this._layoutDrag = {
                 id, mode,
                 pointerId: event.pointerId,
@@ -174,7 +180,8 @@ export function displayLayoutEditor() {
                 // The lights are centred, so the side handle moves by as much
                 // as the gap changes.
                 columnGap: parseFloat(getComputedStyle(this.$refs['layout-lights']).columnGap),
-                block: draft.blocks[id],
+                block,
+                pauseLimit,
             };
         },
 
@@ -190,6 +197,7 @@ export function displayLayoutEditor() {
                 const fromAnchor = d.startX - d.anchorX;
                 const rx = Math.abs(fromAnchor) >= 1 ? (event.clientX - d.anchorX) / fromAnchor : 0;
                 next = scaledBlock(d.block, Math.max(rx, (d.h + dy) / d.h));
+                if (d.pauseLimit !== null) next = { ...next, s: Math.min(next.s, d.pauseLimit) };
             } else if (d.mode === 'lightsGap') {
                 next = lightsWithGap(d.block, d.block.gap * (d.columnGap + dx) / d.columnGap);
             } else {

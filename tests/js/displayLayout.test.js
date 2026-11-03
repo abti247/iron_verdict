@@ -15,6 +15,7 @@ import {
     withBlockHidden,
     blockStyle,
     pauseStyle,
+    pauseScaleLimit,
     encodeLayout,
     decodeLayout,
 } from '../../src/iron_verdict/static/js/displayLayout.js';
@@ -272,6 +273,25 @@ describe('blockStyle', () => {
 
     it('unsets every property without a block', () => {
         expect(blockStyle(null, 'center')).toEqual({ left: '', top: '', transform: '', '--display-zoom': '' });
+    });
+});
+
+describe('pauseScaleLimit', () => {
+    // Mirrors --pause-unit in components.css: min(clamp(2.35px, 1vmin, 12px) * zoom, 1.15vw, 1.65vh).
+    it('is the zoom at which the pause reaches the screen edge, in 5 % steps rounded down', () => {
+        expect(pauseScaleLimit(1920, 1080)).toBe(1.65);   // height: 1.65vh / 1vmin
+        expect(pauseScaleLimit(1280, 720)).toBe(1.65);
+        expect(pauseScaleLimit(1080, 1920)).toBe(1.15);   // width: 1.15vw / 1vmin
+        expect(pauseScaleLimit(1440, 1080)).toBe(1.5);    // 4:3: 16.56px / 10.8px = 1.53
+    });
+
+    it('counts the px limit of the unit: on a large screen the pause may grow further', () => {
+        expect(pauseScaleLimit(3840, 2160)).toBe(2.95);   // 35.64px / 12px
+    });
+
+    it('stays within the scale range of every block', () => {
+        expect(pauseScaleLimit(100000, 100000)).toBe(3);
+        expect(pauseScaleLimit(20, 20)).toBe(0.3);
     });
 });
 
