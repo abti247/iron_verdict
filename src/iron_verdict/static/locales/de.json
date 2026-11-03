@@ -255,6 +255,8 @@
     "save": "Speichern",
     "cancel": "Abbrechen",
     "reset": "Auf Standard zurücksetzen",
+    "pausePreview": "Pause-Vorschau",
+    "pauseHint": "Pause ziehen zum Verschieben, Ecke ziehen zum Skalieren. Ausgeblendet zeigt dieses Display während einer Pause nichts. Änderungen gelten erst mit Speichern.",
     "codeButton": "Layout-Code",
     "codeExportLabel": "Code dieses Layouts (auf ein anderes Display kopieren)",
     "codeDefault": "Standard-Layout – nichts zu kopieren",
@@ -269,7 +271,8 @@
       "cards": "Karten + Gründe",
       "verdict": "Gültig/Ungültig",
       "lifter": "Lifter",
-      "attempt": "Versuch"
+      "attempt": "Versuch",
+      "pause": "Pause"
     },
     "sample": {
       "firstName": "Max",
@@ -357,7 +360,8 @@
             "Der Griff seitlich der Lichter stellt den Abstand zwischen den Lichtern ein.",
             "„Ausblenden“ / „Einblenden“ an jedem Block blendet ihn aus oder wieder ein, z. B. den Timer.",
             "Änderungen gelten erst mit „Speichern“. „Abbrechen“ verwirft sie, „Auf Standard zurücksetzen“ stellt die Standardanordnung wieder her (gespeichert mit „Speichern“).",
-            "Lifter und Versuch zeigen im Editor Beispieldaten; im Wettkampf erscheinen sie nur in VPortal-Sitzungen."
+            "Lifter und Versuch zeigen im Editor Beispieldaten; im Wettkampf erscheinen sie nur in VPortal-Sitzungen.",
+            "„Pause-Vorschau“ zeigt die Pause statt der übrigen Blöcke. Sie lässt sich wie diese verschieben, skalieren und ausblenden; ausgeblendet zeigt dieses Display während einer Pause nichts."
           ]
         },
         {

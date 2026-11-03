@@ -5,7 +5,9 @@
 // sends pause_start / pause_end through the connection.
 //
 // While a pause runs, the timer, lights, verdict and VPortal lifter are hidden
-// and the pause shows big in the middle (paused()); not while editing the layout.
+// and the pause shows big in the middle (paused()); not while editing the
+// layout, where the pause preview shows it instead (pauseShown(); #190), with
+// sample text if no pause runs.
 
 import { t } from '../i18n.js';
 
@@ -63,7 +65,18 @@ export function displayPause(conn) {
             return this.$store.pause.active && !this.layoutEditing;
         },
 
+        pauseShown() {
+            return this.paused() || (this.layoutEditing && this.layoutPausePreview);
+        },
+
+        // Editor preview without a running pause: the longest line, so its
+        // zoom is set for the widest pause.
+        pauseIsSample() {
+            return this.layoutEditing && !this.$store.pause.active;
+        },
+
         pauseTimeText() {
+            if (this.pauseIsSample()) return t('pause.remaining').replace('{time}', '10:00');
             const pause = this.$store.pause.pause;
             if (!pause) return '';
             if (pause.mode === 'until') {
@@ -74,7 +87,7 @@ export function displayPause(conn) {
         },
 
         pauseNextText() {
-            const lift = this.$store.pause.pause?.nextLift;
+            const lift = this.pauseIsSample() ? 'bench' : this.$store.pause.pause?.nextLift;
             return lift ? t('pause.next').replace('{lift}', t(`liftTypes.${lift}`)) : '';
         },
     };
