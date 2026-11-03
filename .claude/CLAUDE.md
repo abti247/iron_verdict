@@ -14,7 +14,7 @@ The critical path is everything from the moment a judge or a display has joined 
 Rules for any change touching the critical path:
 - **No external runtime dependencies** (CDNs, third-party services) in the critical path. Venue Wi-Fi may block or lose them.
 - **No message may be dropped silently.** The user always sees the real state (e.g. a vote is only shown as confirmed once the server confirmed it; a lost connection is visible).
-- **Every change needs an E2E test of the user-visible flow.** For network-related changes this includes a connection-loss scenario (drop, reconnect, reload).
+- **Every change needs an E2E test of the user-visible flow.** For network-related changes — anything that sends, receives or waits for data over WebSocket or HTTP (including reconnection, polling and the VPortal proxy), or changes how a device restores its state after reconnecting — this includes a connection-loss scenario (drop, reconnect, reload). Settings kept only on the device (e.g. in `localStorage`) need a reload test, not a connection-loss test.
 - **Test each behavior at the cheapest level that can see it** — E2E only for what a browser alone can show. What that means in practice, and why: `docs/testing.md`, "Conventions".
 - **No artificial delays** (`setTimeout`, sleeps, debounces) without a written justification in the code or PR.
 

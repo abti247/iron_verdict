@@ -30,7 +30,7 @@ Rules: `.claude/CLAUDE.md`, "Critical Path" (definition and rules). Files that t
 
 - State whether the change touches the critical path, and why.
 - If yes: is there a **new or updated E2E test in `tests/e2e/`** that exercises the changed user-visible flow? A backend test alone is not enough; where the flow's logic is tested is check 6.
-- If the change is network-related (WebSocket, HTTP calls, reconnection, polling, proxy): does an E2E test cover the connection-loss scenario?
+- If the change is network-related (definition: `.claude/CLAUDE.md`, "Critical Path"): does an E2E test cover the connection-loss scenario? A connection-loss test for a change that is not network-related is a duplicate-test finding (proportionality, point 3).
 - Does `tests/e2e/test_competition_flow.py` still cover the main flow if the change affects it?
 
 ### 2. Silently dropped messages or errors
@@ -80,7 +80,7 @@ Every extra mechanism on the critical path is one more thing that can break duri
 
 Guardrails:
 - **No line-count criterion.** The size of the diff is never a finding by itself.
-- Tests required by CLAUDE.md are exempt (critical-path E2E test, connection-loss scenario, regression suite).
+- Tests required by CLAUDE.md are exempt (critical-path E2E test, connection-loss scenario of a network-related change, regression suite).
 - Mechanisms the maintainer decided on are out of scope for this check, even if you would have chosen differently.
 - Proportionality findings are at most **should**, never **blocking**. Whether a safeguard is worth its code is the maintainer's decision.
 - As for every finding: concrete file and line, no speculative "could be shorter".
