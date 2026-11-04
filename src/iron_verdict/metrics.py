@@ -79,6 +79,12 @@ vportal_transport_retries = Counter(
     "GraphQL calls retried after a transport error (stale pooled connection)",
     registry=registry,
 )
+log_ship_dropped = Counter(
+    "iron_verdict_log_ship_dropped",
+    "Log lines not delivered to Loki (queue full or push failed); stdout still has them",
+    ["reason"],
+    registry=registry,
+)
 # Why these buckets: few series (8 per endpoint); the upstream timeout is 5 s,
 # so slower requests land in +Inf only as failures.
 vportal_upstream_duration = Histogram(
@@ -101,6 +107,8 @@ for _result in VPORTAL_LOGIN_RESULTS:
     vportal_logins.labels(result=_result)
 for _result in VPORTAL_GRAPHQL_RESULTS:
     vportal_graphql_requests.labels(result=_result)
+for _reason in ("queue_full", "send_failed"):
+    log_ship_dropped.labels(reason=_reason)
 for _endpoint in ("login", "graphql"):
     vportal_upstream_duration.labels(endpoint=_endpoint)
 

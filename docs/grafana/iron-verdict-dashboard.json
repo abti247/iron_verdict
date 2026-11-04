@@ -26,6 +26,14 @@
         "hide": 0
       },
       {
+        "name": "logs",
+        "label": "Logs data source",
+        "type": "datasource",
+        "query": "loki",
+        "current": {},
+        "hide": 0
+      },
+      {
         "name": "job",
         "label": "Job",
         "type": "query",
@@ -791,6 +799,15 @@
           "expr": "sum(increase(iron_verdict_snapshot_failures_total{job=~\"$job\"}[5m]))",
           "legendFormat": "snapshot failures",
           "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(increase(iron_verdict_log_ship_dropped_total{job=~\"$job\"}[5m]))",
+          "legendFormat": "log lines not sent to Loki",
+          "refId": "C"
         }
       ],
       "fieldConfig": {
@@ -1165,6 +1182,41 @@
       }
     },
     {
+      "type": "logs",
+      "id": 35,
+      "title": "Logs",
+      "description": "All log lines (JSON, without client IPs). Filter in Explore, e.g. by session code: see docs/monitoring.md, Logs.",
+      "datasource": {
+        "type": "loki",
+        "uid": "${logs}"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 43
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${logs}"
+          },
+          "expr": "{app=\"iron-verdict\"}",
+          "refId": "A",
+          "queryType": "range"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "wrapLogMessage": true,
+        "sortOrder": "Descending",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "dedupStrategy": "none"
+      }
+    },
+    {
       "type": "row",
       "id": 16,
       "title": "Weekly review (last 7 days)",
@@ -1173,7 +1225,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 43
+        "y": 53
       },
       "panels": []
     },
@@ -1190,7 +1242,7 @@
         "h": 4,
         "w": 4,
         "x": 0,
-        "y": 44
+        "y": 54
       },
       "targets": [
         {
@@ -1260,7 +1312,7 @@
         "h": 4,
         "w": 4,
         "x": 4,
-        "y": 44
+        "y": 54
       },
       "targets": [
         {
@@ -1322,7 +1374,7 @@
         "h": 4,
         "w": 4,
         "x": 8,
-        "y": 44
+        "y": 54
       },
       "targets": [
         {
@@ -1384,7 +1436,7 @@
         "h": 4,
         "w": 4,
         "x": 12,
-        "y": 44
+        "y": 54
       },
       "targets": [
         {
@@ -1450,7 +1502,7 @@
         "h": 4,
         "w": 4,
         "x": 16,
-        "y": 44
+        "y": 54
       },
       "targets": [
         {
@@ -1516,7 +1568,7 @@
         "h": 4,
         "w": 4,
         "x": 20,
-        "y": 44
+        "y": 54
       },
       "targets": [
         {
@@ -1582,7 +1634,7 @@
         "h": 4,
         "w": 4,
         "x": 0,
-        "y": 48
+        "y": 58
       },
       "targets": [
         {
@@ -1652,7 +1704,7 @@
         "h": 4,
         "w": 4,
         "x": 4,
-        "y": 48
+        "y": 58
       },
       "targets": [
         {
@@ -1722,7 +1774,7 @@
         "h": 4,
         "w": 8,
         "x": 8,
-        "y": 48
+        "y": 58
       },
       "targets": [
         {
@@ -1784,7 +1836,7 @@
         "h": 4,
         "w": 8,
         "x": 16,
-        "y": 48
+        "y": 58
       },
       "targets": [
         {
@@ -1846,7 +1898,7 @@
         "h": 4,
         "w": 16,
         "x": 0,
-        "y": 52
+        "y": 62
       },
       "targets": [
         {
@@ -1919,7 +1971,7 @@
         "h": 4,
         "w": 8,
         "x": 16,
-        "y": 52
+        "y": 62
       },
       "targets": [
         {
@@ -1969,6 +2021,129 @@
       "timeFrom": "7d"
     },
     {
+      "type": "bargauge",
+      "id": 36,
+      "title": "Warnings and errors by event",
+      "description": "Log lines with level warning, error or critical in the last 7 days, by event name (the JSON field message).",
+      "datasource": {
+        "type": "loki",
+        "uid": "${logs}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 16,
+        "x": 0,
+        "y": 66
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${logs}"
+          },
+          "expr": "sum by (event) (count_over_time({app=\"iron-verdict\", level=~\"warning|error|critical\"} | json event=\"message\" [7d]))",
+          "legendFormat": "{{event}}",
+          "refId": "A",
+          "queryType": "instant"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "orange",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "showUnfilled": true,
+        "valueMode": "color"
+      },
+      "timeFrom": "7d"
+    },
+    {
+      "type": "stat",
+      "id": 37,
+      "title": "Log lines not sent to Loki",
+      "description": "Lines dropped for Loki (queue full or push failed); stdout in Railway still has them.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 66
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum by (reason) (increase(iron_verdict_log_ship_dropped_total{job=~\"$job\"}[7d]))",
+          "legendFormat": "{{reason}}",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "timeFrom": "7d"
+    },
+    {
       "type": "timeseries",
       "id": 27,
       "title": "Memory over the week",
@@ -1981,7 +2156,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 56
+        "y": 74
       },
       "targets": [
         {
@@ -2057,7 +2232,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 56
+        "y": 74
       },
       "targets": [
         {
@@ -2125,7 +2300,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 64
+        "y": 82
       },
       "targets": [
         {
@@ -2202,7 +2377,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 64
+        "y": 82
       },
       "targets": [
         {

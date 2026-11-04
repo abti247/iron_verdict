@@ -115,3 +115,36 @@ def test_json_formatter_includes_pause_fields():
     assert parsed["pause_mode"] == "until"
     assert parsed["pause_seconds"] == 600
     assert parsed["ended_by"] == "timer_start"
+
+
+def test_json_formatter_includes_fields_that_were_missing_from_the_whitelist():
+    # Why (#134): these were logged with extra= but never reached the output.
+    formatter = JsonFormatter()
+    record = logging.LogRecord(
+        name="iron_verdict", level=logging.INFO, pathname="", lineno=0,
+        msg="x", args=(), exc_info=None,
+    )
+    record.seconds_since_pong = 16.2
+    record.session_count = 3
+    record.code = "lift_changed"
+    record.session_create = "10/hour"
+    record.session_lookup = "30/minute"
+    parsed = json.loads(formatter.format(record))
+    assert parsed["seconds_since_pong"] == 16.2
+    assert parsed["session_count"] == 3
+    assert parsed["code"] == "lift_changed"
+    assert parsed["session_create"] == "10/hour"
+    assert parsed["session_lookup"] == "30/minute"
+
+
+def test_json_formatter_can_leave_out_fields():
+    formatter = JsonFormatter(exclude=("client_ip",))
+    record = logging.LogRecord(
+        name="iron_verdict", level=logging.INFO, pathname="", lineno=0,
+        msg="session_created", args=(), exc_info=None,
+    )
+    record.client_ip = "1.2.3.4"
+    record.session_code = "ABC12345"
+    parsed = json.loads(formatter.format(record))
+    assert "client_ip" not in parsed
+    assert parsed["session_code"] == "ABC12345"

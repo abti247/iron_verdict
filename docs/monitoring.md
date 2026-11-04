@@ -2,7 +2,7 @@
 
 Runbook for the maintainer. Production is watched from outside by Grafana Cloud (free tier, region EU): an uptime check calls `https://iron-verdict.com/health` every minute, and a failed check reaches the maintainer's phone via Telegram. Railway calls `/health` only during a deploy, never afterwards ([Railway docs](https://docs.railway.com/reference/healthchecks)), so without this check nobody notices a hung or crashed app until people at the venue report it. Architecture view: [docs/architecture.md](architecture.md), *Observability*.
 
-Grafana pulls everything — the uptime check calls `/health`, the metrics scrape calls `/metrics` (#133) — so the app opens no connection to Grafana and a Grafana outage cannot affect a competition. How the metrics are produced: [architecture.md, Observability](architecture.md#observability).
+Grafana pulls uptime and metrics — the uptime check calls `/health`, the metrics scrape calls `/metrics` (#133). Logs are the exception: the app pushes a copy without IP addresses to Grafana Loki (#134) from a background thread that the competition never waits on, so a Grafana outage cannot affect a competition either (see *Logs* below). How the metrics are produced: [architecture.md, Observability](architecture.md#observability).
 
 What is set up (#132):
 
@@ -151,19 +151,66 @@ Staging stays without `METRICS_TOKEN` (endpoint off), so it neither counts towar
 
 `RATE_LIMIT_METRICS` (default `30/minute` per client IP) leaves room for the scrape plus manual checks; no need to change it.
 
+## Logs
+
+Production sends every log line, without `client_ip`, to the stack's Loki (#134). stdout in Railway stays complete (7 days, with IPs); Loki keeps the copy 14 days (free tier). How it works and why: [architecture.md, Observability](architecture.md#observability).
+
+### Setup
+
+Menu names as of 2026-11; they may move, the settings stay the same.
+
+1. grafana.com → *Cloud portal* → the stack → **Loki** → *Details*: note the **URL** (e.g. `https://logs-prod-012.grafana.net`) and the **User** (a number).
+2. *Cloud portal* → **Access Policies** → *Create access policy*: name `iron-verdict-logs-write`, realm = the stack, scope **`logs:write` only** → *Create*. Then *Add token* (name `railway-prod`, no expiry or a noted one) and copy it once. Store it in the password manager; never commit it.
+3. Railway → service `iron_verdict` → environment **production** → Variables:
+   - `LOKI_URL` = URL from step 1 plus `/loki/api/v1/push`
+   - `LOKI_USER` = User from step 1
+   - `LOKI_TOKEN` = token from step 2
+
+   Deploy. The deploy log shows `log_shipping_enabled` with the Loki host; without the variables it shows `log_shipping_disabled`, and a **warning** `log_shipping_disabled` with `reason` `incomplete_config` means one of the three is missing, with `reason` `insecure_url` that `LOKI_URL` does not start with `https://` (nothing is sent, the token is never used).
+4. Grafana → **Explore** → the Loki data source (`grafanacloud-<stack>-logs`) → `{app="iron-verdict"}`: lines appear within about 10 s (the app sends every 5 s). `{app="iron-verdict"} |= "client_ip"` must return nothing.
+
+Staging stays without the variables (same as `METRICS_TOKEN`), so production logs are not mixed with test runs.
+
+If Grafana refuses or does not answer, the app logs `log_ship_failed` (with `error` and `upstream_status`, e.g. `401` for a wrong user or token) once on stdout and `log_ship_recovered` once it works again. Lines lost for Loki meanwhile are counted in `iron_verdict_log_ship_dropped_total{reason}` (`send_failed`, or `queue_full` after more than 10,000 waiting lines) and are still in Railway.
+
+### Queries
+
+Every line is the JSON of stdout; `| json` turns its fields into labels. Labels on the stream: `app`, `level` (`info`, `warning`, `error`, `critical`), `version`.
+
+| Question | LogQL |
+|---|---|
+| Everything about session `ABC12345` | `{app="iron-verdict"} \| json \| session_code="ABC12345"` |
+| All warnings and errors in the competition window (set the time picker) | `{app="iron-verdict", level=~"warning\|error\|critical"}` |
+| Warnings and errors by event name | `sum by (message) (count_over_time({app="iron-verdict", level=~"warning\|error\|critical"} \| json [$__auto]))` |
+| One event, e.g. lost connections | `{app="iron-verdict"} \| json \| message="role_disconnected"` |
+| Rejected votes by code | `sum by (code) (count_over_time({app="iron-verdict"} \| json \| message="vote_rejected" [$__auto]))` |
+
+### Export after a competition
+
+Loki keeps 14 days. To keep a competition for later, export its time window within that period:
+
+- **Small windows** (up to the Explore line limit, 5,000 lines): Explore → query `{app="iron-verdict"}`, set the time range and *Line limit* → *Download* → `json` or `txt`.
+- **A whole competition day:** [`logcli`](https://grafana.com/docs/loki/latest/query/logcli/) with a **separate, short-lived** token with `logs:read` (create it as in step 2, delete it afterwards — the write token cannot read):
+
+  ```bash
+  logcli query '{app="iron-verdict"}' --addr=https://logs-prod-012.grafana.net --username=<User> --password=<read token> --from=2026-11-14T07:00:00Z --to=2026-11-14T20:00:00Z --limit=0 --batch=5000 --forward --output=raw --quiet > competition-2026-11-14.jsonl
+  ```
+
+  Times are UTC. The file has one JSON line per log line, without IPs; store it outside the repository.
+
 ## Dashboard
 
 The dashboard is versioned in the repo: [grafana/iron-verdict-dashboard.json](grafana/iron-verdict-dashboard.json).
 
-- Import: Grafana → **Dashboards → New → Import** → upload the file → keep the uid `iron-verdict` → *Folder* **`Iron Verdict`** (the alert folder; importing into the top level clashes with that folder's name: "A dashboard or a folder with the same name already exists" — do not click *Import (Overwrite)* for that) → **Import**. Pick the Prometheus data source of the stack (`grafanacloud-<stack>-prom`) in the *Data source* selector at the top; *Job* defaults to all jobs that report `iron_verdict_build_info`.
+- Import: Grafana → **Dashboards → New → Import** → upload the file → keep the uid `iron-verdict` → *Folder* **`Iron Verdict`** (the alert folder; importing into the top level clashes with that folder's name: "A dashboard or a folder with the same name already exists" — do not click *Import (Overwrite)* for that) → **Import**. Pick the Prometheus data source of the stack (`grafanacloud-<stack>-prom`) in the *Data source* selector at the top and the Loki one (`grafanacloud-<stack>-logs`) in *Logs data source*; *Job* defaults to all jobs that report `iron_verdict_build_info`.
 - Update: edit in Grafana, then **Share → Export → Export for sharing externally: off → Save to file**, replace the JSON in the repo and commit it in the same PR as the change that needs it. Importing a newer file over the old one (same uid) overwrites it.
 
 Sections:
 
 | Section | Content |
 |---|---|
-| Now | Status tiles (scrape up, sessions, judges, displays, version, snapshot age — orange from 3 min, red from 5 min: the app sets it every minute and Grafana scrapes every minute, so up to about 2½ min is normal), **What stands out now** (every firing or pending alert rule, critical and warning), votes per minute and rejections, lost connections by reason, memory (orange from 512 MB, red from 3 GB), HTTP status classes, errors, CPU, sessions/judges/displays over time, VPortal failures by result plus GraphQL retries, VPortal upstream time (GraphQL p50/p95, login p95; orange from 2 s, red at the 5 s timeout) |
-| Weekly review (last 7 days) | Fixed 7-day window regardless of the time picker: scrape availability, max sessions, votes, rejected votes, unhandled exceptions, snapshot failures, max memory, max snapshot age, lost connections and HTTP responses by class, VPortal failures by result and GraphQL retries, plus the week as curves |
+| Now | Status tiles (scrape up, sessions, judges, displays, version, snapshot age — orange from 3 min, red from 5 min: the app sets it every minute and Grafana scrapes every minute, so up to about 2½ min is normal), **What stands out now** (every firing or pending alert rule, critical and warning), votes per minute and rejections, lost connections by reason, memory (orange from 512 MB, red from 3 GB), HTTP status classes, errors, CPU, sessions/judges/displays over time, VPortal failures by result plus GraphQL retries, VPortal upstream time (GraphQL p50/p95, login p95; orange from 2 s, red at the 5 s timeout), log lines not sent to Loki (in *Errors*), **Logs** (all lines, newest first) |
+| Weekly review (last 7 days) | Fixed 7-day window regardless of the time picker: scrape availability, max sessions, votes, rejected votes, unhandled exceptions, snapshot failures, max memory, max snapshot age, lost connections and HTTP responses by class, VPortal failures by result and GraphQL retries, warnings and errors from the logs by event name, log lines not sent to Loki, plus the week as curves |
 
 Shown only as curves, never as alert rules: single heartbeat drops (normal on venue Wi-Fi), rate-limit hits and unknown session codes (both in 4xx), rejected cross-site connections (in the logs), VPortal failures and upstream time (decided in #181: curves and the weekly review only, no rule).
 
@@ -214,4 +261,5 @@ Open the dashboard, section **Weekly review**, and go through:
 5. Lost connections by reason: many `heartbeat_stale` / `client` during a competition point to the venue Wi-Fi; `flood`, `error` or `heartbeat_send_failed` deserve an issue.
 6. VPortal failures by result: `unreachable`, `upstream_error`, `invalid_response` or login reasons other than `rejected` during a competition → find them in the Railway logs (`vportal_upstream_unreachable`, `vportal_upstream_invalid_response`, `vportal_login_failed`) and check the upstream time curve of that day. Login `rejected` is a wrong password; GraphQL retries without `unreachable` are stale connections the retry fixed.
 7. Rejected votes and 4xx/5xx: a jump compared to earlier weeks → look up the codes in the logs.
-8. Note anything unusual in an issue; adjust thresholds here and in the dashboard if they proved wrong.
+8. **Warnings and errors by event** (from the logs): look up unfamiliar or growing events in Explore (*Logs*, *Queries*). `broadcast_send_failed` and its siblings appear in bursts when several devices of a session leave at once and are usually harmless (sends to sockets that are already closed); if they become so many that they hide real problems, open an issue that separates "already closed" from "open and the send failed" (note in #134). **Log lines not sent to Loki** > 0: `send_failed` → find `log_ship_failed` in Railway; `queue_full` → a burst of more than 10,000 lines in 5 s, worth an issue.
+9. Note anything unusual in an issue; adjust thresholds here and in the dashboard if they proved wrong.
