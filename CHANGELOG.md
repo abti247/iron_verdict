@@ -9,6 +9,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ### Added
 
 ### Changed
+- When the release pipeline's production deploy waits in vain for iron-verdict.com, its log names what it got (e.g. HTTP 403 from Cloudflare, or no answer)
 
 ### Fixed
 

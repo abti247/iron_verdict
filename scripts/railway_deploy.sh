@@ -75,19 +75,27 @@ while :; do
   sleep "$poll_s"
 done
 
+# "last seen" names what blocked the wait: the /health status (e.g. 403 from
+# a Cloudflare challenge, #205), no answer at all, or the footer version.
 while :; do
   version=""
-  if curl -fsS -m 10 "${url}/health" > /dev/null 2>&1; then
+  health="$(curl -sS -m 10 -o /dev/null -w '%{http_code}' "${url}/health" 2>/dev/null || true)"
+  if [ "$health" = "200" ]; then
     version="$(curl -fsS -m 10 "${url}/" 2>/dev/null \
       | python3 -c 'import re, sys; m = re.search(r"<div class=\"app-version\">\s*(.*?)\s*</div>", sys.stdin.read(), re.S); print(m.group(1) if m else "")' \
       || true)"
+    seen="${version:-no footer version}"
+  elif [ -z "$health" ] || [ "$health" = "000" ]; then
+    seen="no answer from /health"
+  else
+    seen="/health answered HTTP ${health}"
   fi
   if [ "$version" = "$expected_version" ]; then
     echo "${url} serves ${expected_version}"
     exit 0
   fi
   if [ "$SECONDS" -ge "$deadline" ]; then
-    echo "error: ${url} did not serve ${expected_version} within ${timeout_s} s (last seen: '${version:-no answer}'). Check deployment ${deployment} in Railway." >&2
+    echo "error: ${url} did not serve ${expected_version} within ${timeout_s} s (last seen: '${seen}'). Check deployment ${deployment} in Railway." >&2
     exit 1
   fi
   sleep "$poll_s"
