@@ -19,6 +19,7 @@ class FakeRailway:
         self.graphql_errors = None
         self.served_version = "sha-old0000"
         self.health_status = 200
+        self.footer = True
         # Status answers to successive deployment queries; the last one repeats.
         self.statuses = ["DEPLOYING", "SUCCESS"]
         self.status_queries = 0
@@ -59,6 +60,8 @@ class FakeRailway:
                     self._send(fake.health_status, '{"status":"ok"}', "application/json")
                 else:
                     html = f'<div class="app-version">\n    {fake.served_version}\n</div>'
+                    if not fake.footer:
+                        html = "<p>no footer</p>"
                     self._send(200, html, "text/html")
 
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
@@ -178,3 +181,13 @@ def test_deploy_timeout_says_no_answer_when_unreachable(railway):
 
     assert result.returncode != 0
     assert "last seen: 'no answer from /health'" in result.stderr
+
+
+def test_deploy_timeout_says_no_footer_version_when_footer_missing(railway):
+    railway.statuses = ["SUCCESS"]
+    railway.footer = False
+
+    result = run_deploy(railway, timeout_s="1")
+
+    assert result.returncode != 0
+    assert "last seen: 'no footer version'" in result.stderr

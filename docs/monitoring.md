@@ -77,7 +77,7 @@ Testing & synthetics → Synthetics → **Checks** → *Create new check* → **
 
 Save. After 2–3 minutes the check dashboard shows green bars for both locations. A single "No result found from London/Frankfurt" for one minute is normal (the run fell into the next minute).
 
-If it stays red, open the log of a failed run (click a bar, tab per location): status `403` or a "Just a moment…" page means Cloudflare blocks the probes — see *Cloudflare Bot Fight Mode* below.
+If it stays red, open the log of a failed run (click a bar, tab per location): status `403` or a "Just a moment…" page means Cloudflare blocks the probes — Bot Fight Mode is off since #205, so look in Security → Analytics → Events for the Cloudflare feature that acted; background in *Cloudflare Bot Fight Mode* below.
 
 ### 6. Alert rule
 
