@@ -52,7 +52,8 @@ def _wait_for_roundtrips(server_url, since):
 
     Why a loop with a deadline: the server pings every 5 s on its own clock, and
     the counter is the only signal that a pong arrived. 15 s covers one ping
-    interval with room for a loaded runner.
+    interval with room for a loaded runner. One scrape per second keeps the
+    test (at most ~19 scrapes) below the 30/minute limit on /metrics.
     """
     deadline = time.monotonic() + 15
     while True:
@@ -60,7 +61,7 @@ def _wait_for_roundtrips(server_url, since):
         if all(_roundtrips(samples, k) > _roundtrips(since, k) for k in ("judge", "display")):
             return samples
         assert time.monotonic() < deadline, "no heartbeat roundtrip measured after the reconnect"
-        time.sleep(0.2)
+        time.sleep(1)
 
 
 def test_metrics_match_competition_after_connection_loss_and_reload(competition, server_url):
@@ -70,8 +71,9 @@ def test_metrics_match_competition_after_connection_loss_and_reload(competition,
     After the next lift all vote white again and the display shows Good Lift.
     /metrics then shows 3 judges, 1 display, 1 session, 6 votes, no
     rejections and the two lost connections — and is 401 without the token.
-    Heartbeat roundtrips of judges and the display are measured after the
-    reconnect and the reload too (#193)."""
+    After the reconnect and the reload the heartbeat keeps running and
+    /metrics gains roundtrip measurements for judges and the display (#193;
+    per-socket matching is covered by the backend tests)."""
     head = competition.create_session_and_join_head()
     right = competition.join_as("right_judge")
     display = competition.join_as("display")
