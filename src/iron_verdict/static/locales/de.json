@@ -316,6 +316,7 @@
     "noParcels": "Bitte keine Pakete oder Päckchen an diese Anschrift senden.",
     "email": "E-Mail",
     "serverLogs": "Serverlogs (einschließlich IP-Adressen) werden für bis zu 7 Tage zu Betriebs- und Debugging-Zwecken gespeichert (gehostet auf Railway).",
+    "monitoringLogs": "Eine Kopie der Serverlogs ohne IP-Adressen wird zur Überwachung des Betriebs bis zu 14 Tage bei Grafana Labs gespeichert (Grafana Cloud, Rechenzentrum in der EU).",
     "session": "Sitzungsdaten (Rolle, Sitzungscode) werden in sessionStorage gespeichert — bleiben beim Neuladen der Seite erhalten und werden automatisch gelöscht, wenn der Tab geschlossen wird.",
     "language": "Die Spracheinstellung wird in localStorage gespeichert.",
     "analytics": "Nutzungsstatistiken über Umami Analytics (ohne Cookies, keine personenbezogenen Daten).",

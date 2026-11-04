@@ -181,3 +181,13 @@ def test_metrics_token_defaults_to_empty_and_is_stripped(monkeypatch):
     assert reload_config().METRICS_TOKEN == "abc"
     monkeypatch.delenv("METRICS_TOKEN")
     reload_config()
+
+
+def test_loki_variables_default_to_empty_and_are_stripped(monkeypatch):
+    for name in ("LOKI_URL", "LOKI_USER", "LOKI_TOKEN"):
+        monkeypatch.delenv(name, raising=False)
+        assert getattr(reload_config(), name) == ""
+        monkeypatch.setenv(name, "  abc  ")
+        assert getattr(reload_config(), name) == "abc"
+        monkeypatch.delenv(name)
+    reload_config()
