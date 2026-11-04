@@ -49,8 +49,11 @@ def test_results_blocked_when_judge_disconnects_before_voting(competition):
     competition.vote_and_lock(head, "white")
     competition.vote_and_lock(right, "white")
 
-    # Give the server time to process both votes — results must still not appear
-    head.wait_for_timeout(1000)
+    # A result would be sent right after the vote confirmation, so it would arrive
+    # before the timer start that the head judge sends afterwards.
+    head.get_by_role("button", name="Start Timer").click()
+    expect(right.locator(".judge-timer")).not_to_have_text("60")
+
     expect(head.locator(".head-section").last).not_to_be_visible()
     expect(right.locator(".head-section").last).not_to_be_visible()
 

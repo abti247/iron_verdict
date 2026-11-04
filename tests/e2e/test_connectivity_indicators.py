@@ -1,7 +1,6 @@
 """Connectivity indicators — L/R dots on head screen, own connection dot."""
 
 import re
-import time
 from playwright.sync_api import expect
 
 
@@ -54,7 +53,6 @@ def test_lr_dots_recover_on_reconnect(competition):
 
     expect(l_dot).to_have_class(re.compile(r"status-disconnected"))
 
-    time.sleep(0.5)
     competition.join_as("left_judge")
     expect(l_dot).to_have_class(re.compile(r"status-connected"))
 
