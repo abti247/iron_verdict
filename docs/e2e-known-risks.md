@@ -18,6 +18,8 @@ pytest tests/e2e/path/to/test.py::test_name --count=10 -v
 
 Any failure out of 10 = flaky. Apply the fix documented below.
 
+**Parallel runs (`-n 4`).** CI runs the E2E suite on 4 pytest-xdist workers, which makes tests slower on average and single ones 2–5× slower. If a test flakes under `-n 4`, first reproduce it serially (`pytest tests/e2e/path/to/test.py::test_name --count=10`). Fails serially too → a real flake, fix it as above. Only fails in parallel → a time limit too tight for a loaded machine; replace the time limit with a visible signal or justify a larger one. Never retry or skip it; if it cannot be fixed cleanly, CI falls back to `-n 2` with the reason in the PR (#207).
+
 | Risk | Test | Code changes that warrant re-check |
 |------|------|------------------------------------|
 | Timer race | `test_timer_flow` | Timer logic, tick interval, `.judge-timer` rendering |

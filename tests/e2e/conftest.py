@@ -14,15 +14,33 @@ In external mode every session a test creates is ended after the test (see
 no sessions in the server's snapshot.
 """
 
+import atexit
 import json
 import os
+import shutil
 import socket
+import tempfile
 import threading
 import time
 from urllib.parse import urlparse
 
 os.environ["TEST_MODE"] = "1"
 os.environ["VPORTAL_FETCH_INTERVAL_MS"] = "2000"
+
+EXTERNAL_BASE_URL = os.environ.get("E2E_BASE_URL", "").rstrip("/")
+
+# In-process mode: every pytest process (each pytest-xdist worker, or the one
+# serial run) writes its session snapshot to its own temporary directory,
+# never to the default /data/sessions.json. Set before the app is imported,
+# because the settings read SNAPSHOT_PATH at import time.
+# Why: with ``-n 4`` four in-process servers would otherwise overwrite each
+# other's snapshot file.
+if not EXTERNAL_BASE_URL:
+    _snapshot_dir = tempfile.mkdtemp(
+        prefix=f"iron-verdict-e2e-{os.environ.get('PYTEST_XDIST_WORKER', 'main')}-"
+    )
+    atexit.register(shutil.rmtree, _snapshot_dir, ignore_errors=True)
+    os.environ["SNAPSHOT_PATH"] = os.path.join(_snapshot_dir, "sessions.json")
 
 import httpx
 import pytest
@@ -31,8 +49,6 @@ from httpx_ws import WebSocketDisconnect, WebSocketNetworkError, connect_ws
 
 from iron_verdict.main import app, session_manager, connection_manager
 from iron_verdict.main import limiter
-
-EXTERNAL_BASE_URL = os.environ.get("E2E_BASE_URL", "").rstrip("/")
 
 
 # ---------------------------------------------------------------------------
