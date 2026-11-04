@@ -987,6 +987,184 @@
       }
     },
     {
+      "type": "timeseries",
+      "id": 31,
+      "title": "VPortal failures (per 5 min)",
+      "description": "Proxy requests to VPortal that did not end in ok, by result, plus GraphQL retries after a stale connection. Login rejected = wrong credentials (usually a typo).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 35
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum by (result) (increase(iron_verdict_vportal_graphql_requests_total{job=~\"$job\", result!=\"ok\"}[5m]))",
+          "legendFormat": "graphql {{result}}",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum by (result) (increase(iron_verdict_vportal_logins_total{job=~\"$job\", result!=\"ok\"}[5m]))",
+          "legendFormat": "login {{result}}",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(increase(iron_verdict_vportal_transport_retries_total{job=~\"$job\"}[5m]))",
+          "legendFormat": "graphql retries",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 10,
+            "lineWidth": 1,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "id": 32,
+      "title": "VPortal upstream time",
+      "description": "Time the proxy waited for VPortal per request (login: both calls; GraphQL: including the retry). The upstream timeout is 5 s.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 35
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.5, sum by (le) (rate(iron_verdict_vportal_upstream_duration_seconds_bucket{job=~\"$job\", endpoint=\"graphql\"}[5m])))",
+          "legendFormat": "graphql p50",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(iron_verdict_vportal_upstream_duration_seconds_bucket{job=~\"$job\", endpoint=\"graphql\"}[5m])))",
+          "legendFormat": "graphql p95",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(iron_verdict_vportal_upstream_duration_seconds_bucket{job=~\"$job\", endpoint=\"login\"}[5m])))",
+          "legendFormat": "login p95",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 2
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 1,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
       "type": "row",
       "id": 16,
       "title": "Weekly review (last 7 days)",
@@ -995,7 +1173,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 35
+        "y": 43
       },
       "panels": []
     },
@@ -1012,7 +1190,7 @@
         "h": 4,
         "w": 4,
         "x": 0,
-        "y": 36
+        "y": 44
       },
       "targets": [
         {
@@ -1082,7 +1260,7 @@
         "h": 4,
         "w": 4,
         "x": 4,
-        "y": 36
+        "y": 44
       },
       "targets": [
         {
@@ -1144,7 +1322,7 @@
         "h": 4,
         "w": 4,
         "x": 8,
-        "y": 36
+        "y": 44
       },
       "targets": [
         {
@@ -1206,7 +1384,7 @@
         "h": 4,
         "w": 4,
         "x": 12,
-        "y": 36
+        "y": 44
       },
       "targets": [
         {
@@ -1272,7 +1450,7 @@
         "h": 4,
         "w": 4,
         "x": 16,
-        "y": 36
+        "y": 44
       },
       "targets": [
         {
@@ -1338,7 +1516,7 @@
         "h": 4,
         "w": 4,
         "x": 20,
-        "y": 36
+        "y": 44
       },
       "targets": [
         {
@@ -1404,7 +1582,7 @@
         "h": 4,
         "w": 4,
         "x": 0,
-        "y": 40
+        "y": 48
       },
       "targets": [
         {
@@ -1474,7 +1652,7 @@
         "h": 4,
         "w": 4,
         "x": 4,
-        "y": 40
+        "y": 48
       },
       "targets": [
         {
@@ -1544,7 +1722,7 @@
         "h": 4,
         "w": 8,
         "x": 8,
-        "y": 40
+        "y": 48
       },
       "targets": [
         {
@@ -1606,7 +1784,7 @@
         "h": 4,
         "w": 8,
         "x": 16,
-        "y": 40
+        "y": 48
       },
       "targets": [
         {
@@ -1656,6 +1834,141 @@
       "timeFrom": "7d"
     },
     {
+      "type": "stat",
+      "id": 33,
+      "title": "VPortal failures by result",
+      "description": "Proxy requests to VPortal that did not end in ok (login rejected = wrong credentials).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 16,
+        "x": 0,
+        "y": 52
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum by (result) (increase(iron_verdict_vportal_graphql_requests_total{job=~\"$job\", result!=\"ok\"}[7d]))",
+          "legendFormat": "graphql {{result}}",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum by (result) (increase(iron_verdict_vportal_logins_total{job=~\"$job\", result!=\"ok\"}[7d]))",
+          "legendFormat": "login {{result}}",
+          "refId": "B",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "timeFrom": "7d"
+    },
+    {
+      "type": "stat",
+      "id": 34,
+      "title": "VPortal GraphQL retries",
+      "description": "GraphQL calls retried after a transport error (stale pooled connection); usually followed by success.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 16,
+        "y": 52
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(increase(iron_verdict_vportal_transport_retries_total{job=~\"$job\"}[7d]))",
+          "legendFormat": "",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "timeFrom": "7d"
+    },
+    {
       "type": "timeseries",
       "id": 27,
       "title": "Memory over the week",
@@ -1668,7 +1981,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 44
+        "y": 56
       },
       "targets": [
         {
@@ -1744,7 +2057,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 44
+        "y": 56
       },
       "targets": [
         {
@@ -1812,7 +2125,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 52
+        "y": 64
       },
       "targets": [
         {
@@ -1889,7 +2202,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 52
+        "y": 64
       },
       "targets": [
         {

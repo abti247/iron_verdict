@@ -7,6 +7,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- `/metrics` and the Grafana dashboard show failed and slow VPortal calls (login and data polling) by cause, so they no longer have to be looked up in the logs
 
 ### Changed
 - When the release pipeline's production deploy waits in vain for iron-verdict.com, its log names what it got (e.g. HTTP 403 from Cloudflare, or no answer)
