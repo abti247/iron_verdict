@@ -1,6 +1,6 @@
 # E2E Test Suite — Known Risks
 
-Five places have latent timing/race risks that could surface as intermittent failures (flakes). They pass today; Risk 5 failed once in CI and passed on the re-run. This doc exists so that **when a test starts failing after a code change**, you can quickly check whether it's a known risk with a ready-to-apply fix.
+Four places have latent timing/race risks that could surface as intermittent failures (flakes). They pass today; Risk 4 failed once in CI and passed on the re-run. This doc exists so that **when a test starts failing after a code change**, you can quickly check whether it's a known risk with a ready-to-apply fix.
 
 ## When to consult this doc
 
@@ -21,7 +21,6 @@ Any failure out of 10 = flaky. Apply the fix documented below.
 | Risk | Test | Code changes that warrant re-check |
 |------|------|------------------------------------|
 | Timer race | `test_timer_flow` | Timer logic, tick interval, `.judge-timer` rendering |
-| Role rejection race | `test_cannot_join_taken_role` | Role locking, WebSocket reconnect, `handleJoinError` |
 | Display orphan | `test_display_reconnects_after_refresh` | Display WS handling, connection cleanup, `display_XXXX` IDs |
 | Teardown connection error on staging | `created_sessions` / `_end_session` (any external-mode test) | Session cleanup in `tests/e2e/conftest.py`, staging proxy/TLS setup |
 | First page load timeout in CI | `test_pause_is_right_after_connection_loss_and_reload` | Static files loaded by the start page, test server startup in `tests/e2e/conftest.py` |
@@ -51,32 +50,7 @@ for p in (head, left, right):
 
 ---
 
-## Risk 2: Auto-reconnect loop interference — `test_cannot_join_taken_role`
-
-**File:** `tests/e2e/test_role_protection.py:7`
-
-**What it does:** A fourth user clicks a taken role (Left). The test waits 2s then asserts `.judge-wrap` is not visible — confirming the user was rejected.
-
-**Why it could flake:** The client's auto-reconnect loop retries WebSocket connections on failure. If the reconnect fires during the 2s wait window and the server has already freed the role (race condition), the intruder could accidentally succeed. This is unlikely with the current implementation since the original left judge is still connected, but server-side role locking changes could reintroduce the risk.
-
-**Symptom:** `test_cannot_join_taken_role` fails with `.judge-wrap` unexpectedly becoming visible.
-
-**Fix if it flakes:** Add explicit assertion that the intruder's page stays on role-select and did not transition:
-
-```python
-page.locator(".role-btn", has_text="Left").click()
-# Wait and repeatedly confirm the user is still on role-select
-for _ in range(4):
-    page.wait_for_timeout(500)
-    expect(page.locator(".role-wrap")).to_be_visible()
-    expect(page.locator(".judge-wrap")).not_to_be_visible()
-```
-
-Or disable auto-reconnect for the intruder's page via init script.
-
----
-
-## Risk 3: Display orphan connections after reload — `test_display_reconnects_after_refresh`
+## Risk 2: Display orphan connections after reload — `test_display_reconnects_after_refresh`
 
 **File:** `tests/e2e/test_display_resilience.py:7`
 
@@ -99,7 +73,7 @@ Or fix server-side: in the WebSocket handler, when a display reconnects with the
 
 ---
 
-## Risk 4: Connection error while ending a test session on staging — `_end_session`
+## Risk 3: Connection error while ending a test session on staging — `_end_session`
 
 **File:** `tests/e2e/conftest.py` (`_end_session`, run by the autouse `created_sessions` fixture in external mode)
 
@@ -113,7 +87,7 @@ Or fix server-side: in the WebSocket handler, when a display reconnects with the
 
 ---
 
-## Risk 5: First page load times out in CI — `test_pause_is_right_after_connection_loss_and_reload`
+## Risk 4: First page load times out in CI — `test_pause_is_right_after_connection_loss_and_reload`
 
 **File:** `tests/e2e/test_display_pause.py` (fails in `competition.create_session_and_join_head()` → `page.goto(self.url)`, `tests/e2e/conftest.py`)
 
