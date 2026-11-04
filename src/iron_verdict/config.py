@@ -83,6 +83,11 @@ class Settings:
     RATE_LIMIT_METRICS: str = _read_rate_limit("RATE_LIMIT_METRICS", "30/minute")
     # Bearer token Grafana sends to GET /metrics (#133). Empty means the endpoint is off.
     METRICS_TOKEN: str = os.getenv("METRICS_TOKEN", "").strip()
+    # Grafana Cloud Loki push (#134): full push URL, user (numeric ID) and an
+    # access-policy token with logs:write only. All three or nothing is shipped.
+    LOKI_URL: str = os.getenv("LOKI_URL", "").strip()
+    LOKI_USER: str = os.getenv("LOKI_USER", "").strip()
+    LOKI_TOKEN: str = os.getenv("LOKI_TOKEN", "").strip()
     TEST_MODE: bool = os.getenv("TEST_MODE") == "1"
     EXPOSE_VPORTAL_STAGING: bool = os.getenv("EXPOSE_VPORTAL_STAGING") == "1"
 

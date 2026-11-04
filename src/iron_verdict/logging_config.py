@@ -19,16 +19,28 @@ _EXTRA_FIELDS = (
     "limit",
     # Display pause (#163)
     "pause_mode", "pause_seconds", "ended_by",
+    # Heartbeat, snapshot, vote rejection and startup rate limits (#134)
+    "seconds_since_pong", "session_count", "code", "session_create", "session_lookup",
 )
 
 class JsonFormatter(logging.Formatter):
+    """One JSON object per line with the whitelisted extra fields.
+
+    *exclude* leaves out fields, e.g. ``client_ip`` for lines leaving the
+    app (#134): IP addresses stay in the Railway logs only.
+    """
+
+    def __init__(self, exclude: tuple[str, ...] = ()):
+        super().__init__()
+        self._fields = tuple(f for f in _EXTRA_FIELDS if f not in exclude)
+
     def format(self, record: logging.LogRecord) -> str:
         log_obj = {
             "timestamp": datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat(),
             "level": record.levelname,
             "message": record.getMessage(),
         }
-        for field in _EXTRA_FIELDS:
+        for field in self._fields:
             if hasattr(record, field):
                 log_obj[field] = getattr(record, field)
         return json.dumps(log_obj)

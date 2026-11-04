@@ -21,6 +21,7 @@ from slowapi.errors import RateLimitExceeded
 from starlette.middleware.base import BaseHTTPMiddleware
 import logging
 from iron_verdict.logging_config import setup_logging
+from iron_verdict.log_shipping import start_log_shipping
 
 logger = logging.getLogger("iron_verdict")
 
@@ -269,6 +270,10 @@ metrics.register_live_state(session_manager, connection_manager, settings.APP_VE
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     setup_logging(settings.LOG_LEVEL)
+    # Optional, production only: without the LOKI_* variables nothing is sent.
+    log_shipper = start_log_shipping(
+        settings.LOKI_URL, settings.LOKI_USER, settings.LOKI_TOKEN, settings.APP_VERSION, logger
+    )
     require_allowed_origin(settings.ALLOWED_ORIGIN)
     logger.info("rate_limits_configured", extra={
         "session_create": settings.RATE_LIMIT_SESSION_CREATE,
@@ -335,6 +340,9 @@ async def lifespan(app: FastAPI):
 
     # Fallback snapshot save for shutdowns not triggered via signal handler
     session_manager.save_snapshot(settings.SNAPSHOT_PATH)
+    # Last: the remaining log lines must never delay the snapshot.
+    if log_shipper:
+        log_shipper.stop()
 
 app = FastAPI(title="Iron Verdict", lifespan=lifespan)
 app.include_router(vportal_router)
