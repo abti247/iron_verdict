@@ -1,5 +1,6 @@
 """Session stuck states — session must never get stuck during competition."""
 
+import re
 from playwright.sync_api import expect
 
 
@@ -39,11 +40,17 @@ def test_continue_after_judge_disconnect_mid_vote(competition):
 def test_results_blocked_when_judge_disconnects_before_voting(competition):
     """Judge disconnects before voting → other two lock → results must not appear (IPF rule)."""
     head, left, right = competition.join_all_judges()
+    l_dot = head.locator(".connectivity-dot", has_text="L")
+    expect(l_dot).to_have_class(re.compile(r"status-connected"))
 
     # Left judge closes browser without casting a vote
     left_ctx = competition.get_context_for("left_judge")
     left_ctx.close()
     competition.contexts.remove(left_ctx)
+
+    # The server marks the judge disconnected before it reports it, so the votes
+    # below are counted against a disconnected non-voter
+    expect(l_dot).to_have_class(re.compile(r"status-disconnected"))
 
     # Remaining two judges lock in their votes
     competition.vote_and_lock(head, "white")
