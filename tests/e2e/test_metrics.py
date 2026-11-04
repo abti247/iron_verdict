@@ -1,11 +1,13 @@
 """Metrics endpoint (#133) — after a competition flow with a connection loss and
-a reload, ``/metrics`` shows the real number of connected judges and displays
-and counts every vote once, while voting keeps working.
+a reload, ``/metrics`` shows the real number of connected judges and displays,
+counts every vote once and measures the heartbeat roundtrip of judges and
+displays (#193), while voting keeps working.
 
 Not ``remote_safe``: the token is set on the in-process server.
 """
 
 import re
+import time
 
 import httpx
 import pytest
@@ -41,13 +43,37 @@ def _rejected(samples):
     return sum(v for (name, _), v in samples.items() if name == "iron_verdict_votes_rejected_total")
 
 
+def _roundtrips(samples, kind):
+    return samples[("iron_verdict_ws_roundtrip_seconds_count", frozenset({("role_kind", kind)}))]
+
+
+def _wait_for_roundtrips(server_url, since):
+    """Scrape until a judge and a display pong were measured after *since*.
+
+    Why a loop with a deadline: the server pings every 5 s on its own clock, and
+    the counter is the only signal that a pong arrived. 15 s covers one ping
+    interval with room for a loaded runner. One scrape per second keeps the
+    test (at most ~19 scrapes) below the 30/minute limit on /metrics.
+    """
+    deadline = time.monotonic() + 15
+    while True:
+        samples = _scrape(server_url)
+        if all(_roundtrips(samples, k) > _roundtrips(since, k) for k in ("judge", "display")):
+            return samples
+        assert time.monotonic() < deadline, "no heartbeat roundtrip measured after the reconnect"
+        time.sleep(1)
+
+
 def test_metrics_match_competition_after_connection_loss_and_reload(competition, server_url):
     """Head, right judge and a display join; the left judge joins with a
     network switch. All vote white. The left judge loses the connection (head
     sees L disconnected) and reconnects, the right judge reloads the page.
     After the next lift all vote white again and the display shows Good Lift.
     /metrics then shows 3 judges, 1 display, 1 session, 6 votes, no
-    rejections and the two lost connections — and is 404 without the token."""
+    rejections and the two lost connections — and is 401 without the token.
+    After the reconnect and the reload the heartbeat keeps running and
+    /metrics gains roundtrip measurements for judges and the display (#193;
+    per-socket matching is covered by the backend tests)."""
     head = competition.create_session_and_join_head()
     right = competition.join_as("right_judge")
     display = competition.join_as("display")
@@ -72,7 +98,7 @@ def test_metrics_match_competition_after_connection_loss_and_reload(competition,
     competition.vote_all_white()
     expect(display.locator(".verdict-stamp")).to_have_text("Good Lift")
 
-    after = _scrape(server_url)
+    after = _wait_for_roundtrips(server_url, since=_scrape(server_url))
     assert after[("iron_verdict_judges_connected", frozenset())] == 3
     assert after[("iron_verdict_displays_connected", frozenset())] == 1
     assert after[("iron_verdict_sessions_active", frozenset({("kind", "generic")}))] == 1

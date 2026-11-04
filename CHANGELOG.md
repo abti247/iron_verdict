@@ -10,6 +10,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - `/metrics` and the Grafana dashboard show failed and slow VPortal calls (login and data polling) by cause, so they no longer have to be looked up in the logs
 - Production logs can be searched in Grafana for 14 days, without IP addresses; the dashboard shows them and the weekly review lists warnings and errors by event. Set `LOKI_URL`, `LOKI_USER` and `LOKI_TOKEN` to enable; a slow or unreachable Grafana never affects a competition
 - The privacy notice mentions the log copy at Grafana Labs
+- `/metrics` and the Grafana dashboard show how quickly judges' and displays' devices answer the server, so a slow venue Wi-Fi shows up even when no connection drops
 
 ### Changed
 - When the release pipeline's production deploy waits in vain for iron-verdict.com, its log names what it got (e.g. HTTP 403 from Cloudflare, or no answer)

@@ -392,3 +392,70 @@ def test_vportal_series_exported_from_start_without_hosts_or_tokens():
         key for name, labels in samples if name.startswith("iron_verdict_vportal_") for key, _ in labels
     }
     assert vportal_labels <= {"result", "endpoint", "le"}
+
+
+# ---- Device roundtrip (#193) ----
+
+def test_roundtrip_series_exported_from_start_with_role_kind_only():
+    samples = _scrape()
+    for kind in ("judge", "display"):
+        buckets = {
+            dict(labels)["le"]
+            for name, labels in samples
+            if name == "iron_verdict_ws_roundtrip_seconds_bucket" and ("role_kind", kind) in labels
+        }
+        assert buckets == {"0.05", "0.1", "0.25", "0.5", "1.0", "2.5", "5.0", "+Inf"}
+    keys = {key for name, labels in samples if name.startswith("iron_verdict_ws_roundtrip") for key, _ in labels}
+    assert keys <= {"role_kind", "le"}
+
+
+async def _wait_for_count(kind, expected):
+    for _ in range(100):
+        if _value("iron_verdict_ws_roundtrip_seconds_count", role_kind=kind) >= expected:
+            return
+        await asyncio.sleep(0.01)
+    pytest.fail(f"no roundtrip measured for {kind}")
+
+
+async def test_delayed_pong_lands_in_matching_bucket_and_second_pong_is_ignored():
+    from iron_verdict.main import heartbeat_sweep
+
+    code = await session_manager.create_session("A")
+    count = _value("iron_verdict_ws_roundtrip_seconds_count", role_kind="judge")
+    le_025 = _value("iron_verdict_ws_roundtrip_seconds_bucket", role_kind="judge", le="0.25")
+    le_05 = _value("iron_verdict_ws_roundtrip_seconds_bucket", role_kind="judge", le="0.5")
+    display_count = _value("iron_verdict_ws_roundtrip_seconds_count", role_kind="display")
+    async with _ws_client() as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+            await _join(ws, code, "left_judge")
+            await heartbeat_sweep(connection_manager, time.monotonic())
+            assert (await asyncio.wait_for(ws.receive_json(), timeout=1.0))["type"] == "ping"
+            await asyncio.sleep(0.3)  # the artificially delayed pong
+            await ws.send_json({"type": "pong"})
+            await _wait_for_count("judge", count + 1)
+            # A second pong answers no ping: not measured.
+            await ws.send_json({"type": "pong"})
+            # A vote after it is still answered, so the pong before it has been handled.
+            await ws.send_json({"type": "vote_lock", "color": "white", "lift_id": 0})
+            assert (await asyncio.wait_for(ws.receive_json(), timeout=1.0))["type"] == "vote_ack"
+    assert _value("iron_verdict_ws_roundtrip_seconds_count", role_kind="judge") == count + 1
+    assert _value("iron_verdict_ws_roundtrip_seconds_bucket", role_kind="judge", le="0.25") == le_025
+    assert _value("iron_verdict_ws_roundtrip_seconds_bucket", role_kind="judge", le="0.5") == le_05 + 1
+    assert _value("iron_verdict_ws_roundtrip_seconds_count", role_kind="display") == display_count
+
+
+async def test_display_pong_counted_as_display():
+    from iron_verdict.main import heartbeat_sweep
+
+    code = await session_manager.create_session("A")
+    count = _value("iron_verdict_ws_roundtrip_seconds_count", role_kind="display")
+    async with _ws_client() as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+            await _join(ws, code, "display")
+            await heartbeat_sweep(connection_manager, time.monotonic())
+            while (await asyncio.wait_for(ws.receive_json(), timeout=1.0))["type"] != "ping":
+                pass
+            await ws.send_json({"type": "pong"})
+            await _wait_for_count("display", count + 1)
+    await _wait_until_released(code)
+    assert connection_manager._ping_sent == {}

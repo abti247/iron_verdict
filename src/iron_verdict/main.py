@@ -75,6 +75,7 @@ async def heartbeat_sweep(manager: ConnectionManager, now: float) -> None:
                 metrics.ws_disconnects.labels(reason="heartbeat_stale").inc()
             continue
         try:
+            await manager.mark_ping(ws)
             await ws.send_json({"type": "ping"})
         except Exception as exc:
             if await release_connection(manager, session_code, role, ws):
@@ -970,7 +971,10 @@ async def websocket_endpoint(websocket: WebSocket):
                     pause_update_message(session_manager.sessions[session_code]["pause"]),
                 )
             elif message_type == "pong":
-                await connection_manager.mark_pong(websocket)
+                roundtrip = await connection_manager.mark_pong(websocket)
+                if roundtrip is not None:
+                    role_kind = "display" if role.startswith("display_") else "judge"
+                    metrics.ws_roundtrip.labels(role_kind=role_kind).observe(roundtrip)
                 continue
             else:
                 # Issue 4: Handle post-join messages
