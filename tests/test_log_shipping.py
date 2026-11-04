@@ -257,3 +257,17 @@ def test_app_shutdown_saves_the_snapshot_and_flushes_the_rest(monkeypatch, caplo
     assert (tmp_path / "sessions.json").exists()
     body = b"".join(r.content for r in rec.requests).decode()
     assert "log_shipping_enabled" in body
+
+
+def test_non_https_url_ships_nothing_and_never_uses_the_token(monkeypatch, caplog):
+    rec = _Recorder()
+    monkeypatch.setattr(log_shipping, "_default_transport", rec.transport)
+    logger = logging.getLogger("iron_verdict.test_insecure")
+    with caplog.at_level(logging.INFO, logger="iron_verdict"):
+        assert start_log_shipping("http://logs.example.invalid/loki/api/v1/push", "123456", "glc_secret", "dev", logger) is None
+    assert not any(isinstance(h, log_shipping.LokiHandler) for h in logger.handlers)
+    record = next(r for r in caplog.records if r.getMessage() == "log_shipping_disabled")
+    assert record.levelno == logging.WARNING
+    assert record.reason == "insecure_url"
+    assert "glc_secret" not in caplog.text
+    assert rec.requests == []

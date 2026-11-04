@@ -166,7 +166,7 @@ Menu names as of 2026-11; they may move, the settings stay the same.
    - `LOKI_USER` = User from step 1
    - `LOKI_TOKEN` = token from step 2
 
-   Deploy. The deploy log shows `log_shipping_enabled` with the Loki host; without the variables it shows `log_shipping_disabled`, and a **warning** `log_shipping_disabled` with `reason` `incomplete_config` means one of the three is missing.
+   Deploy. The deploy log shows `log_shipping_enabled` with the Loki host; without the variables it shows `log_shipping_disabled`, and a **warning** `log_shipping_disabled` with `reason` `incomplete_config` means one of the three is missing, with `reason` `insecure_url` that `LOKI_URL` does not start with `https://` (nothing is sent, the token is never used).
 4. Grafana → **Explore** → the Loki data source (`grafanacloud-<stack>-logs`) → `{app="iron-verdict"}`: lines appear within about 10 s (the app sends every 5 s). `{app="iron-verdict"} |= "client_ip"` must return nothing.
 
 Staging stays without the variables (same as `METRICS_TOKEN`), so production logs are not mixed with test runs.

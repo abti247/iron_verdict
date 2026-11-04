@@ -170,7 +170,8 @@ class LokiShipper:
 
 
 def start_log_shipping(url: str, user: str, token: str, version: str, target: logging.Logger):
-    """Start shipping *target*'s lines to Loki if all three variables are set.
+    """Start shipping *target*'s lines to Loki if all three variables are set
+    and the URL is https.
 
     Returns the shipper (call ``stop()`` on shutdown) or None.
     """
@@ -179,6 +180,12 @@ def start_log_shipping(url: str, user: str, token: str, version: str, target: lo
         return None
     if not (url and user and token):
         target.warning("log_shipping_disabled", extra={"reason": "incomplete_config"})
+        return None
+    # Why: every push carries the token in the Authorization header; over plain
+    # HTTP (e.g. a typo in LOKI_URL) it could be read on the way. The app still
+    # starts — monitoring must never keep a competition from running.
+    if urlparse(url).scheme != "https":
+        target.warning("log_shipping_disabled", extra={"reason": "insecure_url"})
         return None
     shipper = LokiShipper(url, user, token, version)
     shipper.start(target)
