@@ -1970,7 +1970,7 @@
       "timeFrom": "7d"
     },
     {
-      "type": "stat",
+      "type": "bargauge",
       "id": 33,
       "title": "VPortal failures by result",
       "description": "Proxy requests to VPortal that did not end in ok (login rejected = wrong credentials).",
@@ -1979,7 +1979,7 @@
         "uid": "${datasource}"
       },
       "gridPos": {
-        "h": 4,
+        "h": 10,
         "w": 16,
         "x": 0,
         "y": 70
@@ -2017,12 +2017,17 @@
               {
                 "color": "green",
                 "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
               }
             ]
           },
           "color": {
             "mode": "thresholds"
-          }
+          },
+          "min": 0
         },
         "overrides": []
       },
@@ -2034,11 +2039,11 @@
           "fields": "",
           "values": false
         },
-        "textMode": "value_and_name",
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto"
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "namePlacement": "left"
       },
       "timeFrom": "7d"
     },
@@ -2052,7 +2057,7 @@
         "uid": "${datasource}"
       },
       "gridPos": {
-        "h": 4,
+        "h": 10,
         "w": 8,
         "x": 16,
         "y": 70
@@ -2108,7 +2113,7 @@
       "type": "bargauge",
       "id": 36,
       "title": "Warnings and errors by event",
-      "description": "Log lines with level warning, error or critical in the last 7 days, by event name (the JSON field message).",
+      "description": "Log lines with level warning, error or critical in the last 7 days, by event name (the JSON field message), most frequent first.",
       "datasource": {
         "type": "loki",
         "uid": "${logs}"
@@ -2117,7 +2122,7 @@
         "h": 8,
         "w": 16,
         "x": 0,
-        "y": 74
+        "y": 80
       },
       "targets": [
         {
@@ -2156,14 +2161,28 @@
             "lastNotNull"
           ],
           "fields": "",
-          "values": false
+          "values": true
         },
         "orientation": "horizontal",
         "displayMode": "basic",
         "showUnfilled": true,
-        "valueMode": "color"
+        "valueMode": "color",
+        "namePlacement": "left"
       },
-      "timeFrom": "7d"
+      "timeFrom": "7d",
+      "transformations": [
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "Value #A",
+                "desc": true
+              }
+            ]
+          }
+        }
+      ]
     },
     {
       "type": "stat",
@@ -2178,7 +2197,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 74
+        "y": 80
       },
       "targets": [
         {
@@ -2240,7 +2259,7 @@
         "h": 4,
         "w": 24,
         "x": 0,
-        "y": 82
+        "y": 88
       },
       "targets": [
         {
@@ -2310,7 +2329,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 86
+        "y": 92
       },
       "targets": [
         {
@@ -2386,7 +2405,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 86
+        "y": 92
       },
       "targets": [
         {
@@ -2454,7 +2473,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 94
+        "y": 100
       },
       "targets": [
         {
@@ -2531,7 +2550,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 94
+        "y": 100
       },
       "targets": [
         {

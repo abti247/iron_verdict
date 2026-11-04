@@ -11,6 +11,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ### Changed
 
 ### Fixed
+- The Grafana dashboard's weekly review names every warning and error event from the logs with its count, instead of a single unnamed number, and lists VPortal failures by result in readable rows
 
 ### Removed
 
