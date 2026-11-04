@@ -12,6 +12,7 @@ from prometheus_client import (
     CollectorRegistry,
     Counter,
     Gauge,
+    Histogram,
     ProcessCollector,
 )
 from prometheus_client.core import GaugeMetricFamily
@@ -27,6 +28,24 @@ DISCONNECT_REASONS = (
     "flood",  # more than 20 messages per second
     "replaced",  # a judge reconnected with its token while the old socket was still registered
     "error",  # the handler raised an unhandled exception
+)
+
+# Outcome of a VPortal proxy request (#181), one value per way the handler ends
+# after it called VPortal. Login reasons match `vportal_login_failed` in the logs.
+VPORTAL_LOGIN_RESULTS = (
+    "ok",
+    "rejected",  # /auth/token refused the cookie: usually wrong credentials (answered 401)
+    "unreachable",
+    "no_session_cookie",
+    "token_exchange_failed",
+    "missing_access_token",
+)
+VPORTAL_GRAPHQL_RESULTS = (
+    "ok",  # JSON passed through to the device, whatever the upstream status
+    "token_rejected",
+    "upstream_error",
+    "unreachable",  # also after the retry
+    "invalid_response",
 )
 
 build_info = Gauge("iron_verdict_build_info", "Running app version", ["version"], registry=registry)
@@ -49,6 +68,26 @@ unhandled_exceptions = Counter(
 http_requests = Counter(
     "iron_verdict_http_requests", "HTTP responses by status class", ["status_class"], registry=registry
 )
+vportal_logins = Counter(
+    "iron_verdict_vportal_logins", "VPortal proxy logins by result", ["result"], registry=registry
+)
+vportal_graphql_requests = Counter(
+    "iron_verdict_vportal_graphql_requests", "VPortal proxy GraphQL requests by result", ["result"], registry=registry
+)
+vportal_transport_retries = Counter(
+    "iron_verdict_vportal_transport_retries",
+    "GraphQL calls retried after a transport error (stale pooled connection)",
+    registry=registry,
+)
+# Why these buckets: few series (8 per endpoint); the upstream timeout is 5 s,
+# so slower requests land in +Inf only as failures.
+vportal_upstream_duration = Histogram(
+    "iron_verdict_vportal_upstream_duration_seconds",
+    "Time a VPortal proxy request spent on upstream calls (login: both calls; GraphQL: including the retry)",
+    ["endpoint"],
+    buckets=(0.25, 0.5, 1, 2, 5),
+    registry=registry,
+)
 
 # Fixed label values show up as 0 from the start, so rate() and alerts see them
 # before the first increment.
@@ -58,6 +97,12 @@ for _reason in DISCONNECT_REASONS:
     ws_disconnects.labels(reason=_reason)
 for _cls in ("2xx", "3xx", "4xx", "5xx"):
     http_requests.labels(status_class=_cls)
+for _result in VPORTAL_LOGIN_RESULTS:
+    vportal_logins.labels(result=_result)
+for _result in VPORTAL_GRAPHQL_RESULTS:
+    vportal_graphql_requests.labels(result=_result)
+for _endpoint in ("login", "graphql"):
+    vportal_upstream_duration.labels(endpoint=_endpoint)
 
 
 def status_class(status: int) -> str:

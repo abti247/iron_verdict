@@ -9,6 +9,7 @@ import httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from iron_verdict import metrics
 from iron_verdict.config import settings
 
 logger = logging.getLogger("iron_verdict")
@@ -149,6 +150,7 @@ def _login_failed(host: str, reason: str, *, detail_extra: dict | None = None, *
     values, credentials or response bodies.
     """
     logger.warning("vportal_login_failed", extra={"reason": reason, "host": host, **log_fields})
+    metrics.vportal_logins.labels(result=reason).inc()
     return HTTPException(
         status_code=_LOGIN_UPSTREAM_FAILED,
         detail={"reason": reason, **(detail_extra or {})},
@@ -160,102 +162,107 @@ async def login(body: LoginRequest):
     _validate_host(body.host)
     base = _base_url(body.host)
 
-    # Fresh client per login — see _make_login_client docstring for why
-    # the shared client would otherwise leak cookies between operators.
-    async with _make_login_client() as http:
-        # Step 1: multipart-POST /account/login. Status code is intentionally
-        # not inspected — real VPortal returns a pre-auth session cookie even
-        # for wrong credentials (verified at staging 2026-05-19), and the
-        # actual auth check happens at /auth/token. Cookie presence is the
-        # success signal for "the form was processed," not "the credentials
-        # were valid."
-        try:
-            login_resp = await http.post(
-                f"{base}/account/login",
-                files={
-                    "identity": (None, body.identity),
-                    "credential": (None, body.credential),
-                },
-                headers={"Accept-Language": "de"},
-                follow_redirects=False,
-            )
-        except httpx.TransportError as exc:
-            raise _login_failed(
-                body.host, "unreachable",
-                upstream_path="/account/login", error=type(exc).__name__,
-            )
+    # Timed over every outcome, failures included: a slow failure is what the
+    # histogram should show. Requests rejected above never reach VPortal.
+    with metrics.vportal_upstream_duration.labels(endpoint="login").time():
+        # Fresh client per login — see _make_login_client docstring for why
+        # the shared client would otherwise leak cookies between operators.
+        async with _make_login_client() as http:
+            # Step 1: multipart-POST /account/login. Status code is intentionally
+            # not inspected — real VPortal returns a pre-auth session cookie even
+            # for wrong credentials (verified at staging 2026-05-19), and the
+            # actual auth check happens at /auth/token. Cookie presence is the
+            # success signal for "the form was processed," not "the credentials
+            # were valid."
+            try:
+                login_resp = await http.post(
+                    f"{base}/account/login",
+                    files={
+                        "identity": (None, body.identity),
+                        "credential": (None, body.credential),
+                    },
+                    headers={"Accept-Language": "de"},
+                    follow_redirects=False,
+                )
+            except httpx.TransportError as exc:
+                raise _login_failed(
+                    body.host, "unreachable",
+                    upstream_path="/account/login", error=type(exc).__name__,
+                )
 
-        login_log = {
-            "login_status": login_resp.status_code,
-            "login_location": login_resp.headers.get("location"),
-            "cookie_names": sorted(login_resp.cookies.keys()),
-        }
+            login_log = {
+                "login_status": login_resp.status_code,
+                "login_location": login_resp.headers.get("location"),
+                "cookie_names": sorted(login_resp.cookies.keys()),
+            }
 
-        # Use httpx's parsed cookies rather than splitting Set-Cookie on commas —
-        # the standard cookielib parser handles commas inside expires=... correctly.
-        # VPortal renamed the cookie VPORTAL -> __Host-VPORTAL (seen at staging
-        # 2026-10-13, issue #101); accept both so login keeps working whenever
-        # production switches, and send it back under the name it arrived with.
-        for vportal_cookie_name in _SESSION_COOKIE_NAMES:
-            vportal_cookie_value = login_resp.cookies.get(vportal_cookie_name)
-            if vportal_cookie_value:
-                break
-        else:
-            raise _login_failed(body.host, "no_session_cookie", **login_log)
+            # Use httpx's parsed cookies rather than splitting Set-Cookie on commas —
+            # the standard cookielib parser handles commas inside expires=... correctly.
+            # VPortal renamed the cookie VPORTAL -> __Host-VPORTAL (seen at staging
+            # 2026-10-13, issue #101); accept both so login keeps working whenever
+            # production switches, and send it back under the name it arrived with.
+            for vportal_cookie_name in _SESSION_COOKIE_NAMES:
+                vportal_cookie_value = login_resp.cookies.get(vportal_cookie_name)
+                if vportal_cookie_value:
+                    break
+            else:
+                raise _login_failed(body.host, "no_session_cookie", **login_log)
 
-        # Step 2: GET /auth/token with the cookie. This is where VPortal
-        # validates the underlying credentials — a pre-auth cookie issued
-        # for wrong credentials gets rejected here with 401/403.
-        try:
-            token_resp = await http.get(
-                f"{base}/auth/token",
-                headers={
-                    "cookie": f"{vportal_cookie_name}={vportal_cookie_value}",
-                    "Accept-Language": "de",
-                },
-            )
-        except httpx.TransportError as exc:
-            raise _login_failed(
-                body.host, "unreachable",
-                upstream_path="/auth/token", error=type(exc).__name__, **login_log,
-            )
+            # Step 2: GET /auth/token with the cookie. This is where VPortal
+            # validates the underlying credentials — a pre-auth cookie issued
+            # for wrong credentials gets rejected here with 401/403.
+            try:
+                token_resp = await http.get(
+                    f"{base}/auth/token",
+                    headers={
+                        "cookie": f"{vportal_cookie_name}={vportal_cookie_value}",
+                        "Accept-Language": "de",
+                    },
+                )
+            except httpx.TransportError as exc:
+                raise _login_failed(
+                    body.host, "unreachable",
+                    upstream_path="/auth/token", error=type(exc).__name__, **login_log,
+                )
 
-        token_log = {
-            **login_log,
-            "token_status": token_resp.status_code,
-            "token_location": token_resp.headers.get("location"),
-            "content_type": token_resp.headers.get("content-type"),
-        }
+            token_log = {
+                **login_log,
+                "token_status": token_resp.status_code,
+                "token_location": token_resp.headers.get("location"),
+                "content_type": token_resp.headers.get("content-type"),
+            }
 
-        # Treat redirects and 4xx-class statuses on /auth/token as auth
-        # failures. Real VPortal returns 302 (redirect back to /login) when
-        # the pre-auth cookie can't be exchanged — verified at staging
-        # 2026-05-19. 401/403 covered for defensive completeness.
-        if token_resp.status_code in (302, 401, 403):
-            # Info, not warning: usually just a mistyped password. Logged because
-            # a missing role may look the same to us (issue #100); the redirect
-            # target is what tells the two apart.
-            logger.info("vportal_login_rejected", extra={"host": body.host, **token_log})
-            raise HTTPException(status_code=401, detail="Invalid VPortal credentials")
-        if token_resp.status_code != 200:
-            raise _login_failed(
-                body.host, "token_exchange_failed",
-                detail_extra={"upstream_status": token_resp.status_code}, **token_log,
-            )
+            # Treat redirects and 4xx-class statuses on /auth/token as auth
+            # failures. Real VPortal returns 302 (redirect back to /login) when
+            # the pre-auth cookie can't be exchanged — verified at staging
+            # 2026-05-19. 401/403 covered for defensive completeness.
+            if token_resp.status_code in (302, 401, 403):
+                # Info, not warning: usually just a mistyped password. Logged because
+                # a missing role may look the same to us (issue #100); the redirect
+                # target is what tells the two apart.
+                logger.info("vportal_login_rejected", extra={"host": body.host, **token_log})
+                metrics.vportal_logins.labels(result="rejected").inc()
+                raise HTTPException(status_code=401, detail="Invalid VPortal credentials")
+            if token_resp.status_code != 200:
+                raise _login_failed(
+                    body.host, "token_exchange_failed",
+                    detail_extra={"upstream_status": token_resp.status_code}, **token_log,
+                )
 
-        try:
-            token_payload = token_resp.json()
-        except ValueError:
-            token_payload = None
-        access_token = token_payload.get("access_token") if isinstance(token_payload, dict) else None
-        if not access_token:
-            raise _login_failed(body.host, "missing_access_token", **token_log)
+            try:
+                token_payload = token_resp.json()
+            except ValueError:
+                token_payload = None
+            access_token = token_payload.get("access_token") if isinstance(token_payload, dict) else None
+            if not access_token:
+                raise _login_failed(body.host, "missing_access_token", **token_log)
 
-        return {
-            "access_token": access_token,
-            "exp": _extract_jwt_exp(access_token) or token_payload.get("exp"),
-            "fetch_interval_ms": settings.VPORTAL_FETCH_INTERVAL_MS,
-        }
+            metrics.vportal_logins.labels(result="ok").inc()
+            return {
+                "access_token": access_token,
+                "exp": _extract_jwt_exp(access_token) or token_payload.get("exp"),
+                "fetch_interval_ms": settings.VPORTAL_FETCH_INTERVAL_MS,
+            }
 
 
 @router.post("/graphql")
@@ -270,35 +277,43 @@ async def graphql(body: GraphQLRequest):
     # connection, so the retry opens a fresh one. Safe because the allowlist
     # above makes every forwarded operation a read. No delay before the retry:
     # the failure is a stale connection, not an overloaded upstream.
-    for attempt in (1, 2):
-        try:
-            upstream = await _http_client.post(
-                f"{_base_url(body.host)}/graphql",
-                json={"query": body.query, "variables": body.variables or {}},
-                headers={
-                    "Authorization": f"Bearer {body.token}",
-                    "content-type": "application/json",
-                    "Accept-Language": "de",
-                },
-            )
-            break
-        except httpx.TransportError as exc:
-            if attempt == 2:
-                logger.warning(
-                    "vportal_upstream_unreachable",
+    #
+    # Timed over the retry loop only: httpx reads the whole body inside post(),
+    # so parsing below adds no upstream time.
+    with metrics.vportal_upstream_duration.labels(endpoint="graphql").time():
+        for attempt in (1, 2):
+            try:
+                upstream = await _http_client.post(
+                    f"{_base_url(body.host)}/graphql",
+                    json={"query": body.query, "variables": body.variables or {}},
+                    headers={
+                        "Authorization": f"Bearer {body.token}",
+                        "content-type": "application/json",
+                        "Accept-Language": "de",
+                    },
+                )
+                break
+            except httpx.TransportError as exc:
+                if attempt == 2:
+                    logger.warning(
+                        "vportal_upstream_unreachable",
+                        extra={"host": body.host, "error": type(exc).__name__},
+                    )
+                    metrics.vportal_graphql_requests.labels(result="unreachable").inc()
+                    raise HTTPException(status_code=502, detail="VPortal upstream unreachable")
+                # Logged although the retry usually succeeds: shows in the field
+                # how often and when pooled connections go stale.
+                metrics.vportal_transport_retries.inc()
+                logger.info(
+                    "vportal_transport_retry",
                     extra={"host": body.host, "error": type(exc).__name__},
                 )
-                raise HTTPException(status_code=502, detail="VPortal upstream unreachable")
-            # Logged although the retry usually succeeds: shows in the field
-            # how often and when pooled connections go stale.
-            logger.info(
-                "vportal_transport_retry",
-                extra={"host": body.host, "error": type(exc).__name__},
-            )
 
     if upstream.status_code == 401:
+        metrics.vportal_graphql_requests.labels(result="token_rejected").inc()
         raise HTTPException(status_code=401, detail="VPortal token rejected")
     if upstream.status_code >= 500:
+        metrics.vportal_graphql_requests.labels(result="upstream_error").inc()
         raise HTTPException(status_code=502, detail="VPortal upstream error")
 
     # Why 502 for a body that is not JSON (issue #93): e.g. a maintenance or
@@ -306,8 +321,9 @@ async def graphql(body: GraphQLRequest):
     # does not follow it). Not retried — the response did arrive. The log
     # carries no body and no token.
     try:
-        return upstream.json()
+        payload = upstream.json()
     except ValueError:
+        metrics.vportal_graphql_requests.labels(result="invalid_response").inc()
         logger.warning(
             "vportal_upstream_invalid_response",
             extra={
@@ -317,3 +333,5 @@ async def graphql(body: GraphQLRequest):
             },
         )
         raise HTTPException(status_code=502, detail="VPortal upstream invalid response")
+    metrics.vportal_graphql_requests.labels(result="ok").inc()
+    return payload

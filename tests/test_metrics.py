@@ -370,3 +370,25 @@ async def test_unhandled_websocket_exception_counted_as_exception_and_error_disc
     assert _value("iron_verdict_unhandled_exceptions_total") == before + 1
     assert _value("iron_verdict_ws_disconnects_total", reason="error") == before_error + 1
     assert _value("iron_verdict_ws_disconnects_total", reason="client") == before_client
+
+
+# ---- VPortal proxy (#181) ----
+
+def test_vportal_series_exported_from_start_without_hosts_or_tokens():
+    samples = _scrape()
+    for result in ("ok", "rejected", "unreachable", "no_session_cookie", "token_exchange_failed", "missing_access_token"):
+        assert ("iron_verdict_vportal_logins_total", frozenset({("result", result)})) in samples
+    for result in ("ok", "token_rejected", "upstream_error", "unreachable", "invalid_response"):
+        assert ("iron_verdict_vportal_graphql_requests_total", frozenset({("result", result)})) in samples
+    assert ("iron_verdict_vportal_transport_retries_total", frozenset()) in samples
+    for endpoint in ("login", "graphql"):
+        buckets = {
+            dict(labels)["le"]
+            for name, labels in samples
+            if name == "iron_verdict_vportal_upstream_duration_seconds_bucket" and ("endpoint", endpoint) in labels
+        }
+        assert buckets == {"0.25", "0.5", "1.0", "2.0", "5.0", "+Inf"}
+    vportal_labels = {
+        key for name, labels in samples if name.startswith("iron_verdict_vportal_") for key, _ in labels
+    }
+    assert vportal_labels <= {"result", "endpoint", "le"}
