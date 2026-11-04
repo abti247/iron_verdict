@@ -162,10 +162,10 @@ Sections:
 
 | Section | Content |
 |---|---|
-| Now | Status tiles (scrape up, sessions, judges, displays, version, snapshot age — orange from 3 min, red from 5 min: the app sets it every minute and Grafana scrapes every minute, so up to about 2½ min is normal), **What stands out now** (every firing or pending alert rule, critical and warning), votes per minute and rejections, lost connections by reason, memory (orange from 512 MB, red from 3 GB), HTTP status classes, errors, CPU, sessions/judges/displays over time |
-| Weekly review (last 7 days) | Fixed 7-day window regardless of the time picker: scrape availability, max sessions, votes, rejected votes, unhandled exceptions, snapshot failures, max memory, max snapshot age, lost connections and HTTP responses by class, plus the week as curves |
+| Now | Status tiles (scrape up, sessions, judges, displays, version, snapshot age — orange from 3 min, red from 5 min: the app sets it every minute and Grafana scrapes every minute, so up to about 2½ min is normal), **What stands out now** (every firing or pending alert rule, critical and warning), votes per minute and rejections, lost connections by reason, memory (orange from 512 MB, red from 3 GB), HTTP status classes, errors, CPU, sessions/judges/displays over time, VPortal failures by result plus GraphQL retries, VPortal upstream time (GraphQL p50/p95, login p95; orange from 2 s, red at the 5 s timeout) |
+| Weekly review (last 7 days) | Fixed 7-day window regardless of the time picker: scrape availability, max sessions, votes, rejected votes, unhandled exceptions, snapshot failures, max memory, max snapshot age, lost connections and HTTP responses by class, VPortal failures by result and GraphQL retries, plus the week as curves |
 
-Shown only as curves, never as alert rules: single heartbeat drops (normal on venue Wi-Fi), rate-limit hits and unknown session codes (both in 4xx), rejected cross-site connections (in the logs).
+Shown only as curves, never as alert rules: single heartbeat drops (normal on venue Wi-Fi), rate-limit hits and unknown session codes (both in 4xx), rejected cross-site connections (in the logs), VPortal failures and upstream time (decided in #181: curves and the weekly review only, no rule).
 
 ## Metrics alert rules
 
@@ -212,5 +212,6 @@ Open the dashboard, section **Weekly review**, and go through:
 3. Unhandled exceptions, snapshot failures > 0 → find them in the Railway logs (`unhandled_exception`, `snapshot_save_failed`) and open an issue.
 4. Max memory and the weekly memory curve: a steady climb without restarts points to a leak.
 5. Lost connections by reason: many `heartbeat_stale` / `client` during a competition point to the venue Wi-Fi; `flood`, `error` or `heartbeat_send_failed` deserve an issue.
-6. Rejected votes and 4xx/5xx: a jump compared to earlier weeks → look up the codes in the logs.
-7. Note anything unusual in an issue; adjust thresholds here and in the dashboard if they proved wrong.
+6. VPortal failures by result: `unreachable`, `upstream_error`, `invalid_response` or login reasons other than `rejected` during a competition → find them in the Railway logs (`vportal_upstream_unreachable`, `vportal_upstream_invalid_response`, `vportal_login_failed`) and check the upstream time curve of that day. Login `rejected` is a wrong password; GraphQL retries without `unreachable` are stale connections the retry fixed.
+7. Rejected votes and 4xx/5xx: a jump compared to earlier weeks → look up the codes in the logs.
+8. Note anything unusual in an issue; adjust thresholds here and in the dashboard if they proved wrong.

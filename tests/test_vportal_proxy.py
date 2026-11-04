@@ -6,6 +6,7 @@ import pytest
 import httpx
 from fastapi.testclient import TestClient
 from iron_verdict.main import app
+from iron_verdict import metrics
 from iron_verdict import vportal_proxy as proxy_module
 from iron_verdict.logging_config import JsonFormatter
 
@@ -697,3 +698,121 @@ def test_login_does_not_leak_cookie_jar_between_calls(mock_vportal):
         f"{second_login_request_cookies['value']!r}"
     )
     assert r2.status_code == 424
+
+
+# ---- Metrics (#181) ----
+# Every upstream outcome is counted under a fixed result label, so /metrics
+# shows failing or slow BVDK calls without reading the logs.
+
+_COOKIE = {"set-cookie": "VPORTAL=session-cookie-value; Path=/"}
+
+
+def _sample(name, **labels):
+    return metrics.registry.get_sample_value(name, labels) or 0.0
+
+
+def _raise(error_cls):
+    def handler(request):
+        raise error_cls("boom")
+    return handler
+
+
+_LOGIN_SCENARIOS = {
+    "ok": (
+        lambda r: httpx.Response(200, headers=_COOKIE),
+        lambda r: httpx.Response(200, json={"access_token": _jwt_with_exp(1)}),
+        200,
+    ),
+    "rejected": (lambda r: httpx.Response(200, headers=_COOKIE), lambda r: httpx.Response(302), 401),
+    "unreachable": (_raise(httpx.ConnectError), None, 424),
+    "no_session_cookie": (lambda r: httpx.Response(200), None, 424),
+    "token_exchange_failed": (lambda r: httpx.Response(200, headers=_COOKIE), lambda r: httpx.Response(500), 424),
+    "missing_access_token": (lambda r: httpx.Response(200, headers=_COOKIE), lambda r: httpx.Response(200, json={}), 424),
+}
+
+
+@pytest.mark.parametrize("result", list(_LOGIN_SCENARIOS))
+def test_login_counted_once_by_result_and_timed(mock_vportal, result):
+    login_handler, token_handler, expected_status = _LOGIN_SCENARIOS[result]
+    mock_vportal[("POST", "/account/login")] = login_handler
+    if token_handler:
+        mock_vportal[("GET", "/auth/token")] = token_handler
+    before = {r: _sample("iron_verdict_vportal_logins_total", result=r) for r in metrics.VPORTAL_LOGIN_RESULTS}
+    before_count = _sample("iron_verdict_vportal_upstream_duration_seconds_count", endpoint="login")
+
+    response = client.post("/api/vportal/login", json=_LOGIN_BODY)
+
+    assert response.status_code == expected_status
+    after = {r: _sample("iron_verdict_vportal_logins_total", result=r) for r in metrics.VPORTAL_LOGIN_RESULTS}
+    assert {r: after[r] - before[r] for r in after} == {r: (1 if r == result else 0) for r in after}
+    assert _sample("iron_verdict_vportal_upstream_duration_seconds_count", endpoint="login") == before_count + 1
+
+
+_GRAPHQL_SCENARIOS = {
+    "ok": (lambda r: httpx.Response(200, json={"data": {}}), 200),
+    "token_rejected": (lambda r: httpx.Response(401), 401),
+    "upstream_error": (lambda r: httpx.Response(503), 502),
+    "unreachable": (_raise(httpx.ConnectError), 502),
+    "invalid_response": (lambda r: httpx.Response(200, text="<html>", headers={"content-type": "text/html"}), 502),
+}
+
+
+@pytest.mark.parametrize("result", list(_GRAPHQL_SCENARIOS))
+def test_graphql_counted_once_by_result_and_timed(mock_vportal, result):
+    handler, expected_status = _GRAPHQL_SCENARIOS[result]
+    mock_vportal[("POST", "/graphql")] = handler
+    before = {r: _sample("iron_verdict_vportal_graphql_requests_total", result=r) for r in metrics.VPORTAL_GRAPHQL_RESULTS}
+    before_count = _sample("iron_verdict_vportal_upstream_duration_seconds_count", endpoint="graphql")
+
+    response = client.post("/api/vportal/graphql", json=_GRAPHQL_BODY)
+
+    assert response.status_code == expected_status
+    after = {r: _sample("iron_verdict_vportal_graphql_requests_total", result=r) for r in metrics.VPORTAL_GRAPHQL_RESULTS}
+    assert {r: after[r] - before[r] for r in after} == {r: (1 if r == result else 0) for r in after}
+    # One observation per proxy request, also when it took a retry.
+    assert _sample("iron_verdict_vportal_upstream_duration_seconds_count", endpoint="graphql") == before_count + 1
+
+
+def test_graphql_json_from_other_status_counted_as_ok(mock_vportal):
+    """A 403 with a JSON body reaches the display as JSON, so it is not a proxy failure."""
+    mock_vportal[("POST", "/graphql")] = lambda r: httpx.Response(403, json={"errors": []})
+    before = _sample("iron_verdict_vportal_graphql_requests_total", result="ok")
+    assert client.post("/api/vportal/graphql", json=_GRAPHQL_BODY).status_code == 200
+    assert _sample("iron_verdict_vportal_graphql_requests_total", result="ok") == before + 1
+
+
+@pytest.mark.parametrize(
+    "errors, final_response, result",
+    [
+        ([httpx.RemoteProtocolError("stale")], httpx.Response(200, json={"data": {}}), "ok"),
+        ([httpx.RemoteProtocolError("stale"), httpx.ConnectError("down")], None, "unreachable"),
+    ],
+)
+def test_graphql_transport_retry_counted(mock_vportal, errors, final_response, result):
+    mock_vportal[("POST", "/graphql")] = _failing_then(errors, final_response)
+    before_retries = _sample("iron_verdict_vportal_transport_retries_total")
+    before_result = _sample("iron_verdict_vportal_graphql_requests_total", result=result)
+
+    client.post("/api/vportal/graphql", json=_GRAPHQL_BODY)
+
+    assert _sample("iron_verdict_vportal_transport_retries_total") == before_retries + 1
+    assert _sample("iron_verdict_vportal_graphql_requests_total", result=result) == before_result + 1
+
+
+def test_requests_rejected_before_upstream_not_counted(mock_vportal):
+    """Unknown hosts and mutations never reach VPortal; they show up in the 4xx count instead."""
+    names = [
+        ("iron_verdict_vportal_upstream_duration_seconds_count", {"endpoint": "login"}),
+        ("iron_verdict_vportal_upstream_duration_seconds_count", {"endpoint": "graphql"}),
+        ("iron_verdict_vportal_transport_retries_total", {}),
+        *[("iron_verdict_vportal_logins_total", {"result": r}) for r in metrics.VPORTAL_LOGIN_RESULTS],
+        *[("iron_verdict_vportal_graphql_requests_total", {"result": r}) for r in metrics.VPORTAL_GRAPHQL_RESULTS],
+    ]
+    before = [_sample(n, **l) for n, l in names]
+
+    assert client.post("/api/vportal/login", json={**_LOGIN_BODY, "host": "evil.example.com"}).status_code == 400
+    assert client.post(
+        "/api/vportal/graphql", json={**_GRAPHQL_BODY, "query": "mutation { x }"}
+    ).status_code == 400
+
+    assert [_sample(n, **l) for n, l in names] == before
