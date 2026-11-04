@@ -157,16 +157,22 @@ Production sends every log line, without `client_ip`, to the stack's Loki (#134)
 
 ### Setup
 
-Menu names as of 2026-11; they may move, the settings stay the same.
+Menu names as seen at the setup on 2026-11-04; they may move, the settings stay the same.
 
-1. grafana.com → *Cloud portal* → the stack → **Loki** → *Details*: note the **URL** (e.g. `https://logs-prod-012.grafana.net`) and the **User** (a number).
-2. *Cloud portal* → **Access Policies** → *Create access policy*: name `iron-verdict-logs-write`, realm = the stack, scope **`logs:write` only** → *Create*. Then *Add token* (name `railway-prod`, no expiry or a noted one) and copy it once. Store it in the password manager; never commit it.
+1. grafana.com → *Cloud portal* (`grafana.com/orgs/<org>`) → at the stack, **Details** (not *Launch*) → tile **Loki** → **Details**: note the **URL** (production: `https://logs-prod-012.grafana.net`) and the **User** (a number).
+2. *Cloud portal* → *Security* → **Access Policies** → *Create access policy*:
+   - Display name `iron-verdict-logs-write`
+   - Realm: the single stack, not `<org> (all stacks)` (that would also cover stacks added later)
+   - Scopes: only **logs → Write**
+   - Label selectors and IP ranges empty (Railway has no fixed outbound IPs)
+
+   *Create*, then *Add token* (name `railway-prod`, no expiry or a noted one) and copy it once. Store it in the password manager; never commit it.
 3. Railway → service `iron_verdict` → environment **production** → Variables:
    - `LOKI_URL` = URL from step 1 plus `/loki/api/v1/push`
    - `LOKI_USER` = User from step 1
    - `LOKI_TOKEN` = token from step 2
 
-   Deploy. The deploy log shows `log_shipping_enabled` with the Loki host; without the variables it shows `log_shipping_disabled`, and a **warning** `log_shipping_disabled` with `reason` `incomplete_config` means one of the three is missing, with `reason` `insecure_url` that `LOKI_URL` does not start with `https://` (nothing is sent, the token is never used).
+   The app only reads them on start: setting them before a release and deploying with it avoids an extra restart. After the deploy, the deploy log shows `log_shipping_enabled` with the Loki host; without the variables it shows `log_shipping_disabled`, and a **warning** `log_shipping_disabled` with `reason` `incomplete_config` means one of the three is missing, with `reason` `insecure_url` that `LOKI_URL` does not start with `https://` (nothing is sent, the token is never used).
 4. Grafana → **Explore** → the Loki data source (`grafanacloud-<stack>-logs`) → `{app="iron-verdict"}`: lines appear within about 10 s (the app sends every 5 s). `{app="iron-verdict"} |= "client_ip"` must return nothing.
 
 Staging stays without the variables (same as `METRICS_TOKEN`), so production logs are not mixed with test runs.
@@ -175,7 +181,7 @@ If Grafana refuses or does not answer, the app logs `log_ship_failed` (with `err
 
 ### Queries
 
-Every line is the JSON of stdout; `| json` turns its fields into labels. Labels on the stream: `app`, `level` (`info`, `warning`, `error`, `critical`), `version`.
+Every line is the JSON of stdout; `| json` turns its fields into labels. Labels on the stream: `app`, `level` (`info`, `warning`, `error`, `critical`), `version` (`APP_VERSION`, in production `sha-<commit>`); Grafana adds `service_name` (= `app`) and `detected_level` itself.
 
 | Question | LogQL |
 |---|---|
@@ -210,7 +216,7 @@ Sections:
 | Section | Content |
 |---|---|
 | Now | Status tiles (scrape up, sessions, judges, displays, version, snapshot age — orange from 3 min, red from 5 min: the app sets it every minute and Grafana scrapes every minute, so up to about 2½ min is normal), **What stands out now** (every firing or pending alert rule, critical and warning), votes per minute and rejections, lost connections by reason, memory (orange from 512 MB, red from 3 GB), HTTP status classes, errors, CPU, sessions/judges/displays over time, VPortal failures by result plus GraphQL retries, VPortal upstream time (GraphQL p50/p95, login p95; orange from 2 s, red at the 5 s timeout), device response time (p50/p95 per judge and display; orange from 0.5 s, red from 1 s, see below), log lines not sent to Loki (in *Errors*), **Logs** (all lines, newest first) |
-| Weekly review (last 7 days) | Fixed 7-day window regardless of the time picker: scrape availability, max sessions, votes, rejected votes, unhandled exceptions, snapshot failures, max memory, max snapshot age, lost connections and HTTP responses by class, VPortal failures by result and GraphQL retries, warnings and errors from the logs by event name, log lines not sent to Loki, max device response time (highest p95 of the week per judge and display), plus the week as curves |
+| Weekly review (last 7 days) | Fixed 7-day window regardless of the time picker: scrape availability, max sessions, votes, rejected votes, unhandled exceptions, snapshot failures, max memory, max snapshot age, lost connections and HTTP responses by class, VPortal failures by result (one bar per result, orange from 1) and GraphQL retries, warnings and errors from the logs by event name (most frequent first), log lines not sent to Loki, max device response time (highest p95 of the week per judge and display), plus the week as curves |
 
 Shown only as curves, never as alert rules: single heartbeat drops (normal on venue Wi-Fi), rate-limit hits and unknown session codes (both in 4xx), rejected cross-site connections (in the logs), VPortal failures and upstream time (decided in #181: curves and the weekly review only, no rule), device response time (decided in #193, same reason).
 
