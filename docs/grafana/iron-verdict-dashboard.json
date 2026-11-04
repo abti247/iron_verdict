@@ -1182,6 +1182,90 @@
       }
     },
     {
+      "type": "timeseries",
+      "id": 38,
+      "title": "Device response time",
+      "description": "Heartbeat ping to pong per device, by judge and display: venue Wi-Fi plus internet, both ways, plus the browser's reaction time. Not the time from the last vote to the result on the display. One ping every 5 s, so a single slow device moves the p95.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 43
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.5, sum by (le, role_kind) (rate(iron_verdict_ws_roundtrip_seconds_bucket{job=~\"$job\"}[5m])))",
+          "legendFormat": "{{role_kind}} p50",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le, role_kind) (rate(iron_verdict_ws_roundtrip_seconds_bucket{job=~\"$job\"}[5m])))",
+          "legendFormat": "{{role_kind}} p95",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.5
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 1,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
       "type": "logs",
       "id": 35,
       "title": "Logs",
@@ -1194,7 +1278,7 @@
         "h": 10,
         "w": 24,
         "x": 0,
-        "y": 43
+        "y": 51
       },
       "targets": [
         {
@@ -1225,7 +1309,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 53
+        "y": 61
       },
       "panels": []
     },
@@ -1242,7 +1326,7 @@
         "h": 4,
         "w": 4,
         "x": 0,
-        "y": 54
+        "y": 62
       },
       "targets": [
         {
@@ -1312,7 +1396,7 @@
         "h": 4,
         "w": 4,
         "x": 4,
-        "y": 54
+        "y": 62
       },
       "targets": [
         {
@@ -1374,7 +1458,7 @@
         "h": 4,
         "w": 4,
         "x": 8,
-        "y": 54
+        "y": 62
       },
       "targets": [
         {
@@ -1436,7 +1520,7 @@
         "h": 4,
         "w": 4,
         "x": 12,
-        "y": 54
+        "y": 62
       },
       "targets": [
         {
@@ -1502,7 +1586,7 @@
         "h": 4,
         "w": 4,
         "x": 16,
-        "y": 54
+        "y": 62
       },
       "targets": [
         {
@@ -1568,7 +1652,7 @@
         "h": 4,
         "w": 4,
         "x": 20,
-        "y": 54
+        "y": 62
       },
       "targets": [
         {
@@ -1634,7 +1718,7 @@
         "h": 4,
         "w": 4,
         "x": 0,
-        "y": 58
+        "y": 66
       },
       "targets": [
         {
@@ -1704,7 +1788,7 @@
         "h": 4,
         "w": 4,
         "x": 4,
-        "y": 58
+        "y": 66
       },
       "targets": [
         {
@@ -1774,7 +1858,7 @@
         "h": 4,
         "w": 8,
         "x": 8,
-        "y": 58
+        "y": 66
       },
       "targets": [
         {
@@ -1836,7 +1920,7 @@
         "h": 4,
         "w": 8,
         "x": 16,
-        "y": 58
+        "y": 66
       },
       "targets": [
         {
@@ -1898,7 +1982,7 @@
         "h": 4,
         "w": 16,
         "x": 0,
-        "y": 62
+        "y": 70
       },
       "targets": [
         {
@@ -1971,7 +2055,7 @@
         "h": 4,
         "w": 8,
         "x": 16,
-        "y": 62
+        "y": 70
       },
       "targets": [
         {
@@ -2033,7 +2117,7 @@
         "h": 8,
         "w": 16,
         "x": 0,
-        "y": 66
+        "y": 74
       },
       "targets": [
         {
@@ -2094,7 +2178,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 66
+        "y": 74
       },
       "targets": [
         {
@@ -2144,6 +2228,76 @@
       "timeFrom": "7d"
     },
     {
+      "type": "stat",
+      "id": 39,
+      "title": "Max device response time (p95)",
+      "description": "Highest 95th percentile of the heartbeat roundtrip over the week (5-minute windows), by judge and display. See Device response time.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 24,
+        "x": 0,
+        "y": 82
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "max by (role_kind) (max_over_time(histogram_quantile(0.95, sum by (le, role_kind) (rate(iron_verdict_ws_roundtrip_seconds_bucket{job=~\"$job\"}[5m])))[7d:5m]))",
+          "legendFormat": "{{role_kind}}",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.5
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "timeFrom": "7d"
+    },
+    {
       "type": "timeseries",
       "id": 27,
       "title": "Memory over the week",
@@ -2156,7 +2310,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 74
+        "y": 86
       },
       "targets": [
         {
@@ -2232,7 +2386,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 74
+        "y": 86
       },
       "targets": [
         {
@@ -2300,7 +2454,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 82
+        "y": 94
       },
       "targets": [
         {
@@ -2377,7 +2531,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 82
+        "y": 94
       },
       "targets": [
         {
