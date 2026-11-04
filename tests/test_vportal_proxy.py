@@ -6,6 +6,7 @@ import pytest
 import httpx
 from fastapi.testclient import TestClient
 from iron_verdict.main import app
+from iron_verdict import metrics
 from iron_verdict import vportal_proxy as proxy_module
 from iron_verdict.logging_config import JsonFormatter
 
@@ -703,8 +704,6 @@ def test_login_does_not_leak_cookie_jar_between_calls(mock_vportal):
 # Every upstream outcome is counted under a fixed result label, so /metrics
 # shows failing or slow BVDK calls without reading the logs.
 
-from iron_verdict import metrics  # noqa: E402
-
 _COOKIE = {"set-cookie": "VPORTAL=session-cookie-value; Path=/"}
 
 
@@ -805,6 +804,9 @@ def test_requests_rejected_before_upstream_not_counted(mock_vportal):
     names = [
         ("iron_verdict_vportal_upstream_duration_seconds_count", {"endpoint": "login"}),
         ("iron_verdict_vportal_upstream_duration_seconds_count", {"endpoint": "graphql"}),
+        ("iron_verdict_vportal_transport_retries_total", {}),
+        *[("iron_verdict_vportal_logins_total", {"result": r}) for r in metrics.VPORTAL_LOGIN_RESULTS],
+        *[("iron_verdict_vportal_graphql_requests_total", {"result": r}) for r in metrics.VPORTAL_GRAPHQL_RESULTS],
     ]
     before = [_sample(n, **l) for n, l in names]
 
