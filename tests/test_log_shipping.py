@@ -212,7 +212,8 @@ def test_incomplete_configuration_is_a_warning_and_ships_nothing(caplog):
     assert record.reason == "incomplete_config"
 
 
-def test_complete_configuration_starts_shipping(caplog):
+def test_complete_configuration_starts_shipping(monkeypatch, caplog):
+    monkeypatch.setattr(log_shipping, "_default_transport", _Recorder().transport)
     logger = logging.getLogger("iron_verdict.test_configured")
     with caplog.at_level(logging.INFO, logger="iron_verdict"):
         shipper = start_log_shipping(URL, "123456", "glc_secret", "dev", logger)

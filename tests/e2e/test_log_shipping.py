@@ -32,10 +32,12 @@ def unreachable_loki():
     original_stream = stdout_handler.setStream(captured)
     previous_level = app_logger.level
     app_logger.setLevel(logging.INFO)
-    shipper = LokiShipper(url, "123456", "e2e-token", "e2e")
+    # interval=0.1: the sender pushes (and hangs on the socket) from the first
+    # second on, so the whole flow runs while Loki does not answer.
+    shipper = LokiShipper(url, "123456", "e2e-token", "e2e", interval=0.1)
     shipper.start(app_logger)
     try:
-        yield captured
+        yield captured, sock
     finally:
         shipper.stop()
         stdout_handler.setStream(original_stream)
@@ -48,11 +50,13 @@ def _events(captured):
 
 
 def test_competition_runs_and_stdout_is_complete_while_loki_never_answers(competition, unreachable_loki):
+    captured, loki_socket = unreachable_loki
     """Head, right judge and a display join; the left judge joins with a
     network switch. All vote white and the display shows Good Lift. The left
     judge loses the connection (head sees L disconnected) and reconnects, the
     right judge reloads the page. After the next lift all vote white again and
-    the display shows Good Lift. stdout has every join, all six votes and the
+    the display shows Good Lift. The shipper has connected to the silent
+    endpoint meanwhile. stdout has every join, all six votes and the
     lost connection, with the client IP."""
     head = competition.create_session_and_join_head()
     right = competition.join_as("right_judge")
@@ -77,7 +81,12 @@ def test_competition_runs_and_stdout_is_complete_while_loki_never_answers(compet
     competition.vote_all_white()
     expect(display.locator(".verdict-stamp")).to_have_text("Good Lift")
 
-    events = [e for e in _events(unreachable_loki) if e.get("session_code") == competition.session_code]
+    # The sender really did connect to the endpoint that never answers.
+    loki_socket.setblocking(False)
+    conn, _ = loki_socket.accept()
+    conn.close()
+
+    events = [e for e in _events(captured) if e.get("session_code") == competition.session_code]
     names = [e["message"] for e in events]
     assert names.count("vote_locked") == 6
     # head, right, display, left — then left after the cut and right after the reload
