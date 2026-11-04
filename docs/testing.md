@@ -10,7 +10,8 @@ Three tiers, kept honest by tooling boundaries:
 
 ```
 pytest tests/ --ignore=tests/e2e   # backend unit + integration
-pytest tests/e2e/                  # E2E
+pytest tests/e2e/                  # E2E (serial)
+pytest tests/e2e/ -n 4             # E2E on 4 workers (pytest-xdist), as in CI
 pytest                             # everything (backend + E2E)
 npm test                           # JS unit tests (Vitest)
 pytest --tb=short -v               # readable pass/fail
@@ -24,11 +25,12 @@ pytest --tb=short -v               # readable pass/fail
 |---|---|
 | `backend` | Python 3.13 (same as the Dockerfile), `pip install -e ".[dev]"`, `pytest tests/ --ignore=tests/e2e` |
 | `js` | Node 24 (pinned, so a new Node major cannot change the test environment unannounced), `npm ci`, `npx vitest run` |
-| `e2e` | Same Python setup + Chromium with its system packages (`playwright install --with-deps chromium`; only `install-deps` when the browser is cached), `pytest tests/e2e/` with `--tracing retain-on-failure --screenshot only-on-failure` |
+| `e2e` | Same Python setup + Chromium with its system packages (`playwright install --with-deps chromium`; only `install-deps` when the browser is cached), `pytest tests/e2e/ -n 4` with `--tracing retain-on-failure --screenshot only-on-failure` |
 
 - pip, npm and the Playwright browser download are cached. The browser cache key is the resolved Playwright version, because each Playwright release pins its own Chromium build.
 - When `e2e` fails (or times out — then only tests that failed before the hang have artifacts), the traces and screenshots of the failing tests are uploaded as the `playwright-traces` artifact (kept 14 days), one trace per browser context. Open a trace with `playwright show-trace <trace.zip>` or at trace.playwright.dev. Only contexts created through pytest-playwright are recorded — the `page`/`context` fixtures and `competition.new_context()`. A bare `browser.new_context()` produces no trace, so new tests must not use it (the remaining one is `test_rejoin_via_qr_keeps_connect_button_visible` in the VPortal-protected `test_vportal_integration.py`).
 - A new push to a PR cancels the still-running CI of the previous push.
+- `e2e` runs on 4 pytest-xdist workers (`-n 4`, one per runner vCPU). Each worker is its own process with its own in-process server (`server_url` on a free port that stays bound from the pick to shutdown, so two workers can never get the same one), its own state (`session_manager`, `connection_manager`, limiter, settings patched by a test), its own fake VPortal and its own snapshot file (a temporary directory named after `PYTEST_XDIST_WORKER`, set in `tests/e2e/conftest.py` before the app is imported). Tests are therefore isolated across workers without any changes to them. **Why:** the E2E step dominates the wait per PR; 4 workers cut it by about two thirds. **Why only there:** the runs against a real server — the `image` job, staging and the production check — stay serial, because all their tests share one server and its rate limits (production: 10 new sessions per hour and IP). Locally `pytest tests/e2e/` stays serial; `-n 4` is optional.
 - CI records a trace for every browser context, which makes E2E runs slightly slower than a plain local `pytest tests/e2e/`. If a test flakes in CI but not locally, rerun it locally with `--tracing on` before blaming the code — the timing-sensitive tests in [docs/e2e-known-risks.md](docs/e2e-known-risks.md) are the first suspects.
 - No automatic retries. **Why:** retries hide flaky tests; a flaky test is fixed or documented in [docs/e2e-known-risks.md](docs/e2e-known-risks.md).
 - Branch protection on `main` (configured by the maintainer in the repo settings): merge only via PR, `backend`, `js`, `e2e` and `image` required, branch must be up to date. No required reviewer approval — a sole maintainer cannot approve their own PRs on GitHub.
@@ -85,7 +87,7 @@ Requirements and caveats:
 
 - `pyproject.toml` sets `asyncio_mode = "auto"` — every `async def test_*` is automatically run as an asyncio test. No `@pytest.mark.asyncio` decorator needed.
 - Backend tests rely on descriptive function names (no docstrings).
-- Each behavior is tested at the cheapest level that can see it: logic (validation, time math, formatting, state transitions) in backend or Vitest tests, E2E only for what a browser alone can show (screens, flows across devices, connection loss, reload). E2E tests drive the app — they don't re-assert logic a unit test already pins down and don't simulate server internals (restarts, server-side patched timers — a client clock set wrong on purpose, like `Date.now` in `test_display_pause.py`, is a real device condition and fine). **Why:** E2E is the slowest and most flake-prone layer (~9 min suite); more E2E means more maintenance, not more stability.
+- Each behavior is tested at the cheapest level that can see it: logic (validation, time math, formatting, state transitions) in backend or Vitest tests, E2E only for what a browser alone can show (screens, flows across devices, connection loss, reload). E2E tests drive the app — they don't re-assert logic a unit test already pins down and don't simulate server internals (restarts, server-side patched timers — a client clock set wrong on purpose, like `Date.now` in `test_display_pause.py`, is a real device condition and fine). **Why:** E2E is the slowest and most flake-prone layer (~9.5 min serial, ~3 min with `-n 4` on 4 cores); more E2E means more maintenance, not more stability.
 - E2E tests get a docstring — multi-step flows aren't obvious from the name alone.
 - E2E tests find elements by `data-testid` (`get_by_test_id`), role, text or domain CSS classes (`.vote-btn`, `.lock-btn`) — never by Alpine attributes (`x-model`, `x-show`, `x-if`, `x-data`) and never through `_x_dataStack`. They set up state the way a user would (e.g. the head judge picks the lift type in the settings select), not by writing into the component. Screen roots carry `data-testid="<screen>-screen"`. **Why:** the frontend is split into several Alpine components (#65–#67) without visible change; tests tied to Alpine internals would break and could no longer prove that.
 - An expected alert (`alert`/`confirm`) is accepted by a handler registered before the action that triggers it (`page.on` / `page.once`), also when `expect_event("dialog")` captures its text. **Why:** an alert that opens while the action is still running (e.g. a fast server answer while a click waits for scheduled navigations) blocks the page, and an action that only gets accepted after it returns never returns (seen in `test_websocket_cap.py`).
@@ -188,6 +190,7 @@ These latent timing/race risks are documented in [docs/e2e-known-risks.md](docs/
 - `test_display_reconnects_after_refresh` — display orphan connections.
 - `_end_session` (external mode) — connection error while ending a test session on staging.
 - `test_pause_is_right_after_connection_loss_and_reload` — first page load timed out once in CI (cause unknown).
+- Tight time limits under parallel load — with `-n 4` tests run about 28 % slower on average, single ones 2–5×. Most exposed: `test_fast_reconnect.py` (1.5 s / 3.6 s), the poll counter in `test_vportal_store.py::test_display_role_select_round_trips_leave_one_poller`, `test_timer_flow` and `test_heartbeat_watchdog.py`. A test that flakes in CI is first reproduced serially (see [docs/e2e-known-risks.md](docs/e2e-known-risks.md)).
 
 `test_timer_flow` is also `remote_safe`: against staging, network latency to Railway adds to its timer race. It is also `prod_safe`, with the network path through Cloudflare on top. A staging or production-check failure there is checked against this risk first. "Re-run failed jobs" on the staging and production-check jobs is meant for Railway/network outages, not for retrying a flaky test.
 

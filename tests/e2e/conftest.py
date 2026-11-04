@@ -14,15 +14,34 @@ In external mode every session a test creates is ended after the test (see
 no sessions in the server's snapshot.
 """
 
+import atexit
 import json
 import os
+import shutil
 import socket
+import tempfile
 import threading
 import time
+from contextlib import contextmanager
 from urllib.parse import urlparse
 
 os.environ["TEST_MODE"] = "1"
 os.environ["VPORTAL_FETCH_INTERVAL_MS"] = "2000"
+
+EXTERNAL_BASE_URL = os.environ.get("E2E_BASE_URL", "").rstrip("/")
+
+# In-process mode: every pytest process (each pytest-xdist worker, or the one
+# serial run) writes its session snapshot to its own temporary directory,
+# never to the default /data/sessions.json. Set before the app is imported,
+# because the settings read SNAPSHOT_PATH at import time.
+# Why: with ``-n 4`` four in-process servers would otherwise overwrite each
+# other's snapshot file.
+if not EXTERNAL_BASE_URL:
+    _snapshot_dir = tempfile.mkdtemp(
+        prefix=f"iron-verdict-e2e-{os.environ.get('PYTEST_XDIST_WORKER', 'main')}-"
+    )
+    atexit.register(shutil.rmtree, _snapshot_dir, ignore_errors=True)
+    os.environ["SNAPSHOT_PATH"] = os.path.join(_snapshot_dir, "sessions.json")
 
 import httpx
 import pytest
@@ -32,12 +51,54 @@ from httpx_ws import WebSocketDisconnect, WebSocketNetworkError, connect_ws
 from iron_verdict.main import app, session_manager, connection_manager
 from iron_verdict.main import limiter
 
-EXTERNAL_BASE_URL = os.environ.get("E2E_BASE_URL", "").rstrip("/")
-
 
 # ---------------------------------------------------------------------------
 # 1. Session-scoped server fixture — starts real FastAPI on a random port
 # ---------------------------------------------------------------------------
+
+# How long _run_uvicorn waits for a test server to finish its startup (the
+# app's lifespan included), and how often it checks.
+SERVER_START_TIMEOUT_S = 5
+SERVER_START_POLL_INTERVAL_S = 0.05
+
+
+@contextmanager
+def _run_uvicorn(asgi_app, name):
+    """Run *asgi_app* with uvicorn in a daemon thread on a free port of
+    127.0.0.1 and yield the port; stop the server on exit.
+
+    The socket is bound here and handed to uvicorn, so the port stays taken
+    from the bind until the server stops. Why: with pytest-xdist several
+    workers pick ports at the same time. Picking a free port, releasing it and
+    letting uvicorn bind it again later leaves a gap in which another worker
+    can get the same port; the second server then fails inside its thread
+    unnoticed, and its tests run against the other worker's server.
+
+    Readiness is uvicorn's own ``started`` flag, polled until the timeout (no
+    fixed wait). If the server thread ends before that (e.g. the app's
+    startup failed), this fails at once with *name* in the message."""
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.bind(("127.0.0.1", 0))
+    port = sock.getsockname()[1]
+    server = uvicorn.Server(uvicorn.Config(app=asgi_app, log_level="warning"))
+    thread = threading.Thread(target=server.run, kwargs={"sockets": [sock]}, daemon=True)
+    thread.start()
+    try:
+        deadline = time.monotonic() + SERVER_START_TIMEOUT_S
+        while not server.started:
+            if not thread.is_alive():
+                raise RuntimeError(f"{name} server stopped during startup")
+            if time.monotonic() > deadline:
+                raise RuntimeError(
+                    f"{name} server did not start within {SERVER_START_TIMEOUT_S} s"
+                )
+            time.sleep(SERVER_START_POLL_INTERVAL_S)
+        yield port
+    finally:
+        server.should_exit = True
+        thread.join(timeout=5)
+        sock.close()
+
 
 @pytest.fixture(scope="session")
 def server_url():
@@ -45,28 +106,8 @@ def server_url():
         yield EXTERNAL_BASE_URL
         return
 
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(("127.0.0.1", 0))
-        port = s.getsockname()[1]
-
-    config = uvicorn.Config(app=app, host="127.0.0.1", port=port, log_level="warning")
-    server = uvicorn.Server(config)
-    thread = threading.Thread(target=server.run, daemon=True)
-    thread.start()
-
-    for _ in range(50):
-        try:
-            httpx.get(f"http://127.0.0.1:{port}/health", timeout=1.0)
-            break
-        except Exception:
-            time.sleep(0.1)
-    else:
-        raise RuntimeError("E2E server failed to start")
-
-    yield f"http://127.0.0.1:{port}"
-
-    server.should_exit = True
-    thread.join(timeout=5)
+    with _run_uvicorn(app, "E2E") as port:
+        yield f"http://127.0.0.1:{port}"
 
 
 # ---------------------------------------------------------------------------
@@ -402,19 +443,5 @@ def fake_vportal_url():
     if EXTERNAL_BASE_URL:
         pytest.skip("fake VPortal needs the in-process server (TEST_MODE); runs in the e2e job")
     from tests.e2e.fake_vportal import app as fake_app
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(("127.0.0.1", 0))
-        port = s.getsockname()[1]
-    config = uvicorn.Config(app=fake_app, host="127.0.0.1", port=port, log_level="warning")
-    server = uvicorn.Server(config)
-    thread = threading.Thread(target=server.run, daemon=True)
-    thread.start()
-    for _ in range(50):
-        try:
-            httpx.get(f"http://127.0.0.1:{port}/auth/token", timeout=1.0)
-            break
-        except Exception:
-            time.sleep(0.1)
-    yield f"127.0.0.1:{port}"
-    server.should_exit = True
-    thread.join(timeout=5)
+    with _run_uvicorn(fake_app, "fake VPortal") as port:
+        yield f"127.0.0.1:{port}"

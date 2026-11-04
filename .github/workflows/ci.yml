@@ -96,9 +96,13 @@ jobs:
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: python -m playwright install-deps chromium
 
+      # -n 4 matches the runner's 4 vCPUs. Each xdist worker starts its own
+      # in-process server with its own state, so tests do not share sessions
+      # or rate limits. Runs against a real server (image job, staging,
+      # production check) stay serial: there all tests share one server.
       - name: Run E2E tests
         run: >-
-          python -m pytest tests/e2e/ --tb=short -v
+          python -m pytest tests/e2e/ -n 4 --tb=short -v
           --tracing retain-on-failure
           --screenshot only-on-failure
           --output test-results
