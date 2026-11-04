@@ -1,4 +1,5 @@
 import asyncio
+import pytest
 import logging
 from unittest.mock import AsyncMock
 from iron_verdict.connection import ConnectionManager
@@ -298,3 +299,59 @@ async def test_count_connections_counts_every_registered_role_across_sessions():
 
     await manager.remove_connection("ABC123", "display_aa")
     assert await manager.count_connections() == 2
+
+
+# ---- Roundtrip (#193) ----
+
+async def test_pong_after_ping_returns_roundtrip():
+    manager = ConnectionManager()
+    ws = AsyncMock()
+    await manager.add_connection("ABC123", "left_judge", ws)
+    await manager.mark_ping(ws, now=100.0)
+    assert await manager.mark_pong(ws, now=100.3) == pytest.approx(0.3)
+
+
+async def test_pong_without_ping_is_not_measured_but_still_counts_as_alive():
+    manager = ConnectionManager()
+    ws = AsyncMock()
+    await manager.add_connection("ABC123", "left_judge", ws)
+    assert await manager.mark_pong(ws, now=500.0) is None
+    assert manager._last_pong[ws] == 500.0
+
+
+async def test_second_pong_after_one_ping_is_not_measured():
+    manager = ConnectionManager()
+    ws = AsyncMock()
+    await manager.add_connection("ABC123", "left_judge", ws)
+    await manager.mark_ping(ws, now=100.0)
+    assert await manager.mark_pong(ws, now=100.1) is not None
+    assert await manager.mark_pong(ws, now=100.2) is None
+
+
+async def test_newer_ping_replaces_unanswered_one():
+    """Without an id a pong is matched to the latest ping (decided in #193)."""
+    manager = ConnectionManager()
+    ws = AsyncMock()
+    await manager.add_connection("ABC123", "left_judge", ws)
+    await manager.mark_ping(ws, now=100.0)
+    await manager.mark_ping(ws, now=105.0)
+    assert await manager.mark_pong(ws, now=105.2) == pytest.approx(0.2)
+
+
+async def test_ping_for_unregistered_websocket_leaves_no_entry():
+    manager = ConnectionManager()
+    ws = AsyncMock()
+    await manager.mark_ping(ws, now=100.0)
+    assert ws not in manager._ping_sent
+
+
+async def test_every_remove_path_drops_the_ping_time():
+    manager = ConnectionManager()
+    a, b = AsyncMock(), AsyncMock()
+    await manager.add_connection("ABC123", "left_judge", a)
+    await manager.add_connection("ABC123", "display_aa", b)
+    await manager.mark_ping(a, now=100.0)
+    await manager.mark_ping(b, now=100.0)
+    await manager.remove_connection("ABC123", "left_judge")
+    assert await manager.remove_connection_if_current("ABC123", "display_aa", b)
+    assert manager._ping_sent == {}

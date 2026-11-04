@@ -13,6 +13,9 @@ class ConnectionManager:
         self.active_connections: Dict[str, Dict[str, WebSocket]] = {}
         self._lock = asyncio.Lock()
         self._last_pong: Dict[WebSocket, float] = {}
+        # Send time of the latest unanswered ping, for the roundtrip metric (#193).
+        # Removed with the connection, so closed sockets leave nothing behind.
+        self._ping_sent: Dict[WebSocket, float] = {}
 
     async def add_connection(self, session_code: str, role: str, websocket: WebSocket):
         """Add a WebSocket connection to a session."""
@@ -29,6 +32,7 @@ class ConnectionManager:
                 ws = self.active_connections[session_code].pop(role, None)
                 if ws is not None:
                     self._last_pong.pop(ws, None)
+                    self._ping_sent.pop(ws, None)
                 if not self.active_connections[session_code]:
                     del self.active_connections[session_code]
 
@@ -44,6 +48,7 @@ class ConnectionManager:
                 return False
             del roles[role]
             self._last_pong.pop(websocket, None)
+            self._ping_sent.pop(websocket, None)
             if not roles:
                 del self.active_connections[session_code]
             return True
@@ -135,10 +140,29 @@ class ConnectionManager:
             except Exception as exc:
                 logger.warning("broadcast_to_others_send_failed", extra={"reason": str(exc)}, exc_info=True)
 
-    async def mark_pong(self, websocket: WebSocket) -> None:
+    async def mark_ping(self, websocket: WebSocket, now: float | None = None) -> None:
+        """Remember when a ping went out; a newer ping replaces an unanswered one.
+
+        Why no ping id: the protocol stays unchanged during a deploy. Matching a
+        pong to the latest ping measures a roundtrip over the 5 s interval too
+        short, which is acceptable for trends (decided in #193).
+        """
         async with self._lock:
             if websocket in self._last_pong:
-                self._last_pong[websocket] = time.monotonic()
+                self._ping_sent[websocket] = time.monotonic() if now is None else now
+
+    async def mark_pong(self, websocket: WebSocket, now: float | None = None) -> float | None:
+        """Record a pong; return the seconds since the ping it answers, or None.
+
+        Only the first pong after a ping is measured.
+        """
+        now = time.monotonic() if now is None else now
+        async with self._lock:
+            if websocket not in self._last_pong:
+                return None
+            self._last_pong[websocket] = now
+            sent = self._ping_sent.pop(websocket, None)
+            return None if sent is None else now - sent
 
     async def get_last_pong(self, websocket: WebSocket) -> float | None:
         async with self._lock:

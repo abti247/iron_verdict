@@ -94,6 +94,16 @@ vportal_upstream_duration = Histogram(
     buckets=(0.25, 0.5, 1, 2, 5),
     registry=registry,
 )
+# Heartbeat ping -> pong per device (#193): Wi-Fi plus internet, both ways,
+# plus the browser's reaction time. Not judge -> display. Why these buckets:
+# typical 50-250 ms, and the 5 s ping interval caps what can be measured.
+ws_roundtrip = Histogram(
+    "iron_verdict_ws_roundtrip_seconds",
+    "Time from a heartbeat ping to the device's pong",
+    ["role_kind"],
+    buckets=(0.05, 0.1, 0.25, 0.5, 1, 2.5, 5),
+    registry=registry,
+)
 
 # Fixed label values show up as 0 from the start, so rate() and alerts see them
 # before the first increment.
@@ -111,6 +121,8 @@ for _reason in ("queue_full", "send_failed"):
     log_ship_dropped.labels(reason=_reason)
 for _endpoint in ("login", "graphql"):
     vportal_upstream_duration.labels(endpoint=_endpoint)
+for _kind in ("judge", "display"):
+    ws_roundtrip.labels(role_kind=_kind)
 
 
 def status_class(status: int) -> str:
