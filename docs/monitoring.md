@@ -77,7 +77,7 @@ Testing & synthetics → Synthetics → **Checks** → *Create new check* → **
 
 Save. After 2–3 minutes the check dashboard shows green bars for both locations. A single "No result found from London/Frankfurt" for one minute is normal (the run fell into the next minute).
 
-If it stays red, open the log of a failed run (click a bar, tab per location): status `403` or a "Just a moment…" page means Cloudflare blocks the probes — see *Cloudflare Bot Fight Mode* below.
+If it stays red, open the log of a failed run (click a bar, tab per location): status `403` or a "Just a moment…" page means Cloudflare blocks the probes — Bot Fight Mode is off since #205, so look in Security → Analytics → Events for the Cloudflare feature that acted; background in *Cloudflare Bot Fight Mode* below.
 
 ### 6. Alert rule
 
@@ -124,9 +124,9 @@ Reading the message:
 
 ## Cloudflare Bot Fight Mode
 
-Production has Bot Fight Mode on (see [docs/architecture.md](architecture.md), *Edge*). On the free plan it cannot be switched off for single requests by a rule ([Cloudflare docs](https://developers.cloudflare.com/waf/feature-interoperability)), so it may challenge the Grafana probes.
+Production has Bot Fight Mode **off** since 2026-11-04 (#205): it challenged the release chain's production check from GitHub runners ([docs/release.md](release.md), One-time setup). The results below were taken while it was on. On the free plan it cannot be switched off for single requests by a rule ([Cloudflare docs](https://developers.cloudflare.com/waf/feature-interoperability)). While it was on, it could have challenged the Grafana probes; with it off they no longer depend on it.
 
-**Result (2026-10-26, #132):** the probes pass with Bot Fight Mode on — both locations reach the app through Cloudflare (log: Cloudflare IP, status 200). Bot Fight Mode stays on. If a later check run shows `403` or a challenge page, the fallback is to turn Bot Fight Mode off (Security → Bots); the app has its own rate limits and origin check. A Railway domain as a way around Cloudflare is not an option (see *Why `iron-verdict.com`* above).
+**Result (2026-10-26, #132):** the probes pass with Bot Fight Mode on — both locations reach the app through Cloudflare (log: Cloudflare IP, status 200). The fallback named then — turning it off, since the app has its own rate limits and origin check — is what #205 did. A Railway domain as a way around Cloudflare is not an option (see *Why `iron-verdict.com`* above).
 
 **Metrics scrape (2026-10-30, #133):** Grafana's Metrics Endpoint scrape also passes with Bot Fight Mode on (requests reach the app, log: `GET /metrics` 200).
 

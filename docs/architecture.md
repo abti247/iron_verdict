@@ -192,7 +192,7 @@ Grafana Cloud (free tier, EU) pulls everything; the app opens no outbound connec
 
 ## Edge
 
-- Cloudflare proxy (orange cloud) sits in front of Railway. SSL/TLS Full (strict), Bot Fight Mode on.
+- Cloudflare proxy (orange cloud) sits in front of Railway. SSL/TLS Full (strict), Bot Fight Mode off (since 2026-11-04, #205). *Why off:* it challenged the release chain's production check from GitHub runners, and on the free plan no rule can exempt single requests; the app's own rate limits and origin check stay ([docs/release.md](release.md), One-time setup).
 - Caching → Browser Cache TTL: **Respect Existing Headers** (set 2026-10-18, #145), so the origin's `Cache-Control: no-cache` reaches the browser (see `GET /static/*`).
 - Domain: `iron-verdict.com` → CNAME → Railway.
 - **Client IP:** rate limits and every `client_ip` log field (HTTP and WebSocket) use `CF-Connecting-IP`, falling back to the TCP peer (`request.client.host`) when the header is absent. `X-Forwarded-For` is ignored.  

@@ -1,4 +1,5 @@
 import json
+import socket
 import subprocess
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -17,6 +18,8 @@ class FakeRailway:
         self.requests = []
         self.graphql_errors = None
         self.served_version = "sha-old0000"
+        self.health_status = 200
+        self.footer = True
         # Status answers to successive deployment queries; the last one repeats.
         self.statuses = ["DEPLOYING", "SUCCESS"]
         self.status_queries = 0
@@ -54,9 +57,11 @@ class FakeRailway:
 
             def do_GET(self):
                 if self.path == "/health":
-                    self._send(200, '{"status":"ok"}', "application/json")
+                    self._send(fake.health_status, '{"status":"ok"}', "application/json")
                 else:
                     html = f'<div class="app-version">\n    {fake.served_version}\n</div>'
+                    if not fake.footer:
+                        html = "<p>no footer</p>"
                     self._send(200, html, "text/html")
 
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
@@ -71,7 +76,7 @@ def railway():
     fake.server.shutdown()
 
 
-def run_deploy(railway, expected_version="sha-1a2b3c4", timeout_s="20"):
+def run_deploy(railway, expected_version="sha-1a2b3c4", timeout_s="20", public_url=None):
     env = {
         "PATH": "/usr/local/bin:/usr/bin:/bin",
         "RAILWAY_TOKEN": "token-123",
@@ -82,7 +87,7 @@ def run_deploy(railway, expected_version="sha-1a2b3c4", timeout_s="20"):
         "POLL_INTERVAL_S": "0.1",
     }
     return subprocess.run(
-        ["bash", str(SCRIPT), IMAGE, railway.url, expected_version],
+        ["bash", str(SCRIPT), IMAGE, public_url or railway.url, expected_version],
         env=env, capture_output=True, text=True, timeout=60,
     )
 
@@ -149,3 +154,40 @@ def test_deploy_fails_when_footer_never_shows_expected_version(railway):
     assert result.returncode != 0
     assert "did not serve sha-9999999" in result.stderr
     assert "last seen: 'sha-1a2b3c4'" in result.stderr
+
+
+def test_deploy_timeout_names_the_health_status_when_blocked(railway):
+    # Cloudflare's Bot Fight Mode answered the runner's /health with a
+    # challenge (403) for 10 minutes (#205); the log must show the status.
+    railway.statuses = ["SUCCESS"]
+    railway.health_status = 403
+
+    result = run_deploy(railway, timeout_s="1")
+
+    assert result.returncode != 0
+    assert "last seen: '/health answered HTTP 403'" in result.stderr
+
+
+def test_deploy_timeout_says_no_answer_when_unreachable(railway):
+    railway.statuses = ["SUCCESS"]
+    closed = socket.socket()
+    closed.bind(("127.0.0.1", 0))
+    unreachable = f"http://127.0.0.1:{closed.getsockname()[1]}"
+
+    try:
+        result = run_deploy(railway, timeout_s="1", public_url=unreachable)
+    finally:
+        closed.close()
+
+    assert result.returncode != 0
+    assert "last seen: 'no answer from /health'" in result.stderr
+
+
+def test_deploy_timeout_says_no_footer_version_when_footer_missing(railway):
+    railway.statuses = ["SUCCESS"]
+    railway.footer = False
+
+    result = run_deploy(railway, timeout_s="1")
+
+    assert result.returncode != 0
+    assert "last seen: 'no footer version'" in result.stderr
