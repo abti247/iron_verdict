@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { displayBvdk } from '../../src/iron_verdict/static/js/screens/displayBvdk.js';
 import { createDisplayStore } from '../../src/iron_verdict/static/js/displayStore.js';
+import { displayStreamLights } from '../../src/iron_verdict/static/js/screens/displayStreamLights.js';
 
 // The BVDK box of the stream overlay (#215): when it shows, when it is a
 // sample, and what it shows while it fades out (the next lift cleared the
@@ -23,6 +24,7 @@ function screen({ overlay = true } = {}) {
     const display = createDisplayStore();
     const component = {
         ...displayBvdk(),
+        ...displayStreamLights(),  // when a result shows in the stream (#216)
         layoutEditing: false,
         $store: { display, session: { overlay } },
     };

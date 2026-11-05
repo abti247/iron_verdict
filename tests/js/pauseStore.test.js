@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createPauseStore, formatPauseRemaining, PAUSE_TICK_MS } from '../../src/iron_verdict/static/js/pauseStore.js';
 import { handlePauseUpdate, handleJoinSuccess } from '../../src/iron_verdict/static/js/handlers.js';
 import { endOfTimeToday } from '../../src/iron_verdict/static/js/screens/displayPause.js';
+import { createDisplayStore } from '../../src/iron_verdict/static/js/displayStore.js';
 
 const MIN = 60_000;
 
@@ -135,6 +136,7 @@ describe('pause handlers', () => {
             nav: { navigateTo: () => {} },
             judge: {},
             settings: {},
+            display: createDisplayStore(),
             storage: { getItem: () => null },
             timer: { start: () => {} },
         };

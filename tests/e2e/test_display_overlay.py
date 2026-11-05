@@ -31,6 +31,10 @@ TRANSPARENT = "rgba(0, 0, 0, 0)"
 # view, set before the page loads (the default is the BVDK view, #215;
 # test_overlay_bvdk_lights.py).
 CLASSIC_LIGHTS = "localStorage.setItem('iron-verdict:overlay-lights-view', 'classic')"
+# Lights shown until the next lift, as on the hall display: the overlay's
+# "always" duration, set before the page loads (the default shows them for
+# 5 s after a live decision only, #216; test_overlay_stream_lights.py).
+ALWAYS_LIGHTS = "localStorage.setItem('iron-verdict:overlay-lights-duration', 'always')"
 
 
 def overlay_url(competition, layout_code=None, code=None):
@@ -41,15 +45,18 @@ def overlay_url(competition, layout_code=None, code=None):
 
 
 def open_overlay(competition, layout_code=None, network_switch=False, name="Test Session", before_goto=None,
-                 classic=False):
+                 classic=False, always=False):
     """Open the overlay URL in a new 1920×1080 context, as OBS does; returns
     (page, dialogs) — dialogs collects every alert/confirm the page raised.
-    classic: the round lights (Classic view) instead of the default BVDK view."""
+    classic: the round lights (Classic view) instead of the default BVDK view.
+    always: lights shown until the next lift, also a restored result."""
     ctx = competition.new_context(viewport=VIEWPORT)
     if network_switch:
         ctx.add_init_script(NETWORK_SWITCH)
     if classic:
         ctx.add_init_script(CLASSIC_LIGHTS)
+    if always:
+        ctx.add_init_script(ALWAYS_LIGHTS)
     page = ctx.new_page()
     dialogs = []
     page.on("dialog", lambda d: (dialogs.append(d.message), d.accept()))
@@ -170,9 +177,11 @@ def test_overlay_opens_without_clicks_and_shows_votes_on_transparent_background(
 def test_overlay_shows_dot_only_while_disconnected_and_misses_no_result(competition):
     """The connection drops: a small dot appears (the stream shows something is
     wrong). The judges vote meanwhile. After reconnecting the dot disappears and
-    the result that was decided during the outage shows."""
+    the result that was decided during the outage shows (lights "always";
+    with a duration a restored result stays hidden in the stream,
+    test_overlay_stream_lights.py)."""
     competition.join_all_judges()
-    overlay, _ = open_overlay(competition, network_switch=True)
+    overlay, _ = open_overlay(competition, network_switch=True, always=True)
     expect(overlay.get_by_test_id("display-tag")).to_be_hidden()
 
     cut_network(overlay, conn_dot=".display-tag .conn-dot")
@@ -186,11 +195,13 @@ def test_overlay_shows_dot_only_while_disconnected_and_misses_no_result(competit
     expect_good_lift(overlay)
 
 
-def test_overlay_reload_rejoins_and_restores_the_result(competition, judged_overlay):
+def test_overlay_reload_rejoins_and_restores_the_result(competition):
     """OBS reloads the browser source: the overlay comes back on the same URL,
     transparent, without the "Connecting…" screen or the landing screen, and
-    shows the current result again."""
-    overlay, dialogs, _ = judged_overlay
+    shows the current result again (lights "always"; with a duration a
+    restored result stays hidden in the stream, test_overlay_stream_lights.py)."""
+    competition.join_all_judges()
+    overlay, dialogs = open_overlay(competition, always=True)
     competition.vote_all_white()
     expect_good_lift(overlay)
 

@@ -115,3 +115,47 @@ html.display-overlay .display-full.display-layout-editing {
 }
 .display-settings-note--error { color: var(--overlay-error-text); }
 html.display-overlay .display-settings-layout-btn + .display-settings-layout-btn { margin-top: 10px; }
+
+/* ===== LIGHTS ONLY AFTER THE DECISION (#216) =====
+   Classic lights (with cards and reasons) and the verdict, in the overlay
+   only (screens/displayStreamLights.js sets the classes): invisible without a
+   result shown in the stream, then the lights come on one after another,
+   card and reason follow, the verdict last (all within 1 s). When the chosen
+   duration is over they fade out; the next lift hides them at once (no fade
+   of emptied lights). The parts keep their place while invisible, so nothing
+   moves when they come. */
+html.display-overlay .stream-lights-hide .display-orb-wrap,
+html.display-overlay .stream-lights-hide .verdict-stamp {
+    opacity: 0;
+}
+html.display-overlay .stream-lights-hide.stream-lights-fade .display-orb-wrap,
+html.display-overlay .stream-lights-hide.stream-lights-fade .verdict-stamp {
+    transition: opacity 0.45s ease-in;
+}
+/* Opacity only, no scale: the lights never move (layout.css). */
+html.display-overlay .stream-lights-on .display-orb {
+    animation: bvdk-fade 0.3s ease-out backwards;
+}
+html.display-overlay .stream-lights-on .display-orb-card,
+html.display-overlay .stream-lights-on .display-orb-reason {
+    animation: bvdk-fade 0.25s ease-out backwards;
+}
+html.display-overlay .stream-lights-on .display-orb-wrap:nth-child(2) .display-orb { animation-delay: 0.12s; }
+html.display-overlay .stream-lights-on .display-orb-wrap:nth-child(3) .display-orb { animation-delay: 0.24s; }
+html.display-overlay .stream-lights-on .display-orb-card,
+html.display-overlay .stream-lights-on .display-orb-reason { animation-delay: 0.45s; }
+html.display-overlay .stream-lights-on .verdict-stamp {
+    animation: bvdk-fade 0.25s ease-out 0.6s backwards;
+}
+/* "Reduce motion": only a short fade, the same for all parts. */
+@media (prefers-reduced-motion: reduce) {
+    html.display-overlay .stream-lights-on .display-orb-wrap,
+    html.display-overlay .stream-lights-on .verdict-stamp {
+        animation: bvdk-fade 0.2s linear backwards;
+    }
+    html.display-overlay .stream-lights-on :is(.display-orb, .display-orb-card, .display-orb-reason) { animation: none; }
+    html.display-overlay .stream-lights-hide.stream-lights-fade .display-orb-wrap,
+    html.display-overlay .stream-lights-hide.stream-lights-fade .verdict-stamp {
+        transition-duration: 0.2s;
+    }
+}

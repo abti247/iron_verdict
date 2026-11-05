@@ -963,6 +963,8 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     border-top: 1px solid var(--panel-border);
 }
 .overlay-lights-view .display-settings-choice { margin-top: 10px; }
+/* How long the lights show after a decision (#216). */
+.overlay-lights-duration { margin-top: 12px; }
 .pause-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--panel-text); }
 .pause-input {
     background: var(--bg-void);

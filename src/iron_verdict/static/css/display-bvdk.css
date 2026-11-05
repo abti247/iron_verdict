@@ -112,11 +112,13 @@
 /* Breaks only between words or at a soft hyphen of the locales. */
 .bvdk-reason { min-width: 0; overflow-wrap: break-word; hyphens: manual; }
 
-/* Next lift: the box fades out with the result it showed (bvdkView() in
-   displayBvdk.js); Alpine's x-transition keeps it on screen for the fade.
+/* Next lift, or the overlay's duration is over (#216): the box fades out
+   with the result it showed (bvdkView() in displayBvdk.js); Alpine's
+   x-transition keeps it on screen for the fade, the same 0.45 s as the
+   Classic lights (display-overlay.css).
    Why the wait is fine: it only delays the look of a result that is gone
    already; the next result shows the box again at once. */
-.bvdk-leave { transition: opacity 0.3s ease-in; }
+.bvdk-leave { transition: opacity 0.45s ease-in; }
 .bvdk-leave-start { opacity: 1; }
 .bvdk-leave-end { opacity: 0; }
 /* The editor's sample goes at once when the editor closes: outside the

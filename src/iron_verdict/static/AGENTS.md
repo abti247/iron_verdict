@@ -32,12 +32,14 @@ src/iron_verdict/static/
 │   ├── vportalStore.js # Alpine.store('vportal') — connect dialog and display overlay
 │   ├── displayLayout.js# Display layout model (pure: validate, store, snap, export code)
 │   ├── bvdkLights.js   # BVDK view of the overlay lights (pure: box content, stored view)
+│   ├── streamLights.js # How long the overlay shows the lights after a decision (pure: stored duration)
 │   ├── websocket.js    # WebSocket connection, send/receive, reconnection
 │   ├── constants.js    # Static data (CARD_REASONS, role name mappings)
 │   ├── …               # Helpers: voteDelivery, reloadRecovery, roleTakeover, i18n, vportal*
 │   └── screens/        # One Alpine component per screen (landing, contact, demoIntro,
 │                       # reconnecting, roleSelect, judge, display; displayLayoutEditor,
-│                       # displayPause and displayBvdk are mixed into the display component)
+│                       # displayPause, displayBvdk and displayStreamLights are mixed
+│                       # into the display component)
 ```
 
 ## Rules
