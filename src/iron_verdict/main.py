@@ -269,11 +269,21 @@ connection_manager = ConnectionManager()
 metrics.register_live_state(session_manager, connection_manager, settings.APP_VERSION)
 
 
+def _save_snapshot_on_shutdown():
+    """Save the snapshot; a failed write (e.g. read-only or full /data) is
+    logged, never raised, so the rest of the shutdown still runs."""
+    try:
+        session_manager.save_snapshot(settings.SNAPSHOT_PATH)
+    except Exception as exc:
+        logger.exception("snapshot_save_failed", extra={"error": str(exc)})
+
+
 async def handle_shutdown(uvicorn_server):
     """On SIGTERM/SIGINT: save the snapshot, tell every connected device the
-    server restarts (it shows "Server restarting"), then let uvicorn exit."""
+    server restarts (it shows "Server restarting"), then let uvicorn exit.
+    The message and the exit happen even if the save fails."""
     logger.info("server_shutdown_started")
-    session_manager.save_snapshot(settings.SNAPSHOT_PATH)
+    _save_snapshot_on_shutdown()
     for session_code in list(connection_manager.active_connections.keys()):
         await connection_manager.broadcast_to_session(
             session_code,
@@ -344,7 +354,7 @@ async def lifespan(app: FastAPI):
         pause_task.cancel()
 
     # Fallback snapshot save for shutdowns not triggered via signal handler
-    session_manager.save_snapshot(settings.SNAPSHOT_PATH)
+    _save_snapshot_on_shutdown()
     # Last: the remaining log lines must never delay the snapshot.
     if log_shipper:
         log_shipper.stop()

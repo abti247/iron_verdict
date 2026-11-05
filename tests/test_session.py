@@ -840,6 +840,71 @@ async def test_shutdown_tells_every_connected_session_the_server_restarts(tmp_pa
     assert server.should_exit is True
 
 
+async def test_shutdown_still_announces_restart_and_exits_after_failed_snapshot_save(tmp_path, monkeypatch, caplog):
+    """A failed snapshot save (e.g. read-only /data) must not keep devices from
+    hearing about the restart, nor keep uvicorn from exiting (#222)."""
+    import logging
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+    import iron_verdict.main as main_module
+    from iron_verdict.connection import ConnectionManager
+
+    server = SimpleNamespace(should_exit=False)
+    manager = SessionManager()
+
+    def failing_save(path):
+        raise OSError("Read-only file system")
+
+    monkeypatch.setattr(manager, "save_snapshot", failing_save)
+    connections = ConnectionManager()
+    sockets = []
+    for code, role in [("AAAA1111", "left_judge"), ("AAAA1111", "display_aabb1122"), ("BBBB2222", "center_judge")]:
+        ws = AsyncMock()
+        sockets.append(ws)
+        await connections.add_connection(code, role, ws)
+    monkeypatch.setattr(main_module, "session_manager", manager)
+    monkeypatch.setattr(main_module, "connection_manager", connections)
+    monkeypatch.setattr(main_module.settings, "SNAPSHOT_PATH", str(tmp_path / "sessions.json"))
+
+    with caplog.at_level(logging.ERROR, logger="iron_verdict"):
+        await main_module.handle_shutdown(server)
+
+    for ws in sockets:
+        ws.send_json.assert_awaited_once_with({"type": "server_restarting"})
+    assert server.should_exit is True
+    failures = [r for r in caplog.records if r.getMessage() == "snapshot_save_failed"]
+    assert len(failures) == 1
+    assert failures[0].levelno == logging.ERROR
+    assert failures[0].error == "Read-only file system"
+
+
+async def test_lifespan_shutdown_completes_when_snapshot_write_always_fails(tmp_path, monkeypatch, caplog):
+    """With a permanently read-only volume the fallback save at the end of
+    lifespan fails too; shutdown still runs to the end and logs the failure (#222)."""
+    import logging
+    from types import SimpleNamespace
+    import iron_verdict.main as main_module
+
+    manager = SessionManager()
+
+    def always_failing_write(*args):
+        raise OSError("Read-only file system")
+
+    stopped = []
+    shipper = SimpleNamespace(stop=lambda: stopped.append(True))
+    monkeypatch.setattr(manager, "_write_snapshot", always_failing_write)
+    monkeypatch.setattr(main_module, "session_manager", manager)
+    monkeypatch.setattr(main_module.settings, "SNAPSHOT_PATH", str(tmp_path / "sessions.json"))
+    monkeypatch.setattr(main_module, "start_log_shipping", lambda *args: shipper)
+
+    with caplog.at_level(logging.ERROR, logger="iron_verdict"):
+        async with main_module.lifespan(main_module.app):
+            pass
+
+    assert [r.getMessage() for r in caplog.records].count("snapshot_save_failed") == 1
+    assert stopped == [True]
+
+
 def test_save_snapshot_waits_for_in_flight_write(tmp_path):
     import threading
 
