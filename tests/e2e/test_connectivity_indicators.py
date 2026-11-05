@@ -86,7 +86,15 @@ def test_own_dot_orange_on_reconnecting(competition):
 
 
 def test_server_restart_message_shown(competition, server_url):
-    """Server sends server_restarting → label visible."""
+    """Server sends server_restarting → label visible.
+
+    Deliberate exception to "don't simulate server internals" (docs/testing.md,
+    "Conventions"): the message is only sent while the server shuts down, and
+    the in-process test server cannot be restarted under a running test, so the
+    broadcast is triggered directly on ``connection_manager``. That the shutdown
+    handler sends it to every session is pinned in the backend test
+    ``test_shutdown_tells_every_connected_session_the_server_restarts``; this
+    test is the only one that shows the label on screen."""
     import asyncio
     import threading
     from iron_verdict.main import connection_manager as cm

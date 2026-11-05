@@ -809,6 +809,39 @@ async def test_lifespan_shutdown_completes_after_failed_snapshot_write(tmp_path,
         assert list(json.load(f)) == list(manager.sessions)
 
 
+async def test_shutdown_tells_every_connected_session_the_server_restarts(tmp_path, monkeypatch):
+    """SIGTERM/SIGINT handler: saves the snapshot, sends server_restarting to
+    every connection of every session, then lets uvicorn exit."""
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+    import iron_verdict.main as main_module
+    from iron_verdict.connection import ConnectionManager
+
+    events = []
+    server = SimpleNamespace(should_exit=False)
+    manager = SessionManager()
+    monkeypatch.setattr(manager, "save_snapshot", lambda path: events.append(("snapshot", path)))
+    connections = ConnectionManager()
+    sockets = []
+    for code, role in [("AAAA1111", "left_judge"), ("AAAA1111", "display_aabb1122"), ("BBBB2222", "center_judge")]:
+        ws = AsyncMock()
+        # Record whether uvicorn was already told to exit when the message went out.
+        ws.send_json.side_effect = lambda msg: events.append(("sent", server.should_exit))
+        sockets.append(ws)
+        await connections.add_connection(code, role, ws)
+    path = str(tmp_path / "sessions.json")
+    monkeypatch.setattr(main_module, "session_manager", manager)
+    monkeypatch.setattr(main_module, "connection_manager", connections)
+    monkeypatch.setattr(main_module.settings, "SNAPSHOT_PATH", path)
+
+    await main_module.handle_shutdown(server)
+
+    for ws in sockets:
+        ws.send_json.assert_awaited_once_with({"type": "server_restarting"})
+    assert events == [("snapshot", path)] + [("sent", False)] * 3
+    assert server.should_exit is True
+
+
 def test_save_snapshot_waits_for_in_flight_write(tmp_path):
     import threading
 
