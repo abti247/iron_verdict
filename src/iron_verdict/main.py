@@ -268,6 +268,20 @@ session_manager = SessionManager()
 connection_manager = ConnectionManager()
 metrics.register_live_state(session_manager, connection_manager, settings.APP_VERSION)
 
+
+async def handle_shutdown(uvicorn_server):
+    """On SIGTERM/SIGINT: save the snapshot, tell every connected device the
+    server restarts (it shows "Server restarting"), then let uvicorn exit."""
+    logger.info("server_shutdown_started")
+    session_manager.save_snapshot(settings.SNAPSHOT_PATH)
+    for session_code in list(connection_manager.active_connections.keys()):
+        await connection_manager.broadcast_to_session(
+            session_code,
+            {"type": "server_restarting"}
+        )
+    uvicorn_server.should_exit = True
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     setup_logging(settings.LOG_LEVEL)
@@ -289,16 +303,6 @@ async def lifespan(app: FastAPI):
     uvicorn_server = getattr(app.state, "uvicorn_server", None)
 
     if uvicorn_server:
-        async def _handle_shutdown():
-            logger.info("server_shutdown_started")
-            session_manager.save_snapshot(settings.SNAPSHOT_PATH)
-            for session_code in list(connection_manager.active_connections.keys()):
-                await connection_manager.broadcast_to_session(
-                    session_code,
-                    {"type": "server_restarting"}
-                )
-            uvicorn_server.should_exit = True
-
         _shutdown_triggered = False
 
         def _signal_handler():
@@ -306,7 +310,7 @@ async def lifespan(app: FastAPI):
             if _shutdown_triggered:
                 return
             _shutdown_triggered = True
-            asyncio.create_task(_handle_shutdown())
+            asyncio.create_task(handle_shutdown(uvicorn_server))
 
         try:
             loop.add_signal_handler(signal.SIGTERM, _signal_handler)
