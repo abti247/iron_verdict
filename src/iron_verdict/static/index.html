@@ -292,7 +292,10 @@
         <div class="role-panel cut-corner">
             <div class="role-heading chrome-text" x-text="t('roles.heading')"></div>
             <div class="session-tag">
-                <span x-text="t('roles.session')"></span> <span class="code" x-text="$store.session.code"></span>
+                <span x-text="t('roles.session')"></span>
+                <!-- A link only for a new tab (Ctrl/Cmd+click, middle click, context menu, #212);
+                     noopener: the new tab starts with its own sessionStorage, without this tab's role. -->
+                <a class="code" :href="sessionUrl()" rel="noopener" @click="onCodeClick($event)" x-text="$store.session.code"></a>
             </div>
 
             <div class="role-qr-wrap">

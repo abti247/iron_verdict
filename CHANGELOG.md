@@ -7,6 +7,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- On role select, the session code opens the same session's role select in a new tab with a middle click or Ctrl/Cmd+click (or "Open link in new tab"), so several judges can be signed in on one computer without typing the code
 
 ### Changed
 
