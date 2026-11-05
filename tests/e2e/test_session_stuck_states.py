@@ -20,40 +20,25 @@ def test_next_lift_when_not_all_voted(competition):
         expect(p.locator(".vote-btn.vote-white")).to_be_enabled()
 
 
-def test_continue_after_judge_disconnect_mid_vote(competition):
-    """Judge disconnects after partial voting → remaining judges still work."""
-    head, left, right = competition.join_all_judges()
-
-    competition.vote_and_lock(head, "white")
-
-    left_ctx = competition.get_context_for("left_judge")
-    left_ctx.close()
-    competition.contexts.remove(left_ctx)
-
-    competition.vote_and_lock(right, "white")
-
-    head.get_by_role("button", name="Next Lift").click()
-    expect(head.locator(".locked-status")).not_to_be_visible()
-    expect(head.locator(".vote-btn.vote-white")).to_be_enabled()
-
-
-def test_results_blocked_when_judge_disconnects_before_voting(competition):
-    """Judge disconnects before voting → other two lock → results must not appear (IPF rule)."""
+def test_judge_disconnect_mid_vote_blocks_results_and_next_lift_continues(competition):
+    """Head judge votes, the left judge disconnects without voting, the right
+    judge votes → results must not appear (IPF rule) → Next Lift still resets
+    the head judge, who can vote again."""
     head, left, right = competition.join_all_judges()
     l_dot = head.locator(".connectivity-dot", has_text="L")
     expect(l_dot).to_have_class(re.compile(r"status-connected"))
+
+    competition.vote_and_lock(head, "white")
 
     # Left judge closes browser without casting a vote
     left_ctx = competition.get_context_for("left_judge")
     left_ctx.close()
     competition.contexts.remove(left_ctx)
 
-    # The server marks the judge disconnected before it reports it, so the votes
-    # below are counted against a disconnected non-voter
+    # The server marks the judge disconnected before it reports it, so the vote
+    # below is counted against a disconnected non-voter
     expect(l_dot).to_have_class(re.compile(r"status-disconnected"))
 
-    # Remaining two judges lock in their votes
-    competition.vote_and_lock(head, "white")
     competition.vote_and_lock(right, "white")
 
     # A result would be sent right after the vote confirmation, so in practice it
@@ -63,6 +48,10 @@ def test_results_blocked_when_judge_disconnects_before_voting(competition):
 
     expect(head.locator(".head-section").last).not_to_be_visible()
     expect(right.locator(".head-section").last).not_to_be_visible()
+
+    head.get_by_role("button", name="Next Lift").click()
+    expect(head.locator(".locked-status")).not_to_be_visible()
+    expect(head.locator(".vote-btn.vote-white")).to_be_enabled()
 
 
 def test_next_lift_resets_all_state(competition):
@@ -81,3 +70,5 @@ def test_next_lift_resets_all_state(competition):
         expect(p.locator(".locked-status")).not_to_be_visible()
         expect(p.locator(".vote-grid")).to_be_visible()
         expect(p.locator(".vote-btn.selected")).not_to_be_visible()
+        for color in ("white", "red", "blue", "yellow"):
+            expect(p.locator(f".vote-btn.vote-{color}")).to_be_enabled()

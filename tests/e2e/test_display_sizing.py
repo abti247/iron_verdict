@@ -14,47 +14,29 @@ def _open_display(page, server_url):
     page.locator(".display-full").wait_for(state="visible")
 
 
-def test_gear_icon_opens_settings_panel(page, server_url):
+def test_settings_panel_opens_and_closes(page, server_url):
+    """Gear opens the settings panel, Escape closes it; the S key opens it, a
+    click outside (the timer) closes it; opened again, leaving the display via
+    the session-name link and re-entering finds it closed."""
     _open_display(page, server_url)
-    expect(page.locator(".display-settings-panel")).to_be_hidden()
+    panel = page.locator(".display-settings-panel")
+    expect(panel).to_be_hidden()
+
     page.locator(".display-settings-gear").click()
-    expect(page.locator(".display-settings-panel")).to_be_visible()
-
-
-def test_s_key_opens_settings_panel(page, server_url):
-    _open_display(page, server_url)
-    expect(page.locator(".display-settings-panel")).to_be_hidden()
-    page.locator("body").press("s")
-    expect(page.locator(".display-settings-panel")).to_be_visible()
-
-
-def test_escape_dismisses_panel(page, server_url):
-    _open_display(page, server_url)
-    page.locator(".display-settings-gear").click()
-    expect(page.locator(".display-settings-panel")).to_be_visible()
+    expect(panel).to_be_visible()
     page.locator("body").press("Escape")
-    expect(page.locator(".display-settings-panel")).to_be_hidden()
+    expect(panel).to_be_hidden()
 
-
-def test_click_outside_dismisses_panel(page, server_url):
-    _open_display(page, server_url)
-    page.locator(".display-settings-gear").click()
-    expect(page.locator(".display-settings-panel")).to_be_visible()
+    page.locator("body").press("s")
+    expect(panel).to_be_visible()
     # Click on the timer area (not the panel)
     page.locator(".display-timer-big").click()
-    expect(page.locator(".display-settings-panel")).to_be_hidden()
+    expect(panel).to_be_hidden()
 
-
-def test_panel_closes_on_navigation_away_from_display(page, server_url):
-    """Open panel → leave display via session-name link → re-enter → panel must be closed."""
-    _open_display(page, server_url)
     page.locator(".display-settings-gear").click()
-    page.locator(".display-settings-panel").wait_for(state="visible")
-
+    expect(panel).to_be_visible()
     page.locator(".display-tag .code-link").click()
     page.locator(".role-wrap").wait_for(state="visible")
-
     page.locator(".role-btn", has_text="Display Screen").click()
     page.locator(".display-full").wait_for(state="visible")
-
-    expect(page.locator(".display-settings-panel")).to_be_hidden()
+    expect(panel).to_be_hidden()

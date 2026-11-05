@@ -22,82 +22,92 @@ RECONNECTING = "reconnecting-screen"
 GIVE_UP_TIMEOUT_MS = 40000
 
 
-def _take_over_left(competition):
-    """Head and right judge join, A joins as left, goes offline, B takes left."""
+def _take_over(competition, *roles):
+    """Head judge and the remaining side judge join; for each of *roles* an
+    original device A joins (with a network switch) and goes offline, then a
+    replacement B takes the role. Returns {role: (device_a, device_b, dialogs)}."""
     competition.create_session_and_join_head()
-    competition.join_as("right_judge")
-    device_a = join_with_network_switch(competition, "left_judge")
-    dialogs = []
-    device_a.on("dialog", lambda d: dialogs.append(d.message))
-    cut_network(device_a)
-    device_b = competition.join_as("left_judge")
-    return device_a, device_b, dialogs
+    for role in ("left_judge", "right_judge"):
+        if role not in roles:
+            competition.join_as(role)
+    devices = {}
+    for role in roles:
+        device_a = join_with_network_switch(competition, role)
+        dialogs = []
+        device_a.on("dialog", lambda d, dialogs=dialogs: dialogs.append(d.message))
+        devices[role] = [device_a, None, dialogs]
+    for role in roles:
+        cut_network(devices[role][0])
+        devices[role][1] = competition.join_as(role)
+    return {role: tuple(v) for role, v in devices.items()}
 
 
 def _stored_session(page):
     return page.evaluate("JSON.parse(sessionStorage.getItem('iv_session'))")
 
 
-def _assert_device_b_undisturbed(competition, device_b):
-    expect(device_b.locator(".judge-wrap")).to_be_visible()
-    expect(device_b.locator(".judge-code .conn-dot")).not_to_have_class(re.compile(r"\breconnecting\b"))
+def _assert_devices_b_undisturbed(competition, *devices_b):
+    for device_b in devices_b:
+        expect(device_b.locator(".judge-wrap")).to_be_visible()
+        expect(device_b.locator(".judge-code .conn-dot")).not_to_have_class(re.compile(r"\breconnecting\b"))
     competition.vote_all_white()
-    expect(device_b.locator(".locked-status")).to_be_visible()
+    for device_b in devices_b:
+        expect(device_b.locator(".locked-status")).to_be_visible()
 
 
-def test_reloaded_device_with_taken_role_shows_notice_on_role_select(competition):
-    """A reloads after B took "Left": "Connecting…" stays while the role is
-    rejected, then after the give-up limit A shows role-select of the same
-    session with the notice, its reconnect token is gone, and no popup came up.
-    B stays connected and can vote."""
-    device_a, device_b, dialogs = _take_over_left(competition)
+def test_taken_role_shows_notice_on_role_select_after_reload_and_on_judge_screen(competition):
+    """B takes "Left" and another B takes "Right" while the original devices
+    are offline. Both cases wait out the give-up limit at the same time:
 
-    device_a.evaluate("window.__ivRestoreNetwork()")
-    device_a.reload()
-    expect(device_a.get_by_test_id(RECONNECTING)).to_be_visible()
+    - Left A reloads: "Connecting…" stays while the role is rejected, then
+      after the give-up limit A shows role-select of the same session with the
+      notice, its reconnect token is gone, no popup came up, and it stops
+      trying to connect.
+    - Right A's judge screen lost its connection; when its network is back (no
+      reload), its rejoin attempts are rejected; after the give-up limit it
+      shows role-select with the notice.
+
+    Both Bs stay connected and can vote."""
+    devices = _take_over(competition, "left_judge", "right_judge")
+    left_a, left_b, left_dialogs = devices["left_judge"]
+    right_a, right_b, right_dialogs = devices["right_judge"]
+
+    left_a.evaluate("window.__ivRestoreNetwork()")
+    left_a.reload()
+    right_a.evaluate("window.__ivRestoreNetwork()")
+    expect(left_a.get_by_test_id(RECONNECTING)).to_be_visible()
+    expect(right_a.locator(".judge-wrap")).to_be_visible()
     # Several rejected attempts later, still within the limit: no notice yet.
-    device_a.wait_for_function("window.__ivSocketCount() >= 3", timeout=10000)
-    expect(device_a.get_by_test_id(RECONNECTING)).to_be_visible()
+    left_a.wait_for_function("window.__ivSocketCount() >= 3", timeout=10000)
+    expect(left_a.get_by_test_id(RECONNECTING)).to_be_visible()
 
-    expect(device_a.locator(NOTICE)).to_be_visible(timeout=GIVE_UP_TIMEOUT_MS)
-    expect(device_a.locator(NOTICE)).to_have_text("Left Judge is now signed in on another device")
-    expect(device_a.locator(".role-wrap .session-tag .code")).to_have_text(competition.session_code)
-    device_a.locator(".lang-toggle-btn", has_text="DE").click()
-    expect(device_a.locator(NOTICE)).to_have_text("KARI Links ist inzwischen auf einem anderen Gerät angemeldet")
-    assert _stored_session(device_a) == {"code": competition.session_code}
-    assert dialogs == []
+    expect(left_a.locator(NOTICE)).to_be_visible(timeout=GIVE_UP_TIMEOUT_MS)
+    expect(left_a.locator(NOTICE)).to_have_text("Left Judge is now signed in on another device")
+    expect(left_a.locator(".role-wrap .session-tag .code")).to_have_text(competition.session_code)
+    left_a.locator(".lang-toggle-btn", has_text="DE").click()
+    expect(left_a.locator(NOTICE)).to_have_text("KARI Links ist inzwischen auf einem anderen Gerät angemeldet")
+    assert _stored_session(left_a) == {"code": competition.session_code}
+    assert left_dialogs == []
 
     # The retry loop has ended: no further connection attempts. While it ran, a
     # rejected attempt was retried every ~0.5 s, so 2 s would show several.
-    sockets = device_a.evaluate("window.__ivSocketCount()")
-    device_a.wait_for_timeout(2000)
-    assert device_a.evaluate("window.__ivSocketCount()") == sockets
+    sockets = left_a.evaluate("window.__ivSocketCount()")
+    left_a.wait_for_timeout(2000)
+    assert left_a.evaluate("window.__ivSocketCount()") == sockets
 
-    _assert_device_b_undisturbed(competition, device_b)
+    expect(right_a.locator(NOTICE)).to_be_visible(timeout=GIVE_UP_TIMEOUT_MS)
+    expect(right_a.locator(".judge-wrap")).not_to_be_visible()
+    assert _stored_session(right_a) == {"code": competition.session_code}
+    assert right_dialogs == []
 
-
-def test_judge_screen_with_taken_role_shows_notice_on_role_select(competition):
-    """A's judge screen lost its connection while B took "Left". When A's
-    network is back (no reload), its rejoin attempts are rejected; after the
-    give-up limit A shows role-select with the notice. B stays connected."""
-    device_a, device_b, dialogs = _take_over_left(competition)
-
-    device_a.evaluate("window.__ivRestoreNetwork()")
-    expect(device_a.locator(".judge-wrap")).to_be_visible()
-
-    expect(device_a.locator(NOTICE)).to_be_visible(timeout=GIVE_UP_TIMEOUT_MS)
-    expect(device_a.locator(".judge-wrap")).not_to_be_visible()
-    assert _stored_session(device_a) == {"code": competition.session_code}
-    assert dialogs == []
-
-    _assert_device_b_undisturbed(competition, device_b)
+    _assert_devices_b_undisturbed(competition, left_b, right_b)
 
 
 def test_role_freed_within_limit_rejoins_without_notice(competition):
     """Counter-case (short race): A reloads while B holds "Left" and gets
     rejected a few times, then B leaves within the limit. A rejoins as left
     judge on its own, without notice or popup, and can vote."""
-    device_a, device_b, dialogs = _take_over_left(competition)
+    device_a, device_b, dialogs = _take_over(competition, "left_judge")["left_judge"]
 
     device_a.evaluate("window.__ivRestoreNetwork()")
     device_a.reload()

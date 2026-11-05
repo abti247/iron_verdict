@@ -4,8 +4,9 @@ import re
 from playwright.sync_api import expect
 
 
-def test_lr_dots_connected_on_join(competition):
-    """L/R dots start disconnected, turn green as side judges join."""
+def test_lr_dots_follow_side_judges(competition):
+    """L/R dots start disconnected and turn green as side judges join; a side
+    judge disconnects → only its dot goes disconnected; it rejoins → green."""
     head = competition.create_session_and_join_head()
 
     l_dot = head.locator(".connectivity-dot", has_text="L")
@@ -22,16 +23,6 @@ def test_lr_dots_connected_on_join(competition):
     expect(l_dot).to_have_class(re.compile(r"status-connected"))
     expect(r_dot).to_have_class(re.compile(r"status-connected"))
 
-
-def test_lr_dots_update_on_disconnect(competition):
-    """Side judge disconnects → corresponding dot goes disconnected."""
-    head, left, right = competition.join_all_judges()
-
-    l_dot = head.locator(".connectivity-dot", has_text="L")
-    r_dot = head.locator(".connectivity-dot", has_text="R")
-
-    expect(l_dot).to_have_class(re.compile(r"status-connected"))
-
     left_ctx = competition.get_context_for("left_judge")
     left_ctx.close()
     competition.contexts.remove(left_ctx)
@@ -39,35 +30,13 @@ def test_lr_dots_update_on_disconnect(competition):
     expect(l_dot).to_have_class(re.compile(r"status-disconnected"))
     expect(r_dot).to_have_class(re.compile(r"status-connected"))
 
-
-def test_lr_dots_recover_on_reconnect(competition):
-    """Side judge reconnects → dot returns to connected."""
-    head, left, right = competition.join_all_judges()
-
-    l_dot = head.locator(".connectivity-dot", has_text="L")
-    expect(l_dot).to_have_class(re.compile(r"status-connected"))
-
-    left_ctx = competition.get_context_for("left_judge")
-    left_ctx.close()
-    competition.contexts.remove(left_ctx)
-
-    expect(l_dot).to_have_class(re.compile(r"status-disconnected"))
-
     competition.join_as("left_judge")
     expect(l_dot).to_have_class(re.compile(r"status-connected"))
 
 
-def test_own_dot_green_when_connected(competition):
-    """Judge's own connection dot shows 'connected' class after joining."""
-    head, left, right = competition.join_all_judges()
-
-    for role in ("center_judge", "left_judge", "right_judge"):
-        dot = competition.pages[role].locator(".judge-code .conn-dot")
-        expect(dot).to_have_class(re.compile(r"\bconnected\b"))
-
-
 def test_own_dot_orange_on_reconnecting(competition):
-    """Connection drops → dot shows 'reconnecting' → reconnects → green.
+    """All three judges' own dots are green after joining; the left judge's
+    connection drops → its dot shows 'reconnecting' → reconnects → green.
 
     Closes the raw WebSocket via JS (tracked by init_script monkey-patch)
     to trigger the onclose handler, which sets connectionStatus to 'reconnecting'.
@@ -104,8 +73,9 @@ def test_own_dot_orange_on_reconnecting(competition):
     page.locator(".judge-wrap").wait_for(state="visible")
     competition.pages["left_judge"] = page
 
+    for p in (head, page, right):
+        expect(p.locator(".judge-code .conn-dot")).to_have_class(re.compile(r"\bconnected\b"))
     dot = page.locator(".judge-code .conn-dot")
-    expect(dot).to_have_class(re.compile(r"\bconnected\b"))
 
     # Close the raw WebSocket to trigger onclose → reconnecting
     page.evaluate("window.__ws_instances.filter(ws => ws.readyState === 1).forEach(ws => ws.close())")

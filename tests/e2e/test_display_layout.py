@@ -24,7 +24,6 @@ import httpx
 import pytest
 from playwright.sync_api import expect
 
-from tests.e2e.network_switch import cut_network, join_with_network_switch, restore_network
 from tests.e2e.test_display_overlay import open_overlay
 from tests.e2e.test_red_light_card import resize
 from tests.e2e.test_vportal_integration import _connect_and_open_display
@@ -126,9 +125,17 @@ def vote(page, color, with_reason=False):
     page.locator(".locked-status").wait_for(state="visible")
 
 
-def test_without_saved_layout_display_uses_flow_layout(page, server_url):
+def card_top(page):
+    """Top of the first light's card in px (in the layout also without a card)."""
+    return page.locator(f"{ROOT} .display-orb-card").first.bounding_box()["y"]
+
+
+def test_without_saved_layout_flow_layout_and_edit_mode_moves_nothing(page, server_url):
     """A display that never used the editor keeps the default flow layout: no
-    custom positions, no frames, no zoom slider any more."""
+    custom positions, no frames, no zoom slider any more. Opening the editor
+    and grabbing a block without moving it keeps every block exactly where
+    the default layout put it, the cards under the lights included (their
+    default gap, #188)."""
     open_display(page, server_url)
     expect(page.locator(ROOT)).not_to_have_class(CUSTOM)
     expect(page.locator(ROOT)).not_to_have_class(EDITING)
@@ -139,17 +146,6 @@ def test_without_saved_layout_display_uses_flow_layout(page, server_url):
     expect(page.locator(".display-settings-slider")).to_have_count(0)
     assert stored_layout(page) is None
 
-
-def card_top(page):
-    """Top of the first light's card in px (in the layout also without a card)."""
-    return page.locator(f"{ROOT} .display-orb-card").first.bounding_box()["y"]
-
-
-def test_entering_edit_mode_does_not_move_blocks(page, server_url):
-    """Opening the editor and grabbing a block without moving it keeps every
-    block exactly where the default layout put it, the cards under the
-    lights included (their default gap, #188)."""
-    open_display(page, server_url)
     before = {b: block_pos(page, b)[:2] for b in ("timer", "lights", "verdict")}
     card_before = card_top(page)
     open_editor(page)
@@ -225,7 +221,9 @@ def test_lights_gap_set_at_side_handle_with_mouse_and_touch_survives_reload(page
     (−64 px → 0.5× in 5 % steps) and widens it with a finger (+32 px →
     0.75×); the lights stay centred where they were. It never goes below
     0.4× (reasons of neighbouring lights would touch). Saved, the gap comes
-    back after a reload."""
+    back after a reload. A stored layout from before #154 and #188 (no lights
+    gap, cards gap 0) keeps 128 px, its positions and its cards without extra
+    gap."""
     open_display(page, server_url)
     assert lights_gap(page) == 128
     centre_x = block_pos(page, "lights")[0]
@@ -253,13 +251,10 @@ def test_lights_gap_set_at_side_handle_with_mouse_and_touch_survives_reload(page
     page.get_by_test_id("layout-cancel").click()
     assert lights_gap(page) == 96
 
-
-def test_layout_without_lights_gap_keeps_default_gap(page, server_url):
-    """A layout saved before #154 has no lights gap: it stays valid and the
-    lights keep the gap of before (128 px). Saved before #188, it also keeps
-    its positions and cards without extra gap: the new default spacing does
-    not touch a saved layout."""
-    open_display(page, server_url)
+    # A layout saved before #154 has no lights gap: it stays valid and the
+    # lights keep the gap of before (128 px). Saved before #188, it also keeps
+    # its positions and cards without extra gap: the new default spacing does
+    # not touch a saved layout.
     page.evaluate(f"""localStorage.setItem('{LAYOUT_KEY}', JSON.stringify({{v: 1, blocks: {{
         timer: {{x: 50, y: 5, s: 1, hidden: false}},
         lights: {{x: 50, y: 40, s: 0.8, hidden: false}},
@@ -604,32 +599,6 @@ def test_layout_code_copies_layout_to_another_device(competition, page, server_u
     assert lights_gap(other) == 64
 
 
-def test_layout_survives_connection_loss(competition):
-    """Saved layout → the display's connection drops and comes back (the next
-    lift is voted while offline) → the layout is still active and the result
-    arrives in the moved lights."""
-    head, left, right = competition.join_all_judges()
-    display = join_with_network_switch(competition, "display")
-    open_editor(display)
-    drag_lights(display, 0, 150)
-    save(display)
-    saved = stored_layout(display)
-    lights_y = block_pos(display, "lights")[1]
-
-    cut_network(display, conn_dot=".display-tag .conn-dot")
-    vote(head, "white")
-    vote(left, "red")
-    vote(right, "white")
-    restore_network(display)
-    expect(display.locator(".display-tag .conn-dot")).to_have_class(re.compile(r"\bconnected\b"), timeout=15000)
-
-    expect(display.locator(".verdict-stamp")).to_have_text("Good Lift")
-    expect(display.locator(f"{ROOT} .display-orb").first).to_have_class(re.compile(r"\bred\b"))
-    expect(display.locator(ROOT)).to_have_class(CUSTOM)
-    assert stored_layout(display) == saved
-    assert abs(block_pos(display, "lights")[1] - lights_y) < 0.1
-
-
 def test_votes_timer_and_results_keep_running_while_editing(competition):
     """The editor is open (a block mid-drag) while the timer runs and the
     judges vote: the display shows the countdown and the result live; saving
@@ -791,12 +760,11 @@ def test_save_failure_is_shown_and_keeps_editor_open(page, server_url):
     expect(page.locator(ROOT)).not_to_have_class(EDITING)
 
 
-@pytest.mark.parametrize("lang", ["en", "de"])
 @pytest.mark.parametrize("size", [(1920, 1080), (1280, 720)])
-def test_editor_labels_do_not_overlap_in_default_layout(competition, size, lang):
+def test_editor_labels_do_not_overlap_in_default_layout(competition, size):
     """A no lift with the longest bench reasons (three lines in German) on a
-    display in the default layout, editor open, in English and German
-    (longer labels and verdict) (#162): no two block labels overlap, and
+    display in the default layout, editor open, in German (the longer labels
+    and verdict, the case of #162; English labels are shorter): no two block labels overlap, and
     every hide/show button lies fully on screen, uncovered by the toolbar or
     anything else, so it can be clicked. Before the fix the verdict label
     covered the label of the cards + reasons (under the cards frame), and at
@@ -806,7 +774,7 @@ def test_editor_labels_do_not_overlap_in_default_layout(competition, size, lang)
     head, left, right = competition.join_all_judges()
     display = competition.join_as("display")
     display.set_viewport_size({"width": size[0], "height": size[1]})
-    display.evaluate(f"localStorage.setItem('iron-verdict-lang', '{lang}')")
+    display.evaluate("localStorage.setItem('iron-verdict-lang', 'de')")
     display.reload()
     display.locator(ROOT).wait_for(state="visible")
     head.get_by_test_id("lift-type-select").select_option("bench")

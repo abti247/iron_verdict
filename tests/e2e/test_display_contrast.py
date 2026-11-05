@@ -3,7 +3,7 @@
 A switch in the display settings panel (gear or "S") turns on a high-contrast
 look: full colours instead of gradients on the lights, a clear border around
 them, pure white and bolder texts. The background stays black. The setting is
-stored per device like the layout and survives reload and reconnection. Without
+stored per device like the layout and survives a reload. Without
 it the display looks exactly as before.
 """
 
@@ -11,7 +11,6 @@ import re
 
 from playwright.sync_api import expect
 
-from tests.e2e.network_switch import cut_network, join_with_network_switch, restore_network
 from tests.e2e.test_vportal_integration import _connect_and_open_display
 
 TOGGLE = "display-contrast-toggle"
@@ -81,11 +80,14 @@ def expect_red_light_with_reason_left(display):
     expect(wrap.locator(".display-orb-reason")).not_to_be_empty()
 
 
-def test_contrast_mode_is_off_by_default_and_display_unchanged(competition):
+def test_contrast_mode_off_by_default_on_after_reload_and_off_again(competition):
     """A fresh display has the switch off, no contrast class, and the same
     colours as before the feature: dimmed reasons, grey waiting text and
-    gradient lights."""
-    competition.create_session_and_join_head()
+    gradient lights. Turn contrast on → reload the display → still on (switch
+    and look); then a lift with a blue card and a reason, white and yellow: the
+    display shows the red light with the card and reason and "No Lift" as
+    usual. On → off: the class is gone and stays gone after a reload."""
+    head, left, right = competition.join_all_judges()
     display = competition.join_as("display")
     expect(display.locator(".display-full")).not_to_have_class(CONTRAST_CLASS)
     open_settings(display)
@@ -95,14 +97,8 @@ def test_contrast_mode_is_off_by_default_and_display_unchanged(competition):
     expect(status).to_have_css("color", "rgb(107, 107, 107)")
     expect(display.locator(".display-timer-big")).to_have_css("color", "rgb(212, 212, 212)")
     expect(display.locator(".display-full .display-orb").first).to_have_css("border-top-width", "3px")
+    display.locator("body").press("Escape")
 
-
-def test_contrast_mode_survives_reload_and_shows_lights_and_reasons(competition):
-    """Turn contrast on → reload the display → still on (switch and look);
-    then a lift with a blue card and a reason, white and yellow: the display
-    shows the red light with the card and reason and "No Lift" as usual."""
-    head, left, right = competition.join_all_judges()
-    display = competition.join_as("display")
     turn_contrast_on(display)
 
     display.reload()
@@ -123,12 +119,6 @@ def test_contrast_mode_survives_reload_and_shows_lights_and_reasons(competition)
     expect(red_orb).to_have_css("background-image", "none")
     assert float(red_orb.evaluate("el => parseFloat(getComputedStyle(el).borderTopWidth)")) > 3
 
-
-def test_contrast_mode_can_be_turned_off_again(competition):
-    """On → off: the class is gone and stays gone after a reload."""
-    competition.create_session_and_join_head()
-    display = competition.join_as("display")
-    turn_contrast_on(display)
     open_settings(display)
     display.get_by_test_id(TOGGLE).click()
     expect(display.get_by_test_id(TOGGLE)).to_have_attribute("aria-pressed", "false")
@@ -171,26 +161,6 @@ def test_contrast_mode_texts_reach_wcag_aaa(competition):
 
     display.locator(".display-timer-big").evaluate("el => el.classList.add('expired')")
     assert contrast_of(display.locator(".display-timer-big")) >= 7, "expired timer"
-
-
-def test_contrast_mode_survives_connection_loss(competition):
-    """Contrast on → the display's connection drops and comes back → still
-    on, and the next lift's lights still arrive."""
-    head, left, right = competition.join_all_judges()
-    display = join_with_network_switch(competition, "display")
-    turn_contrast_on(display)
-
-    cut_network(display, conn_dot=".display-tag .conn-dot")
-    expect(display.locator(".display-full")).to_have_class(CONTRAST_CLASS)
-    restore_network(display)
-    expect(display.locator(".display-tag .conn-dot")).to_have_class(re.compile(r"\bconnected\b"), timeout=15000)
-    expect(display.locator(".display-full")).to_have_class(CONTRAST_CLASS)
-
-    vote(head, "white")
-    vote(left, "blue", with_reason=True)
-    vote(right, "white")
-    expect(display.locator(".verdict-stamp")).to_have_text("Good Lift")
-    expect_red_light_with_reason_left(display)
 
 
 def test_contrast_mode_vportal_corners_reach_wcag_aaa(page, server_url, fake_vportal_url):

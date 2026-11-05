@@ -23,7 +23,7 @@ Any failure out of 10 = flaky. Apply the fix documented below.
 | Risk | Test | Code changes that warrant re-check |
 |------|------|------------------------------------|
 | Timer race | `test_timer_flow` | Timer logic, tick interval, `.judge-timer` rendering |
-| Display orphan | `test_display_reconnects_after_refresh` | Display WS handling, connection cleanup, `display_XXXX` IDs |
+| Display orphan | `test_light_and_card_survive_display_reload_and_reconnect` | Display WS handling, connection cleanup, `display_XXXX` IDs |
 | Teardown connection error on staging | `created_sessions` / `_end_session` (any external-mode test) | Session cleanup in `tests/e2e/conftest.py`, staging proxy/TLS setup |
 | First page load timeout in CI | `test_pause_is_right_after_connection_loss_and_reload` | Static files loaded by the start page, test server startup in `tests/e2e/conftest.py` |
 
@@ -52,23 +52,23 @@ for p in (head, left, right):
 
 ---
 
-## Risk 2: Display orphan connections after reload — `test_display_reconnects_after_refresh`
+## Risk 2: Display orphan connections after reload — `test_light_and_card_survive_display_reload_and_reconnect`
 
-**File:** `tests/e2e/test_display_resilience.py:7`
+**File:** `tests/e2e/test_red_light_card.py:103`
 
-**What it does:** Display reloads, reconnects, then receives vote results.
+**What it does:** Display reloads after a result, reconnects, then receives the next lift's result (voted while its connection is cut).
 
 **Why it could flake:** Display roles use a unique `display_XXXX` connection ID. On reload, the client opens a new WebSocket and gets a new ID. The old connection is orphaned on the server until its WebSocket close event fires. If the server is slow to clean up the old connection AND the test triggers a broadcast before cleanup completes, the new display connection might miss a message that went to the orphan.
 
-**Symptom:** `test_display_reconnects_after_refresh` fails because `.verdict-stamp` never shows "Good Lift" after votes complete — the result broadcast went to the orphaned connection.
+**Symptom:** `test_light_and_card_survive_display_reload_and_reconnect` fails because the display never shows the next lift's result (red light, yellow card, reason) — the broadcast went to the orphaned connection.
 
 **Fix if it flakes:** Add a brief sleep after reload to ensure the old connection is cleaned up before voting:
 
 ```python
 display.reload()
-expect(display.locator(".display-full")).to_be_visible()
+display.locator(".display-full").wait_for(state="visible")
 display.wait_for_timeout(500)  # let server clean up orphaned WS
-competition.vote_all_white()
+cut_network(display, conn_dot=".display-tag .conn-dot")
 ```
 
 Or fix server-side: in the WebSocket handler, when a display reconnects with the same session code, proactively close the previous connection.
