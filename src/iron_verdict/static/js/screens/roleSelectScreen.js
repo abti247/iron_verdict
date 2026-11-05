@@ -1,4 +1,4 @@
-// Role-select screen: session code and QR code, the four role buttons, the
+// Role-select screen: session code (a link for a new tab) and QR code, the four role buttons, the
 // role-taken notice, (VPortal sessions) the VPortal connect button and the
 // stream-overlay URL for OBS to copy with its "?" explaining the OBS setup.
 
@@ -37,6 +37,17 @@ export function roleSelectScreen(conn) {
             return role ? roleTakenNotice(t, role) : '';
         },
 
+        // Role select of this session — the URL of the QR code and of the session-code link.
+        sessionUrl() {
+            return window.location.origin + '/?session=' + this.$store.session.code;
+        },
+
+        // A plain click on the session code does nothing (#212): only Ctrl/Cmd+click,
+        // middle click (auxclick, never reaches here) and the context menu open the link.
+        onCodeClick(event) {
+            if (!event.ctrlKey && !event.metaKey) event.preventDefault();
+        },
+
         // Opens the display of this session as stream overlay, without a click (#107).
         overlayUrl() {
             return window.location.origin + '/?session=' + this.$store.session.code + '&overlay=1';
@@ -62,9 +73,8 @@ export function roleSelectScreen(conn) {
             const el = this.$refs.qrcode;
             if (!el || !this.$store.session.code) return;
             while (el.firstChild) el.removeChild(el.firstChild);
-            const url = window.location.origin + '/?session=' + this.$store.session.code;
             new QRCode(el, {
-                text: url,
+                text: this.sessionUrl(),
                 width: 200,
                 height: 200,
                 colorDark: '#000000',
