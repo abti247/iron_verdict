@@ -841,8 +841,7 @@ async def test_shutdown_tells_every_connected_session_the_server_restarts(tmp_pa
 
 
 async def test_shutdown_still_announces_restart_and_exits_after_failed_snapshot_save(tmp_path, monkeypatch, caplog):
-    """A failed snapshot save (e.g. read-only /data) must not keep devices from
-    hearing about the restart, nor keep uvicorn from exiting (#222)."""
+    # #222: e.g. a read-only /data volume.
     import logging
     from types import SimpleNamespace
     from unittest.mock import AsyncMock
@@ -879,8 +878,7 @@ async def test_shutdown_still_announces_restart_and_exits_after_failed_snapshot_
 
 
 async def test_lifespan_shutdown_completes_when_snapshot_write_always_fails(tmp_path, monkeypatch, caplog):
-    """With a permanently read-only volume the fallback save at the end of
-    lifespan fails too; shutdown still runs to the end and logs the failure (#222)."""
+    # #222: the fallback save at the end of lifespan fails too.
     import logging
     from types import SimpleNamespace
     import iron_verdict.main as main_module
