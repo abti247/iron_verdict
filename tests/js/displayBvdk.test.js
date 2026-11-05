@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { displayBvdk } from '../../src/iron_verdict/static/js/screens/displayBvdk.js';
 import { createDisplayStore } from '../../src/iron_verdict/static/js/displayStore.js';
 
@@ -38,6 +38,7 @@ function screen({ overlay = true } = {}) {
 describe('BVDK box of the stream overlay', () => {
     let c;
     beforeEach(() => { c = screen(); });
+    afterEach(() => { vi.unstubAllGlobals(); });
 
     it('is active only in the overlay with the BVDK view', () => {
         expect(c.bvdkActive()).toBe(true);
@@ -86,15 +87,14 @@ describe('BVDK box of the stream overlay', () => {
 
     it('stores the chosen view and reports a choice that cannot be stored', () => {
         const data = {};
-        globalThis.localStorage = { getItem: (k) => data[k] ?? null, setItem: (k, v) => { data[k] = v; } };
+        vi.stubGlobal('localStorage', { getItem: (k) => data[k] ?? null, setItem: (k, v) => { data[k] = v; } });
         c.setOverlayLightsView('classic');
         expect(c.overlayLightsView).toBe('classic');
         expect(c.overlayLightsSaveError).toBe(false);
         c.initDisplayBvdk();
         expect(c.overlayLightsView).toBe('classic');
-        globalThis.localStorage = { getItem: () => null, setItem: () => { throw new Error('blocked'); } };
+        vi.stubGlobal('localStorage', { getItem: () => null, setItem: () => { throw new Error('blocked'); } });
         c.setOverlayLightsView('bvdk');
         expect(c.overlayLightsSaveError).toBe(true);
-        delete globalThis.localStorage;
     });
 });

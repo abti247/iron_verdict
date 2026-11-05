@@ -228,6 +228,44 @@ def test_lights_view_that_cannot_be_stored_says_so(competition):
     expect(overlay.get_by_test_id("overlay-lights-classic")).to_have_attribute("aria-pressed", "true")
 
 
+def record_box_frames(page, after_click_on=None):
+    """Record the box in every frame (requestAnimationFrame) until
+    stop_box_frames: [shown, visibility, opacity, marked as sample]. With
+    after_click_on (a data-testid), only from a click on that element on."""
+    page.evaluate(f"""([testid]) => {{
+        window._boxFrames = [];
+        window._stopBoxFrames = false;
+        let recording = !testid;
+        if (testid) document.querySelector(`[data-testid="${{testid}}"]`)
+            .addEventListener('click', () => {{ recording = true; }}, {{ capture: true }});
+        const tick = () => {{
+            const el = document.querySelector('{BOX}');
+            const st = getComputedStyle(el);
+            if (recording) window._boxFrames.push([el.offsetParent !== null, st.visibility, parseFloat(st.opacity),
+                                                   el.classList.contains('layout-sample')]);
+            if (!window._stopBoxFrames) requestAnimationFrame(tick);
+        }};
+        tick();
+    }}""", [after_click_on])
+
+
+def stop_box_frames(page):
+    return page.evaluate("() => { window._stopBoxFrames = true; return window._boxFrames; }")
+
+
+def assert_sample_never_seen_after_save(page):
+    """Save in the editor while no result shows: from the click on, the
+    stream never sees the sample (in any frame it is hidden or invisible)."""
+    box = page.locator(BOX)
+    expect(box).to_be_visible()
+    record_box_frames(page, after_click_on="layout-save")
+    page.get_by_test_id("layout-save").click()
+    expect(box).to_be_hidden()
+    frames = stop_box_frames(page)
+    seen = [f for f in frames if f[0] and f[1] == "visible" and f[2] > 0]
+    assert seen == [], frames
+
+
 def animation_summary(page):
     """Names and end times (ms) of the running animations inside the box."""
     return page.evaluate(f"""() => document.getAnimations()
@@ -257,15 +295,28 @@ def test_bvdk_box_wipes_in_under_a_second(competition):
 
 def test_bvdk_box_only_fades_with_reduced_motion(competition):
     """With "reduce motion" the box only fades in briefly, without wipes or
-    staggered parts."""
-    competition.join_all_judges()
+    staggered parts, and fades out on the next lift (no fill pins it). The
+    editor's sample still goes at once on Save."""
+    head, _, _ = competition.join_all_judges()
     overlay = open_overlay(competition, reduced_motion="reduce")
     three_invalid_votes(competition)
-    expect(overlay.locator(BOX)).to_be_visible()
+    box = overlay.locator(BOX)
+    expect(box).to_be_visible()
     animations = animation_summary(overlay)
     assert animations, "no fade at all"
     assert {name for name, _ in animations} == {"bvdk-fade"}, animations
     assert max(end for _, end in animations) <= 250, animations
+
+    overlay.wait_for_function(f"document.querySelector('{BOX}').getAnimations().length === 0")
+    record_box_frames(overlay)
+    head.get_by_role("button", name="Next Lift").click()
+    expect(box).to_be_hidden()
+    frames = stop_box_frames(overlay)
+    assert any(f[0] and 0 < f[2] < 1 for f in frames), frames
+
+    overlay.keyboard.press("s")
+    overlay.get_by_test_id("display-layout-edit").click()
+    assert_sample_never_seen_after_save(overlay)
 
 
 def test_bvdk_box_is_placed_in_the_layout_editor_and_kept_after_reload(competition):
@@ -293,11 +344,9 @@ def test_bvdk_box_is_placed_in_the_layout_editor_and_kept_after_reload(competiti
     overlay.mouse.down()
     overlay.mouse.move(b["x"] + b["width"] / 2 - 600, b["y"] + b["height"] / 2 - 200, steps=5)
     overlay.mouse.up()
-    overlay.get_by_test_id("layout-save").click()
-    # Leaving the editor, the sample goes without a fade and never shows as
-    # a real (unmarked) decision in the stream.
-    assert box.evaluate("(el) => el.offsetParent === null || el.classList.contains('layout-sample')")
-    expect(box).to_be_hidden()
+    # Leaving the editor, the sample goes at once: it never shows as a real
+    # (unmarked) decision in the stream.
+    assert_sample_never_seen_after_save(overlay)
 
     overlay.reload()
     wait_joined(overlay)
