@@ -810,8 +810,6 @@ async def test_lifespan_shutdown_completes_after_failed_snapshot_write(tmp_path,
 
 
 async def test_shutdown_tells_every_connected_session_the_server_restarts(tmp_path, monkeypatch):
-    """SIGTERM/SIGINT handler: saves the snapshot, sends server_restarting to
-    every connection of every session, then lets uvicorn exit."""
     from types import SimpleNamespace
     from unittest.mock import AsyncMock
     import iron_verdict.main as main_module

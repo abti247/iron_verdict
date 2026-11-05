@@ -67,7 +67,7 @@ def test_demo_launch_shows_hint_for_blocked_popups(page, server_url):
     expect(hint).not_to_contain_text('DEMO')
     expect(running).to_be_hidden()
 
-    screen.locator('.btn-row .btn-blood-ghost').click()
+    screen.get_by_role('button', name='Zurück zum Start').click()
     page.locator('.lang-option', has_text='English').click()
     page.get_by_test_id('landing-screen').locator('.btn-blood-ghost').filter(
         has_text='Start Demo'

@@ -48,7 +48,7 @@ describe('vportalClient', () => {
         expect(stored.fetch_interval_ms).toBe(3000);
     });
 
-    it('fetchActiveAttempt returns the first attempt of the active group in normalized shape', async () => {
+    it('fetchActiveAttempt returns the attempt of the active group in normalized shape', async () => {
         const answers = {
             COMP_ID: { data: { profile: { competition: { id: 'C-1' } } } },
             GROUP: { data: { competitionGroupList: { competitionGroups: [{ id: 'G-1' }] } } },

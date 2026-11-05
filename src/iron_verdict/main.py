@@ -268,6 +268,7 @@ session_manager = SessionManager()
 connection_manager = ConnectionManager()
 metrics.register_live_state(session_manager, connection_manager, settings.APP_VERSION)
 
+
 async def handle_shutdown(uvicorn_server):
     """On SIGTERM/SIGINT: save the snapshot, tell every connected device the
     server restarts (it shows "Server restarting"), then let uvicorn exit."""
