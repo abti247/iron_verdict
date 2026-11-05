@@ -330,7 +330,13 @@
     "linkButton": "Stream overlay (OBS)",
     "linkHint": "Add this URL in OBS as a browser source (1920 × 1080). It opens the display without controls on a transparent background.",
     "copy": "Copy",
-    "copied": "Copied"
+    "copied": "Copied",
+    "lightsView": {
+      "title": "Lights in the stream",
+      "bvdk": "BVDK view",
+      "classic": "Iron Verdict Classic",
+      "saveError": "This device cannot store the choice – it is lost after a reload"
+    }
   },
   "help": {
     "toggle": "Show/hide explanation",
@@ -342,7 +348,8 @@
           "items": [
             "The gear in the top left corner or the S key opens and closes this panel, Esc closes it.",
             "The stream overlay has no gear: there only the S key opens the panel (in OBS: right-click the source → Interact).",
-            "Layout and contrast mode apply to this device only and survive a reload. The break applies to every display of the session."
+            "Layout and contrast mode apply to this device only and survive a reload. The break applies to every display of the session.",
+            "Stream overlay only: “Lights in the stream” switches between the BVDK view (a box in the style of the BVDK broadcast graphics, shown with the decision; default) and Iron Verdict Classic (the round lights of the hall display). Stored on this device."
           ]
         },
         {
@@ -407,6 +414,7 @@
             "A – directly in OBS: right-click the source → Interact → S key → “Edit layout”, arrange the blocks, hide those you do not need, “Save”. The layout is stored in OBS's browser profile.",
             "B – prepare in a browser: open the overlay URL in Chrome, full screen (F11) on a 16:9 monitor, S → “Edit layout”, arrange, “Layout code” and copy the code (IV1.…). Append it to the URL in OBS: &layout=IV1.… Then only this layout applies; to change it, repeat B with the new code. This way the same layout works on another PC or at the next competition.",
             "If the code in the URL is invalid, the overlay uses its saved (or the default) layout and the panel says so.",
+            "Lights: by default the overlay shows the BVDK view, a box at the bottom right that appears with the decision and shows each invalid vote with its reason. Move it with “Edit layout” (block “Lights”). For the round lights: S → “Lights in the stream” → “Iron Verdict Classic”. The choice is stored in OBS's browser profile, not in the layout code.",
             "Do not stack blocks: their dark panels are translucent. Leave room around the lights for long reasons (two or three lines)."
           ]
         },

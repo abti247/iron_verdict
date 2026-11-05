@@ -330,7 +330,13 @@
     "linkButton": "Stream-Overlay (OBS)",
     "linkHint": "Diese URL in OBS als Browserquelle eintragen (1920 × 1080). Sie öffnet das Display ohne Bedienelemente auf transparentem Hintergrund.",
     "copy": "Kopieren",
-    "copied": "Kopiert"
+    "copied": "Kopiert",
+    "lightsView": {
+      "title": "Lichter im Stream",
+      "bvdk": "BVDK-Ansicht",
+      "classic": "Iron Verdict Classic",
+      "saveError": "Dieses Gerät kann die Auswahl nicht speichern – nach einem Neuladen ist sie weg"
+    }
   },
   "help": {
     "toggle": "Erklärung ein-/ausblenden",
@@ -342,7 +348,8 @@
           "items": [
             "Zahnrad oben links oder Taste S öffnet und schließt dieses Panel, Esc schließt es.",
             "Im Stream-Overlay gibt es kein Zahnrad: Dort öffnet nur Taste S das Panel (in OBS: Rechtsklick auf die Quelle → Interagieren).",
-            "Layout und Kontrast-Modus gelten nur für dieses Gerät und bleiben nach dem Neuladen erhalten. Die Pause gilt für alle Displays der Sitzung."
+            "Layout und Kontrast-Modus gelten nur für dieses Gerät und bleiben nach dem Neuladen erhalten. Die Pause gilt für alle Displays der Sitzung.",
+            "Nur im Stream-Overlay: „Lichter im Stream“ wechselt zwischen BVDK-Ansicht (Box im Stil der BVDK-Einblendungen, erscheint mit der Entscheidung; Standard) und Iron Verdict Classic (die runden Lichter des Hallen-Displays). Gespeichert auf diesem Gerät."
           ]
         },
         {
@@ -407,6 +414,7 @@
             "A – direkt in OBS: Rechtsklick auf die Quelle → Interagieren → Taste S → „Layout bearbeiten“, Blöcke anordnen, nicht benötigte ausblenden, „Speichern“. Das Layout bleibt im Browser-Profil von OBS gespeichert.",
             "B – im Browser vorbereiten: die Overlay-URL in Chrome im Vollbild (F11) auf einem 16:9-Monitor öffnen, S → „Layout bearbeiten“, anordnen, „Layout-Code“ und den Code (IV1.…) kopieren. In OBS an die URL anhängen: &layout=IV1.… Dann gilt nur dieses Layout; zum Ändern B mit dem neuen Code wiederholen. So lässt sich dasselbe Layout auf einem anderen PC oder beim nächsten Wettkampf nutzen.",
             "Ist der Code in der URL ungültig, nutzt das Overlay sein gespeichertes (oder das Standard-)Layout und das Panel sagt das.",
+            "Lichter: Standardmäßig zeigt das Overlay die BVDK-Ansicht, eine Box unten rechts, die mit der Entscheidung erscheint und jede ungültige Wertung mit Grund zeigt. Verschieben mit „Layout bearbeiten“ (Block „Lichter“). Für die runden Lichter: S → „Lichter im Stream“ → „Iron Verdict Classic“. Die Auswahl bleibt im Browser-Profil von OBS gespeichert, nicht im Layout-Code.",
             "Blöcke nicht übereinanderlegen: Ihre dunklen Flächen sind durchscheinend. Um die Lichter Platz für lange Gründe lassen (zwei bis drei Zeilen)."
           ]
         },

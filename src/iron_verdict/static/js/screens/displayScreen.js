@@ -10,10 +10,12 @@
 // As stream overlay (session.overlay, OBS browser source) the same screen runs
 // on a transparent page without gear or session name (display-overlay.css);
 // "S" still opens the panel, which then also offers the VPortal connect dialog,
-// because the overlay never passes role-select.
+// because the overlay never passes role-select, and the lights view (BVDK or
+// Classic, displayBvdk.js).
 
 import { displayLayoutEditor } from './displayLayoutEditor.js';
 import { displayPause } from './displayPause.js';
+import { displayBvdk } from './displayBvdk.js';
 
 const DISPLAY_CONTRAST_KEY = 'iron-verdict:display-contrast';
 
@@ -21,6 +23,7 @@ export function displayScreen(conn) {
     return {
         ...displayLayoutEditor(),
         ...displayPause(conn),
+        ...displayBvdk(),
         displaySettingsOpen: false,
         displayHelpOpen: false,
         displayContrast: false,
@@ -30,6 +33,7 @@ export function displayScreen(conn) {
             this._loadDisplayContrastFromStorage();
             this.initDisplayLayout();
             this.initDisplayPause();
+            this.initDisplayBvdk();
             this._installDisplayKeyHandler();
             // Any screen change closes the panel.
             this.$watch('$store.nav.screen', () => { this.displaySettingsOpen = false; });

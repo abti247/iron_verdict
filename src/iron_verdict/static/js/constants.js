@@ -61,3 +61,11 @@ export const CARD_REASONS = {
         ]
     }
 };
+
+// Discipline in the head of the stream overlay's BVDK view (#215): always
+// English, like the BVDK broadcast graphics, whatever the app language.
+export const BVDK_DISCIPLINES = {
+    squat: 'SQUAT',
+    bench: 'BENCH',
+    deadlift: 'DEADLIFT',
+};

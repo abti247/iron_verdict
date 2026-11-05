@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="/static/css/display-contrast.css">
     <link rel="stylesheet" href="/static/css/display-layout.css">
     <link rel="stylesheet" href="/static/css/display-overlay.css">
+    <link rel="stylesheet" href="/static/css/display-bvdk.css">
     <link rel="stylesheet" href="/static/css/boot.css">
     <script type="module" src="/static/js/init.js"></script>
     <script defer src="https://umami-production-ca4a.up.railway.app/script.js" data-website-id="aca70c7a-7634-4ae5-bffa-cc83d8764bd0"></script>
@@ -646,11 +647,13 @@
         </div>
 
         <!-- Vote orbs with card and reason below. The cards block (card + reason)
-             is not free: it follows the lights, only its gap can change. -->
+             is not free: it follows the lights, only its gap can change.
+             In the stream overlay's BVDK view (#215) the block holds the BVDK
+             box instead of the orbs (displayBvdk.js). -->
         <div class="display-lights layout-block" data-layout-block="lights" x-ref="layout-lights"
              :style="layoutBlockStyle('lights')"
              @pointerdown="layoutPointerDown($event, 'lights', 'move')"
-             :class="[layoutBlockHidden('lights') && 'layout-hidden-lights', layoutBlockHidden('cards') && 'layout-hidden-cards']"
+             :class="[layoutBlockHidden('lights') && 'layout-hidden-lights', layoutBlockHidden('cards') && 'layout-hidden-cards', bvdkActive() && 'display-lights--bvdk']"
              x-show="($store.display.phase === 'votes' || $store.display.phase === 'idle') && !paused()">
             <div class="display-orb-wrap">
                 <div class="display-orb" x-ref="layoutOrb" :class="$store.display.lightClass('left')"></div>
@@ -676,9 +679,41 @@
                      x-text="$store.display.reasons.right"
                      :data-reason="$store.display.reasons.right"></div>
             </div>
+            <!-- BVDK view: a slot of the box's largest size, the box at its
+                 bottom, so it grows upwards; shown only with a result (or as
+                 sample while editing). Reasons only via x-text. -->
+            <div class="bvdk-slot" x-show="bvdkActive()" x-cloak>
+                <div class="bvdk-box" data-testid="bvdk-lights"
+                     x-show="bvdkShown()"
+                     :class="bvdkIsSample() && 'layout-sample'"
+                     x-transition:leave="bvdk-leave"
+                     x-transition:leave-start="bvdk-leave-start"
+                     x-transition:leave-end="bvdk-leave-end">
+                    <div class="bvdk-head">
+                        <span class="bvdk-head-title">REFEREES</span>
+                        <span class="bvdk-head-discipline" x-text="bvdkView().discipline"></span>
+                    </div>
+                    <div class="bvdk-body">
+                        <div class="bvdk-lights">
+                            <template x-for="(light, i) in bvdkView().lights" :key="light.pos">
+                                <div class="bvdk-light" :class="light.red && 'red'" :style="{ '--i': i }"></div>
+                            </template>
+                        </div>
+                        <template x-for="(row, i) in bvdkView().rows" :key="row.pos">
+                            <div class="bvdk-row" data-testid="bvdk-row" :style="{ '--i': i }">
+                                <span class="bvdk-pos" aria-hidden="true">
+                                    <i :class="row.index === 0 && 'on'"></i><i :class="row.index === 1 && 'on'"></i><i :class="row.index === 2 && 'on'"></i>
+                                </span>
+                                <span class="bvdk-card" :class="row.card"></span>
+                                <span class="bvdk-reason" x-show="row.reason" x-text="row.reason"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
             <div class="layout-frame" x-show="layoutEditing" x-cloak>
                 <span class="layout-frame-label">
-                    <span x-text="t('displayLayout.blocks.lights')"></span>
+                    <span x-text="t('displayLayout.blocks.lights') + (bvdkActive() && bvdkIsSample() ? ' · ' + t('displayLayout.sampleTag') : '')"></span>
                     <button class="layout-hide-toggle" data-testid="layout-hide-lights"
                             :aria-pressed="layoutBlockHidden('lights') ? 'true' : 'false'"
                             @pointerdown.stop=""
@@ -686,10 +721,10 @@
                             x-text="layoutBlockHidden('lights') ? t('displayLayout.show') : t('displayLayout.hide')"></button>
                 </span>
                 <span class="layout-scale-handle" @pointerdown.stop="layoutPointerDown($event, 'lights', 'scale')"></span>
-                <span class="layout-gap-handle" data-testid="layout-lights-gap-handle"
+                <span class="layout-gap-handle" data-testid="layout-lights-gap-handle" x-show="!bvdkActive()"
                       @pointerdown.stop="layoutPointerDown($event, 'lights', 'lightsGap')"></span>
             </div>
-            <div class="layout-cards-frame" data-layout-block="cards" x-show="layoutEditing" x-cloak
+            <div class="layout-cards-frame" data-layout-block="cards" x-show="layoutEditing && !bvdkActive()" x-cloak
                  @pointerdown.stop="layoutPointerDown($event, 'cards', 'gap')">
                 <span class="layout-frame-label">
                     <span x-text="t('displayLayout.blocks.cards')"></span>
@@ -916,6 +951,24 @@
                     x-text="$store.vportal.connected
                         ? (t('vportal.connectedTo') + ' ' + $store.vportal.federationLabel + ' · ' + ($store.vportal.stageName || ''))
                         : t('vportal.connectButton')"></button>
+            <!-- Lights of the stream overlay (#215): BVDK view or Classic, kept on this device. -->
+            <div class="overlay-lights-view" x-show="$store.session.overlay" x-cloak>
+                <div class="display-settings-title" x-text="t('overlay.lightsView.title')"></div>
+                <div class="display-settings-choice" role="group">
+                    <button class="display-settings-toggle" data-testid="overlay-lights-bvdk"
+                            :class="overlayLightsView === 'bvdk' && 'on'"
+                            :aria-pressed="overlayLightsView === 'bvdk' ? 'true' : 'false'"
+                            @click="setOverlayLightsView('bvdk')"
+                            x-text="t('overlay.lightsView.bvdk')"></button>
+                    <button class="display-settings-toggle" data-testid="overlay-lights-classic"
+                            :class="overlayLightsView === 'classic' && 'on'"
+                            :aria-pressed="overlayLightsView === 'classic' ? 'true' : 'false'"
+                            @click="setOverlayLightsView('classic')"
+                            x-text="t('overlay.lightsView.classic')"></button>
+                </div>
+                <div class="display-settings-note display-settings-note--error" data-testid="overlay-lights-save-error"
+                     x-show="overlayLightsSaveError" x-cloak x-text="t('overlay.lightsView.saveError')"></div>
+            </div>
             <button class="display-settings-toggle"
                     data-testid="display-contrast-toggle"
                     :class="displayContrast && 'on'"
