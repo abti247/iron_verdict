@@ -137,7 +137,7 @@ def test_contrast_mode_texts_reach_wcag_aaa(competition):
     display = competition.join_as("display")
     turn_contrast_on(display)
 
-    for selector in (".display-tag .code-link", ".display-timer-big", ".display-status"):
+    for selector in (".display-tag .code-link", ".display-status"):
         assert contrast_of(display.locator(selector)) >= 7, selector
 
     # Let the countdown really run out: the head judge starts it, then the
@@ -147,6 +147,7 @@ def test_contrast_mode_texts_reach_wcag_aaa(competition):
     # Counting on the display means the start has arrived; a jump before that
     # would only shift the start time too.
     expect(timer).not_to_have_text("60")
+    assert contrast_of(timer) >= 7, "running timer"
     display.evaluate("""() => {
         const realNow = Date.now;
         Date.now = () => realNow() + 61 * 1000;
