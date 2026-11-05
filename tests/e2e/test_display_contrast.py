@@ -137,8 +137,24 @@ def test_contrast_mode_texts_reach_wcag_aaa(competition):
     display = competition.join_as("display")
     turn_contrast_on(display)
 
-    for selector in (".display-tag .code-link", ".display-timer-big", ".display-status"):
+    for selector in (".display-tag .code-link", ".display-status"):
         assert contrast_of(display.locator(selector)) >= 7, selector
+
+    # Let the countdown really run out: the head judge starts it, then the
+    # display's clock jumps 61 s ahead (timer.js counts with Date.now).
+    head.get_by_role("button", name="Start Timer").click()
+    timer = display.locator(".display-timer-big")
+    # Counting on the display means the start has arrived; a jump before that
+    # would only shift the start time too.
+    expect(timer).not_to_have_text("60")
+    assert contrast_of(timer) >= 7, "running timer"
+    display.evaluate("""() => {
+        const realNow = Date.now;
+        Date.now = () => realNow() + 61 * 1000;
+    }""")
+    expect(timer).to_have_text("0")
+    expect(timer).to_have_class(re.compile(r"\bexpired\b"))
+    assert contrast_of(timer) >= 7, "expired timer"
 
     vote(head, "white")
     vote(left, "white")
@@ -158,9 +174,6 @@ def test_contrast_mode_texts_reach_wcag_aaa(competition):
     reason = display.locator(".display-full .display-orb-reason").first
     expect(reason).to_be_visible()
     assert contrast_of(reason) >= 7, "reason"
-
-    display.locator(".display-timer-big").evaluate("el => el.classList.add('expired')")
-    assert contrast_of(display.locator(".display-timer-big")) >= 7, "expired timer"
 
 
 def test_contrast_mode_vportal_corners_reach_wcag_aaa(page, server_url, fake_vportal_url):
