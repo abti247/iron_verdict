@@ -137,8 +137,8 @@ def test_classic_lights_come_on_one_after_another_and_fade_out_after_the_duratio
 def test_bvdk_box_goes_after_the_duration_and_earlier_with_the_next_lift(competition):
     """BVDK view, 3 s: the box (and the verdict) shows with the decision and
     is gone after 3 s. The next result shows it again; Next Lift before the
-    3 s removes it at once, and the old duration does not cut the following
-    result short."""
+    3 s removes it at once (that the old duration does not cut the next result short is
+    pinned with fake timers in tests/js/streamLights.test.js)."""
     competition.join_all_judges()
     overlay = open_overlay(competition, duration=3)
     box = overlay.locator(BOX)
@@ -155,12 +155,6 @@ def test_bvdk_box_goes_after_the_duration_and_earlier_with_the_next_lift(competi
     expect(box).to_be_visible()
     head_next_lift(competition)
     expect(box).to_be_hidden(timeout=1000)
-
-    decide(competition)
-    expect(box).to_be_visible()
-    overlay.wait_for_timeout(2000)  # the first result's 3 s would end now; this one's has 1 s left
-    expect(box).to_be_visible()
-    expect(box).to_be_hidden(timeout=3000)
 
 
 def test_pause_start_hides_the_lights_and_they_do_not_come_back(competition):
@@ -216,7 +210,9 @@ def test_restored_result_is_not_shown_again_after_reload_or_reconnect(competitio
     cut_network(overlay, conn_dot=".display-tag .conn-dot")
     restore_network(overlay)
     expect(overlay.get_by_test_id("display-tag")).to_be_hidden(timeout=10000)
-    expect(box).to_be_hidden(timeout=6000)  # its 5 s run out, no new start
+    # Not shown again, and still hidden in the end (that the duration is not
+    # restarted is pinned in tests/js/streamLights.test.js).
+    expect(box).to_be_hidden(timeout=6000)
 
     head_next_lift(competition)
     decide(competition)
