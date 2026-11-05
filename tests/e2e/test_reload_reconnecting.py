@@ -79,7 +79,8 @@ def test_judge_reload_never_shows_landing(competition):
 @pytest.mark.remote_safe
 def test_display_reload_never_shows_landing(competition):
     """A display reloads: no frame shows the landing screen, the display screen
-    comes back. (Results after a reload: test_display_resilience.py.)"""
+    comes back. (Results after a reload:
+    test_red_light_card.py::test_light_and_card_survive_display_reload_and_reconnect.)"""
     competition.create_session_and_join_head()
     display = _recorded_page(competition)
     _join(competition, display, "display")

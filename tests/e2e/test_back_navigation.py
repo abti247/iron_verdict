@@ -14,14 +14,20 @@ def test_display_session_name_is_clickable_returns_to_role_select(competition):
     expect(display.locator(".display-full")).not_to_be_visible()
 
 
-def test_judge_browser_back_returns_to_role_select(competition):
-    """Pressing the browser back button on the judge screen returns to role-select."""
+def test_judge_browser_back_returns_to_role_select_then_landing(competition):
+    """Pressing the browser back button on the judge screen returns to
+    role-select; back again from role-select returns to the landing screen."""
     head = competition.create_session_and_join_head()
 
     head.go_back()
 
     expect(head.locator(".role-wrap")).to_be_visible()
     expect(head.locator(".judge-wrap")).not_to_be_visible()
+
+    head.go_back()
+
+    expect(head.get_by_test_id("landing-screen")).to_be_visible()
+    expect(head.locator(".role-wrap")).not_to_be_visible()
 
 
 def test_display_browser_back_returns_to_role_select(competition):
@@ -33,23 +39,6 @@ def test_display_browser_back_returns_to_role_select(competition):
 
     expect(display.locator(".role-wrap")).to_be_visible()
     expect(display.locator(".display-full")).not_to_be_visible()
-
-
-def test_role_select_browser_back_returns_to_landing(competition):
-    """Browser back from role-select returns to the landing screen."""
-    ctx = competition.new_context()
-    page = ctx.new_page()
-    page.on("dialog", lambda d: d.accept())
-    page.goto(competition.url)
-
-    page.get_by_test_id("session-name-input").fill("Back-Nav Test")
-    page.get_by_role("button", name="Create New Session").click()
-    page.locator(".role-wrap").wait_for(state="visible")
-
-    page.go_back()
-
-    expect(page.get_by_test_id("landing-screen")).to_be_visible()
-    expect(page.locator(".role-wrap")).not_to_be_visible()
 
 
 def test_two_step_back_jump_from_judge_to_landing(competition):
@@ -83,8 +72,9 @@ def test_qr_entry_back_returns_to_landing(competition):
     expect(page.locator(".role-wrap")).not_to_be_visible()
 
 
-def test_reload_recovery_back_returns_to_role_select(competition):
-    """After a reload-recovered auto-rejoin to judge, browser back returns to role-select."""
+def test_reload_recovery_back_returns_to_role_select_then_landing(competition):
+    """After a reload-recovered auto-rejoin to judge, browser back returns to
+    role-select; a second back lands on landing."""
     head = competition.create_session_and_join_head()
 
     head.reload()
@@ -95,37 +85,10 @@ def test_reload_recovery_back_returns_to_role_select(competition):
     expect(head.locator(".role-wrap")).to_be_visible()
     expect(head.locator(".judge-wrap")).not_to_be_visible()
 
-
-def test_reload_recovery_double_back_returns_to_landing(competition):
-    """After reload, two back presses traverse role-select then land on landing."""
-    head = competition.create_session_and_join_head()
-
-    head.reload()
-    head.locator(".judge-wrap").wait_for(state="visible")
-
-    head.go_back()
-    head.locator(".role-wrap").wait_for(state="visible")
     head.go_back()
 
     expect(head.get_by_test_id("landing-screen")).to_be_visible()
     expect(head.locator(".role-wrap")).not_to_be_visible()
-
-
-def test_reload_on_role_select_returns_to_role_select(competition):
-    """Creating a session, reloading on role-select, lands back on role-select."""
-    ctx = competition.new_context()
-    page = ctx.new_page()
-    page.on("dialog", lambda d: d.accept())
-    page.goto(competition.url)
-
-    page.get_by_test_id("session-name-input").fill("Reload-Role-Select Test")
-    page.get_by_role("button", name="Create New Session").click()
-    page.locator(".role-wrap").wait_for(state="visible")
-
-    page.reload()
-
-    expect(page.locator(".role-wrap")).to_be_visible()
-    expect(page.get_by_test_id("landing-screen")).not_to_be_visible()
 
 
 def test_return_to_role_select_then_reload_keeps_role_select(competition):
@@ -160,7 +123,9 @@ def test_reload_on_judge_preserves_history_length(competition):
 
 
 def test_reload_on_role_select_preserves_history_length(competition):
-    """Same guarantee for the code-only reload-recovery path."""
+    """Same guarantee for the code-only reload-recovery path: creating a
+    session, reloading on role-select, lands back on role-select (not landing)
+    without a new history entry."""
     ctx = competition.new_context()
     page = ctx.new_page()
     page.on("dialog", lambda d: d.accept())
@@ -171,7 +136,8 @@ def test_reload_on_role_select_preserves_history_length(competition):
 
     before = page.evaluate("history.length")
     page.reload()
-    page.locator(".role-wrap").wait_for(state="visible")
+    expect(page.locator(".role-wrap")).to_be_visible()
+    expect(page.get_by_test_id("landing-screen")).not_to_be_visible()
     after = page.evaluate("history.length")
 
     assert after == before, f"history.length grew on reload-recovery: {before} -> {after}"

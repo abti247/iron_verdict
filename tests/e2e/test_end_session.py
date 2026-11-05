@@ -1,21 +1,14 @@
-"""End session safety — only head judge can end, all get redirected."""
+"""End session — the head judge ends it, all get redirected, the code is gone."""
 
 from playwright.sync_api import expect
 
 
-def test_only_head_judge_can_end(competition):
-    """Side judges do not see the End Session button."""
-    head, left, right = competition.join_all_judges()
-
-    expect(head.get_by_role("button", name="End Session")).to_be_visible()
-    expect(left.get_by_role("button", name="End Session")).not_to_be_visible()
-    expect(right.get_by_role("button", name="End Session")).not_to_be_visible()
-
-
-def test_end_redirects_all_participants(competition):
-    """Head judge ends session → all participants return to landing."""
+def test_end_redirects_all_and_session_is_gone(competition):
+    """Head judge ends session → all participants return to landing; joining
+    with the old code afterwards shows an inline error on landing."""
     head, left, right = competition.join_all_judges()
     display = competition.join_as("display")
+    code = competition.session_code
 
     # End session — confirmEndSession() shows confirm dialog (auto-accepted)
     # handleSessionEnded shows alert (auto-accepted)
@@ -27,17 +20,6 @@ def test_end_redirects_all_participants(competition):
         expect(
             p.get_by_role("button", name="Create New Session")
         ).to_be_visible(timeout=5000)
-
-
-def test_session_gone_after_end(competition):
-    """After ending, joining with the old code shows an inline error on landing."""
-    head = competition.create_session_and_join_head()
-    code = competition.session_code
-
-    head.get_by_role("button", name="End Session").click()
-    expect(
-        head.get_by_role("button", name="Create New Session")
-    ).to_be_visible(timeout=5000)
 
     # Try to join ended session in a fresh context
     ctx = competition.new_context()

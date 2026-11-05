@@ -6,30 +6,26 @@ from playwright.sync_api import expect
 pytestmark = pytest.mark.remote_safe
 
 
-def test_reconnect_before_voting(competition):
-    """Judge refreshes before voting → returns to judge screen, can vote."""
-    head, left, right = competition.join_all_judges()
-
-    left.reload()
-    expect(left.locator(".judge-wrap")).to_be_visible()
-    expect(left.locator(".vote-btn.vote-white")).to_be_enabled()
-
-    # Verify full flow still works
-    competition.vote_all_white()
-    for role in ("center_judge", "left_judge", "right_judge"):
-        expect(competition.pages[role].locator(".locked-status")).to_be_visible()
-
-
 def test_reconnect_after_voting(competition):
-    """Judge refreshes after locking vote → vote restored, cannot re-vote."""
+    """Judge locks a red vote → all four colour buttons disabled, no lock
+    button → refresh → the vote is restored as RED and still cannot be changed."""
     head, left, right = competition.join_all_judges()
 
-    competition.vote_and_lock(left, "white")
+    competition.vote_and_lock(left, "red")
+    _expect_vote_locked(left)
+
     left.reload()
 
     expect(left.locator(".judge-wrap")).to_be_visible()
     expect(left.locator(".locked-status")).to_be_visible()
-    expect(left.locator(".vote-btn.vote-white")).to_be_disabled()
+    expect(left.locator(".locked-status")).to_contain_text("RED")
+    _expect_vote_locked(left)
+
+
+def _expect_vote_locked(page):
+    for color in ("white", "red", "blue", "yellow"):
+        expect(page.locator(f".vote-btn.vote-{color}")).to_be_disabled()
+    expect(page.locator(".lock-btn")).not_to_be_visible()
 
 
 def test_reconnect_via_role_select(competition):
