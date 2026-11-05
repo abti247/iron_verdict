@@ -11,6 +11,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ### Changed
 
 ### Fixed
+- The display layout editor no longer sometimes moves the timer and the other blocks a few pixels up when a block is grabbed after the settings were opened and closed
 - When the snapshot cannot be saved during a restart (e.g. full or read-only data volume), judges and displays still see "Server restarting", the server still shuts down promptly and the failure is logged
 - The Grafana dashboard's weekly review names every warning and error event from the logs with its count, instead of a single unnamed number, and lists VPortal failures by result in readable rows
 
