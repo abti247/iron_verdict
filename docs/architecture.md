@@ -227,7 +227,7 @@ These block multi-instance deployment. Listed for the Phase 6 AWS migration, not
 | In-memory `ConnectionManager` | Broadcasts don't cross instances. Fix path: Redis pub/sub. |
 | `/data/sessions.json` | Needs EFS or persistent volume on ECS. |
 | `/health` conflates liveness + readiness | ECS/Kubernetes prefer separate `/livez` + `/readyz`. Tracked in [#64](https://github.com/abti247/iron_verdict/issues/64). |
-| `_handle_shutdown` does not drain WebSockets | Clients flap on rolling deploys. Tracked in [#63](https://github.com/abti247/iron_verdict/issues/63). |
+| `handle_shutdown` (`main.py`) does not drain WebSockets | Clients flap on rolling deploys. Tracked in [#63](https://github.com/abti247/iron_verdict/issues/63). |
 
 ## Frontend
 
