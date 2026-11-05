@@ -61,4 +61,21 @@
     --overlay-panel-bg: rgba(0, 0, 0, 0.7);
     --overlay-panel-bg-faded: rgba(0, 0, 0, 0.21); /* the editor's 0.3 fade of a hidden or sample block */
     --overlay-text: #FFFFFF;
+    /* BVDK view of the overlay lights (#215): colours of the BVDK broadcast
+       graphics ("Es folgen"), sampled from a stream picture. */
+    --bvdk-blue: #23408a;
+    --bvdk-red: #c8243a;
+    --bvdk-body-bg: rgba(14, 34, 80, 0.9);
+    --bvdk-row-bg: #17346c;
+    --bvdk-row-line: #5d7bbd;
+    --bvdk-marker-off: rgba(255, 255, 255, 0.22);
+    --bvdk-shadow: rgba(0, 0, 0, 0.35);
+    --bvdk-light-white: #FFFFFF;
+    --bvdk-light-red: var(--vote-red);
+    --bvdk-line: #FFFFFF;
+    --bvdk-text: #FFFFFF;
+    /* Default place without a saved layout: bottom right, above the BVDK
+       lifter bar (offsets from the right and bottom edge of the overlay). */
+    --bvdk-default-right: 8%;
+    --bvdk-default-bottom: 16%;
 }

@@ -413,7 +413,8 @@ def test_default_layout_gives_timer_and_cards_room_on_display_and_overlay(compet
     sizes further below them than the plain flow gaps (#188). Timer, lights,
     cards, reasons and verdict fit the screen without overlapping at 16:9
     (1920×1080, 1280×720) and in portrait (1080×1920, 720×1280), on the hall
-    display and in the overlay."""
+    display and in the overlay (Classic lights view; the BVDK view's box sits
+    outside this flow, test_overlay_bvdk_lights.py)."""
     head, left, right = competition.join_all_judges()
     display = competition.join_as("display")
     german_reload(display)
@@ -421,6 +422,7 @@ def test_default_layout_gives_timer_and_cards_room_on_display_and_overlay(compet
     overlay, _ = open_overlay(
         competition,
         before_goto=lambda p: p.add_init_script("localStorage.setItem('iron-verdict-lang', 'de')"),
+        classic=True,
     )
 
     head.get_by_test_id("lift-type-select").select_option("bench")

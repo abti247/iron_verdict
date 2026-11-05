@@ -30,6 +30,8 @@ Promise.all([
     loadFont('400 1em "Rajdhani"'),
     loadFont('600 1em "Rajdhani"'),
     loadFont('700 1em "Rajdhani"'),
+    // Only the stream overlay's BVDK view uses it (#215).
+    window._overlayParams ? loadFont('700 1em "Barlow Condensed"') : null,
 ]).then(([lang]) => {
     window._resolvedLang = lang;
     const s = document.createElement('script');
