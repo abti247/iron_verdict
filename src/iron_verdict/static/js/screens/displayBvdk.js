@@ -5,8 +5,10 @@
 //
 // The box shows only with a result; while the layout is edited without one it
 // shows a sample to place it (faded, labelled). When the next lift clears the
-// result, the box fades out with the result it showed (bvdkView() keeps the
-// last one), so the fade never shows an emptied box.
+// result, the box fades out with the result it showed (bvdkView() keeps what
+// it rendered last), so the fade never shows an emptied box. A sample stays a
+// sample when the editor closes: it keeps its class, which skips the fade
+// (display-bvdk.css), so the stream never shows it nor an earlier result.
 
 import { bvdkResult, loadLightsView, saveLightsView } from '../bvdkLights.js';
 import { t } from '../i18n.js';
@@ -32,6 +34,7 @@ function sampleResult(liftType) {
 export function displayBvdk() {
     // Not reactive on purpose: written while rendering, read only during the fade.
     let lastShown = null;
+    let lastWasSample = false;
     return {
         overlayLightsView: 'bvdk',        // 'bvdk' | 'classic'
         overlayLightsSaveError: false,    // the choice could not be stored on this device
@@ -49,7 +52,9 @@ export function displayBvdk() {
             return this.$store.session.overlay && this.overlayLightsView === 'bvdk';
         },
 
+        // While the box is hidden (fading out): whether it showed the sample.
         bvdkIsSample() {
+            if (!this.bvdkShown()) return lastWasSample;
             return this.layoutEditing && this.$store.display.phase !== 'votes';
         },
 
@@ -61,9 +66,13 @@ export function displayBvdk() {
             const display = this.$store.display;
             if (display.phase === 'votes') {
                 lastShown = bvdkResult(display);
-                return lastShown;
+                lastWasSample = false;
+            } else if (this.layoutEditing) {
+                lastShown = sampleResult(display.liftType);
+                lastWasSample = true;
+            } else if (!lastShown) {
+                return sampleResult(display.liftType);  // hidden, never rendered
             }
-            if (this.layoutEditing || !lastShown) return sampleResult(display.liftType);
             return lastShown;
         },
     };

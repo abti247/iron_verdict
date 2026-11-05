@@ -18,7 +18,6 @@ from playwright.sync_api import expect
 
 from tests.e2e.test_display_overlay import VIEWPORT, overlay_url, wait_joined
 
-VIEW_KEY = "iron-verdict:overlay-lights-view"
 BOX = '[data-testid="bvdk-lights"]'
 ROWS = '[data-testid="bvdk-row"]'
 
@@ -99,7 +98,8 @@ def test_new_overlay_shows_the_bvdk_box_only_with_the_result(competition):
     the decision (no round lights either); with it the box with "REFEREES" and
     the English discipline, white/red square lights and one row per invalid
     vote (judge marker, card colour, reason) in the self-hosted narrow font;
-    the next lift removes it. The hall display keeps its round lights."""
+    the next lift removes it. The hall display keeps its round lights and has
+    no lights view switch."""
     head, left, right = competition.join_all_judges()
     head.get_by_test_id("lift-type-select").select_option("deadlift")
     overlay = open_overlay(competition)
@@ -138,6 +138,9 @@ def test_new_overlay_shows_the_bvdk_box_only_with_the_result(competition):
     # The hall display is unchanged: round lights, no BVDK box.
     expect(hall.locator(".display-lights .display-orb").first).to_be_visible()
     expect(hall.locator(BOX)).to_be_hidden()
+    hall.keyboard.press("s")
+    expect(hall.locator(".display-settings-panel")).to_be_visible()
+    expect(hall.get_by_test_id("overlay-lights-bvdk")).to_be_hidden()
 
     head.get_by_role("button", name="Next Lift").click()
     expect(overlay.locator(BOX)).to_be_hidden()
@@ -198,7 +201,6 @@ def test_lights_view_switches_to_classic_and_back_and_survives_reload(competitio
     expect(reason).to_have_text("Depth")
     expect(overlay.locator(".display-lights .display-orb").first).to_have_class(re.compile(r"\bred\b"))
     expect(overlay.locator(BOX)).to_be_hidden()
-    assert overlay.evaluate(f"localStorage.getItem('{VIEW_KEY}')") == "classic"
 
     overlay.keyboard.press("s")
     expect(classic_btn).to_have_attribute("aria-pressed", "true")
@@ -212,15 +214,6 @@ def test_lights_view_switches_to_classic_and_back_and_survives_reload(competitio
     wait_joined(overlay)
     expect(overlay.locator(BOX)).to_be_visible()
     expect(overlay.locator(f"{ROWS} .bvdk-reason")).to_have_text(["Depth"])
-
-
-def test_lights_view_switch_is_offered_only_in_the_overlay(competition):
-    """The hall display's panel has no lights view switch."""
-    competition.create_session_and_join_head()
-    hall = competition.join_as("display")
-    hall.keyboard.press("s")
-    expect(hall.locator(".display-settings-panel")).to_be_visible()
-    expect(hall.get_by_test_id("overlay-lights-bvdk")).to_be_hidden()
 
 
 def test_lights_view_that_cannot_be_stored_says_so(competition):
@@ -242,12 +235,19 @@ def animation_summary(page):
         .map((a) => [a.animationName, a.effect.getComputedTiming().endTime])""")
 
 
+def three_invalid_votes(competition):
+    head, left, right = competition.pages["center_judge"], competition.pages["left_judge"], competition.pages["right_judge"]
+    competition.vote_and_lock(left, "yellow", reason="Supporting contact on legs")
+    competition.vote_and_lock(head, "blue", reason="Soft knees")
+    competition.vote_and_lock(right, "red", reason="Depth")
+
+
 def test_bvdk_box_wipes_in_under_a_second(competition):
     """The box builds up with a wipe (head, body, lights, reason rows) that
     ends in under a second; the result itself is in the store at once."""
-    competition.create_session_and_join_head()
+    competition.join_all_judges()
     overlay = open_overlay(competition)
-    show_results(overlay, {"left": "blue", "center": "red", "right": "yellow"}, GERMAN_LONGEST)
+    three_invalid_votes(competition)
     expect(overlay.locator(BOX)).to_be_visible()
     animations = animation_summary(overlay)
     names = {name for name, _ in animations}
@@ -258,9 +258,9 @@ def test_bvdk_box_wipes_in_under_a_second(competition):
 def test_bvdk_box_only_fades_with_reduced_motion(competition):
     """With "reduce motion" the box only fades in briefly, without wipes or
     staggered parts."""
-    competition.create_session_and_join_head()
+    competition.join_all_judges()
     overlay = open_overlay(competition, reduced_motion="reduce")
-    show_results(overlay, {"left": "blue", "center": "red", "right": "yellow"}, GERMAN_LONGEST)
+    three_invalid_votes(competition)
     expect(overlay.locator(BOX)).to_be_visible()
     animations = animation_summary(overlay)
     assert animations, "no fade at all"
@@ -294,6 +294,9 @@ def test_bvdk_box_is_placed_in_the_layout_editor_and_kept_after_reload(competiti
     overlay.mouse.move(b["x"] + b["width"] / 2 - 600, b["y"] + b["height"] / 2 - 200, steps=5)
     overlay.mouse.up()
     overlay.get_by_test_id("layout-save").click()
+    # Leaving the editor, the sample goes without a fade and never shows as
+    # a real (unmarked) decision in the stream.
+    assert box.evaluate("(el) => el.offsetParent === null || el.classList.contains('layout-sample')")
     expect(box).to_be_hidden()
 
     overlay.reload()

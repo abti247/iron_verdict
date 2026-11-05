@@ -119,6 +119,9 @@
 .bvdk-leave { transition: opacity 0.3s ease-in; }
 .bvdk-leave-start { opacity: 1; }
 .bvdk-leave-end { opacity: 0; }
+/* The editor's sample goes at once when the editor closes: outside the
+   editor it would not be faded and look like a real decision. */
+.bvdk-box.layout-sample.bvdk-leave { transition: none; }
 
 /* "Reduce motion": only a short fade, no wipes or staggered parts. */
 @media (prefers-reduced-motion: reduce) {

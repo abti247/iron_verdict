@@ -135,9 +135,16 @@ def layout_with_timer_hidden():
 
 
 def expect_good_lift(page):
+    """Verdict and the lights the stream shows: the BVDK box (the default
+    lights view, #215) with three white lights and no reason row."""
     expect(page.locator(".verdict-stamp")).to_have_text("Good Lift")
-    for orb in page.locator(".display-lights .display-orb").all():
-        expect(orb).to_have_class(re.compile(r"\bwhite\b"))
+    box = page.get_by_test_id("bvdk-lights")
+    expect(box).to_be_visible()
+    lights = box.locator(".bvdk-light")
+    expect(lights).to_have_count(3)
+    for light in lights.all():
+        expect(light).not_to_have_class(re.compile(r"\bred\b"))
+    expect(box.get_by_test_id("bvdk-row")).to_have_count(0)
 
 
 def test_overlay_opens_without_clicks_and_shows_votes_on_transparent_background(competition, judged_overlay):

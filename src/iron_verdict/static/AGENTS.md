@@ -15,7 +15,8 @@ src/iron_verdict/static/
 │   ├── animations.css  # Keyframes and transition classes
 │   ├── display-contrast.css # Display contrast mode (scoped under .display-contrast)
 │   ├── display-layout.css   # Saved display layout and its editor (.display-layout-custom/-editing)
-│   └── display-overlay.css  # Transparent stream overlay for OBS (scoped under html.display-overlay)
+│   ├── display-overlay.css  # Transparent stream overlay for OBS (scoped under html.display-overlay)
+│   └── display-bvdk.css     # BVDK view of the stream overlay's lights (.display-lights--bvdk)
 ├── js/
 │   ├── init.js         # Entry point: demo params, boot (i18n, fonts, Alpine), popstate → connection
 │   ├── app.js          # Bootstrap: registers stores and screen components with Alpine, starts the app
@@ -30,12 +31,13 @@ src/iron_verdict/static/
 │   ├── timer.js        # Countdown interval and Alpine.store('timer')
 │   ├── vportalStore.js # Alpine.store('vportal') — connect dialog and display overlay
 │   ├── displayLayout.js# Display layout model (pure: validate, store, snap, export code)
+│   ├── bvdkLights.js   # BVDK view of the overlay lights (pure: box content, stored view)
 │   ├── websocket.js    # WebSocket connection, send/receive, reconnection
 │   ├── constants.js    # Static data (CARD_REASONS, role name mappings)
 │   ├── …               # Helpers: voteDelivery, reloadRecovery, roleTakeover, i18n, vportal*
 │   └── screens/        # One Alpine component per screen (landing, contact, demoIntro,
-│                       # reconnecting, roleSelect, judge, display; displayLayoutEditor
-│                       # and displayPause are mixed into the display component)
+│                       # reconnecting, roleSelect, judge, display; displayLayoutEditor,
+│                       # displayPause and displayBvdk are mixed into the display component)
 ```
 
 ## Rules
