@@ -141,14 +141,18 @@ def test_without_saved_layout_flow_layout_and_edit_mode_moves_nothing(page, serv
     expect(page.locator(ROOT)).not_to_have_class(EDITING)
     for block_id in ("timer", "lights", "verdict"):
         assert "left:" not in (block(page, block_id).get_attribute("style") or "")
+    assert stored_layout(page) is None
+    before = {b: block_pos(page, b)[:2] for b in ("timer", "lights", "verdict")}
+    card_before = card_top(page)
+
+    # The settings are opened only once before editing: opening and closing
+    # them first can shift the timer when editing starts (#219).
     page.locator(".display-settings-gear").click()
     expect(page.get_by_test_id("display-layout-edit")).to_be_visible()
     expect(page.locator(".display-settings-slider")).to_have_count(0)
-    assert stored_layout(page) is None
-
-    before = {b: block_pos(page, b)[:2] for b in ("timer", "lights", "verdict")}
-    card_before = card_top(page)
-    open_editor(page)
+    page.get_by_test_id("display-layout-edit").click()
+    expect(page.locator(ROOT)).to_have_class(EDITING)
+    expect(page.get_by_test_id("layout-toolbar")).to_be_visible()
     drag(page, block(page, "verdict"), 0, 0)
     expect(page.locator(ROOT)).to_have_class(CUSTOM)
     for b, (x, y) in before.items():
