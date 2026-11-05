@@ -27,6 +27,10 @@ VIEWPORT = {"width": 1920, "height": 1080}
 OVERLAY_LAYOUT_KEY = "iron-verdict:display-layout:overlay"
 HALL_LAYOUT_KEY = "iron-verdict:display-layout"
 TRANSPARENT = "rgba(0, 0, 0, 0)"
+# The round lights of the hall display in the overlay: the "Classic" lights
+# view, set before the page loads (the default is the BVDK view, #215;
+# test_overlay_bvdk_lights.py).
+CLASSIC_LIGHTS = "localStorage.setItem('iron-verdict:overlay-lights-view', 'classic')"
 
 
 def overlay_url(competition, layout_code=None, code=None):
@@ -36,12 +40,16 @@ def overlay_url(competition, layout_code=None, code=None):
     return url
 
 
-def open_overlay(competition, layout_code=None, network_switch=False, name="Test Session", before_goto=None):
+def open_overlay(competition, layout_code=None, network_switch=False, name="Test Session", before_goto=None,
+                 classic=False):
     """Open the overlay URL in a new 1920×1080 context, as OBS does; returns
-    (page, dialogs) — dialogs collects every alert/confirm the page raised."""
+    (page, dialogs) — dialogs collects every alert/confirm the page raised.
+    classic: the round lights (Classic view) instead of the default BVDK view."""
     ctx = competition.new_context(viewport=VIEWPORT)
     if network_switch:
         ctx.add_init_script(NETWORK_SWITCH)
+    if classic:
+        ctx.add_init_script(CLASSIC_LIGHTS)
     page = ctx.new_page()
     dialogs = []
     page.on("dialog", lambda d: (dialogs.append(d.message), d.accept()))
@@ -385,13 +393,14 @@ def test_overlay_offers_vportal_connect_after_a_failed_first_session_check(page,
     expect(banner).to_be_hidden()
 
 
-def test_overlay_texts_sit_on_a_dark_panel_and_lights_do_not_move(competition, judged_overlay):
+def test_overlay_texts_sit_on_a_dark_panel_and_lights_do_not_move(competition):
     """Over a camera picture white text alone is unreadable: in the overlay the
     timer, the reasons, the verdict and the VPortal corners sit on a
     translucent dark panel with white text. The panel must not change any
     size: the lights stay where they were before the reasons appeared. The
-    hall display keeps its look (no panel)."""
-    overlay, _, (head, left, right) = judged_overlay
+    hall display keeps its look (no panel). Classic lights view."""
+    head, left, right = competition.join_all_judges()
+    overlay, _ = open_overlay(competition, classic=True)
     hall = competition.join_as("display")
     hall.set_viewport_size(VIEWPORT)
     middle_orb = overlay.locator(".display-lights .display-orb").nth(1)
@@ -442,16 +451,17 @@ def test_overlay_narrow_lights_keep_long_reasons_readable(competition):
     smallest gap (0.4×), set by the layout code in the URL. The three
     longest squat reasons appear side by side: the lights do not move, no
     word is broken inside, and the reason panels of neighbouring lights do
-    not touch. An older code without a lights gap keeps the gap of before."""
+    not touch. An older code without a lights gap keeps the gap of before.
+    Classic lights view."""
     competition.create_session_and_join_head()
-    old, _ = open_overlay(competition, layout_code=layout_code(layout_with_lights(1.5)))
+    old, _ = open_overlay(competition, layout_code=layout_code(layout_with_lights(1.5)), classic=True)
     assert lights_gap(old) == 128
     old.context.close()
 
     head = competition.pages["center_judge"]
     left = competition.join_as("left_judge")
     right = competition.join_as("right_judge")
-    overlay, _ = open_overlay(competition, layout_code=layout_code(layout_with_lights(1.5, gap=0.4)))
+    overlay, _ = open_overlay(competition, layout_code=layout_code(layout_with_lights(1.5, gap=0.4)), classic=True)
     assert lights_gap(overlay) == 128 * 0.4
     before = orb_boxes(overlay)
 
