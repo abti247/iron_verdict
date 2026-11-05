@@ -649,11 +649,13 @@
         <!-- Vote orbs with card and reason below. The cards block (card + reason)
              is not free: it follows the lights, only its gap can change.
              In the stream overlay's BVDK view (#215) the block holds the BVDK
-             box instead of the orbs (displayBvdk.js). -->
+             box instead of the orbs (displayBvdk.js). In the stream overlay
+             lights and verdict show only after a decision (#216,
+             displayStreamLights.js). -->
         <div class="display-lights layout-block" data-layout-block="lights" x-ref="layout-lights"
              :style="layoutBlockStyle('lights')"
              @pointerdown="layoutPointerDown($event, 'lights', 'move')"
-             :class="[layoutBlockHidden('lights') && 'layout-hidden-lights', layoutBlockHidden('cards') && 'layout-hidden-cards', bvdkActive() && 'display-lights--bvdk']"
+             :class="[layoutBlockHidden('lights') && 'layout-hidden-lights', layoutBlockHidden('cards') && 'layout-hidden-cards', bvdkActive() ? 'display-lights--bvdk' : streamLightsClass()]"
              x-show="($store.display.phase === 'votes' || $store.display.phase === 'idle') && !paused()">
             <div class="display-orb-wrap">
                 <div class="display-orb" x-ref="layoutOrb" :class="$store.display.lightClass('left')"></div>
@@ -742,7 +744,7 @@
         <div class="display-verdict-inline layout-block" data-layout-block="verdict" x-ref="layout-verdict"
              :style="layoutBlockStyle('verdict')"
              @pointerdown="layoutPointerDown($event, 'verdict', 'move')"
-             :class="layoutBlockHidden('verdict') && 'layout-hidden'"
+             :class="[layoutBlockHidden('verdict') && 'layout-hidden', streamLightsClass()]"
              x-show="!paused()">
             <div class="verdict-stamp"
                  :style="$store.display.phase !== 'votes' ? 'visibility:hidden' : ''"
@@ -968,6 +970,19 @@
                 </div>
                 <div class="display-settings-note display-settings-note--error" data-testid="overlay-lights-save-error"
                      x-show="overlayLightsSaveError" x-cloak x-text="t('overlay.lightsView.saveError')"></div>
+                <!-- How long the lights show after a decision (#216), kept on this device. -->
+                <label class="pause-field overlay-lights-duration">
+                    <span x-text="t('overlay.lightsDuration.label')"></span>
+                    <select class="pause-input" data-testid="overlay-lights-duration"
+                            @change="setOverlayLightsDuration($event.target.value)">
+                        <template x-for="d in overlayLightsDurations" :key="d">
+                            <option :value="d" :selected="d === overlayLightsDuration"
+                                    x-text="d === 'always' ? t('overlay.lightsDuration.always') : d + ' s'"></option>
+                        </template>
+                    </select>
+                </label>
+                <div class="display-settings-note display-settings-note--error" data-testid="overlay-lights-duration-save-error"
+                     x-show="overlayLightsDurationSaveError" x-cloak x-text="t('overlay.lightsView.saveError')"></div>
             </div>
             <button class="display-settings-toggle"
                     data-testid="display-contrast-toggle"

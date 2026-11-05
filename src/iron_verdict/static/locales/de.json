@@ -336,6 +336,10 @@
       "bvdk": "BVDK-Ansicht",
       "classic": "Iron Verdict Classic",
       "saveError": "Dieses Gerät kann die Auswahl nicht speichern – nach einem Neuladen ist sie weg"
+    },
+    "lightsDuration": {
+      "label": "Anzeigen nach der Entscheidung",
+      "always": "Immer (bis zum nächsten Versuch)"
     }
   },
   "help": {

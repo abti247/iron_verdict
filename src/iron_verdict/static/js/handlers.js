@@ -66,6 +66,9 @@ export function handleJoinSuccess(c, message) {
         c.timer.start(trms);
     }
     if (session.role === 'display') {
+        // In the results phase the server replays show_results right after this:
+        // restored, not live, so the stream overlay does not show it again (#216).
+        c.display.expectRestoredResult(message.session_state?.phase === 'results');
         c.pause.joined(message.session_state?.pause ?? null, message.session_state?.server_now_ms);
     }
 }
@@ -120,6 +123,7 @@ export function handleShowResults(c, message) {
             reasons: translateReasons(c, rawReasons),
             showExplanations: message.showExplanations,
             liftType: message.liftType,
+            live: !c.display.restoredResultExpected,
         });
     }
 }

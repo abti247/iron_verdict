@@ -16,7 +16,7 @@ import re
 
 from playwright.sync_api import expect
 
-from tests.e2e.test_display_overlay import VIEWPORT, overlay_url, wait_joined
+from tests.e2e.test_display_overlay import ALWAYS_LIGHTS, VIEWPORT, overlay_url, wait_joined
 
 BOX = '[data-testid="bvdk-lights"]'
 ROWS = '[data-testid="bvdk-row"]'
@@ -28,8 +28,11 @@ GERMAN_LONGEST = {
 }
 
 
-def open_overlay(competition, **context_args):
+def open_overlay(competition, always=False, **context_args):
+    """always: lights until the next lift, also a restored result (#216)."""
     ctx = competition.new_context(viewport=VIEWPORT, **context_args)
+    if always:
+        ctx.add_init_script(ALWAYS_LIGHTS)
     page = ctx.new_page()
     page.goto(overlay_url(competition))
     expect(page.get_by_test_id("display-screen")).to_be_visible()
@@ -175,10 +178,10 @@ def test_bvdk_box_sits_bottom_right_and_keeps_the_longest_reasons_readable(compe
 def test_lights_view_switches_to_classic_and_back_and_survives_reload(competition):
     """In the panel ("S") the BVDK view is selected; "Iron Verdict Classic"
     shows the round lights with card and reason instead of the box, also
-    after a reload (the result is restored). Back to the BVDK view: the box
-    shows the same result, again after a reload."""
+    after a reload (the result is restored: lights "always", #216). Back to
+    the BVDK view: the box shows the same result, again after a reload."""
     head, left, right = competition.join_all_judges()
-    overlay = open_overlay(competition)
+    overlay = open_overlay(competition, always=True)
 
     overlay.keyboard.press("s")
     bvdk_btn = overlay.get_by_test_id("overlay-lights-bvdk")

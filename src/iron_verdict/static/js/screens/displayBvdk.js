@@ -9,6 +9,8 @@
 // it rendered last), so the fade never shows an emptied box. A sample stays a
 // sample when the editor closes: it keeps its class, which skips the fade
 // (display-bvdk.css), so the stream never shows it nor an earlier result.
+// When the box shows is decided with the Classic lights (displayStreamLights.js):
+// after a live result, for the chosen duration (#216).
 
 import { bvdkResult, loadLightsView, saveLightsView } from '../bvdkLights.js';
 import { t } from '../i18n.js';
@@ -58,8 +60,9 @@ export function displayBvdk() {
             return this.layoutEditing && this.$store.display.phase !== 'votes';
         },
 
+        // With a result only while the stream shows it (displayStreamLights.js, #216).
         bvdkShown() {
-            return this.$store.display.phase === 'votes' || this.layoutEditing;
+            return this.layoutEditing || (this.$store.display.phase === 'votes' && this.streamLightsVisible());
         },
 
         bvdkView() {

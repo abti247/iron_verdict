@@ -336,6 +336,10 @@
       "bvdk": "BVDK view",
       "classic": "Iron Verdict Classic",
       "saveError": "This device cannot store the choice – it is lost after a reload"
+    },
+    "lightsDuration": {
+      "label": "Show after a decision",
+      "always": "Always (until next lift)"
     }
   },
   "help": {
