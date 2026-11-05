@@ -37,68 +37,56 @@ def _open_demo_guide(page, server_url, modes, language='English'):
     return screen
 
 
-def test_demo_all_windows_open_shows_running_message(page, server_url):
-    """All four window.open calls return a live window: the guide shows
-    "Demo running" and no pop-up hint, as before the fix."""
-    screen = _open_demo_guide(page, server_url, [])
-
-    screen.get_by_role('button', name='Launch Demo').click()
-
-    expect(screen.get_by_test_id('demo-running')).to_be_visible()
-    expect(screen.get_by_test_id('demo-popups-blocked')).to_be_hidden()
-    assert page.evaluate('window.__openCalls.length') == 4
+def _launch_demo_button(screen, language):
+    return screen.get_by_role('button', name='Demo starten' if language == 'Deutsch' else 'Launch Demo')
 
 
-def test_demo_partially_blocked_shows_both_ways_out(page, server_url):
-    """Only the first window opens (window.open returns null from the second
-    call on, like a pop-up blocker): no "Demo running" message; the hint names
-    both ways out — allow pop-ups and relaunch, or click "DEMO" in the open
-    window. The launch button stays usable; a relaunch with all four windows
-    open replaces the hint with "Demo running"."""
-    screen = _open_demo_guide(page, server_url, ['open', 'null', 'null', 'null'])
+def test_demo_launch_shows_hint_for_blocked_popups(page, server_url):
+    """The guide's three outcomes of a demo launch, one after another (which
+    window.open results count as blocked: Vitest, demoLaunch.test.js):
 
-    screen.get_by_role('button', name='Launch Demo').click()
-
-    hint = screen.get_by_test_id('demo-popups-blocked')
-    expect(hint).to_be_visible()
-    expect(hint).to_contain_text('allow pop-ups')
-    expect(hint).to_contain_text('DEMO')
-    expect(screen.get_by_test_id('demo-running')).to_be_hidden()
-
-    page.evaluate("""() => {
-        window.open = (url) => { window.__openCalls.push(url); return { closed: false }; };
-    }""")
-    screen.get_by_role('button', name='Launch Demo').click()
-    expect(screen.get_by_test_id('demo-running')).to_be_visible()
-    expect(hint).to_be_hidden()
-
-
-def test_demo_all_blocked_shows_allow_popups_hint_in_german(page, server_url):
-    """Every window.open returns null (German UI): the hint only asks to allow
-    pop-ups and relaunch — there is no open window to click "DEMO" in — and the
-    tab stays on the guide."""
+    1. Every window.open returns null (German UI): the hint only asks to allow
+       pop-ups and relaunch — there is no open window to click "DEMO" in — and
+       the tab stays on the guide.
+    2. Back on the landing page, switched to English: only the first window
+       opens (null from the second call on): no "Demo running"; the hint names
+       both ways out — allow pop-ups and relaunch, or click "DEMO" in the open
+       window. The launch button stays usable.
+    3. The relaunch opens all four windows: "Demo running" replaces the hint."""
     screen = _open_demo_guide(
-        page, server_url, ['null', 'null', 'null', 'null'], language='Deutsch'
+        page, server_url,
+        ['null', 'null', 'null', 'null', 'open', 'null', 'null', 'null'],
+        language='Deutsch',
     )
-
-    screen.get_by_role('button', name='Demo starten').click()
-
     hint = screen.get_by_test_id('demo-popups-blocked')
+    running = screen.get_by_test_id('demo-running')
+
+    _launch_demo_button(screen, 'Deutsch').click()
     expect(hint).to_be_visible()
     expect(hint).to_contain_text('Pop-ups für diese Seite erlauben')
     expect(hint).not_to_contain_text('DEMO')
-    expect(screen.get_by_test_id('demo-running')).to_be_hidden()
+    expect(running).to_be_hidden()
 
+    screen.locator('.btn-row .btn-blood-ghost').click()
+    page.locator('.lang-option', has_text='English').click()
+    page.get_by_test_id('landing-screen').locator('.btn-blood-ghost').filter(
+        has_text='Start Demo'
+    ).click()
+    screen = page.get_by_test_id('demo-intro-screen')
+    hint = screen.get_by_test_id('demo-popups-blocked')
+    running = screen.get_by_test_id('demo-running')
+    expect(hint).to_be_hidden()
 
-def test_demo_window_closed_immediately_counts_as_blocked(page, server_url):
-    """A blocker that returns a window object but has already closed it
-    (win.closed === true) counts as blocked, same as null."""
-    screen = _open_demo_guide(page, server_url, ['open', 'open', 'closed', 'open'])
+    _launch_demo_button(screen, 'English').click()
+    expect(hint).to_be_visible()
+    expect(hint).to_contain_text('allow pop-ups')
+    expect(hint).to_contain_text('DEMO')
+    expect(running).to_be_hidden()
 
-    screen.get_by_role('button', name='Launch Demo').click()
-
-    expect(screen.get_by_test_id('demo-popups-blocked')).to_contain_text('DEMO')
-    expect(screen.get_by_test_id('demo-running')).to_be_hidden()
+    _launch_demo_button(screen, 'English').click()
+    expect(running).to_be_visible()
+    expect(hint).to_be_hidden()
+    assert page.evaluate('window.__openCalls.length') == 12
 
 
 def _demo_session_code(server_url, created_sessions):

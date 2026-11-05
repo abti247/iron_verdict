@@ -2,6 +2,16 @@
 // real session in four windows (three judges, one display), each joining via
 // ?code=…&demo=<role>.
 
+// What the guide shows after the launch, from the four window.open results.
+// A blocked pop-up returns null; some blockers return a window they already closed.
+export function demoLaunchState(windows) {
+    const blocked = windows.filter((win) => !win || win.closed).length;
+    return {
+        popupsBlocked: blocked === 0 ? 'none' : blocked === windows.length ? 'all' : 'some',
+        demoRunning: blocked === 0,
+    };
+}
+
 export function demoIntroScreen() {
     return {
         demoRunning: false,
@@ -30,10 +40,9 @@ export function demoIntroScreen() {
                     window.open(specs.rightJudge.url,  `rightJudge_${timestamp}`,  specs.rightJudge.params),
                     window.open(specs.display.url,     `display_${timestamp}`,     specs.display.params),
                 ];
-                // A blocked pop-up returns null; some blockers return a window they already closed.
-                const blocked = windows.filter((win) => !win || win.closed).length;
-                this.popupsBlocked = blocked === 0 ? 'none' : blocked === windows.length ? 'all' : 'some';
-                this.demoRunning = blocked === 0;
+                const state = demoLaunchState(windows);
+                this.popupsBlocked = state.popupsBlocked;
+                this.demoRunning = state.demoRunning;
             } catch (error) {
                 alert(t('alerts.demoFailed'));
                 console.error('Demo mode error:', error);
