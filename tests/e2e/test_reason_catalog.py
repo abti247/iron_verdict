@@ -1,4 +1,8 @@
-"""Reason catalog wording (issue #98) — bench and deadlift reasons follow the rulebook."""
+"""Reason catalog wording (issue #98) on screen — bench yellow in German, judge list and display.
+
+The catalog itself (keys per lift and colour, texts per language) is pinned in
+Vitest (`tests/js/reasonCatalog.test.js`).
+"""
 
 from playwright.sync_api import expect
 
@@ -44,23 +48,3 @@ def test_bench_yellow_head_shoulders_reason_shown_on_display(competition):
     expect(
         display.locator(".display-full .display-orb-reason", has_text="Kopf/Schultern angehoben")
     ).to_be_visible()
-
-
-def test_deadlift_red_shoulders_not_behind_bar_selectable(competition):
-    """Deadlift, red card: "Shoulders not behind bar" is offered (English UI)
-    and can be locked in; the old "Shoulders not back" is gone. In German the
-    same reason reads "Schultern nicht hinter Hantel"."""
-    head, left, _right = competition.join_all_judges()
-    head.get_by_test_id("lift-type-select").select_option("deadlift")
-
-    left.locator(".vote-btn.vote-red").click()
-    reasons = left.locator(".reason-item")
-    expect(reasons.filter(has_text="Shoulders not behind bar")).to_have_count(1)
-    expect(reasons.filter(has_text="Shoulders not back")).to_have_count(0)
-    left.locator(".back-btn").click()
-
-    _switch_to_german(left, ".judge-wrap")
-    left.locator(".vote-btn.vote-red").click()
-    left.locator(".reason-item", has_text="Schultern nicht hinter Hantel").click()
-    left.locator(".lock-btn").click()
-    expect(left.locator(".locked-status")).to_be_visible()

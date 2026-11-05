@@ -38,4 +38,19 @@ describe('reason catalog', () => {
             'reasons.bench.yellow.handMovement',
         ]);
     });
+
+    it('deadlift red offers "Shoulders not behind bar" / "Schultern nicht hinter Hantel", not the old "Shoulders not back"', () => {
+        const red = CARD_REASONS.deadlift.red;
+        const key = 'reasons.deadlift.red.shouldersNotBehindBar';
+        expect(red).toContain(key);
+        const texts = {};
+        for (const lang of LOCALES) {
+            const file = resolve(__dirname, `../../src/iron_verdict/static/locales/${lang}.json`);
+            const messages = JSON.parse(readFileSync(file, 'utf-8'));
+            texts[lang] = red.map(k => lookup(messages, k));
+        }
+        expect(texts.en).toContain('Shoulders not behind bar');
+        expect(texts.de).toContain('Schultern nicht hinter Hantel');
+        expect(texts.en).not.toContain('Shoulders not back');
+    });
 });
