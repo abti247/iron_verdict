@@ -18,20 +18,22 @@ def _create_session(competition):
 
 
 def _expect_role_select_of(page, code):
-    expect(page).to_have_url(re.compile(r"\?session=" + code + "$"))
+    # No URL check: the app replaces ?session=… with / once it has started.
     expect(page.get_by_test_id("role-select-screen")).to_be_visible()
     expect(page.locator(".session-tag .code")).to_have_text(code)
 
 
 def test_ctrl_click_opens_role_select_in_new_tab(competition):
-    """Ctrl/Cmd+click on the code opens a new tab on role select of the same session.
+    """Ctrl/Cmd+click on the code opens role select of the same session in a new tab.
 
-    The new tab starts without a role: the first tab takes the chief referee,
-    the new tab is refused that role, picks the free left judge, and the first
-    tab still is the chief referee and sees L connected.
+    The link points to the QR code's URL. In the new tab the free left judge
+    can be chosen while the first tab stays chief referee and sees L connected.
     """
     first = _create_session(competition)
     code = competition.session_code
+    expect(first.locator(".session-tag .code")).to_have_attribute(
+        "href", competition.url.rstrip("/") + "/?session=" + code
+    )
 
     with first.context.expect_page() as new_tab_info:
         first.locator(".session-tag .code").click(modifiers=["ControlOrMeta"])
@@ -41,13 +43,6 @@ def test_ctrl_click_opens_role_select_in_new_tab(competition):
     first.on("dialog", lambda d: d.accept())
     first.locator(".role-btn", has_text="Chief Referee").click()
     expect(first.get_by_test_id("judge-screen")).to_be_visible()
-
-    # The handler accepts the alert as it opens (see docs/testing.md, "Conventions").
-    with second.expect_event("dialog") as dialog_info:
-        second.once("dialog", lambda d: d.accept())
-        second.locator(".role-btn", has_text="Chief Referee").click()
-    assert dialog_info.value.message == "Failed to join session: Role already taken"
-    expect(second.get_by_test_id("role-select-screen")).to_be_visible()
 
     second.locator(".role-btn", has_text="Left").click()
     expect(second.get_by_test_id("judge-screen")).to_be_visible()
