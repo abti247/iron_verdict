@@ -135,7 +135,8 @@ def test_without_saved_layout_flow_layout_and_edit_mode_moves_nothing(page, serv
     custom positions, no frames, no zoom slider any more. Opening the editor
     and grabbing a block without moving it keeps every block exactly where
     the default layout put it, the cards under the lights included (their
-    default gap, #188)."""
+    default gap, #188). This holds also after the settings were opened and
+    closed first, and when something tries to scroll the display (#219)."""
     open_display(page, server_url)
     expect(page.locator(ROOT)).not_to_have_class(CUSTOM)
     expect(page.locator(ROOT)).not_to_have_class(EDITING)
@@ -145,8 +146,18 @@ def test_without_saved_layout_flow_layout_and_edit_mode_moves_nothing(page, serv
     before = {b: block_pos(page, b)[:2] for b in ("timer", "lights", "verdict")}
     card_before = card_top(page)
 
-    # The settings are opened only once before editing: opening and closing
-    # them first can shift the timer when editing starts (#219).
+    page.locator(".display-settings-gear").click()
+    expect(page.locator(".display-settings-panel")).to_be_visible()
+    page.keyboard.press("Escape")
+    expect(page.locator(".display-settings-panel")).to_be_hidden()
+    # The slanted lines of the display reach past its bottom edge. Here
+    # Playwright's click on the still turning gear sometimes scrolled the
+    # display by 7 px (scrollIntoView), so every block was measured and placed
+    # too high (#219); focus or the browser's find can do the same on a real
+    # device. The same scroll, every time:
+    page.evaluate(
+        "document.querySelector('.display-settings-gear').scrollIntoView({block: 'start'})"
+    )
     page.locator(".display-settings-gear").click()
     expect(page.get_by_test_id("display-layout-edit")).to_be_visible()
     expect(page.locator(".display-settings-slider")).to_have_count(0)

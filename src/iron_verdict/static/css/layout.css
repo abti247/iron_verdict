@@ -229,7 +229,13 @@
     padding: 12px 40px;
     gap: 12px;
     position: relative;
+    /* The slanted lines (::before/::after) reach past the bottom edge. With
+       hidden alone the display could still be scrolled from code (focus,
+       scrollIntoView, find in page): the whole content moved up and the
+       layout editor measured every block too high (#219). clip forbids any
+       scrolling; older browsers (Safari < 16) keep hidden. */
     overflow: hidden;
+    overflow: clip;
 }
 
 .display-full::before, .display-full::after {
