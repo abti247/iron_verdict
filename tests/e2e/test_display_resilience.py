@@ -3,11 +3,9 @@ and a display or judge that missed messages while offline shows the server's
 state after it reconnects or reloads (#232)."""
 
 import re
-import time
 
 from playwright.sync_api import expect
 
-from iron_verdict.main import session_manager
 from tests.e2e.network_switch import cut_network, join_with_network_switch, restore_network
 
 DISPLAY_DOT = ".display-tag .conn-dot"
@@ -85,21 +83,14 @@ def test_display_that_missed_next_lift_and_timer_reset_shows_server_state(compet
     expect_waiting_for_next_lift(display)
 
 
-def test_expired_timer_shows_expired_after_reload(competition, run_on_server):
+def test_expired_timer_shows_expired_after_reload(competition):
     """The head judge starts the timer and it runs out. After a reload the
-    display and a judge show "0", marked expired — not "60"."""
-    head, left, _right = competition.join_all_judges()
+    display and a judge show "0", marked expired — not "60". ~60 s, because it
+    waits for the real timer to run out."""
+    _head, left, _right = competition.join_all_judges()
     display = competition.join_as("display")
-    head.get_by_role("button", name="Start Timer").click()
-    expect(display.locator(".display-timer-big")).to_have_text(re.compile(r"^(59|58|57)$"))
-
-    code = competition.session_code
-
-    async def run_out_timer():
-        # The server keeps only the start time; 61 s ago means it ran out.
-        session_manager.sessions[code]["timer_started_at"] = time.time() - 61
-
-    run_on_server(run_out_timer())
+    competition.pages["center_judge"].get_by_role("button", name="Start Timer").click()
+    expect(display.locator(".display-timer-big")).to_have_text("0", timeout=65_000)
 
     for page, timer, root in (
         (display, ".display-timer-big", ".display-full"),
