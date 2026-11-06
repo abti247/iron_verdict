@@ -14,6 +14,7 @@ In external mode every session a test creates is ended after the test (see
 no sessions in the server's snapshot.
 """
 
+import asyncio
 import atexit
 import json
 import os
@@ -62,10 +63,22 @@ SERVER_START_TIMEOUT_S = 5
 SERVER_START_POLL_INTERVAL_S = 0.05
 
 
+class _LoopRecordingServer(uvicorn.Server):
+    """uvicorn server that remembers the event loop it serves on, so tests can
+    run coroutines there (see ``run_on_server``)."""
+
+    loop = None
+
+    async def serve(self, sockets=None):
+        self.loop = asyncio.get_running_loop()
+        await super().serve(sockets=sockets)
+
+
 @contextmanager
 def _run_uvicorn(asgi_app, name):
     """Run *asgi_app* with uvicorn in a daemon thread on a free port of
-    127.0.0.1 and yield the port; stop the server on exit.
+    127.0.0.1 and yield ``(port, loop)``, *loop* being the server's event
+    loop; stop the server on exit.
 
     The socket is bound here and handed to uvicorn, so the port stays taken
     from the bind until the server stops. Why: with pytest-xdist several
@@ -80,7 +93,7 @@ def _run_uvicorn(asgi_app, name):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.bind(("127.0.0.1", 0))
     port = sock.getsockname()[1]
-    server = uvicorn.Server(uvicorn.Config(app=asgi_app, log_level="warning"))
+    server = _LoopRecordingServer(uvicorn.Config(app=asgi_app, log_level="warning"))
     thread = threading.Thread(target=server.run, kwargs={"sockets": [sock]}, daemon=True)
     thread.start()
     try:
@@ -93,7 +106,7 @@ def _run_uvicorn(asgi_app, name):
                     f"{name} server did not start within {SERVER_START_TIMEOUT_S} s"
                 )
             time.sleep(SERVER_START_POLL_INTERVAL_S)
-        yield port
+        yield port, server.loop
     finally:
         server.should_exit = True
         thread.join(timeout=5)
@@ -101,13 +114,40 @@ def _run_uvicorn(asgi_app, name):
 
 
 @pytest.fixture(scope="session")
-def server_url():
+def _in_process_server():
+    """``(url, loop)`` of the in-process server; ``(EXTERNAL_BASE_URL, None)``
+    in external mode."""
     if EXTERNAL_BASE_URL:
-        yield EXTERNAL_BASE_URL
+        yield EXTERNAL_BASE_URL, None
         return
 
-    with _run_uvicorn(app, "E2E") as port:
-        yield f"http://127.0.0.1:{port}"
+    with _run_uvicorn(app, "E2E") as (port, loop):
+        yield f"http://127.0.0.1:{port}", loop
+
+
+@pytest.fixture(scope="session")
+def server_url(_in_process_server):
+    return _in_process_server[0]
+
+
+# How long run_on_server waits for a coroutine on the server's loop.
+RUN_ON_SERVER_TIMEOUT_S = 5
+
+
+@pytest.fixture
+def run_on_server(_in_process_server):
+    """Run a coroutine on the in-process server's event loop and return its
+    result — for server-side steps a test cannot trigger from a browser (e.g.
+    the periodic session expiry). Why on the server's loop: the managers'
+    ``asyncio.Lock``s belong to it and their state is changed only there."""
+    loop = _in_process_server[1]
+    if loop is None:
+        pytest.skip("needs the in-process server")
+
+    def run(coro):
+        return asyncio.run_coroutine_threadsafe(coro, loop).result(timeout=RUN_ON_SERVER_TIMEOUT_S)
+
+    return run
 
 
 # ---------------------------------------------------------------------------
@@ -443,5 +483,5 @@ def fake_vportal_url():
     if EXTERNAL_BASE_URL:
         pytest.skip("fake VPortal needs the in-process server (TEST_MODE); runs in the e2e job")
     from tests.e2e.fake_vportal import app as fake_app
-    with _run_uvicorn(fake_app, "fake VPortal") as port:
+    with _run_uvicorn(fake_app, "fake VPortal") as (port, _loop):
         yield f"127.0.0.1:{port}"
