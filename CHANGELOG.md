@@ -11,6 +11,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - The stream overlay shows the lights in a new BVDK view by default: a box in the style of the BVDK broadcast graphics at the bottom right, appearing with the decision, with each invalid vote's card and full reason in a narrow font
 - The stream overlay's panel (S) switches the lights between the BVDK view and Iron Verdict Classic (the round lights); the choice is kept on the device
 - The stream overlay's panel (S) sets how long the lights show after a decision: 3–15 seconds or "Always" (until the next lift, as before), kept on the device
+- The logs record every lift with its number: each judge's card and reason, the result exactly as sent to the devices, and the start of the next lift, so a decision can be traced after a competition (Railway and Grafana Loki)
 
 ### Changed
 - The stream overlay shows the lights (with cards, reasons and verdict) only after a decision, for 5 seconds by default, then fades them out; next lift and a break hide them earlier, and a reload or reconnect does not show a decision again. Choose "Always" in the panel (S) for the previous behaviour

@@ -21,6 +21,8 @@ _EXTRA_FIELDS = (
     "pause_mode", "pause_seconds", "ended_by",
     # Heartbeat, snapshot, vote rejection and startup rate limits (#134)
     "seconds_since_pong", "session_count", "code", "session_create", "session_lookup",
+    # Lift traceability: votes, the result as sent, and the lift they belong to (#240)
+    "lift_id", "votes", "reasons", "show_explanations", "lift_type",
 )
 
 class JsonFormatter(logging.Formatter):

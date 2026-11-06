@@ -794,6 +794,8 @@ async def websocket_endpoint(websocket: WebSocket):
                         "session_code": session_code,
                         "position": position,
                         "color": color,
+                        "reason": reason,
+                        "lift_id": session_manager.sessions[session_code]["lift_id"],
                         "all_locked": result.get("all_locked", False),
                     })
                     await websocket.send_json({
@@ -810,10 +812,18 @@ async def websocket_endpoint(websocket: WebSocket):
 
                     # If all locked, broadcast results
                     if result.get("all_locked"):
-                        await connection_manager.broadcast_to_session(
-                            session_code,
-                            show_results_message(session_manager.sessions[session_code]),
-                        )
+                        results = show_results_message(session_manager.sessions[session_code])
+                        # The result exactly as sent, so an incident can be traced from the log (#240).
+                        logger.info("results_shown", extra={
+                            "conn_id": conn_id,
+                            "session_code": session_code,
+                            "lift_id": session_manager.sessions[session_code]["lift_id"],
+                            "votes": results["votes"],
+                            "reasons": results["reasons"],
+                            "show_explanations": results["showExplanations"],
+                            "lift_type": results["liftType"],
+                        })
+                        await connection_manager.broadcast_to_session(session_code, results)
             elif message_type == "timer_start":
                 if not session_code or not role:
                     continue
@@ -874,8 +884,8 @@ async def websocket_endpoint(websocket: WebSocket):
                     })
                     continue
 
-                logger.info("next_lift", extra={"conn_id": conn_id, "session_code": session_code})
                 reset = await session_manager.reset_for_next_lift(session_code)
+                logger.info("next_lift", extra={"conn_id": conn_id, "session_code": session_code, "lift_id": reset.get("lift_id")})
                 await connection_manager.broadcast_to_session(
                     session_code,
                     {"type": "reset_for_next_lift", "lift_id": reset.get("lift_id")}
