@@ -1547,3 +1547,50 @@ async def test_restore_pause_timers_schedules_restored_pauses(session_code):
     assert not task.done()
     task.cancel()
     main_module._pause_end_tasks.pop(session_code, None)
+
+
+async def test_show_results_includes_vote_of_judge_disconnected_after_locking(session_code):
+    """A judge who locked and then lost the connection still counts in show_results (#229).
+
+    lock_vote ends the lift once all three positions locked, regardless of
+    connection; the broadcast must then carry all three votes and reasons, or
+    the display shows two lights and a wrong decision.
+    """
+    def ws_client():
+        return httpx.AsyncClient(transport=ASGIWebSocketTransport(app=app), base_url="http://test")
+
+    async def receive_until(ws, msg_type):
+        for _ in range(20):
+            msg = await asyncio.wait_for(ws.receive_json(), timeout=1.0)
+            if msg["type"] == msg_type:
+                return msg
+        raise AssertionError(f"no {msg_type} received")
+
+    async with ws_client() as left_ac, ws_client() as center_ac, \
+            ws_client() as right_ac, ws_client() as display_ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", center_ac) as center_ws, \
+                httpx_ws.aconnect_ws("ws://test/ws", right_ac) as right_ws, \
+                httpx_ws.aconnect_ws("ws://test/ws", display_ac) as display_ws:
+            for ws, role in ((center_ws, "center_judge"), (right_ws, "right_judge"), (display_ws, "display")):
+                await ws.send_json({"type": "join", "session_code": session_code, "role": role})
+                await receive_until(ws, "join_success")
+
+            async with httpx_ws.aconnect_ws("ws://test/ws", left_ac) as left_ws:
+                await left_ws.send_json({"type": "join", "session_code": session_code, "role": "left_judge"})
+                await receive_until(left_ws, "join_success")
+                await left_ws.send_json({"type": "vote_lock", "color": "white"})
+                await receive_until(left_ws, "vote_ack")
+
+            status = await receive_until(center_ws, "judge_status_update")
+            while not (status["position"] == "left" and status["connected"] is False):
+                status = await receive_until(center_ws, "judge_status_update")
+            assert session_manager.sessions[session_code]["judges"]["left"]["connected"] is False
+
+            await center_ws.send_json({"type": "vote_lock", "color": "white"})
+            await right_ws.send_json({
+                "type": "vote_lock", "color": "red", "reason": "reasons.squat.red.depth",
+            })
+
+            results = await receive_until(display_ws, "show_results")
+            assert results["votes"] == {"left": "white", "center": "white", "right": "red"}
+            assert results["reasons"] == {"left": None, "center": None, "right": "reasons.squat.red.depth"}
