@@ -7,6 +7,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Judge phones and display laptops keep the screen on while the judge or display screen is open, so they no longer lock or go to sleep mid-competition; this works over https in current browsers, not when the app runs locally on the venue Wi-Fi
 - On role select, the session code opens the same session's role select in a new tab with a middle click or Ctrl/Cmd+click (or "Open link in new tab"), so several judges can be signed in on one computer without typing the code
 - The stream overlay shows the lights in a new BVDK view by default: a box in the style of the BVDK broadcast graphics at the bottom right, appearing with the decision, with each invalid vote's card and full reason in a narrow font
 - The stream overlay's panel (S) switches the lights between the BVDK view and Iron Verdict Classic (the round lights); the choice is kept on the device
