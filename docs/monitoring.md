@@ -189,6 +189,7 @@ Every line is the JSON of stdout; `| json` turns its fields into labels. Labels 
 | All warnings and errors in the competition window (set the time picker) | `{app="iron-verdict", level=~"warning\|error\|critical"}` |
 | Warnings and errors by event name | `sum by (message) (count_over_time({app="iron-verdict", level=~"warning\|error\|critical"} \| json [$__auto]))` |
 | One event, e.g. lost connections | `{app="iron-verdict"} \| json \| message="role_disconnected"` |
+| One lift of a session: votes with reasons, the result as sent, next lift (`lift_id` counts from 0 per session) | `{app="iron-verdict"} \| json \| session_code="ABC12345" \| lift_id="3" \| message=~"vote_locked\|results_shown\|next_lift"` |
 | Rejected votes by code | `sum by (code) (count_over_time({app="iron-verdict"} \| json \| message="vote_rejected" [$__auto]))` |
 
 ### Export after a competition
