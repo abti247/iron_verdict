@@ -7,8 +7,7 @@ point, laptop lid closed). A browser cannot be made to stop answering a close
 frame, so only a raw socket shows the server waiting for a close reply that
 never comes.
 
-Not ``remote_safe``: it lowers ``PONG_STALE_SECONDS`` on the in-process server
-and opens a plain TCP connection to it.
+Not ``remote_safe``: it opens a plain TCP connection to the server.
 """
 
 import base64
@@ -21,8 +20,6 @@ import time
 from urllib.parse import urlparse
 
 from playwright.sync_api import expect
-
-import iron_verdict.main as main_module
 
 CONNECTED = re.compile(r"\bconnected\b")
 
@@ -99,7 +96,7 @@ def _join_and_go_silent(server_url, code, role):
     return sock, join["reconnect_token"]
 
 
-def _join_with_counter(competition, role):
+def _join_with_counter(competition):
     ctx = competition.new_context()
     ctx.add_init_script(SOCKET_COUNTER)
     page = ctx.new_page()
@@ -112,7 +109,7 @@ def _join_with_counter(competition, role):
 
 
 def test_vanished_judge_does_not_disconnect_others_and_reconnects_at_once(
-    competition, server_url, monkeypatch
+    competition, server_url
 ):
     """The left judge's device vanishes with its socket half open. The server
     drops it (the head judge sees L disconnected) while the head judge and the
@@ -125,16 +122,11 @@ def test_vanished_judge_does_not_disconnect_others_and_reconnects_at_once(
     close), its vote is confirmed and reaches the display, and after a reload
     the judge is connected again.
     """
-    # Why 8 s: the server pings every 5 s, so a healthy client's last pong is
-    # at most ~5 s old when the sweep checks it. 8 s keeps them fresh and shows
-    # the dead socket 7 s earlier than the default 15 s.
-    monkeypatch.setattr(main_module, "PONG_STALE_SECONDS", 8)
-
     head = competition.create_session_and_join_head()
     head_dot = head.locator(".judge-code .conn-dot")
     left_status = head.locator(".connectivity-dot", has_text="L")
 
-    display = _join_with_counter(competition, "display")
+    display = _join_with_counter(competition)
     display.locator(".role-btn", has_text=competition.ROLE_LABELS["display"]).click()
     display.locator(".display-full").wait_for(state="visible")
     competition.pages["display"] = display
@@ -150,8 +142,8 @@ def test_vanished_judge_does_not_disconnect_others_and_reconnects_at_once(
         head.locator(".judge-wrap").wait_for(state="visible")
         expect(head_dot).to_have_class(CONNECTED)
 
-        # Stale after 8 s, detected by the next sweep.
-        expect(left_status).not_to_have_class(re.compile(r"status-connected"), timeout=20000)
+        # Stale after 15 s without a pong, detected by the next 5 s sweep (~20 s), plus margin.
+        expect(left_status).not_to_have_class(re.compile(r"status-connected"), timeout=30000)
         head.wait_for_timeout(WATCHDOG_WINDOW_MS)
         assert head.evaluate("window.__ws_count") == 1
         assert display.evaluate("window.__ws_count") == 1
@@ -163,7 +155,7 @@ def test_vanished_judge_does_not_disconnect_others_and_reconnects_at_once(
         dead, token = _join_and_go_silent(server_url, competition.session_code, "left_judge")
         expect(left_status).to_have_class(re.compile(r"status-connected"))
 
-        left = _join_with_counter(competition, "left_judge")
+        left = _join_with_counter(competition)
         left.evaluate(
             "([code, token]) => sessionStorage.setItem('iv_session', JSON.stringify("
             "{code, role: 'left_judge', reconnect_token: token}))",
