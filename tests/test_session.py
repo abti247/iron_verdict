@@ -5,6 +5,7 @@ import tempfile
 import time
 
 import pytest
+from iron_verdict.connection import ConnectionManager
 from iron_verdict.session import SessionManager
 from datetime import datetime, timedelta
 
@@ -214,6 +215,21 @@ async def test_cleanup_expired_removes_stale_keeps_fresh():
 
     assert old_code not in manager.sessions
     assert new_code in manager.sessions
+
+
+async def test_cleanup_expired_keeps_stale_session_with_connections():
+    """A session whose code is in *keep* (devices still connected, #231) does not
+    expire however old its last activity; a stale one without devices does."""
+    manager = SessionManager()
+    connected = await manager.create_session("Connected")
+    abandoned = await manager.create_session("Abandoned")
+    for code in (connected, abandoned):
+        manager.sessions[code]["last_activity"] = datetime.now() - timedelta(hours=5)
+
+    manager.cleanup_expired(hours=4, keep={connected})
+
+    assert connected in manager.sessions
+    assert abandoned not in manager.sessions
 
 
 async def test_create_session_includes_timer_started_at():
@@ -716,7 +732,7 @@ async def test_cleanup_loop_saves_changed_snapshot_in_thread_and_skips_idle_tick
     monkeypatch.setattr(manager, "save_snapshot", lambda _path: pytest.fail("sync save in loop"))
 
     with pytest.raises(asyncio.CancelledError):
-        await cleanup_loop(manager, path, 4, sleep=_ticks(3))
+        await cleanup_loop(manager, path, 4, ConnectionManager(), sleep=_ticks(3))
 
     assert writes == [manager._write_snapshot]
     assert os.path.exists(path)
@@ -742,7 +758,7 @@ async def test_cleanup_loop_logs_failed_snapshot_write_and_retries_next_tick(tmp
 
     with caplog.at_level(logging.ERROR, logger="iron_verdict"):
         with pytest.raises(asyncio.CancelledError):
-            await cleanup_loop(manager, path, 4, sleep=_ticks(2))
+            await cleanup_loop(manager, path, 4, ConnectionManager(), sleep=_ticks(2))
 
     assert calls["count"] == 2
     assert os.path.exists(path)
@@ -752,6 +768,37 @@ async def test_cleanup_loop_logs_failed_snapshot_write_and_retries_next_tick(tmp
     assert failures[0].error == "No space left on device"
 
 
+async def test_cleanup_loop_keeps_sessions_with_registered_connections(tmp_path, monkeypatch):
+    """Every 30 minutes the loop expires stale sessions, except those with a
+    connection registered in the ConnectionManager (#231). The codes are read
+    first and the connection lock is released before sessions are expired:
+    the two locks are never held together."""
+    from iron_verdict.main import cleanup_loop
+
+    manager = SessionManager()
+    connections = ConnectionManager()
+    connected = await manager.create_session("Connected")
+    abandoned = await manager.create_session("Abandoned")
+    for code in (connected, abandoned):
+        manager.sessions[code]["last_activity"] = datetime.now() - timedelta(hours=5)
+    await connections.add_connection(connected, "display_aabb1122", object())
+    real_cleanup = manager.cleanup_expired
+    lock_held = []
+
+    def recording_cleanup(hours, keep=frozenset()):
+        lock_held.append(connections._lock.locked())
+        real_cleanup(hours, keep=keep)
+
+    monkeypatch.setattr(manager, "cleanup_expired", recording_cleanup)
+
+    with pytest.raises(asyncio.CancelledError):
+        await cleanup_loop(manager, str(tmp_path / "sessions.json"), 4, connections, sleep=_ticks(30))
+
+    assert lock_held == [False]
+    assert connected in manager.sessions
+    assert abandoned not in manager.sessions
+
+
 async def test_cleanup_loop_keeps_running_after_cleanup_expired_fails(tmp_path, monkeypatch, caplog):
     import logging
     from iron_verdict.main import cleanup_loop
@@ -759,7 +806,7 @@ async def test_cleanup_loop_keeps_running_after_cleanup_expired_fails(tmp_path, 
     manager = SessionManager()
     cleanups = []
 
-    def failing_cleanup(hours):
+    def failing_cleanup(hours, keep=frozenset()):
         cleanups.append(hours)
         raise RuntimeError("boom")
 
@@ -767,7 +814,7 @@ async def test_cleanup_loop_keeps_running_after_cleanup_expired_fails(tmp_path, 
 
     with caplog.at_level(logging.ERROR, logger="iron_verdict"):
         with pytest.raises(asyncio.CancelledError):
-            await cleanup_loop(manager, str(tmp_path / "sessions.json"), 4, sleep=_ticks(60))
+            await cleanup_loop(manager, str(tmp_path / "sessions.json"), 4, ConnectionManager(), sleep=_ticks(60))
 
     assert cleanups == [4, 4]
     assert [r.getMessage() for r in caplog.records].count("session_cleanup_failed") == 2

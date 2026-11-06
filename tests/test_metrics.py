@@ -282,6 +282,7 @@ async def test_session_end_is_not_counted_as_disconnect():
 # ---- Snapshot ----
 
 async def test_snapshot_last_ok_set_even_without_change(tmp_path):
+    from iron_verdict.connection import ConnectionManager
     from iron_verdict.main import cleanup_loop
     from iron_verdict.session import SessionManager
 
@@ -299,12 +300,13 @@ async def test_snapshot_last_ok_set_even_without_change(tmp_path):
 
     start = time.time()
     with pytest.raises(asyncio.CancelledError):
-        await cleanup_loop(manager, path, 4, sleep=one_tick)
+        await cleanup_loop(manager, path, 4, ConnectionManager(), sleep=one_tick)
     assert not (tmp_path / "s.json").exists()
     assert _value("iron_verdict_snapshot_last_ok_timestamp_seconds") >= start
 
 
 async def test_snapshot_failure_counted_and_last_ok_unchanged(tmp_path):
+    from iron_verdict.connection import ConnectionManager
     from iron_verdict.main import cleanup_loop
     from iron_verdict.session import SessionManager
 
@@ -324,7 +326,7 @@ async def test_snapshot_failure_counted_and_last_ok_unchanged(tmp_path):
             raise asyncio.CancelledError
 
     with pytest.raises(asyncio.CancelledError):
-        await cleanup_loop(manager, path, 4, sleep=one_tick)
+        await cleanup_loop(manager, path, 4, ConnectionManager(), sleep=one_tick)
     assert _value("iron_verdict_snapshot_failures_total") == before + 1
     assert _value("iron_verdict_snapshot_last_ok_timestamp_seconds") == 123
 

@@ -26,6 +26,16 @@ async def test_remove_connection():
     assert "left_judge" not in manager.active_connections.get("ABC123", {})
 
 
+async def test_connected_session_codes_lists_codes_with_a_registered_connection():
+    manager = ConnectionManager()
+    await manager.add_connection("AAAA1111", "left_judge", "ws1")
+    await manager.add_connection("AAAA1111", "display_aabb1122", "ws2")
+    await manager.add_connection("BBBB2222", "center_judge", "ws3")
+    await manager.remove_connection("BBBB2222", "center_judge")
+
+    assert await manager.connected_session_codes() == {"AAAA1111"}
+
+
 async def test_broadcast_to_session():
     manager = ConnectionManager()
     mock_ws1 = AsyncMock()

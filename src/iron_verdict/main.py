@@ -129,8 +129,28 @@ async def heartbeat_sweep(manager: ConnectionManager, now: float) -> None:
                 })
 
 
-async def cleanup_loop(manager: SessionManager, snapshot_path: str, timeout_hours: int, sleep=asyncio.sleep) -> None:
-    """Every minute save the snapshot if it changed (off the event loop); every 30 minutes expire sessions.
+async def expire_sessions(manager: SessionManager, connections: ConnectionManager, timeout_hours: int) -> None:
+    """Delete sessions inactive for longer than *timeout_hours* that have no registered connection.
+
+    Why connections keep a session: joins and heartbeats are not activity, so a
+    session set up in the morning would otherwise expire under its connected
+    displays and judges before the first lift (#231). The codes are read under
+    the connection lock, which is released before any session is touched: the
+    two locks are never held together.
+    """
+    connected = await connections.connected_session_codes()
+    manager.cleanup_expired(timeout_hours, keep=connected)
+
+
+async def cleanup_loop(
+    manager: SessionManager,
+    snapshot_path: str,
+    timeout_hours: int,
+    connections: ConnectionManager,
+    sleep=asyncio.sleep,
+) -> None:
+    """Every minute save the snapshot if it changed (off the event loop); every 30 minutes expire sessions
+    without connected devices (``expire_sessions``).
 
     Failures are logged and the loop keeps running: a failed write leaves the last
     written snapshot unchanged, so the next tick retries it.
@@ -150,7 +170,7 @@ async def cleanup_loop(manager: SessionManager, snapshot_path: str, timeout_hour
         if elapsed >= 30 * 60:
             elapsed = 0
             try:
-                manager.cleanup_expired(timeout_hours)
+                await expire_sessions(manager, connections, timeout_hours)
             except Exception as exc:
                 logger.exception("session_cleanup_failed", extra={"error": str(exc)})
 
@@ -371,7 +391,7 @@ async def lifespan(app: FastAPI):
             pass  # Windows or non-main thread
 
     task = asyncio.create_task(
-        cleanup_loop(session_manager, settings.SNAPSHOT_PATH, settings.SESSION_TIMEOUT_HOURS)
+        cleanup_loop(session_manager, settings.SNAPSHOT_PATH, settings.SESSION_TIMEOUT_HOURS, connection_manager)
     )
 
     async def _heartbeat_loop():
