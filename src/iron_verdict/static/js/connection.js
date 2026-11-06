@@ -142,7 +142,8 @@ export function createConnection({
                 (error) => console.error('WebSocket error:', error),
                 () => {},
                 () => {
-                    session.connectionStatus = 'connected';
+                    // Stays 'reconnecting' until join_success: an open socket is not
+                    // yet a device in the session (#230).
                     session.serverRestarting = false;
                     let reconnectToken = null;
                     const stored = storage.getItem('iv_session');

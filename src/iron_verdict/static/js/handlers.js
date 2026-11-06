@@ -14,6 +14,7 @@ function translateReasons(c, rawReasons) {
 
 export function handleJoinSuccess(c, message) {
     const session = c.session;
+    session.connectionStatus = 'connected';
     session.isHead = message.is_head;
     c.roleTaken.reset();
     session.name = message.session_state?.name || '';
