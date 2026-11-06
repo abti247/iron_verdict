@@ -458,13 +458,65 @@ async def test_vote_lock_logs_info(caplog):
                 await ws.send_json({"type": "join", "session_code": code, "role": "left_judge"})
                 await ws.receive_json()
                 await ws.send_json({"type": "vote_lock", "color": "white"})
-                await asyncio.sleep(0.1)  # log is written during processing; no response expected with <3 judges locked
+                assert (await ws.receive_json())["type"] == "vote_ack"  # logged before the ack
 
     records = [r for r in caplog.records if r.getMessage() == "vote_locked"]
     assert len(records) == 1
     assert records[0].session_code == code
     assert records[0].position == "left"
     assert records[0].color == "white"
+    assert records[0].lift_id == 0
+    assert records[0].reason is None
+
+
+async def test_lift_logs_reasons_sent_result_and_next_lift_id(session_code, caplog):
+    """One lift is traceable from the log alone (#240): each vote with lift and reason,
+    the result exactly as sent to the devices, and the id of the next lift."""
+    async with httpx.AsyncClient(transport=ASGIWebSocketTransport(app=app), base_url="http://test") as left_ac, \
+               httpx.AsyncClient(transport=ASGIWebSocketTransport(app=app), base_url="http://test") as center_ac, \
+               httpx.AsyncClient(transport=ASGIWebSocketTransport(app=app), base_url="http://test") as right_ac:
+        with caplog.at_level(logging.INFO, logger="iron_verdict"):
+            async with httpx_ws.aconnect_ws("ws://test/ws", left_ac) as left_ws, \
+                       httpx_ws.aconnect_ws("ws://test/ws", center_ac) as center_ws, \
+                       httpx_ws.aconnect_ws("ws://test/ws", right_ac) as right_ws:
+                for ws, role in ((left_ws, "left_judge"), (center_ws, "center_judge"), (right_ws, "right_judge")):
+                    await ws.send_json({"type": "join", "session_code": session_code, "role": role})
+                    await ws.receive_json()  # join_success
+
+                await left_ws.send_json({"type": "vote_lock", "color": "yellow", "reason": "reasons.bench.yellow.buttocksUp", "lift_id": 0})
+                await center_ws.send_json({"type": "vote_lock", "color": "white", "lift_id": 0})
+                await right_ws.send_json({"type": "vote_lock", "color": "red", "reason": "reasons.bench.red.elbowDepth", "lift_id": 0})
+
+                sent = None
+                while sent is None:
+                    msg = await asyncio.wait_for(center_ws.receive_json(), timeout=2.0)
+                    if msg["type"] == "show_results":
+                        sent = msg
+
+                await center_ws.send_json({"type": "next_lift"})
+                while (await asyncio.wait_for(center_ws.receive_json(), timeout=2.0))["type"] != "reset_for_next_lift":
+                    pass
+
+    votes = {r.position: r for r in caplog.records if r.getMessage() == "vote_locked"}
+    assert {pos: (r.lift_id, r.reason) for pos, r in votes.items()} == {
+        "left": (0, "reasons.bench.yellow.buttocksUp"),
+        "center": (0, None),
+        "right": (0, "reasons.bench.red.elbowDepth"),
+    }
+
+    shown = [r for r in caplog.records if r.getMessage() == "results_shown"]
+    assert len(shown) == 1
+    assert shown[0].levelno == logging.INFO
+    assert shown[0].session_code == session_code
+    assert shown[0].lift_id == 0
+    assert shown[0].votes == sent["votes"]
+    assert shown[0].reasons == sent["reasons"]
+    assert shown[0].show_explanations == sent["showExplanations"]
+    assert shown[0].lift_type == sent["liftType"]
+
+    next_lift = [r for r in caplog.records if r.getMessage() == "next_lift"]
+    assert len(next_lift) == 1
+    assert next_lift[0].lift_id == 1
 
 
 async def test_timer_start_logs_info(caplog):

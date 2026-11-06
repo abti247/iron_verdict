@@ -148,3 +148,24 @@ def test_json_formatter_can_leave_out_fields():
     parsed = json.loads(formatter.format(record))
     assert "client_ip" not in parsed
     assert parsed["session_code"] == "ABC12345"
+
+
+def test_json_formatter_includes_lift_fields_also_for_loki():
+    # Why: vote_locked, results_shown and next_lift carry these keys (#240) so a
+    # lift can be traced after a competition, on stdout and in Loki alike.
+    record = logging.LogRecord(
+        name="iron_verdict", level=logging.INFO, pathname="", lineno=0,
+        msg="results_shown", args=(), exc_info=None,
+    )
+    record.lift_id = 3
+    record.votes = {"left": "white", "center": "red", "right": "white"}
+    record.reasons = {"left": None, "center": "reasons.squat.red.depth", "right": None}
+    record.show_explanations = True
+    record.lift_type = "squat"
+    for formatter in (JsonFormatter(), JsonFormatter(exclude=("client_ip",))):
+        parsed = json.loads(formatter.format(record))
+        assert parsed["lift_id"] == 3
+        assert parsed["votes"] == {"left": "white", "center": "red", "right": "white"}
+        assert parsed["reasons"]["center"] == "reasons.squat.red.depth"
+        assert parsed["show_explanations"] is True
+        assert parsed["lift_type"] == "squat"
