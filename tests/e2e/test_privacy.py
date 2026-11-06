@@ -39,7 +39,7 @@ def test_privacy_and_legal_notice_in_english_and_german(page, server_url):
     in order (controller, hosting and logs, Cloudflare, Umami, contact form,
     VPortal, browser storage, third countries, rights), their key content
     (Railway EU West, the Grafana Labs log copy without IP addresses,
-    Cloudflare with IP addresses, Web3Forms (India, USA) and Gmail, the VPortal login kept
+    Cloudflare with IP addresses, Web3Forms (India, USA, log deletion) and Gmail, the VPortal login kept
     only in the browser, every kind of browser storage, the Data Privacy
     Framework, Art. 15-21 GDPR and the LDI NRW), headings, no-parcels note,
     mailto: link); "Back" returns to the landing screen. Switch to German:
@@ -73,6 +73,7 @@ def test_privacy_and_legal_notice_in_english_and_german(page, server_url):
     expect(privacy).to_contain_text("the IP address is not stored")
     expect(privacy).to_contain_text("Web3Forms")
     expect(privacy).to_contain_text("Web3Forms in India")
+    expect(privacy).to_contain_text("deleted every 2 months")
     expect(privacy).to_contain_text("Gmail")
     expect(privacy).to_contain_text("once your request has been dealt with")
     expect(privacy).to_contain_text("VPortal username and password are not stored")
