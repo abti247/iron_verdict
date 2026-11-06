@@ -8,7 +8,7 @@ import string
 import threading
 import time
 from datetime import datetime, timedelta
-from typing import Dict, Any, List
+from typing import AbstractSet, Dict, Any, List
 
 logger = logging.getLogger("iron_verdict")
 
@@ -299,17 +299,20 @@ class SessionManager:
         session["last_activity"] = datetime.now()
         return True
 
-    def get_expired_sessions(self, hours: int = 4) -> List[str]:
+    def get_expired_sessions(self, hours: int = 4, keep: AbstractSet[str] = frozenset()) -> List[str]:
         """Get list of session codes that have expired.
 
         A session with a running pause never expires: a pause may last longer
         than the timeout (up to PAUSE_MAX_SECONDS) without any other activity.
+        Nor does a session in *keep* (the codes with connected devices, #231).
         """
         cutoff = datetime.now() - timedelta(hours=hours)
         now = time.time()
         expired = []
 
         for code, session in self.sessions.items():
+            if code in keep:
+                continue
             pause = session.get("pause")
             if pause is not None and pause["end_at"] > now:
                 continue
@@ -323,9 +326,9 @@ class SessionManager:
         if code in self.sessions:
             del self.sessions[code]
 
-    def cleanup_expired(self, hours: int) -> None:
-        """Delete all sessions inactive for longer than `hours`."""
-        expired = self.get_expired_sessions(hours)
+    def cleanup_expired(self, hours: int, keep: AbstractSet[str] = frozenset()) -> None:
+        """Delete all sessions inactive for longer than `hours`, except those in *keep*."""
+        expired = self.get_expired_sessions(hours, keep)
         for code in expired:
             self.delete_session(code)
 

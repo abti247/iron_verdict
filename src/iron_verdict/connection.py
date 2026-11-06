@@ -99,6 +99,11 @@ class ConnectionManager:
                 if role.startswith("display_")
             )
 
+    async def connected_session_codes(self) -> set[str]:
+        """Return the codes of all sessions with at least one registered connection."""
+        async with self._lock:
+            return set(self.active_connections)
+
     async def count_connections(self) -> int:
         """Count active connections across all sessions."""
         async with self._lock:
