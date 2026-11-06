@@ -11,7 +11,7 @@ A real-time powerlifting competition judging application.
 - **Judge Reconnect:** Judges can rejoin seamlessly after an accidental disconnect without losing their vote or getting a "Role taken" error
 - **Connectivity Indicators:** Head judge screen shows live L/R connection status for the other two judges
 - **Session-based:** Simple 8-character codes, no accounts needed
-- **Lightweight:** No database — sessions live in memory and expire after 4 hours of inactivity, with optional JSON snapshot persistence across restarts
+- **Lightweight:** No database — sessions live in memory and expire after 4 hours of inactivity once no device is connected, with optional JSON snapshot persistence across restarts
 
 ## Tech Stack
 
@@ -185,7 +185,7 @@ All settings except `ALLOWED_ORIGIN` are optional and have defaults suitable for
 | `HOST` | `0.0.0.0` | Host to bind to |
 | `PORT` | `8000` | Port to listen on |
 | `ALLOWED_ORIGIN` | **required** | WebSocket allowed origin, e.g. `https://your-domain.com`. Set it explicitly to `*` only for local/LAN use. If it is unset or empty, the app logs an error and refuses to start |
-| `SESSION_TIMEOUT_HOURS` | `4` | Hours of inactivity before a session expires |
+| `SESSION_TIMEOUT_HOURS` | `4` | Hours of inactivity before a session expires; a session with connected devices (judges, displays, overlay) never expires |
 | `RATE_LIMIT_SESSION_CREATE` | `10/hour` | Sessions one IP may create, e.g. `60/hour`. Invalid values refuse startup |
 | `RATE_LIMIT_SESSION_LOOKUP` | `30/minute` | Session-code lookups per IP, e.g. `120/minute`. Invalid values refuse startup |
 | `DISPLAY_CAP` | `20` | Maximum number of display connections per session |

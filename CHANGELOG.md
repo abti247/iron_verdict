@@ -22,6 +22,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - The connection dot turns green only once the device is back in the session, not as soon as the connection opens
 - A judge who locked a vote and then lost the connection (e.g. a phone that went to sleep) still counts in the result: the display, stream overlay and judges no longer show an empty light and a wrong "No Lift"
 - The display layout editor no longer sometimes moves the timer and the other blocks a few pixels up when a block is grabbed after the settings were opened and closed
+- A session no longer expires while judges, displays or the stream overlay are connected to it, so a session set up early in the morning keeps running into the competition; a session without connected devices still expires after 4 hours of inactivity
 - When the snapshot cannot be saved during a restart (e.g. full or read-only data volume), judges and displays still see "Server restarting", the server still shuts down promptly and the failure is logged
 - The Grafana dashboard's weekly review names every warning and error event from the logs with its count, instead of a single unnamed number, and lists VPortal failures by result in readable rows
 
