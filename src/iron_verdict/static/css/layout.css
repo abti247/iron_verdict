@@ -505,8 +505,16 @@
     margin: 0 0 10px;
 }
 
-.legal-heading + .privacy-list {
-    margin-top: 10px;
+.legal-subheading {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-main);
+    margin: 18px 0 6px;
+}
+
+.legal-notice .privacy-list {
+    margin: 0 0 10px;
 }
 
 .legal-notice a {

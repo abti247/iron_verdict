@@ -16,6 +16,8 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ### Changed
 - The stream overlay shows the lights (with cards, reasons and verdict) only after a decision, for 5 seconds by default, then fades them out; next lift and a break hide them earlier, and a reload or reconnect does not show a decision again. Choose "Always" in the panel (S) for the previous behaviour
 - In the stream overlay the Classic lights come on one after another, with card and reason following
+- The privacy notice now names the controller, purpose and legal basis of each processing, all recipients (Railway, Grafana Labs, Cloudflare, Umami, Web3Forms and Gmail, VPortal), transfers outside the EU, how long contact requests are kept, your rights and where to complain, in English and German
+- The privacy notice lists everything the app keeps in the browser, including the VPortal login, display and stream overlay settings
 
 ### Fixed
 - A device that vanishes without closing its connection (phone switches Wi-Fi access point, laptop closed) no longer makes every judge, display and overlay on the server reconnect, and a judge coming back after such a loss is in the session again without the extra wait
