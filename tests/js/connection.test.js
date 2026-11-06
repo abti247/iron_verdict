@@ -84,10 +84,27 @@ describe('joining a role', () => {
         expect(env.stores.session.connectionStatus).toBe('reconnecting');
 
         env.sockets[0].onReopen();
-        expect(env.stores.session.connectionStatus).toBe('connected');
         expect(env.sockets[0].send).toHaveBeenCalledWith({
             type: 'join', session_code: CODE, role: 'left_judge', reconnect_token: 'tok',
         });
+    });
+
+    it('shows connected only once the server confirmed the join (#230)', () => {
+        const env = setup();
+        env.stores.session.code = CODE;
+        env.conn.joinSession('left_judge');
+        const socket = env.sockets[0];
+
+        socket.onReopen();
+        expect(env.stores.session.connectionStatus).toBe('reconnecting');
+
+        socket.onMessage({ type: 'join_success', is_head: false, session_state: {} });
+        expect(env.stores.session.connectionStatus).toBe('connected');
+
+        // Connection lost and the new socket opened: not back in the session yet.
+        socket.onDropped();
+        socket.onReopen();
+        expect(env.stores.session.connectionStatus).toBe('reconnecting');
     });
 
     it('starts the VPortal display overlay only for the display role', () => {

@@ -72,11 +72,36 @@ async def release_connection(manager: ConnectionManager, session_code: str, role
     return True
 
 
+# Closes started by close_in_background; held so the tasks are not garbage-collected.
+_background_closes: set[asyncio.Task] = set()
+
+
+def close_in_background(ws, code: int = 1000, log_event: str = "ws_close_failed") -> None:
+    """Close *ws* in its own task; the caller never waits for it (#230).
+
+    Closing waits for the peer's close reply (up to uvicorn's close timeout) and
+    then for the TCP connection to end. A vanished device never replies, so an
+    awaited close would stall the heartbeat for every device on the server, a
+    token reconnect, or the end of a session. Callers release the connection
+    first, so nothing else sends to it while it closes.
+    """
+    async def _close() -> None:
+        try:
+            await ws.close(code=code)
+        except Exception as exc:
+            logger.warning(log_event, extra={"reason": str(exc)})
+
+    task = asyncio.create_task(_close())
+    _background_closes.add(task)
+    task.add_done_callback(_background_closes.discard)
+
+
 async def heartbeat_sweep(manager: ConnectionManager, now: float) -> None:
     """Close connections without a pong for PONG_STALE_SECONDS; ping all others.
 
     A connection that is closed here or cannot be pinged is removed right away:
-    its handler may already have ended and would never clean it up.
+    its handler may already have ended and would never clean it up. The close
+    itself runs in the background, so a dead device never delays the pings.
     """
     for session_code, role, ws in await manager.get_all_connections():
         log_role = "display" if role.startswith("display_") else role
@@ -87,12 +112,9 @@ async def heartbeat_sweep(manager: ConnectionManager, now: float) -> None:
                 "role": log_role,
                 "seconds_since_pong": round(now - last_pong, 1),
             })
-            try:
-                await ws.close(code=1001)
-            except Exception as exc:
-                logger.warning("heartbeat_close_failed", extra={"reason": str(exc)})
             if await release_connection(manager, session_code, role, ws):
                 metrics.ws_disconnects.labels(reason="heartbeat_stale").inc()
+            close_in_background(ws, code=1001, log_event="heartbeat_close_failed")
             continue
         try:
             await manager.mark_ping(ws)
@@ -636,15 +658,13 @@ async def websocket_endpoint(websocket: WebSocket):
                         judge = session_manager.sessions.get(session_code, {}).get("judges", {}).get(position, {})
                         judge_token = judge.get("reconnect_token")
                         if stored_token and judge_token and stored_token == judge_token:
-                            # Valid reconnect token — close old connection and take the slot
+                            # Valid reconnect token — close old connection and take the slot.
+                            # The old one may be half open: never wait for its close (#230).
                             old_ws = await connection_manager.get_connection(session_code, role)
                             if old_ws:
                                 await connection_manager.remove_connection(session_code, role)
                                 metrics.ws_disconnects.labels(reason="replaced").inc()
-                                try:
-                                    await old_ws.close()
-                                except Exception:
-                                    pass
+                                close_in_background(old_ws)
                             # Re-check the token: during the awaits above a concurrent reconnect
                             # with the same token may have taken the slot and rotated the token.
                             # From here to join_session there must be no await (#57).
@@ -879,24 +899,26 @@ async def websocket_endpoint(websocket: WebSocket):
                     {"type": "session_ended", "reason": "head_judge"}
                 )
 
-                # Close all connections first (with proper cleanup)
+                # Remove all connections, then close the others in the background:
+                # a half-open device must not hold up the end of the session (#230).
                 if session_code in connection_manager.active_connections:
                     # Get list of connections to avoid dict mutation during iteration
                     connections = list(connection_manager.active_connections[session_code].items())
                     for conn_role, ws in connections:
-                        try:
-                            await ws.close()
-                        except Exception:
-                            logger.warning("ws_close_failed", exc_info=True, extra={"conn_id": conn_id})
-                        # Remove from connection manager
                         await connection_manager.remove_connection(session_code, conn_role)
+                        if ws is not websocket:
+                            close_in_background(ws)
 
-                # Finally, delete session data and exit — the websocket was
-                # closed above; returning prevents receive_text() from being
-                # called on a dead connection, which would raise RuntimeError.
                 session_manager.delete_session(session_code)
                 schedule_pause_end(session_code)  # no session, no pause: cancels its end
                 registered = False
+                # Close our own socket here rather than in the background: returning
+                # first would let uvicorn drop the TCP connection without a close
+                # frame. Returning prevents receive_text() on a closed connection.
+                try:
+                    await websocket.close()
+                except Exception:
+                    logger.warning("ws_close_failed", exc_info=True, extra={"conn_id": conn_id})
                 return
             elif message_type == "settings_update":
                 if not session_code or not role:

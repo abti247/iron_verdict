@@ -952,6 +952,12 @@ async def test_pong_message_updates_last_pong(session_code):
 
 
 
+async def _drain_background_closes():
+    """Let the closes started by close_in_background finish."""
+    from iron_verdict.main import _background_closes
+    await asyncio.gather(*list(_background_closes))
+
+
 def test_heartbeat_timing_constants():
     from iron_verdict.main import HEARTBEAT_INTERVAL_SECONDS, PONG_STALE_SECONDS
     assert HEARTBEAT_INTERVAL_SECONDS == 5
@@ -972,6 +978,7 @@ async def test_heartbeat_sweep_pings_fresh_and_closes_stale_connections():
     manager._last_pong[stale] = now - (PONG_STALE_SECONDS + 1)
 
     await heartbeat_sweep(manager, now)
+    await _drain_background_closes()
 
     fresh.send_json.assert_awaited_once_with({"type": "ping"})
     fresh.close.assert_not_awaited()
@@ -1355,6 +1362,7 @@ async def test_heartbeat_removes_connection_after_stale_close_even_if_close_fail
     with caplog.at_level(logging.INFO, logger="iron_verdict"):
         await heartbeat_sweep(manager, now)
         await heartbeat_sweep(manager, now + 5)
+        await _drain_background_closes()
 
     assert manager.active_connections == {}
     messages = [r.getMessage() for r in caplog.records]
@@ -1594,3 +1602,84 @@ async def test_show_results_includes_vote_of_judge_disconnected_after_locking(se
             results = await receive_until(display_ws, "show_results")
             assert results["votes"] == {"left": "white", "center": "white", "right": "red"}
             assert results["reasons"] == {"left": None, "center": None, "right": "reasons.squat.red.depth"}
+
+
+# ---- Closing a half-open connection never blocks (#230) ----
+
+class _HangingWs:
+    """A half-open socket: sends succeed, but close() waits for a close reply that never comes."""
+
+    def __init__(self):
+        from unittest.mock import AsyncMock
+        self.send_json = AsyncMock()
+        self.release = asyncio.Event()
+        self.close_started = asyncio.Event()
+
+    async def close(self, code=1000, reason=None):
+        self.close_started.set()
+        await self.release.wait()
+
+
+async def test_heartbeat_sweep_does_not_wait_for_stale_close():
+    """A dead device whose close never completes must not delay the pings to everyone else."""
+    from unittest.mock import AsyncMock
+    from iron_verdict.main import heartbeat_sweep, PONG_STALE_SECONDS
+    from iron_verdict.connection import ConnectionManager
+
+    manager = ConnectionManager()
+    hanging, healthy = _HangingWs(), AsyncMock()
+    await manager.add_connection("ABCD1234", "display_1", hanging)
+    await manager.add_connection("ABCD1234", "display_2", healthy)
+    now = time.monotonic()
+    manager._last_pong[hanging] = now - (PONG_STALE_SECONDS + 1)
+
+    try:
+        await asyncio.wait_for(heartbeat_sweep(manager, now), timeout=1.0)
+        healthy.send_json.assert_awaited_once_with({"type": "ping"})
+        assert manager.active_connections == {"ABCD1234": {"display_2": healthy}}
+        await asyncio.wait_for(hanging.close_started.wait(), timeout=1.0)
+    finally:
+        hanging.release.set()
+
+
+async def test_token_reconnect_gets_join_success_without_waiting_for_old_close(session_code):
+    """A judge reconnecting with its token is back in the session while the old socket still closes."""
+    from iron_verdict.main import connection_manager
+
+    hanging = _HangingWs()
+    try:
+        async with _ws_client() as ac:
+            async with httpx_ws.aconnect_ws("ws://test/ws", ac) as old_ws:
+                token = (await _join(old_ws, session_code, "left_judge"))["reconnect_token"]
+                # The registered old connection is half open.
+                connection_manager.active_connections[session_code]["left_judge"] = hanging
+
+                async with httpx_ws.aconnect_ws("ws://test/ws", ac) as new_ws:
+                    response = await _join(new_ws, session_code, "left_judge", token)
+                    assert response["type"] == "join_success"
+                    await asyncio.wait_for(hanging.close_started.wait(), timeout=1.0)
+    finally:
+        hanging.release.set()
+
+
+async def test_end_session_does_not_wait_for_half_open_connection(session_code):
+    """Ending a session deletes it and closes the head judge's socket even if another close hangs."""
+    from iron_verdict.main import connection_manager
+
+    hanging = _HangingWs()
+    async with _ws_client() as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+            try:
+                assert (await _join(ws, session_code, "center_judge"))["type"] == "join_success"
+                await connection_manager.add_connection(session_code, "display_dead", hanging)
+                await ws.send_json({"type": "end_session_confirmed"})
+                assert (await _recv(ws))["type"] == "session_ended"
+                with pytest.raises(httpx_ws.WebSocketDisconnect):
+                    await _recv(ws)
+                assert session_code not in session_manager.sessions
+                assert session_code not in connection_manager.active_connections
+                hanging.send_json.assert_any_await({"type": "session_ended", "reason": "head_judge"})
+                await asyncio.wait_for(hanging.close_started.wait(), timeout=1.0)
+            finally:
+                # Let a handler stuck on the hanging close finish so the client can exit.
+                hanging.release.set()

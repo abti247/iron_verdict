@@ -17,6 +17,8 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - In the stream overlay the Classic lights come on one after another, with card and reason following
 
 ### Fixed
+- A device that vanishes without closing its connection (phone switches Wi-Fi access point, laptop closed) no longer makes every judge, display and overlay on the server reconnect, and a judge coming back after such a loss is in the session again without the extra wait
+- The connection dot turns green only once the device is back in the session, not as soon as the connection opens
 - A judge who locked a vote and then lost the connection (e.g. a phone that went to sleep) still counts in the result: the display, stream overlay and judges no longer show an empty light and a wrong "No Lift"
 - The display layout editor no longer sometimes moves the timer and the other blocks a few pixels up when a block is grabbed after the settings were opened and closed
 - When the snapshot cannot be saved during a restart (e.g. full or read-only data volume), judges and displays still see "Server restarting", the server still shuts down promptly and the failure is logged
