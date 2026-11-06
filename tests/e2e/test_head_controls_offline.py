@@ -50,7 +50,8 @@ def test_head_controls_locked_while_offline_and_active_again_after_reconnect(com
     _expect_controls(head, enabled=False)
     expect(hint).to_have_text("No connection – controls are locked until the connection is back.")
     head.locator(".vote-btn.vote-white").click()
-    expect(head.locator(".lock-btn")).to_be_enabled()
+    head.locator(".lock-btn").click()
+    expect(head.locator(".vote-sending-status")).to_be_visible()
 
     restore_network(head)
     _expect_controls(head, enabled=True, timeout=RECONNECT_TIMEOUT)
