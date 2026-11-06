@@ -62,14 +62,23 @@ export function handleJoinSuccess(c, message) {
         // Broadcast the server-restored settings to all currently connected clients.
         c.sendSettings();
     }
+    // Lights and timer follow the server too: while offline this device may have
+    // missed "Next Lift" or a timer reset (#232). In the results phase the replayed
+    // show_results right after this fills the lights and freezes the timer.
+    const inResults = message.session_state?.phase === 'results';
     const trms = message.session_state?.time_remaining_ms;
     if (trms > 0) {
         c.timer.start(trms);
+    } else if (trms === 0) {
+        c.timer.expire();
+    } else if (!inResults) {
+        c.timer.reset();
     }
     if (session.role === 'display') {
+        if (!inResults) c.display.clear();
         // In the results phase the server replays show_results right after this:
         // restored, not live, so the stream overlay does not show it again (#216).
-        c.display.expectRestoredResult(message.session_state?.phase === 'results');
+        c.display.expectRestoredResult(inResults);
         c.pause.joined(message.session_state?.pause ?? null, message.session_state?.server_now_ms);
     }
 }
