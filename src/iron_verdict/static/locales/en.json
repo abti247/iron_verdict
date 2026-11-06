@@ -101,6 +101,7 @@
     },
     "back": "back",
     "headControls": "Head Judge Controls",
+    "headOffline": "No connection – controls are locked until the connection is back.",
     "startTimer": "Start Timer",
     "resetTimer": "Reset Timer",
     "nextLift": "Next Lift",

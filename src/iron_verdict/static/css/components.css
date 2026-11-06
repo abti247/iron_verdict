@@ -340,6 +340,15 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     cursor: pointer;
 }
 
+.settings-bar input:disabled,
+.settings-bar select:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.head-offline-note {
+    margin-top: 10px;
+    font-size: 14px;
+    color: var(--text-chrome);
+}
+
 .settings-bar select {
     padding: 5px 8px;
     background: var(--bg-void);
