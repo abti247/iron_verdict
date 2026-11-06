@@ -370,6 +370,8 @@ QR entry point: `?session=XXXX` lands on the landing screen with the code pre-fi
 | `Alpine.store('vportal')` | — | VPortal connection, dialog step, stage list, current lifter on the display | Page lifetime |
 | `Alpine.store('pause')` | — | The session's pause from the server, clock offset to the server, remaining time, a pending request and the last rejection | Page lifetime |
 
+The privacy notice (`privacy.storage*` in the locales) lists every storage entry of this table in plain words; a new key needs a line there too.
+
 *Why `sessionStorage` (not `localStorage`) for the reconnect token:* tab-scoped lifetime matches the lifetime of a judging session. If the token survived in `localStorage`, an old token could leak into a *new* session opened in the same browser later, leading to confusing "Role already taken" failures (server rejects because the role belongs to a stale judge identity). `localStorage` is reserved for genuinely persistent preferences like language.
 
 ### i18n

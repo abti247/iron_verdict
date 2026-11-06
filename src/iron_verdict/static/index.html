@@ -255,14 +255,45 @@
             <div class="brand-verdict-sub">Iron Verdict</div>
 
             <h2 class="legal-heading" x-text="t('privacy.privacyHeading')"></h2>
-            <ul class="privacy-list">
-                <li x-text="t('privacy.serverLogs')"></li>
-                <li x-text="t('privacy.monitoringLogs')"></li>
-                <li x-text="t('privacy.session')"></li>
-                <li x-text="t('privacy.language')"></li>
-                <li x-text="t('privacy.analytics')"></li>
-                <li x-text="t('privacy.cookies')"></li>
-            </ul>
+            <div class="legal-notice" data-testid="privacy-notice">
+                <h3 class="legal-subheading" x-text="t('privacy.controllerHeading')"></h3>
+                <p x-text="t('privacy.controller')"></p>
+
+                <h3 class="legal-subheading" x-text="t('privacy.hostingHeading')"></h3>
+                <p x-text="t('privacy.serverLogs')"></p>
+                <p x-text="t('privacy.monitoringLogs')"></p>
+
+                <h3 class="legal-subheading" x-text="t('privacy.cloudflareHeading')"></h3>
+                <p x-text="t('privacy.cloudflare')"></p>
+
+                <h3 class="legal-subheading" x-text="t('privacy.analyticsHeading')"></h3>
+                <p x-text="t('privacy.analytics')"></p>
+
+                <h3 class="legal-subheading" x-text="t('privacy.contactHeading')"></h3>
+                <p x-text="t('privacy.contact')"></p>
+
+                <h3 class="legal-subheading" x-text="t('privacy.vportalHeading')"></h3>
+                <p x-text="t('privacy.vportal')"></p>
+
+                <h3 class="legal-subheading" x-text="t('privacy.storageHeading')"></h3>
+                <p x-text="t('privacy.storageIntro')"></p>
+                <ul class="privacy-list">
+                    <li x-text="t('privacy.storageSession')"></li>
+                    <li x-text="t('privacy.storagePendingVote')"></li>
+                    <li x-text="t('privacy.storageLanguage')"></li>
+                    <li x-text="t('privacy.storageDisplay')"></li>
+                    <li x-text="t('privacy.storageOverlay')"></li>
+                    <li x-text="t('privacy.storageVportal')"></li>
+                    <li x-text="t('privacy.cookies')"></li>
+                </ul>
+
+                <h3 class="legal-subheading" x-text="t('privacy.thirdCountryHeading')"></h3>
+                <p x-text="t('privacy.thirdCountry')"></p>
+
+                <h3 class="legal-subheading" x-text="t('privacy.rightsHeading')"></h3>
+                <p x-text="t('privacy.rights')"></p>
+                <p x-text="t('privacy.complaint')"></p>
+            </div>
 
             <h2 class="legal-heading" x-text="t('privacy.legalHeading')"></h2>
             <div class="legal-notice" data-testid="legal-notice">

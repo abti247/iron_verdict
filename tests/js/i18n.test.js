@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { initI18n, t, setLanguage, getLanguage, getSupportedLanguages } from '../../src/iron_verdict/static/js/i18n.js';
 
 // Alpine store integration (t(), setLanguage(), getLanguage() reading/writing Alpine.store)
@@ -93,5 +95,13 @@ describe('i18n', () => {
 
     it('getSupportedLanguages returns ["en", "de"]', () => {
         expect(getSupportedLanguages()).toEqual(['en', 'de']);
+    });
+});
+
+describe('locale files', () => {
+    it('privacy notice has the same keys in English and German', () => {
+        const load = (lang) => JSON.parse(readFileSync(
+            resolve(__dirname, `../../src/iron_verdict/static/locales/${lang}.json`), 'utf-8'));
+        expect(Object.keys(load('de').privacy).sort()).toEqual(Object.keys(load('en').privacy).sort());
     });
 });
