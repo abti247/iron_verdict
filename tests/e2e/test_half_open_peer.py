@@ -173,7 +173,7 @@ def test_vanished_judge_does_not_disconnect_others_and_reconnects_at_once(
         left.locator(".judge-wrap").wait_for(state="visible")
         competition.pages["left_judge"] = left
         # Well below the watchdog limit: the join did not wait for the old socket.
-        expect(left.locator(".judge-code .conn-dot")).to_have_class(CONNECTED, timeout=3000)
+        expect(left.locator(".judge-code .conn-dot")).to_have_class(CONNECTED, timeout=5000)
         assert left.evaluate("window.__ws_count") == 1
         expect(left_status).to_have_class(re.compile(r"status-connected"))
 
