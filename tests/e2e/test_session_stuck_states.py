@@ -54,6 +54,39 @@ def test_judge_disconnect_mid_vote_blocks_results_and_next_lift_continues(compet
     expect(head.locator(".vote-btn.vote-white")).to_be_enabled()
 
 
+def test_judge_disconnected_after_locking_still_counts_in_result(competition):
+    """The left judge locks white, then loses the connection (shown as disconnected
+    at the head judge); centre white and right red lock → the display shows three
+    lights and "Good Lift", and so does the head judge's result view (#229)."""
+    head, left, right = competition.join_all_judges()
+    display = competition.join_as("display")
+    l_dot = head.locator(".connectivity-dot", has_text="L")
+    expect(l_dot).to_have_class(re.compile(r"status-connected"))
+
+    competition.vote_and_lock(left, "white")
+
+    left_ctx = competition.get_context_for("left_judge")
+    left_ctx.close()
+    competition.contexts.remove(left_ctx)
+    expect(l_dot).to_have_class(re.compile(r"status-disconnected"))
+
+    competition.vote_and_lock(head, "white")
+    competition.vote_and_lock(right, "red")
+
+    expected = (r"\bwhite\b", r"\bwhite\b", r"\bred\b")
+    display_orbs = display.locator(".display-full .display-orb-wrap .display-orb")
+    expect(display_orbs).to_have_count(3)
+    for orb, cls in zip(display_orbs.all(), expected):
+        expect(orb).to_have_class(re.compile(cls))
+    expect(display.locator(".verdict-stamp")).to_have_text("Good Lift")
+
+    expect(head.locator(".head-section").last).to_be_visible()
+    head_orbs = head.locator(".judge-result-orb-wrap .display-orb")
+    expect(head_orbs).to_have_count(3)
+    for orb, cls in zip(head_orbs.all(), expected):
+        expect(orb).to_have_class(re.compile(cls))
+
+
 def test_next_lift_resets_all_state(competition):
     """Full cycle → Next Lift → voteLocked false, selectedVote cleared, resultsShown false."""
     head, left, right = competition.join_all_judges()

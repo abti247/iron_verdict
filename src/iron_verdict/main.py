@@ -34,6 +34,26 @@ HEARTBEAT_INTERVAL_SECONDS = 5
 PONG_STALE_SECONDS = 15
 
 
+def show_results_message(session: dict) -> dict:
+    """Build the show_results message for *session*, for the broadcast and the replay on rejoin.
+
+    Votes and reasons come from every locked judge, connected or not (#229): a
+    judge whose vote was confirmed and who then lost the connection still counts,
+    like lock_vote's all-locked check (IPF rule). Both paths use this, so every
+    device shows the same result.
+    """
+    locked = {pos: j for pos, j in session["judges"].items() if j["locked"]}
+    settings_ = session["settings"]
+    return {
+        "type": "show_results",
+        "votes": {pos: j["current_vote"] for pos, j in locked.items()},
+        "reasons": {pos: j["current_reason"] for pos, j in locked.items()},
+        "showExplanations": settings_["show_explanations"],
+        "liftType": settings_["lift_type"],
+        "timer_frozen_ms": session.get("timer_frozen_ms"),
+    }
+
+
 async def release_connection(manager: ConnectionManager, session_code: str, role: str, websocket) -> bool:
     """Unregister *websocket* from *role* if it still holds it; return whether it did.
 
@@ -693,26 +713,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 # If session is in results phase, replay show_results to the rejoining client
                 rejoined_session = session_manager.sessions.get(session_code)
                 if rejoined_session and rejoined_session.get("phase") == "results":
-                    r_judges = rejoined_session["judges"]
-                    r_votes = {
-                        pos: j["current_vote"]
-                        for pos, j in r_judges.items()
-                        if j["locked"]
-                    }
-                    r_reasons = {
-                        pos: j["current_reason"]
-                        for pos, j in r_judges.items()
-                        if j["locked"]
-                    }
-                    r_settings = rejoined_session["settings"]
-                    await websocket.send_json({
-                        "type": "show_results",
-                        "votes": r_votes,
-                        "reasons": r_reasons,
-                        "showExplanations": r_settings["show_explanations"],
-                        "liftType": r_settings["lift_type"],
-                        "timer_frozen_ms": rejoined_session.get("timer_frozen_ms"),
-                    })
+                    await websocket.send_json(show_results_message(rejoined_session))
                 if role.endswith("_judge"):
                     position = role.replace("_judge", "")
                     await connection_manager.broadcast_to_others(
@@ -789,28 +790,9 @@ async def websocket_endpoint(websocket: WebSocket):
 
                     # If all locked, broadcast results
                     if result.get("all_locked"):
-                        judges = session_manager.sessions[session_code]["judges"]
-                        votes = {
-                            pos: judge["current_vote"]
-                            for pos, judge in judges.items()
-                            if judge["connected"]
-                        }
-                        reasons = {
-                            pos: judge["current_reason"]
-                            for pos, judge in judges.items()
-                            if judge["connected"]
-                        }
-                        session_settings = session_manager.sessions[session_code]["settings"]
                         await connection_manager.broadcast_to_session(
                             session_code,
-                            {
-                                "type": "show_results",
-                                "votes": votes,
-                                "reasons": reasons,
-                                "showExplanations": session_settings["show_explanations"],
-                                "liftType": session_settings["lift_type"],
-                                "timer_frozen_ms": session_manager.sessions[session_code].get("timer_frozen_ms"),
-                            }
+                            show_results_message(session_manager.sessions[session_code]),
                         )
             elif message_type == "timer_start":
                 if not session_code or not role:
