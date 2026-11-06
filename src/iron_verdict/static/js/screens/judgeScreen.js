@@ -71,6 +71,12 @@ export function judgeScreen(conn) {
             this._resizeTimer = null;
         },
 
+        // Head judge controls only work with a joined connection: websocket.js drops
+        // a message on a closed socket, so a click would be a silent no-op (#234).
+        headCanSend() {
+            return this.$store.session.connectionStatus === 'connected';
+        },
+
         saveSettings() {
             conn.sendSettings();
         },

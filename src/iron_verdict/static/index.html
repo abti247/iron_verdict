@@ -574,29 +574,35 @@
             </div>
             <div class="head-grid">
                 <button class="btn-blood btn-blood-primary cut-corner-sm"
+                        :disabled="!headCanSend()"
                         @click="startTimer()" x-text="t('judge.startTimer')"></button>
                 <button class="btn-blood btn-blood-secondary cut-corner-sm"
+                        :disabled="!headCanSend()"
                         @click="resetTimer()" x-text="t('judge.resetTimer')"></button>
                 <button class="btn-blood btn-blood-primary cut-corner-sm"
+                        :disabled="!headCanSend()"
                         @click="nextLiftGuarded()" x-text="t('judge.nextLift')"></button>
                 <button class="btn-blood btn-blood-ghost"
+                        :disabled="!headCanSend()"
                         @click="confirmEndSession()" x-text="t('judge.endSession')"></button>
             </div>
             <div class="settings-bar">
                 <label>
-                    <input type="checkbox" data-testid="show-explanations-checkbox" x-model="$store.settings.showExplanations" @change="saveSettings()">
+                    <input type="checkbox" data-testid="show-explanations-checkbox" :disabled="!headCanSend()" x-model="$store.settings.showExplanations" @change="saveSettings()">
                     <span x-text="t('judge.settings.showReasons')"></span>
                 </label>
                 <label>
-                    <input type="checkbox" data-testid="require-reasons-checkbox" x-model="$store.settings.requireReasons" @change="saveSettings()">
+                    <input type="checkbox" data-testid="require-reasons-checkbox" :disabled="!headCanSend()" x-model="$store.settings.requireReasons" @change="saveSettings()">
                     <span x-text="t('judge.settings.requireReasons')"></span>
                 </label>
-                <select data-testid="lift-type-select" x-model="$store.settings.liftType" @change="saveSettings()">
+                <select data-testid="lift-type-select" :disabled="!headCanSend()" x-model="$store.settings.liftType" @change="saveSettings()">
                     <option value="squat" x-text="t('liftTypes.squat')"></option>
                     <option value="bench" x-text="t('liftTypes.bench')"></option>
                     <option value="deadlift" x-text="t('liftTypes.deadlift')"></option>
                 </select>
             </div>
+            <div class="head-offline-note" data-testid="head-offline"
+                 x-show="!headCanSend()" x-text="t('judge.headOffline')"></div>
         </div>
 
         <!-- Judge Results Panel -->

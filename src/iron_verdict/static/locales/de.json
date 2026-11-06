@@ -101,6 +101,7 @@
     },
     "back": "zurück",
     "headControls": "Haupt-KARI-Steuerung",
+    "headOffline": "Keine Verbindung – Steuerung gesperrt, bis die Verbindung zurück ist.",
     "startTimer": "Timer starten",
     "resetTimer": "Timer zurücksetzen",
     "nextLift": "Nächster Versuch",
