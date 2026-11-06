@@ -138,7 +138,7 @@ describe('pause handlers', () => {
             settings: {},
             display: createDisplayStore(),
             storage: { getItem: () => null },
-            timer: { start: () => {} },
+            timer: { start: () => {}, reset: () => {}, expire: () => {} },
         };
         handleJoinSuccess(c, {
             is_head: false,

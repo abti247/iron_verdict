@@ -43,6 +43,13 @@ export function createTimerStore() {
             if (frozenMs != null) this.display = String(Math.ceil(frozenMs / 1000));
         },
 
+        // The server's timer already ran out (e.g. after a reload): show it expired.
+        expire() {
+            stopTimer();
+            this.display = '0';
+            this.expired = true;
+        },
+
         reset() {
             stopTimer();
             this.display = '60';

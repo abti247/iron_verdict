@@ -678,6 +678,24 @@ async def test_join_success_time_remaining_ms_when_timer_not_running():
     assert msg["session_state"]["time_remaining_ms"] is None
 
 
+async def test_join_success_time_remaining_ms_zero_when_timer_expired():
+    """A timer that ran out is sent as 0, so a reloaded device shows it expired (#232)."""
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as ac:
+        resp = await ac.post("/api/sessions", json={"name": "Test"})
+    code = resp.json()["session_code"]
+    session_manager.sessions[code]["timer_started_at"] = time.time() - 61
+
+    async with httpx.AsyncClient(
+        transport=ASGIWebSocketTransport(app=app), base_url="http://test"
+    ) as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+            await ws.send_json({"type": "join", "session_code": code, "role": "left_judge"})
+            msg = await ws.receive_json()
+
+    assert msg["type"] == "join_success"
+    assert msg["session_state"]["time_remaining_ms"] == 0
+
+
 async def test_join_success_time_remaining_ms_when_timer_running():
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as ac:
         resp = await ac.post("/api/sessions", json={"name": "Test"})

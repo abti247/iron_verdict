@@ -24,6 +24,8 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - The display layout editor no longer sometimes moves the timer and the other blocks a few pixels up when a block is grabbed after the settings were opened and closed
 - A session no longer expires while judges, displays or the stream overlay are connected to it, so a session set up early in the morning keeps running into the competition; a session without connected devices still expires after 4 hours of inactivity
 - When the snapshot cannot be saved during a restart (e.g. full or read-only data volume), judges and displays still see "Server restarting", the server still shuts down promptly and the failure is logged
+- A display that was offline while the head judge pressed "Next Lift" no longer shows the previous lifter's lights and verdict after it reconnects, and a display or judge screen no longer keeps counting down a timer the head judge reset meanwhile
+- A timer that ran out shows "0" (expired) after a reload or reconnect on displays and judge screens, instead of "60"
 - The Grafana dashboard's weekly review names every warning and error event from the logs with its count, instead of a single unnamed number, and lists VPortal failures by result in readable rows
 
 ### Removed
