@@ -30,8 +30,9 @@ export function createScreenWakeLock({
         let request;
         try {
             request = Promise.resolve(wakeLock.request('screen'));
-        } catch (_) {
+        } catch (err) {
             requesting = false;
+            console.info('Screen wake lock refused:', err && err.name);
             return;
         }
         request.then((lock) => {
@@ -45,10 +46,12 @@ export function createScreenWakeLock({
             lock.addEventListener('release', () => {
                 if (sentinel === lock) sentinel = null;
             });
-        }, () => {
+        }, (err) => {
             // Refused (e.g. page hidden, battery saver): retried on the next
-            // visibility change, never in a loop.
+            // visibility change, never in a loop. Logged so a device that
+            // still locked can be told apart from one that never asked.
             requesting = false;
+            console.info('Screen wake lock refused:', err && err.name);
         });
     }
 

@@ -63,7 +63,7 @@ describe('keepsScreenAwake', () => {
     it('is true for the judge and display screens only', () => {
         expect(keepsScreenAwake('judge')).toBe(true);
         expect(keepsScreenAwake('display')).toBe(true);
-        for (const screen of ['landing', 'contact', 'demoIntro', 'reconnecting', 'roleSelect']) {
+        for (const screen of ['landing', 'contact', 'privacy', 'demo-intro', 'reconnecting', 'role-select']) {
             expect(keepsScreenAwake(screen)).toBe(false);
         }
     });
