@@ -362,6 +362,7 @@ QR entry point: `?session=XXXX` lands on the landing screen with the code pre-fi
 | `localStorage` | `iron-verdict:display-layout:overlay` | Layout of the stream overlay on this device, same format (see *Stream overlay*) | Persistent |
 | `localStorage` | `iron-verdict:overlay-lights-duration` | How long the stream overlay shows the lights after a decision on this device, `'always'` or `3`–`15` seconds (missing or unknown = 5; see *Stream overlay*) | Persistent |
 | `localStorage` | `iron-verdict:overlay-lights-view` | Lights view of the stream overlay on this device, `'bvdk'` or `'classic'` (missing or unknown = BVDK; see *Stream overlay*) | Persistent |
+| `localStorage` | `vportal:<code>` | VPortal login of that session: `{host, token, exp, fetch_interval_ms, competition_id, stage_id, …}`, no credentials (see *VPortal integration*) | Until "Disconnect" |
 | `localStorage` | `iron-verdict:display-contrast` | Display contrast mode, `'1'` on / `'0'` off (missing = off) | Persistent |
 | `Alpine.store('session')` | — | Session code, name, kind, own role, `isHead`, `isDemo`, connection status, `serverRestarting`, judge connectivity, role-taken notice, landing form | Page lifetime |
 | `Alpine.store('nav')` | — | Current screen, history flags | Page lifetime |

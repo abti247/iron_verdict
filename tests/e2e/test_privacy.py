@@ -42,7 +42,8 @@ def test_privacy_and_legal_notice_in_english_and_german(page, server_url):
     Cloudflare with IP addresses, Web3Forms and Gmail, the VPortal login kept
     only in the browser, every kind of browser storage, the Data Privacy
     Framework, Art. 15-21 GDPR and the LDI NRW), headings, no-parcels note,
-    mailto: link); "Back" returns to the landing screen. Switch to German: the page changes at once and stays German
+    mailto: link); "Back" returns to the landing screen. Switch to German:
+    the page changes at once and stays German
     after a reload (choice kept in localStorage). Open "Datenschutz &
     Impressum" and verify the German headings and sections, key content
     (Grafana Labs, Web3Forms, VPortal storage, LDI NRW),
@@ -73,7 +74,7 @@ def test_privacy_and_legal_notice_in_english_and_german(page, server_url):
     expect(privacy).to_contain_text("Web3Forms")
     expect(privacy).to_contain_text("Gmail")
     expect(privacy).to_contain_text("once your request has been dealt with")
-    expect(privacy).to_contain_text("VPortal password is not stored")
+    expect(privacy).to_contain_text("VPortal username and password are not stored")
     expect(privacy.locator(".privacy-list li")).to_have_count(7)
     expect(privacy.locator(".privacy-list")).to_contain_text("VPortal login")
     expect(privacy.locator(".privacy-list")).to_contain_text("contrast mode")
