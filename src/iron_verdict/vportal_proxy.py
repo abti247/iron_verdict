@@ -6,11 +6,12 @@ import logging
 import re
 
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from iron_verdict import metrics
 from iron_verdict.config import settings
+from iron_verdict.rate_limit import limiter
 
 logger = logging.getLogger("iron_verdict")
 
@@ -157,8 +158,16 @@ def _login_failed(host: str, reason: str, *, detail_extra: dict | None = None, *
     )
 
 
+# Rate limits per client IP (issue #236). Every request we forward reaches
+# VPortal from the one Railway IP: unlimited password guessing through us, or a
+# flood of queries, could get that IP blocked and take the lifter display down
+# for every competition at once. slowapi counts before the endpoint body runs,
+# so a request over the limit gets 429 and never reaches VPortal. The client
+# shows the 429: the login dialog as "too many attempts", the display poll as a
+# failed poll (banner after three).
 @router.post("/login")
-async def login(body: LoginRequest):
+@limiter.limit(settings.RATE_LIMIT_VPORTAL_LOGIN)
+async def login(request: Request, body: LoginRequest):
     _validate_host(body.host)
     base = _base_url(body.host)
 
@@ -266,7 +275,8 @@ async def login(body: LoginRequest):
 
 
 @router.post("/graphql")
-async def graphql(body: GraphQLRequest):
+@limiter.limit(settings.RATE_LIMIT_VPORTAL_GRAPHQL)
+async def graphql(request: Request, body: GraphQLRequest):
     _validate_host(body.host)
     _validate_graphql_query(body.query)
 

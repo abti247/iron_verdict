@@ -23,6 +23,8 @@ _EXTRA_FIELDS = (
     "seconds_since_pong", "session_count", "code", "session_create", "session_lookup",
     # Lift traceability: votes, the result as sent, and the lift they belong to (#240)
     "lift_id", "votes", "reasons", "show_explanations", "lift_type",
+    # Rate limits of the VPortal proxy (#236): startup values, refused request
+    "vportal_login", "vportal_graphql", "endpoint",
 )
 
 class JsonFormatter(logging.Formatter):

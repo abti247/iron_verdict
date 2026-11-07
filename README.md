@@ -188,6 +188,8 @@ All settings except `ALLOWED_ORIGIN` are optional and have defaults suitable for
 | `SESSION_TIMEOUT_HOURS` | `4` | Hours of inactivity before a session expires; a session with connected devices (judges, displays, overlay) never expires |
 | `RATE_LIMIT_SESSION_CREATE` | `10/hour` | Sessions one IP may create, e.g. `60/hour`. Invalid values refuse startup |
 | `RATE_LIMIT_SESSION_LOOKUP` | `30/minute` | Session-code lookups per IP, e.g. `120/minute`. Invalid values refuse startup |
+| `RATE_LIMIT_VPORTAL_LOGIN` | `10/minute` | VPortal logins per IP. Invalid values refuse startup |
+| `RATE_LIMIT_VPORTAL_GRAPHQL` | `600/minute` | VPortal lifter queries per IP; each display or overlay makes about 40 per minute and a venue's devices usually share one IP. Invalid values refuse startup |
 | `DISPLAY_CAP` | `20` | Maximum number of display connections per session |
 | `MAX_WEBSOCKETS` | `2000` | Maximum number of joined connections (judges and displays) across all sessions. Above it a new device is turned away with "Server at capacity"; a judge reconnecting to their own position is always let back in |
 | `SNAPSHOT_PATH` | `/data/sessions.json` | Path for session persistence snapshot — mount `/data` as a volume to survive restarts |

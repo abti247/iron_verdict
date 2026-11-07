@@ -222,3 +222,76 @@ def test_reconnect_with_failing_stage_list_shows_no_stale_stages(page, server_ur
     expect(stage_step.locator(".vportal-error")).to_be_visible()
     expect(stage_step.get_by_test_id("vportal-stage-select").locator("option")).to_have_count(0)
     expect(stage_step.locator(".vportal-next-btn")).to_be_disabled()
+
+
+# Default limits (RATE_LIMIT_VPORTAL_LOGIN / _GRAPHQL); the in-process server
+# resets the limiter before every test (conftest ``_reset_server_state``).
+VPORTAL_LOGIN_LIMIT = 10
+VPORTAL_GRAPHQL_LIMIT = 600
+
+
+def _use_up_limit(server_url, path, body, limit):
+    """Send requests from this machine (same client IP as the browser) until
+    the proxy answers 429. The host is not allowlisted, so none of them
+    reaches VPortal; the limit counts them before the host check."""
+    with httpx.Client(base_url=server_url) as client:
+        for _ in range(limit + 50):
+            if client.post(path, json=body).status_code == 429:
+                return
+    raise AssertionError(f"{path} never answered 429")
+
+
+def test_login_over_rate_limit_shows_too_many_attempts_in_dialog(page, server_url, fake_vportal_url):
+    """Issue #236: someone on the same network (client IP) has used up the
+    login attempts of this minute. The operator presses "Log in" and the
+    dialog says there were too many attempts — not "VPortal responded
+    unexpectedly" — and stays on the credentials step."""
+    httpx.post(f"http://{fake_vportal_url}/_control/reset")
+    _open_credentials_step(page, server_url, fake_vportal_url)
+    _use_up_limit(
+        server_url, "/api/vportal/login",
+        {"host": "not-allowlisted.example", "identity": "u", "credential": "p"},
+        VPORTAL_LOGIN_LIMIT,
+    )
+
+    page.locator(".vportal-step-credentials .vportal-next-btn").click()
+
+    expect(page.locator(".vportal-step-credentials .vportal-error")).to_have_text(
+        "Too many login attempts. Wait a few minutes and try again."
+    )
+    expect(page.locator(".vportal-step-credentials")).to_be_visible()
+
+
+def test_display_over_graphql_rate_limit_shows_banner_and_recovers(page, server_url, fake_vportal_url, run_on_server):
+    """Issue #236: the display shows the lifter → the venue's client IP uses
+    up the GraphQL limit, so the display's polls get 429 → after three failed
+    polls the "VPortal disconnected" banner replaces the corners (nothing goes
+    stale silently) → the limit window ends → without a reload the banner
+    goes away and the lifter is back.
+
+    The end of the window is simulated by resetting the limiter on the server
+    (``run_on_server``): the real window is a minute, too long to wait for."""
+    _connect_and_open_display(page, server_url, fake_vportal_url)
+    corner = page.locator(".vportal-corner-left")
+    banner = page.locator(".vportal-disconnected-banner")
+    expect(corner).to_contain_text("MARIA SCHNEIDER", timeout=10000, ignore_case=True)
+
+    _use_up_limit(
+        server_url, "/api/vportal/graphql",
+        {"host": "not-allowlisted.example", "token": "t", "query": "{ profile { id } }"},
+        VPORTAL_GRAPHQL_LIMIT,
+    )
+    # Three failed poll cycles at 2000 ms
+    expect(banner).to_be_visible(timeout=15000)
+    expect(banner).to_have_text("VPortal disconnected — open Select Role to reconnect.")
+    expect(corner).not_to_be_visible()
+
+    async def end_limit_window():
+        from iron_verdict.main import limiter
+        limiter.reset()
+
+    run_on_server(end_limit_window())
+
+    expect(banner).to_be_hidden(timeout=10000)
+    expect(corner).to_contain_text("MARIA SCHNEIDER", ignore_case=True)
+    httpx.post(f"http://{fake_vportal_url}/_control/reset")
