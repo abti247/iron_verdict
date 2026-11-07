@@ -7,6 +7,16 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+### Removed
+
+## [0.7.0] - 2026-11-07
+
+### Added
 - Judge phones and display laptops keep the screen on while the judge or display screen is open, so they no longer lock or go to sleep mid-competition; this works over https in current browsers, not on devices that open the app over plain http on the venue Wi-Fi
 - On role select, the session code opens the same session's role select in a new tab with a middle click or Ctrl/Cmd+click (or "Open link in new tab"), so several judges can be signed in on one computer without typing the code
 - The stream overlay shows the lights in a new BVDK view by default: a box in the style of the BVDK broadcast graphics at the bottom right, appearing with the decision, with each invalid vote's card and full reason in a narrow font
@@ -35,7 +45,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - A timer that ran out shows "0" (expired) after a reload or reconnect on displays and judge screens, instead of "60"
 - The Grafana dashboard's weekly review names every warning and error event from the logs with its count, instead of a single unnamed number, and lists VPortal failures by result in readable rows
 
-### Removed
+[0.7.0]: https://github.com/abti247/iron_verdict/compare/v0.6.0...v0.7.0
 
 ## [0.6.0] - 2026-11-04
 
