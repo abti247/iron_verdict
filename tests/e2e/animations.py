@@ -12,7 +12,10 @@ from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 RECORD = """(within) => {
     window._animations = [];
+    if (window._animationsRecording) return;
+    window._animationsRecording = true;
     const ms = (t) => parseFloat(t) * (t.endsWith('ms') ? 1 : 1000);
+    const count = (n) => (n === 'infinite' ? Infinity : parseFloat(n));
     document.addEventListener('animationstart', (e) => {
         if (!e.target.closest(within)) return;
         // The longhands are comma lists, repeated to the length of animation-name.
@@ -26,8 +29,9 @@ RECORD = """(within) => {
             // Position in the document (tree order), as getAnimations sorts.
             pos: [...document.querySelectorAll('*')].indexOf(e.target),
             delay,
-            // As getComputedTiming().endTime: delay + duration x iterations.
-            end: delay + ms(at(st.animationDuration)) * parseFloat(at(st.animationIterationCount)),
+            // As getComputedTiming().endTime: delay + duration x iterations
+            // (Infinity for an endless animation).
+            end: delay + ms(at(st.animationDuration)) * count(at(st.animationIterationCount)),
         });
     });
 }"""
@@ -49,10 +53,11 @@ def recorded_animations(page, within, timeout=5000):
     """Wait until an animation has started inside `within` and none of them
     runs or waits for its delay any more, then return what record_animations
     noted. An animation in its delay is still listed by getAnimations, so a
-    staggered part that has not started yet is waited for. If none starts
-    within `timeout` ms (all animations under test end within 1 s; 5 s
-    leaves room for a loaded runner), the list returned is what was noted,
-    so the caller's assertion names the failure."""
+    staggered part that has not started yet is waited for. If none starts,
+    or one has not ended, within `timeout` ms (all animations under test end
+    within 1 s; 5 s leaves room for a loaded runner), the list returned is
+    what was noted so far, so the caller's assertion names the failure (an
+    empty list, or an end beyond the limit; an endless one has end Infinity)."""
     try:
         page.wait_for_function(DONE, arg=within, timeout=timeout)
     except PlaywrightTimeoutError:
