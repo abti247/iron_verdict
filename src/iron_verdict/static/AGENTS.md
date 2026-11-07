@@ -33,6 +33,7 @@ src/iron_verdict/static/
 │   ├── displayLayout.js# Display layout model (pure: validate, store, snap, export code)
 │   ├── bvdkLights.js   # BVDK view of the overlay lights (pure: box content, stored view)
 │   ├── streamLights.js # How long the overlay shows the lights after a decision (pure: stored duration)
+│   ├── wakeLock.js     # Keeps the screen awake on the judge and display screens
 │   ├── websocket.js    # WebSocket connection, send/receive, reconnection
 │   ├── constants.js    # Static data (CARD_REASONS, role name mappings)
 │   ├── …               # Helpers: voteDelivery, reloadRecovery, roleTakeover, i18n, vportal*

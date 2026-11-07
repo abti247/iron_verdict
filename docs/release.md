@@ -94,5 +94,6 @@ Manual, in Railway, with the **previous** version tag (the one before the faulty
 - [ ] `https://iron-verdict.com/static/js/app.js` answers `cache-control: no-cache` (network tab or `curl -sI`; if it shows `max-age=…`, fix Cloudflare as described under One-time setup).
 - [ ] Uptime check green in Grafana, and a test alert arrived on the phone via Telegram (Firing and Resolved; [docs/monitoring.md](monitoring.md), Test alert).
 - [ ] `/health` ok; a test session works end to end: 3 judges + display, vote, result, Next Lift, reload of a judge.
+- [ ] Auto-lock off on every judge phone; power saving and screen saver off on every display laptop. The app keeps the screen on by itself only over `https://` in a browser that supports it (Screen Wake Lock, #235) — not when it runs locally on the venue Wi-Fi via `http://`, and not in older browsers.
 - [ ] For VPortal competitions: `/vportal` session connects to the federation and shows the current lifter on the display.
 - [ ] Fallback known: the app can run locally on a laptop on the venue Wi-Fi (README, "Running locally on competition WiFi").

@@ -1,5 +1,6 @@
 // Bootstrap: registers the stores and screen components with Alpine, wires them
-// to the one connection (connection.js) and picks the first screen.
+// to the one connection (connection.js), keeps the screen awake on the judge
+// and display screens (wakeLock.js) and picks the first screen.
 
 import { createSessionStore } from './sessionStore.js';
 import { createNavStore } from './navigation.js';
@@ -10,6 +11,7 @@ import { createDisplayStore } from './displayStore.js';
 import { createVportalStore } from './vportalStore.js';
 import { createPauseStore } from './pauseStore.js';
 import { createConnection } from './connection.js';
+import { createScreenWakeLock, keepsScreenAwake } from './wakeLock.js';
 import { landingScreen } from './screens/landingScreen.js';
 import { contactScreen } from './screens/contactScreen.js';
 import { demoIntroScreen } from './screens/demoIntroScreen.js';
@@ -57,6 +59,11 @@ export function registerApp(Alpine, { lang = 'en', demoParams = null, overlayPar
     Alpine.data('roleSelectScreen', () => roleSelectScreen(conn));
     Alpine.data('judgeScreen', () => judgeScreen(conn));
     Alpine.data('displayScreen', () => displayScreen(conn));
+
+    // Every way onto a screen (click, back button, reload restore, overlay)
+    // goes through nav.screen, so one effect covers them all.
+    const wakeLock = createScreenWakeLock();
+    Alpine.effect(() => wakeLock.setWanted(keepsScreenAwake(Alpine.store('nav').screen)));
 
     // Capture URL params and pathname before scrubbing them via replaceState.
     // The stream overlay keeps its URL: OBS reloads the current URL, which must
