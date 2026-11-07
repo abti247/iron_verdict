@@ -239,3 +239,45 @@ def test_loki_variables_default_to_empty_and_are_stripped(monkeypatch):
         assert getattr(reload_config(), name) == "abc"
         monkeypatch.delenv(name)
     reload_config()
+
+
+@pytest.mark.parametrize("env", ["production", "development"])
+def test_run_py_passes_ws_max_size_to_uvicorn(monkeypatch, env):
+    """Both start paths of run.py (Docker/Railway and ENV=development with
+    reload) cap incoming WebSocket messages at WS_MAX_SIZE (#237). uvicorn is
+    replaced by recorders, so nothing is served."""
+    import runpy
+    import uvicorn
+    from iron_verdict.config import WS_MAX_SIZE
+
+    seen = {}
+
+    def fake_run(*args, **kwargs):
+        seen.update(kwargs)
+
+    class FakeConfig:
+        def __init__(self, *args, **kwargs):
+            seen.update(kwargs)
+
+    class FakeServer:
+        started = True
+
+        def __init__(self, config):
+            pass
+
+        async def serve(self):
+            pass
+
+    monkeypatch.setattr(uvicorn, "run", fake_run)
+    monkeypatch.setattr(uvicorn, "Config", FakeConfig)
+    monkeypatch.setattr(uvicorn, "Server", FakeServer)
+    monkeypatch.setenv("ENV", env)
+    # run.py stores its server on the shared app; keep that out of later tests.
+    from iron_verdict.main import app
+    repo_root = Path(__file__).resolve().parent.parent
+    try:
+        runpy.run_path(str(repo_root / "run.py"), run_name="__main__")
+    finally:
+        if hasattr(app.state, "uvicorn_server"):
+            del app.state.uvicorn_server
+    assert seen["ws_max_size"] == WS_MAX_SIZE == 64 * 1024

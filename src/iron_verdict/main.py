@@ -2,7 +2,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, Path
 from pydantic import BaseModel, field_validator
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
-from iron_verdict.config import require_allowed_origin, settings
+from iron_verdict.config import SESSION_NAME_MAX_LENGTH, require_allowed_origin, settings
 from iron_verdict.session import SessionManager
 from iron_verdict.connection import ConnectionManager
 from iron_verdict.vportal_proxy import router as vportal_router
@@ -241,9 +241,12 @@ class CreateSessionRequest(BaseModel):
     @field_validator('name')
     @classmethod
     def name_not_empty(cls, v):
-        if not v.strip():
+        v = v.strip()
+        if not v:
             raise ValueError('name cannot be empty')
-        return v.strip()
+        if len(v) > SESSION_NAME_MAX_LENGTH:
+            raise ValueError(f'name must be at most {SESSION_NAME_MAX_LENGTH} characters')
+        return v
 
     @field_validator('kind')
     @classmethod

@@ -8,6 +8,18 @@ load_dotenv()
 
 logger = logging.getLogger("iron_verdict")
 
+# Longest session name in characters (#237). Why: the name sits in memory and
+# the snapshot and goes out with every join_success; the rate limit caps the
+# number of sessions, not their size.
+SESSION_NAME_MAX_LENGTH = 100
+
+# Largest incoming WebSocket message in bytes, passed to uvicorn by run.py
+# (#237). uvicorn closes a connection that sends more with 1009 before the
+# handler parses anything. Why: uvicorn's default of 16 MiB lets one client
+# keep the single event loop busy with json.loads and delay votes of every
+# competition; the largest legitimate client message is under 1 KB.
+WS_MAX_SIZE = 64 * 1024
+
 _FETCH_INTERVAL_MIN_MS = 2000
 _FETCH_INTERVAL_DEFAULT_MS = 3000
 
