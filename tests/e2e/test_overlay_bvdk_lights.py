@@ -16,6 +16,7 @@ import re
 
 from playwright.sync_api import expect
 
+from tests.e2e.animations import record_animations, recorded_animations
 from tests.e2e.test_display_overlay import ALWAYS_LIGHTS, VIEWPORT, overlay_url, wait_joined
 
 BOX = '[data-testid="bvdk-lights"]'
@@ -269,13 +270,6 @@ def assert_sample_never_seen_after_save(page):
     assert seen == [], frames
 
 
-def animation_summary(page):
-    """Names and end times (ms) of the running animations inside the box."""
-    return page.evaluate(f"""() => document.getAnimations()
-        .filter((a) => a.effect && a.effect.target && a.effect.target.closest('{BOX}'))
-        .map((a) => [a.animationName, a.effect.getComputedTiming().endTime])""")
-
-
 def three_invalid_votes(competition):
     head, left, right = competition.pages["center_judge"], competition.pages["left_judge"], competition.pages["right_judge"]
     competition.vote_and_lock(left, "yellow", reason="Supporting contact on legs")
@@ -288,12 +282,13 @@ def test_bvdk_box_wipes_in_under_a_second(competition):
     ends in under a second; the result itself is in the store at once."""
     competition.join_all_judges()
     overlay = open_overlay(competition)
+    record_animations(overlay, BOX)
     three_invalid_votes(competition)
     expect(overlay.locator(BOX)).to_be_visible()
-    animations = animation_summary(overlay)
-    names = {name for name, _ in animations}
+    animations = recorded_animations(overlay, BOX)
+    names = {a["name"] for a in animations}
     assert {"bvdk-wipe-x", "bvdk-wipe-y", "bvdk-pop", "bvdk-slide-in"} <= names, animations
-    assert max(end for _, end in animations) < 1000, animations
+    assert max(a["end"] for a in animations) < 1000, animations
 
 
 def test_bvdk_box_only_fades_with_reduced_motion(competition):
@@ -302,15 +297,16 @@ def test_bvdk_box_only_fades_with_reduced_motion(competition):
     editor's sample still goes at once on Save."""
     head, _, _ = competition.join_all_judges()
     overlay = open_overlay(competition, reduced_motion="reduce")
+    record_animations(overlay, BOX)
     three_invalid_votes(competition)
     box = overlay.locator(BOX)
     expect(box).to_be_visible()
-    animations = animation_summary(overlay)
+    # Waits until the fade-in has ended, so the fade-out below starts from 1.
+    animations = recorded_animations(overlay, BOX)
     assert animations, "no fade at all"
-    assert {name for name, _ in animations} == {"bvdk-fade"}, animations
-    assert max(end for _, end in animations) <= 250, animations
+    assert {a["name"] for a in animations} == {"bvdk-fade"}, animations
+    assert max(a["end"] for a in animations) <= 250, animations
 
-    overlay.wait_for_function(f"document.querySelector('{BOX}').getAnimations().length === 0")
     record_box_frames(overlay)
     head.get_by_role("button", name="Next Lift").click()
     expect(box).to_be_hidden()
