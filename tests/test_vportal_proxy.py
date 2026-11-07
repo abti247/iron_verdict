@@ -13,6 +13,15 @@ from iron_verdict.logging_config import JsonFormatter
 client = TestClient(app)
 
 
+@pytest.fixture(autouse=True)
+def reset_rate_limiter():
+    """Reset the in-memory rate-limit counters: the login limit (10/minute)
+    would otherwise carry over from earlier tests in this module."""
+    from iron_verdict.main import limiter
+    limiter.reset()
+    yield
+
+
 def _jwt_with_exp(exp: int) -> str:
     """Build a base64url-encoded JWT-shaped string with `exp` in the payload."""
     header = base64.urlsafe_b64encode(b'{"alg":"HS256","typ":"JWT"}').decode().rstrip("=")
@@ -816,3 +825,69 @@ def test_requests_rejected_before_upstream_not_counted(mock_vportal):
     ).status_code == 400
 
     assert [_sample(n, **l) for n, l in names] == before
+
+
+# ---------------------------------------------------------------------------
+# Rate limits per client IP (issue #236)
+# ---------------------------------------------------------------------------
+
+LOGIN_LIMIT = 10      # default RATE_LIMIT_VPORTAL_LOGIN, 10/minute
+GRAPHQL_LIMIT = 600   # default RATE_LIMIT_VPORTAL_GRAPHQL, 600/minute
+
+
+def _count_upstream_calls(mock_vportal, key, response):
+    calls = []
+
+    def handler(request):
+        calls.append(request)
+        return response()
+
+    mock_vportal[key] = handler
+    return calls
+
+
+def test_login_over_the_limit_answers_429_without_calling_vportal(mock_vportal):
+    """Login 11 from one client IP within a minute is refused with 429 and
+    never reaches VPortal, so its single Railway source IP is not hammered."""
+    calls = _count_upstream_calls(mock_vportal, ("POST", "/account/login"), lambda: httpx.Response(401))
+    headers = {"CF-Connecting-IP": "203.0.113.10"}
+
+    for i in range(LOGIN_LIMIT):
+        r = client.post("/api/vportal/login", json=_LOGIN_BODY, headers=headers)
+        assert r.status_code != 429, f"login {i + 1} must not be rate-limited"
+    assert len(calls) == LOGIN_LIMIT
+
+    r = client.post("/api/vportal/login", json=_LOGIN_BODY, headers=headers)
+    assert r.status_code == 429
+    assert len(calls) == LOGIN_LIMIT
+
+
+def test_login_limit_counts_cloudflare_client_ips_separately(mock_vportal):
+    """One network using up its login attempts does not lock out another venue."""
+    mock_vportal[("POST", "/account/login")] = lambda r: httpx.Response(401)
+    for _ in range(LOGIN_LIMIT + 1):
+        client.post("/api/vportal/login", json=_LOGIN_BODY, headers={"CF-Connecting-IP": "203.0.113.11"})
+
+    r = client.post("/api/vportal/login", json=_LOGIN_BODY, headers={"CF-Connecting-IP": "203.0.113.12"})
+    assert r.status_code != 429
+
+
+def test_graphql_over_the_limit_answers_429_without_calling_vportal(mock_vportal):
+    """Query 601 from one client IP within a minute is refused with 429 and
+    never reaches VPortal."""
+    calls = _count_upstream_calls(
+        mock_vportal, ("POST", "/graphql"), lambda: httpx.Response(200, json={"data": {}})
+    )
+    headers = {"CF-Connecting-IP": "203.0.113.20"}
+
+    for i in range(GRAPHQL_LIMIT):
+        r = client.post("/api/vportal/graphql", json=_GRAPHQL_BODY, headers=headers)
+        assert r.status_code == 200, f"query {i + 1} must not be rate-limited"
+    assert len(calls) == GRAPHQL_LIMIT
+
+    r = client.post("/api/vportal/graphql", json=_GRAPHQL_BODY, headers=headers)
+    assert r.status_code == 429
+    assert len(calls) == GRAPHQL_LIMIT
+
+    other = client.post("/api/vportal/graphql", json=_GRAPHQL_BODY, headers={"CF-Connecting-IP": "203.0.113.21"})
+    assert other.status_code == 200

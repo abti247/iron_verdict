@@ -81,6 +81,13 @@ class Settings:
     RATE_LIMIT_SESSION_CREATE: str = _read_rate_limit("RATE_LIMIT_SESSION_CREATE", "10/hour")
     RATE_LIMIT_SESSION_LOOKUP: str = _read_rate_limit("RATE_LIMIT_SESSION_LOOKUP", "30/minute")
     RATE_LIMIT_METRICS: str = _read_rate_limit("RATE_LIMIT_METRICS", "30/minute")
+    # VPortal proxy (#236). Login: guards VPortal accounts against password
+    # guessing through us. GraphQL: one device polls twice per interval (about
+    # 40/minute at 3 s, 60 at the 2 s minimum) and a venue's devices share one
+    # IP, so 600 leaves room for ~15 devices. VPortal sees all our traffic from
+    # one Railway IP; a block there would take down every display at once.
+    RATE_LIMIT_VPORTAL_LOGIN: str = _read_rate_limit("RATE_LIMIT_VPORTAL_LOGIN", "10/minute")
+    RATE_LIMIT_VPORTAL_GRAPHQL: str = _read_rate_limit("RATE_LIMIT_VPORTAL_GRAPHQL", "600/minute")
     # Bearer token Grafana sends to GET /metrics (#133). Empty means the endpoint is off.
     METRICS_TOKEN: str = os.getenv("METRICS_TOKEN", "").strip()
     # Grafana Cloud Loki push (#134): full push URL, user (numeric ID) and an

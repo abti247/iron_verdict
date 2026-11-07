@@ -6,6 +6,7 @@ from iron_verdict.config import require_allowed_origin, settings
 from iron_verdict.session import SessionManager
 from iron_verdict.connection import ConnectionManager
 from iron_verdict.vportal_proxy import router as vportal_router
+from iron_verdict.rate_limit import get_http_client_ip, get_ws_client_ip, limiter
 from iron_verdict import metrics
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 import asyncio
@@ -16,7 +17,7 @@ import copy
 import time
 import os
 import secrets
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from starlette.middleware.base import BaseHTTPMiddleware
 import logging
@@ -233,26 +234,6 @@ def restore_pause_timers() -> None:
             schedule_pause_end(session_code)
 
 
-def _client_ip(headers, client) -> str:
-    # Production runs behind Cloudflare and Railway's edge proxy: the TCP peer
-    # is a Railway 100.64.0.0/10 address that changes even for one client.
-    # Cloudflare sets CF-Connecting-IP to the real client and overwrites any
-    # value the client sends. X-Forwarded-For is not used: its first entry is
-    # whatever the client put there.
-    cf_ip = headers.get("cf-connecting-ip", "").strip()
-    if cf_ip:
-        return cf_ip
-    return client.host if client else "unknown"
-
-
-def _get_http_client_ip(request: Request) -> str:
-    return _client_ip(request.headers, request.client)
-
-
-def _get_ws_client_ip(websocket: WebSocket) -> str:
-    return _client_ip(websocket.headers, websocket.client)
-
-
 class CreateSessionRequest(BaseModel):
     name: str
     kind: str = "generic"
@@ -325,7 +306,6 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         return response
 
 
-limiter = Limiter(key_func=_get_http_client_ip)
 session_manager = SessionManager()
 connection_manager = ConnectionManager()
 metrics.register_live_state(session_manager, connection_manager, settings.APP_VERSION)
@@ -365,6 +345,8 @@ async def lifespan(app: FastAPI):
     logger.info("rate_limits_configured", extra={
         "session_create": settings.RATE_LIMIT_SESSION_CREATE,
         "session_lookup": settings.RATE_LIMIT_SESSION_LOOKUP,
+        "vportal_login": settings.RATE_LIMIT_VPORTAL_LOGIN,
+        "vportal_graphql": settings.RATE_LIMIT_VPORTAL_GRAPHQL,
     })
     # Metrics are optional: without a token the endpoint is off, the app still starts.
     logger.info("metrics_enabled" if settings.METRICS_TOKEN else "metrics_disabled")
@@ -432,7 +414,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     metrics.unhandled_exceptions.inc()
-    logger.exception("unhandled_exception", extra={"client_ip": _get_http_client_ip(request)})
+    logger.exception("unhandled_exception", extra={"client_ip": get_http_client_ip(request)})
     return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 class RevalidatedStaticFiles(StaticFiles):
@@ -518,7 +500,7 @@ async def create_session(request: Request, body: CreateSessionRequest):
     code = await session_manager.create_session(body.name, kind=body.kind)
     logger.info(
         "session_created",
-        extra={"session_code": code, "kind": body.kind, "client_ip": _get_http_client_ip(request)},
+        extra={"session_code": code, "kind": body.kind, "client_ip": get_http_client_ip(request)},
     )
     return {"session_code": code}
 
@@ -543,7 +525,7 @@ async def get_session(
         }
     logger.info("session_lookup_not_found", extra={
         "session_code": code,
-        "client_ip": _get_http_client_ip(request),
+        "client_ip": get_http_client_ip(request),
     })
     return JSONResponse(status_code=404, content={"detail": "Session not found"})
 
@@ -578,7 +560,7 @@ async def websocket_endpoint(websocket: WebSocket):
         logger.warning("origin_rejected", extra={
             "conn_id": conn_id,
             "origin": origin,
-            "client_ip": _get_ws_client_ip(websocket),
+            "client_ip": get_ws_client_ip(websocket),
         })
         await websocket.close(code=1008)
         return
@@ -606,7 +588,7 @@ async def websocket_endpoint(websocket: WebSocket):
             else:
                 msg_count += 1
             if msg_count > 20:
-                logger.warning("message_flood_disconnect", extra={"conn_id": conn_id, "client_ip": _get_ws_client_ip(websocket)})
+                logger.warning("message_flood_disconnect", extra={"conn_id": conn_id, "client_ip": get_ws_client_ip(websocket)})
                 disconnect_reason = "flood"
                 if not registered:
                     metrics.ws_disconnects.labels(reason="flood").inc()
@@ -659,7 +641,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         "session_code": session_code,
                         "role": role,
                         "limit": settings.MAX_WEBSOCKETS,
-                        "client_ip": _get_ws_client_ip(websocket),
+                        "client_ip": get_ws_client_ip(websocket),
                     })
                     await websocket.send_json({
                         "type": "join_error",
@@ -698,7 +680,7 @@ async def websocket_endpoint(websocket: WebSocket):
                             "session_code": session_code,
                             "role": message.get("role"),
                             "reason": result["error"],
-                            "client_ip": _get_ws_client_ip(websocket),
+                            "client_ip": get_ws_client_ip(websocket),
                         })
                         await websocket.send_json({
                             "type": "join_error",
@@ -724,7 +706,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     "conn_id": conn_id,
                     "session_code": session_code,
                     "role": "display" if role.startswith("display_") else role,
-                    "client_ip": _get_ws_client_ip(websocket),
+                    "client_ip": get_ws_client_ip(websocket),
                 })
 
                 # Issue 3: Use deep copy for nested dicts

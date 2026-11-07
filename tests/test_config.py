@@ -1,4 +1,5 @@
 import importlib
+import json
 import logging
 import os
 import subprocess
@@ -131,13 +132,20 @@ def test_rate_limits_default_to_10_per_hour_and_30_per_minute(monkeypatch):
     monkeypatch.delenv("RATE_LIMIT_SESSION_CREATE", raising=False)
     monkeypatch.delenv("RATE_LIMIT_SESSION_LOOKUP", raising=False)
     monkeypatch.delenv("RATE_LIMIT_METRICS", raising=False)
+    monkeypatch.delenv("RATE_LIMIT_VPORTAL_LOGIN", raising=False)
+    monkeypatch.delenv("RATE_LIMIT_VPORTAL_GRAPHQL", raising=False)
     settings = reload_config()
     assert settings.RATE_LIMIT_SESSION_CREATE == "10/hour"
     assert settings.RATE_LIMIT_SESSION_LOOKUP == "30/minute"
     assert settings.RATE_LIMIT_METRICS == "30/minute"
+    assert settings.RATE_LIMIT_VPORTAL_LOGIN == "10/minute"
+    assert settings.RATE_LIMIT_VPORTAL_GRAPHQL == "600/minute"
 
 
-@pytest.mark.parametrize("name", ["RATE_LIMIT_SESSION_CREATE", "RATE_LIMIT_SESSION_LOOKUP", "RATE_LIMIT_METRICS"])
+@pytest.mark.parametrize("name", [
+    "RATE_LIMIT_SESSION_CREATE", "RATE_LIMIT_SESSION_LOOKUP", "RATE_LIMIT_METRICS",
+    "RATE_LIMIT_VPORTAL_LOGIN", "RATE_LIMIT_VPORTAL_GRAPHQL",
+])
 def test_invalid_rate_limit_refuses_to_start(monkeypatch, name):
     monkeypatch.setenv(name, "lots")
     with pytest.raises(RuntimeError, match=name):
@@ -172,6 +180,46 @@ print(create, lookup)
     )
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip() == "[200, 200, 429] [404, 404, 429]"
+
+
+def test_vportal_login_and_graphql_use_configured_rate_limits():
+    """Configured VPortal limits reach the proxy endpoints. An unknown host is
+    rejected inside the endpoint (400), after the limit has counted it, so no
+    request goes out."""
+    script = """
+from fastapi.testclient import TestClient
+from iron_verdict.main import app
+client = TestClient(app)
+login = [client.post("/api/vportal/login", json={"host": "evil.example", "identity": "u", "credential": "p"}).status_code for _ in range(3)]
+gql = [client.post("/api/vportal/graphql", json={"host": "evil.example", "token": "t", "query": "{ profile { id } }"}).status_code for _ in range(3)]
+print(login, gql)
+"""
+    result = _run_app(
+        {"RATE_LIMIT_VPORTAL_LOGIN": "2/minute", "RATE_LIMIT_VPORTAL_GRAPHQL": "2/minute",
+         "PYTHONPATH": "src"},
+        script,
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "[400, 400, 429] [400, 400, 429]"
+
+
+def test_startup_logs_vportal_rate_limits():
+    script = """
+from fastapi.testclient import TestClient
+from iron_verdict.main import app
+with TestClient(app):
+    pass
+"""
+    result = _run_app(
+        {"RATE_LIMIT_VPORTAL_LOGIN": "7/minute", "RATE_LIMIT_VPORTAL_GRAPHQL": "70/minute",
+         "PYTHONPATH": "src", "SNAPSHOT_PATH": os.devnull},
+        script,
+    )
+    assert result.returncode == 0, result.stderr
+    line = next(l for l in result.stdout.splitlines() if "rate_limits_configured" in l)
+    record = json.loads(line)
+    assert record["vportal_login"] == "7/minute"
+    assert record["vportal_graphql"] == "70/minute"
 
 
 def test_metrics_token_defaults_to_empty_and_is_stripped(monkeypatch):
