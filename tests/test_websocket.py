@@ -1,4 +1,6 @@
 import asyncio
+import contextlib
+import json
 import copy
 import logging
 import time
@@ -1753,3 +1755,69 @@ async def test_end_session_does_not_wait_for_half_open_connection(session_code):
             finally:
                 # Let a handler stuck on the hanging close finish so the client can exit.
                 hanging.release.set()
+
+
+# ---------------------------------------------------------------------------
+# Incoming message size limit (#237). The limit is enforced by uvicorn, not by
+# the app, so these tests run the app on a real uvicorn server configured like
+# run.py; the ASGI test transport never sees uvicorn's frame handling.
+# ---------------------------------------------------------------------------
+
+@contextlib.contextmanager
+def _uvicorn_with_ws_limit():
+    """Serve the app on a free 127.0.0.1 port with the production
+    ``ws_max_size`` and yield the port. Lifespan is off so no snapshot is
+    loaded or written."""
+    import socket
+    import threading
+    import uvicorn
+    from iron_verdict.config import WS_MAX_SIZE
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.bind(("127.0.0.1", 0))
+    port = sock.getsockname()[1]
+    server = uvicorn.Server(uvicorn.Config(
+        app=app, log_level="warning", lifespan="off", ws_max_size=WS_MAX_SIZE,
+    ))
+    thread = threading.Thread(target=server.run, kwargs={"sockets": [sock]}, daemon=True)
+    thread.start()
+    try:
+        deadline = time.monotonic() + 5
+        # Readiness is uvicorn's own started flag (no fixed wait).
+        while not server.started:
+            assert thread.is_alive(), "server stopped during startup"
+            assert time.monotonic() < deadline, "server did not start within 5 s"
+            time.sleep(0.05)
+        yield port
+    finally:
+        server.should_exit = True
+        thread.join(timeout=5)
+        sock.close()
+
+
+def test_ws_message_at_limit_is_parsed():
+    # A message of exactly the limit still reaches the handler: invalid JSON of
+    # that size gets the handler's own error reply.
+    from websockets.sync.client import connect
+    from iron_verdict.config import WS_MAX_SIZE
+
+    with _uvicorn_with_ws_limit() as port:
+        with connect(f"ws://127.0.0.1:{port}/ws", open_timeout=5) as ws:
+            ws.send("x" * WS_MAX_SIZE)
+            reply = json.loads(ws.recv(timeout=5))
+    assert reply == {"type": "error", "message": "Invalid JSON format"}
+
+
+def test_ws_message_over_limit_closes_connection_without_parsing():
+    # One byte over the limit: uvicorn closes with 1009 (message too big) and
+    # the handler never answers it, so it was not parsed.
+    from websockets.exceptions import ConnectionClosed
+    from websockets.sync.client import connect
+    from iron_verdict.config import WS_MAX_SIZE
+
+    with _uvicorn_with_ws_limit() as port:
+        with connect(f"ws://127.0.0.1:{port}/ws", open_timeout=5) as ws:
+            ws.send("x" * (WS_MAX_SIZE + 1))
+            with pytest.raises(ConnectionClosed):
+                ws.recv(timeout=5)
+            assert ws.close_code == 1009

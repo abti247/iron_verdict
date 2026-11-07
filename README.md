@@ -151,9 +151,9 @@ cp .env.example .env
 python run.py
 ```
 
-Or directly with uvicorn for auto-reload:
+Or directly with uvicorn for auto-reload (`--ws-max-size` matches the incoming-message limit `run.py` sets):
 ```bash
-uvicorn iron_verdict.main:app --reload
+uvicorn iron_verdict.main:app --reload --ws-max-size 65536
 ```
 
 The application will be available at http://localhost:8000

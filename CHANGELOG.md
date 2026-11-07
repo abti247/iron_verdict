@@ -16,6 +16,8 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - The logs record every lift with its number: each judge's card and reason, the result exactly as sent to the devices, and the start of the next lift, so a decision can be traced after a competition (Railway and Grafana Loki)
 
 ### Changed
+- Session names are limited to 100 characters; the input field stops there and longer names are refused
+- Messages from devices over a live connection are limited to 64 KiB; a connection sending more is closed, so an oversized message can no longer slow down other competitions on the server
 - The stream overlay shows the lights (with cards, reasons and verdict) only after a decision, for 5 seconds by default, then fades them out; next lift and a break hide them earlier, and a reload or reconnect does not show a decision again. Choose "Always" in the panel (S) for the previous behaviour
 - In the stream overlay the Classic lights come on one after another, with card and reason following
 - Without a connection the head judge's buttons (timer, Next Lift, End Session) and settings are locked with a note instead of silently doing nothing, and work again as soon as the connection is back

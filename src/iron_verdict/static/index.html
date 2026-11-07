@@ -146,7 +146,7 @@
 
             <div class="form-stack">
                 <input class="chrome-input" :placeholder="t('landing.placeholder.sessionName')"
-                       data-testid="session-name-input" x-model="$store.session.newSessionName" @keyup.enter="createSession()">
+                       data-testid="session-name-input" maxlength="100" x-model="$store.session.newSessionName" @keyup.enter="createSession()">
                 <button class="btn-blood btn-blood-primary cut-corner-sm"
                         @click="createSession()" :disabled="!$store.session.newSessionName.trim()"
                         x-text="t('landing.createSession')">

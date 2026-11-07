@@ -5,7 +5,7 @@ Iron Verdict application runner.
 import os
 import sys
 import uvicorn
-from iron_verdict.config import settings
+from iron_verdict.config import WS_MAX_SIZE, settings
 
 
 if __name__ == "__main__":
@@ -16,6 +16,7 @@ if __name__ == "__main__":
             host=settings.HOST,
             port=settings.PORT,
             reload=True,
+            ws_max_size=WS_MAX_SIZE,
         )
     else:
         import asyncio
@@ -24,6 +25,7 @@ if __name__ == "__main__":
             app,
             host=settings.HOST,
             port=settings.PORT,
+            ws_max_size=WS_MAX_SIZE,
         )
         server = uvicorn.Server(config)
         app.state.uvicorn_server = server
