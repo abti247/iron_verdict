@@ -408,7 +408,30 @@ app.include_router(vportal_router)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(HttpMetricsMiddleware)
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+_VPORTAL_PREFIX = "/api/vportal/"
+
+
+def _rate_limit_exceeded(request: Request, exc: RateLimitExceeded):
+    """slowapi's 429 response, plus a warning for the VPortal proxy (#236).
+
+    Why only there: slowapi logs nothing that reaches our output, and a venue
+    over the GraphQL limit would otherwise look like a VPortal outage (banner on
+    every display, nothing in the log). One line per refused request; the
+    other limits keep their silent 429.
+    """
+    path = request.url.path
+    if path.startswith(_VPORTAL_PREFIX):
+        logger.warning("vportal_rate_limited", extra={
+            "endpoint": path[len(_VPORTAL_PREFIX):],
+            "limit": exc.detail,
+            "client_ip": get_http_client_ip(request),
+        })
+    return _rate_limit_exceeded_handler(request, exc)
+
+
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded)
 
 
 @app.exception_handler(Exception)

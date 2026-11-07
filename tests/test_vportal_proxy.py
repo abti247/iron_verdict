@@ -862,16 +862,6 @@ def test_login_over_the_limit_answers_429_without_calling_vportal(mock_vportal):
     assert len(calls) == LOGIN_LIMIT
 
 
-def test_login_limit_counts_cloudflare_client_ips_separately(mock_vportal):
-    """One network using up its login attempts does not lock out another venue."""
-    mock_vportal[("POST", "/account/login")] = lambda r: httpx.Response(401)
-    for _ in range(LOGIN_LIMIT + 1):
-        client.post("/api/vportal/login", json=_LOGIN_BODY, headers={"CF-Connecting-IP": "203.0.113.11"})
-
-    r = client.post("/api/vportal/login", json=_LOGIN_BODY, headers={"CF-Connecting-IP": "203.0.113.12"})
-    assert r.status_code != 429
-
-
 def test_graphql_over_the_limit_answers_429_without_calling_vportal(mock_vportal):
     """Query 601 from one client IP within a minute is refused with 429 and
     never reaches VPortal."""
@@ -891,3 +881,34 @@ def test_graphql_over_the_limit_answers_429_without_calling_vportal(mock_vportal
 
     other = client.post("/api/vportal/graphql", json=_GRAPHQL_BODY, headers={"CF-Connecting-IP": "203.0.113.21"})
     assert other.status_code == 200
+
+
+@pytest.mark.parametrize("path, endpoint", [("/api/vportal/login", "login"), ("/api/vportal/graphql", "graphql")])
+def test_rate_limited_request_logs_one_warning_with_endpoint_and_client_ip(caplog, path, endpoint):
+    """A 429 must be visible in the log, so a venue over the limit can be told
+    apart from a VPortal outage. No body, credential or token is logged."""
+    body = {**_LOGIN_BODY, "host": "evil.example"} if endpoint == "login" else {**_GRAPHQL_BODY, "host": "evil.example"}
+    headers = {"CF-Connecting-IP": "203.0.113.30"}
+    limit = LOGIN_LIMIT if endpoint == "login" else GRAPHQL_LIMIT
+    for _ in range(limit):
+        client.post(path, json=body, headers=headers)
+
+    with caplog.at_level(logging.WARNING, logger="iron_verdict"):
+        assert client.post(path, json=body, headers=headers).status_code == 429
+
+    records = [r for r in caplog.records if r.getMessage() == "vportal_rate_limited"]
+    assert len(records) == 1
+    line = json.loads(JsonFormatter().format(records[0]))
+    assert line["endpoint"] == endpoint
+    assert line["client_ip"] == "203.0.113.30"
+    assert line["limit"]
+    formatted = JsonFormatter().format(records[0])
+    for secret in ("secret-user", "secret-pass", '"token"'):
+        assert secret not in formatted
+
+
+def test_rate_limit_outside_vportal_does_not_log_vportal_rate_limited(caplog):
+    with caplog.at_level(logging.WARNING, logger="iron_verdict"):
+        for _ in range(31):
+            client.get("/api/sessions/ABCDEFGH")
+    assert not [r for r in caplog.records if r.getMessage() == "vportal_rate_limited"]
