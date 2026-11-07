@@ -236,6 +236,7 @@
     "errorUnreachable": "VPortal ist nicht erreichbar. Internetverbindung prüfen und erneut versuchen.",
     "errorServerConnection": "Keine Verbindung zum Iron-Verdict-Server. Internetverbindung prüfen und erneut versuchen.",
     "errorUnexpected": "VPortal antwortet unerwartet (HTTP {status}). Später erneut versuchen.",
+    "errorTooManyAttempts": "Zu viele Anmeldeversuche. Einige Minuten warten und erneut versuchen.",
     "errorStagesFailed": "Die Plattformen konnten nicht von VPortal geladen werden. Abbrechen und neu verbinden.",
     "loadingStages": "Plattformen werden geladen…",
     "disconnectedBanner": "VPortal getrennt – auf Rollenauswahl erneut verbinden.",

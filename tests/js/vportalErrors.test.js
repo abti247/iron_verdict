@@ -10,6 +10,7 @@ const KEYS = {
     'vportal.errorUnreachable': 'unreachable',
     'vportal.errorServerConnection': 'server-connection',
     'vportal.errorUnexpected': 'unexpected {status}',
+    'vportal.errorTooManyAttempts': 'too-many-attempts',
 };
 const t = (key) => KEYS[key] ?? key;
 
@@ -24,6 +25,11 @@ describe('vportalLoginErrorMessage', () => {
     it('maps 401 to the wrong-credentials message', () => {
         expect(vportalLoginErrorMessage(proxyError(401, { detail: 'Invalid VPortal credentials' }), t))
             .toBe('bad-credentials');
+    });
+
+    it('maps 429 (Iron Verdict rate limit, issue #236) to the too-many-attempts message', () => {
+        expect(vportalLoginErrorMessage(proxyError(429, { error: 'Rate limit exceeded: 10 per 1 minute' }), t))
+            .toBe('too-many-attempts');
     });
 
     it.each([

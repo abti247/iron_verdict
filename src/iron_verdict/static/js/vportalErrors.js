@@ -1,7 +1,8 @@
 // Maps a failed VPortal login (as thrown by vportalClient) to the message shown
 // in the connect dialog. The proxy reports upstream failures as 424 with a fixed
 // `reason` code (issue #100); anything else gets a generic message with the
-// HTTP status so the operator can still report what happened.
+// HTTP status so the operator can still report what happened. A 429 comes
+// from Iron Verdict's own rate limit (issue #236), not from VPortal.
 
 const LOGIN_REASON_KEYS = {
     no_session_cookie: 'vportal.errorNoSession',
@@ -27,6 +28,7 @@ export function vportalLoginErrorMessage(err, t) {
     // No status: the request never got an HTTP answer from the Iron Verdict server.
     if (err?.status === undefined) return t('vportal.errorServerConnection');
     if (err.status === 401) return t('vportal.loginFailed');
+    if (err.status === 429) return t('vportal.errorTooManyAttempts');
     const detail = err.status === 424 ? parseDetail(err.body) : null;
     const key = detail && LOGIN_REASON_KEYS[detail.reason];
     if (key) return t(key).replace('{status}', String(detail.upstream_status ?? '?'));
