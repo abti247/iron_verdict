@@ -15,6 +15,7 @@ import re
 
 from playwright.sync_api import expect
 
+from tests.e2e.animations import record_animations, recorded_animations
 from tests.e2e.network_switch import NETWORK_SWITCH, cut_network, restore_network
 from tests.e2e.test_display_overlay import CLASSIC_LIGHTS, VIEWPORT, overlay_url, wait_joined
 from tests.e2e.test_display_pause import end_pause, expect_not_paused, expect_paused, start_pause
@@ -22,6 +23,7 @@ from tests.e2e.test_display_pause import end_pause, expect_not_paused, expect_pa
 BOX = '[data-testid="bvdk-lights"]'
 ORB_WRAPS = ".display-lights .display-orb-wrap"
 STAMP = ".display-verdict-inline .verdict-stamp"
+CLASSIC_PARTS = ".display-lights, .display-verdict-inline"
 DURATION_KEY = "iron-verdict:overlay-lights-duration"
 
 
@@ -112,18 +114,17 @@ def test_classic_lights_come_on_one_after_another_and_fade_out_after_the_duratio
     select.select_option("3")
     overlay.keyboard.press("Escape")
 
+    record_animations(overlay, CLASSIC_PARTS)
     decide(competition)
     expect(overlay.locator(STAMP)).to_have_text("Good Lift")
-    timings = overlay.evaluate("""() => document.getAnimations()
-        .filter((a) => a instanceof CSSAnimation && a.effect.target.closest('.display-lights, .display-verdict-inline'))
-        .map((a) => [a.effect.target.className, a.effect.getComputedTiming().endTime,
-                     parseFloat(getComputedStyle(a.effect.target).animationDelay) * 1000])""")
-    orbs = [delay for cls, _, delay in timings if cls.startswith("display-orb ")]
-    cards = [delay for cls, _, delay in timings if cls.startswith("display-orb-card")]
-    stamp = [delay for cls, _, delay in timings if cls.startswith("verdict-stamp")]
+    timings = recorded_animations(overlay, CLASSIC_PARTS)
+    # Delays of the lights from left to right (document order).
+    orbs = [a["delay"] for a in sorted(timings, key=lambda a: a["pos"]) if a["cls"].startswith("display-orb ")]
+    cards = [a["delay"] for a in timings if a["cls"].startswith("display-orb-card")]
+    stamp = [a["delay"] for a in timings if a["cls"].startswith("verdict-stamp")]
     assert orbs == sorted(orbs) and len(set(orbs)) == 3, timings
     assert min(cards) > max(orbs) and stamp[0] > min(cards), timings
-    assert max(end for _, end, _ in timings) < 1000, timings
+    assert max(a["end"] for a in timings) < 1000, timings
     expect_classic_shown(overlay)
 
     record_opacity_frames(overlay, STAMP)
@@ -266,14 +267,13 @@ def test_classic_lights_only_fade_with_reduced_motion(competition):
     briefly (no staggered parts)."""
     competition.join_all_judges()
     overlay = open_overlay(competition, classic=True, reduced_motion="reduce")
+    record_animations(overlay, CLASSIC_PARTS)
     decide(competition)
     expect(overlay.locator(STAMP)).to_have_text("Good Lift")
-    animations = overlay.evaluate("""() => document.getAnimations()
-        .filter((a) => a instanceof CSSAnimation && a.effect.target.closest('.display-lights, .display-verdict-inline'))
-        .map((a) => [a.animationName, a.effect.getComputedTiming().endTime])""")
+    animations = recorded_animations(overlay, CLASSIC_PARTS)
     assert animations, "no fade at all"
-    assert {name for name, _ in animations} == {"bvdk-fade"}, animations
-    assert max(end for _, end in animations) <= 250, animations
+    assert {a["name"] for a in animations} == {"bvdk-fade"}, animations
+    assert max(a["end"] for a in animations) <= 250, animations
     expect_classic_shown(overlay)
 
 

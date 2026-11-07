@@ -103,7 +103,8 @@ Or fix server-side: in the WebSocket handler, when a display reconnects with the
 
 ## Resolved (kept for reference)
 
-These were flagged as unresolved during planning but resolved during implementation:
+Risks and open points that are resolved, with how:
 
+- **Overlay animation missed between "visible" and the query (#246)**: `test_bvdk_box_only_fades_with_reduced_motion` failed once in CI (PR #245, run 140) with `no fade at all`: the test waited for the box to be visible and only then asked `document.getAnimations()`; the 200 ms reduce-motion fade has no forwards fill and had already left the list. `test_classic_lights_only_fade_with_reduced_motion` and the staggered Classic lights in `test_classic_lights_come_on_one_after_another_and_fade_out_after_the_duration` had the same gap (a 1.1 s pause before the query made all three fail locally; the BVDK wipe test passed, its `both` fill keeps the animations listed). All four now record the animations on `animationstart` with [tests/e2e/animations.py](tests/e2e/animations.py) before the vote and read them once none runs any more. Re-check with `--count=10` when the overlay's animations or the helper change.
 - **`set_offline()` for WebSocket**: Bypassed entirely — used WebSocket monkey-patching via init script instead (see `test_own_dot_orange_on_reconnecting`)
 - **Server restart test complexity**: Solved by broadcasting `{"type": "server_restarting"}` via `connection_manager` without actually restarting the server (see `test_server_restart_message_shown`)
