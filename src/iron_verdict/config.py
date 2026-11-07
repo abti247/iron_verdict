@@ -8,7 +8,8 @@ load_dotenv()
 
 logger = logging.getLogger("iron_verdict")
 
-# Longest session name in characters (#237). Why: the name sits in memory and
+# Longest session name in characters (#237); the landing input's maxlength in
+# index.html repeats it. Why: the name sits in memory and
 # the snapshot and goes out with every join_success; the rate limit caps the
 # number of sessions, not their size.
 SESSION_NAME_MAX_LENGTH = 100

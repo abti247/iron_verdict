@@ -1796,8 +1796,8 @@ def _uvicorn_with_ws_limit():
 
 
 def test_ws_message_at_limit_is_parsed():
-    """A message of exactly the limit still reaches the handler: invalid JSON
-    of that size gets the handler's own error reply."""
+    # A message of exactly the limit still reaches the handler: invalid JSON of
+    # that size gets the handler's own error reply.
     from websockets.sync.client import connect
     from iron_verdict.config import WS_MAX_SIZE
 
@@ -1809,8 +1809,8 @@ def test_ws_message_at_limit_is_parsed():
 
 
 def test_ws_message_over_limit_closes_connection_without_parsing():
-    """One byte over the limit: uvicorn closes with 1009 (message too big)
-    and the handler never answers it, so it was not parsed."""
+    # One byte over the limit: uvicorn closes with 1009 (message too big) and
+    # the handler never answers it, so it was not parsed.
     from websockets.exceptions import ConnectionClosed
     from websockets.sync.client import connect
     from iron_verdict.config import WS_MAX_SIZE

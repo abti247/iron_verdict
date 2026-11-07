@@ -40,20 +40,20 @@ def test_create_session_rejects_whitespace_name():
 
 
 def test_create_session_accepts_name_at_max_length():
-    """100 characters is the longest session name (#237)."""
+    # 100 characters is the longest session name (#237).
     response = client.post("/api/sessions", json={"name": "N" * 100})
     assert response.status_code == 200
 
 
 def test_create_session_rejects_name_over_max_length():
-    """A longer name would sit in memory and the snapshot and go out with
-    every join_success (#237)."""
+    # A longer name would sit in memory and the snapshot and go out with every
+    # join_success (#237).
     response = client.post("/api/sessions", json={"name": "N" * 101})
     assert response.status_code == 422
 
 
 def test_create_session_name_length_counts_after_strip():
-    """Surrounding whitespace is stripped before the length check."""
+    # Surrounding whitespace is stripped before the length check.
     response = client.post("/api/sessions", json={"name": "  " + "N" * 100 + "  "})
     assert response.status_code == 200
 

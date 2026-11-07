@@ -243,9 +243,9 @@ def test_loki_variables_default_to_empty_and_are_stripped(monkeypatch):
 
 @pytest.mark.parametrize("env", ["production", "development"])
 def test_run_py_passes_ws_max_size_to_uvicorn(monkeypatch, env):
-    """Both start paths of run.py (Docker/Railway and ENV=development with
-    reload) cap incoming WebSocket messages at WS_MAX_SIZE (#237). uvicorn is
-    replaced by recorders, so nothing is served."""
+    # Both start paths of run.py (Docker/Railway and ENV=development with
+    # reload) cap incoming WebSocket messages at WS_MAX_SIZE (#237). uvicorn is
+    # replaced by recorders, so nothing is served.
     import runpy
     import uvicorn
     from iron_verdict.config import WS_MAX_SIZE
