@@ -22,6 +22,7 @@ import {
     handleTimerReset,
     handleSessionEnded,
     handleSettingsUpdate,
+    handleSettingsRejected,
     handleServerRestarting,
     handleJudgeStatusUpdate,
     handleVoteAck,
@@ -41,6 +42,7 @@ const DISPATCH = {
     timer_reset:         handleTimerReset,
     session_ended:       handleSessionEnded,
     settings_update:     handleSettingsUpdate,
+    settings_rejected:   handleSettingsRejected,
     server_restarting:   handleServerRestarting,
     judge_status_update: handleJudgeStatusUpdate,
     vote_ack:            handleVoteAck,
@@ -304,6 +306,7 @@ export function createConnection({
         sendSettings() {
             if (!session.isHead) return;
             if (ws && ws.readyState === WebSocket.OPEN) {
+                stores.settings.liftTypeLocked = false;
                 c.send({
                     type: 'settings_update',
                     showExplanations: stores.settings.showExplanations,

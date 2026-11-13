@@ -223,6 +223,72 @@ describe('incoming messages reach the stores', () => {
         expect(env.stores.settings.requireReasons).toBe(true);
     });
 
+    it('settings_rejected shows the lift type hint until the next lift (#254)', () => {
+        const env = setup();
+        const socket = joined(env, 'center_judge');
+        socket.onMessage({ type: 'settings_rejected', code: 'lift_type_locked' });
+        expect(env.stores.settings.liftTypeLocked).toBe(true);
+        socket.onMessage({ type: 'reset_for_next_lift', lift_id: 1 });
+        expect(env.stores.settings.liftTypeLocked).toBe(false);
+    });
+
+    it('sending the settings again clears the lift type hint (#254)', () => {
+        const env = setup();
+        const socket = joined(env, 'center_judge');
+        env.stores.session.isHead = true;
+        socket.onMessage({ type: 'settings_rejected', code: 'lift_type_locked' });
+        env.conn.sendSettings();
+        expect(env.stores.settings.liftTypeLocked).toBe(false);
+    });
+
+    it('a rejoin clears the lift type hint (#254)', () => {
+        const env = setup();
+        const socket = joined(env, 'center_judge');
+        socket.onMessage({ type: 'settings_rejected', code: 'lift_type_locked' });
+        socket.onMessage({ type: 'join_success', is_head: true, session_state: {} });
+        expect(env.stores.settings.liftTypeLocked).toBe(false);
+    });
+
+    it('a lift type change drops a reason chosen but not yet locked (#254)', () => {
+        const env = setup();
+        const socket = joined(env, 'left_judge', { settings: { lift_type: 'squat' } });
+        env.stores.judge.selectVote('red');
+        env.stores.judge.selectReason('reasons.squat.red.depth');
+        socket.onMessage({ type: 'settings_update', liftType: 'bench' });
+        expect(env.stores.judge.selectedReason).toBeNull();
+        expect(env.stores.judge.selectedVote).toBe('red');
+        expect(env.stores.judge.showingReasonStep).toBe(true);
+    });
+
+    it("the head judge's own unlocked reason is dropped although the select already shows the new lift type (#254)", () => {
+        const env = setup();
+        const socket = joined(env, 'center_judge', { settings: { lift_type: 'squat' } });
+        env.stores.judge.selectVote('red');
+        env.stores.judge.selectReason('reasons.squat.red.depth');
+        env.stores.settings.liftType = 'bench';  // x-model wrote the select before the broadcast
+        socket.onMessage({ type: 'settings_update', liftType: 'bench' });
+        expect(env.stores.judge.selectedReason).toBeNull();
+    });
+
+    it("a refused lift type change keeps the head judge's valid reason (#254)", () => {
+        const env = setup();
+        const socket = joined(env, 'center_judge', { settings: { lift_type: 'squat' } });
+        env.stores.judge.selectVote('red');
+        env.stores.judge.selectReason('reasons.squat.red.depth');
+        env.stores.settings.liftType = 'bench';  // x-model, then the server refuses
+        socket.onMessage({ type: 'settings_update', liftType: 'squat' });
+        expect(env.stores.judge.selectedReason).toBe('reasons.squat.red.depth');
+    });
+
+    it('settings_update with the same lift type keeps a chosen reason (#254)', () => {
+        const env = setup();
+        const socket = joined(env, 'left_judge', { settings: { lift_type: 'squat' } });
+        env.stores.judge.selectVote('red');
+        env.stores.judge.selectReason('reasons.squat.red.depth');
+        socket.onMessage({ type: 'settings_update', liftType: 'squat', showExplanations: false });
+        expect(env.stores.judge.selectedReason).toBe('reasons.squat.red.depth');
+    });
+
     it('pause_update and pause_rejected reach the pause store of a display', () => {
         const env = setup();
         const socket = joined(env, 'display', { pause: null, server_now_ms: Date.now() });

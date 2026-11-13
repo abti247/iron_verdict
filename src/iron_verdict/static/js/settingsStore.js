@@ -7,5 +7,8 @@ export function createSettingsStore() {
         liftType: 'squat',
         showExplanations: true,
         requireReasons: false,
+        // The server refused the head judge's last lift type change because a judge
+        // had already voted (#254); shown until the next lift or the next change sent.
+        liftTypeLocked: false,
     };
 }

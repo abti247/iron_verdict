@@ -174,6 +174,7 @@ async def test_votes_rejected_total_counts_per_code():
     code = await session_manager.create_session("A")
     before_invalid = _value("iron_verdict_votes_rejected_total", code="invalid")
     before_lift = _value("iron_verdict_votes_rejected_total", code="lift_changed")
+    before_mismatch = _value("iron_verdict_votes_rejected_total", code="reason_lift_mismatch")
     async with _ws_client() as ac:
         async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
             await _join(ws, code, "left_judge")
@@ -181,7 +182,10 @@ async def test_votes_rejected_total_counts_per_code():
             assert (await asyncio.wait_for(ws.receive_json(), timeout=1.0))["code"] == "invalid"
             await ws.send_json({"type": "vote_lock", "color": "white", "lift_id": 99})
             assert (await asyncio.wait_for(ws.receive_json(), timeout=1.0))["code"] == "lift_changed"
+            await ws.send_json({"type": "vote_lock", "color": "red", "reason": "reasons.bench.red.elbowDepth", "lift_id": 0})
+            assert (await asyncio.wait_for(ws.receive_json(), timeout=1.0))["code"] == "reason_lift_mismatch"
     assert _value("iron_verdict_votes_rejected_total", code="invalid") == before_invalid + 1
+    assert _value("iron_verdict_votes_rejected_total", code="reason_lift_mismatch") == before_mismatch + 1
     assert _value("iron_verdict_votes_rejected_total", code="lift_changed") == before_lift + 1
 
 

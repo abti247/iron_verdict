@@ -10,6 +10,7 @@ const PENDING_KEY = 'iv_pending_vote';
 const REJECTION_KEYS = {
     lift_changed: 'judge.voteRejected.liftChanged',
     reason_required: 'judge.voteRejected.reasonRequired',
+    reason_lift_mismatch: 'judge.voteRejected.reasonLiftMismatch',
     invalid: 'judge.voteRejected.invalid',
 };
 
@@ -100,6 +101,9 @@ export function createVoteDeliveryMethods({ session, send, storage = sessionStor
                 this.selectedVote = null;
                 this.selectedReason = null;
                 this.showingReasonStep = false;
+            } else if (message.code === 'reason_lift_mismatch') {
+                // The lift type changed: keep the colour, offer the reasons of the new lift type.
+                this.selectedReason = null;
             }
         },
 

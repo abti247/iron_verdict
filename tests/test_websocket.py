@@ -102,7 +102,7 @@ async def test_show_results_includes_settings(session_code):
 
 
 async def test_settings_update_without_show_explanations_defaults_to_true(session_code):
-    session_manager.update_settings(session_code, False, "squat")
+    await session_manager.update_settings(session_code, False, "squat")
     async with httpx.AsyncClient(
         transport=ASGIWebSocketTransport(app=app), base_url="http://test"
     ) as ac:
@@ -474,6 +474,7 @@ async def test_vote_lock_logs_info(caplog):
 async def test_lift_logs_reasons_sent_result_and_next_lift_id(session_code, caplog):
     """One lift is traceable from the log alone (#240): each vote with lift and reason,
     the result exactly as sent to the devices, and the id of the next lift."""
+    await session_manager.update_settings(session_code, True, "bench")
     async with httpx.AsyncClient(transport=ASGIWebSocketTransport(app=app), base_url="http://test") as left_ac, \
                httpx.AsyncClient(transport=ASGIWebSocketTransport(app=app), base_url="http://test") as center_ac, \
                httpx.AsyncClient(transport=ASGIWebSocketTransport(app=app), base_url="http://test") as right_ac:
@@ -724,6 +725,48 @@ async def test_join_success_time_remaining_ms_when_timer_running():
     assert 58000 <= trms <= 60000
 
 
+# ---- Lift type locked after a vote (#254) ----
+
+async def test_settings_update_lift_type_change_after_vote_rejected_to_head(session_code):
+    async with httpx.AsyncClient(transport=ASGIWebSocketTransport(app=app), base_url="http://test") as left_ac, \
+               httpx.AsyncClient(transport=ASGIWebSocketTransport(app=app), base_url="http://test") as center_ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", left_ac) as left_ws, \
+                   httpx_ws.aconnect_ws("ws://test/ws", center_ac) as center_ws:
+            await left_ws.send_json({"type": "join", "session_code": session_code, "role": "left_judge"})
+            await left_ws.receive_json()  # join_success
+            await center_ws.send_json({"type": "join", "session_code": session_code, "role": "center_judge"})
+            await center_ws.receive_json()  # join_success
+            await left_ws.receive_json()  # judge_status_update (center connected)
+
+            await left_ws.send_json({"type": "vote_lock", "color": "red", "reason": "reasons.squat.red.depth", "lift_id": 0})
+            assert (await asyncio.wait_for(left_ws.receive_json(), timeout=1.0))["type"] == "vote_ack"
+
+            await center_ws.send_json({"type": "settings_update", "showExplanations": False, "liftType": "bench", "requireReasons": True})
+            update = await asyncio.wait_for(center_ws.receive_json(), timeout=1.0)
+            assert update == {"type": "settings_update", "showExplanations": False, "liftType": "squat", "requireReasons": True}
+            rejected = await asyncio.wait_for(center_ws.receive_json(), timeout=1.0)
+            assert rejected == {"type": "settings_rejected", "code": "lift_type_locked"}
+
+            # Side judges get the real settings too, but no rejection.
+            assert (await asyncio.wait_for(left_ws.receive_json(), timeout=1.0)) == update
+
+    assert session_manager.sessions[session_code]["settings"]["lift_type"] == "squat"
+
+
+async def test_vote_lock_reason_of_other_lift_type_rejected(session_code):
+    await session_manager.update_settings(session_code, True, "bench")
+    async with httpx.AsyncClient(transport=ASGIWebSocketTransport(app=app), base_url="http://test") as ac:
+        async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
+            await ws.send_json({"type": "join", "session_code": session_code, "role": "left_judge"})
+            await ws.receive_json()  # join_success
+            await ws.send_json({"type": "vote_lock", "color": "red", "reason": "reasons.squat.red.depth", "lift_id": 0})
+            msg = await asyncio.wait_for(ws.receive_json(), timeout=1.0)
+            assert msg["type"] == "vote_rejected"
+            assert msg["code"] == "reason_lift_mismatch"
+
+    assert session_manager.sessions[session_code]["judges"]["left"]["locked"] is False
+
+
 # ---- Reason selection ----
 
 async def test_vote_lock_reason_stored_in_session():
@@ -737,10 +780,10 @@ async def test_vote_lock_reason_stored_in_session():
         async with httpx_ws.aconnect_ws("ws://test/ws", ac) as ws:
             await ws.send_json({"type": "join", "session_code": session_code, "role": "left_judge"})
             await ws.receive_json()  # join_success
-            await ws.send_json({"type": "vote_lock", "color": "yellow", "reason": "reasons.bench.yellow.buttocksUp"})
+            await ws.send_json({"type": "vote_lock", "color": "yellow", "reason": "reasons.squat.yellow.footMovement"})
             await asyncio.sleep(0.1)  # no response expected with <3 judges locked
 
-    assert session_manager.sessions[session_code]["judges"]["left"]["current_reason"] == "reasons.bench.yellow.buttocksUp"
+    assert session_manager.sessions[session_code]["judges"]["left"]["current_reason"] == "reasons.squat.yellow.footMovement"
 
 
 async def test_vote_lock_requires_reason_when_mandatory():
@@ -815,6 +858,7 @@ async def test_show_results_includes_reasons():
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as ac:
         resp = await ac.post("/api/sessions", json={"name": "Test"})
     session_code = resp.json()["session_code"]
+    await session_manager.update_settings(session_code, True, "bench")
 
     async with httpx.AsyncClient(
         transport=ASGIWebSocketTransport(app=app), base_url="http://test"

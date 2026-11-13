@@ -9,6 +9,7 @@ import {
 } from '../../src/iron_verdict/static/js/voteDelivery.js';
 import { createJudgeStore } from '../../src/iron_verdict/static/js/judgeStore.js';
 import { createTimerStore } from '../../src/iron_verdict/static/js/timer.js';
+import { createSettingsStore } from '../../src/iron_verdict/static/js/settingsStore.js';
 import { handleResetForNextLift } from '../../src/iron_verdict/static/js/handlers.js';
 
 const vote = { code: 'ABCD1234', role: 'left_judge', lift_id: 3, color: 'red', reason: 'reasons.squat.red.depth' };
@@ -142,6 +143,16 @@ describe('judge store vote delivery', () => {
         expect(app.showingReasonStep).toBe(false);
     });
 
+    it('vote_rejected for a reason of another lift type keeps the colour and drops the reason (#254)', () => {
+        const app = makeApp({ selectedVote: 'red', selectedReason: 'reasons.squat.red.depth', voteState: 'sending', showingReasonStep: true });
+        app.applyVoteRejected({ code: 'reason_lift_mismatch' });
+        expect(app.voteState).toBe('open');
+        expect(app.voteError).toBe('judge.voteRejected.reasonLiftMismatch');
+        expect(app.selectedVote).toBe('red');
+        expect(app.selectedReason).toBeNull();
+        expect(app.showingReasonStep).toBe(true);
+    });
+
     it('after join, resends a pending vote the server lacks', () => {
         const app = makeApp();
         savePendingVote(sessionStorage, vote);
@@ -201,7 +212,7 @@ describe('vote delivery edge cases', () => {
     });
 
     function connectionFor(judge) {
-        return { judge, timer: createTimerStore(), session: { role: 'left_judge' } };
+        return { judge, timer: createTimerStore(), settings: createSettingsStore(), session: { role: 'left_judge' } };
     }
 
     it('reset_for_next_lift while a vote is sending reopens voting with the lift-changed message', () => {

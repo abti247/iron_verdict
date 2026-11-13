@@ -178,15 +178,15 @@ async def test_create_session_initializes_settings():
 async def test_update_settings_stores_values():
     manager = SessionManager()
     code = await manager.create_session("Test")
-    result = manager.update_settings(code, False, "bench")
+    result = await manager.update_settings(code, False, "bench")
     assert result["success"] is True
     assert manager.sessions[code]["settings"]["show_explanations"] is False
     assert manager.sessions[code]["settings"]["lift_type"] == "bench"
 
 
-def test_update_settings_invalid_session_fails():
+async def test_update_settings_invalid_session_fails():
     manager = SessionManager()
-    result = manager.update_settings("INVALID", True, "squat")
+    result = await manager.update_settings("INVALID", True, "squat")
     assert result["success"] is False
     assert "Session not found" in result["error"]
 
@@ -194,7 +194,7 @@ def test_update_settings_invalid_session_fails():
 async def test_update_settings_invalid_lift_type_fails():
     manager = SessionManager()
     code = await manager.create_session("Test")
-    result = manager.update_settings(code, False, "snatch")
+    result = await manager.update_settings(code, False, "snatch")
     assert result["success"] is False
     assert "Invalid lift type" in result["error"]
 
@@ -250,9 +250,9 @@ async def test_lock_vote_stores_reason():
     manager = SessionManager()
     code = await manager.create_session("Test")
     manager.join_session(code, "left_judge")
-    result = await manager.lock_vote(code, "left", "yellow", reason="reasons.bench.yellow.buttocksUp")
+    result = await manager.lock_vote(code, "left", "yellow", reason="reasons.squat.yellow.footMovement")
     assert result["success"] is True
-    assert manager.sessions[code]["judges"]["left"]["current_reason"] == "reasons.bench.yellow.buttocksUp"
+    assert manager.sessions[code]["judges"]["left"]["current_reason"] == "reasons.squat.yellow.footMovement"
 
 
 async def test_lock_vote_reason_defaults_to_none():
@@ -275,7 +275,7 @@ async def test_reset_for_next_lift_clears_reason():
     manager = SessionManager()
     code = await manager.create_session("Test")
     manager.join_session(code, "left_judge")
-    await manager.lock_vote(code, "left", "yellow", reason="reasons.bench.yellow.buttocksUp")
+    await manager.lock_vote(code, "left", "yellow", reason="reasons.squat.yellow.footMovement")
     await manager.reset_for_next_lift(code)
     assert manager.sessions[code]["judges"]["left"]["current_reason"] is None
 
@@ -287,10 +287,74 @@ async def test_session_settings_has_require_reasons():
     assert manager.sessions[code]["settings"]["require_reasons"] is False
 
 
+async def test_update_settings_rejects_lift_type_change_after_a_vote():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    manager.join_session(code, "left_judge")
+    await manager.lock_vote(code, "left", "red", reason="reasons.squat.red.depth")
+    result = await manager.update_settings(code, False, "bench", require_reasons=True)
+    assert result == {"success": True, "lift_type_locked": True}
+    settings = manager.sessions[code]["settings"]
+    assert settings["lift_type"] == "squat"
+    assert settings["show_explanations"] is False
+    assert settings["require_reasons"] is True
+
+
+async def test_update_settings_same_lift_type_after_a_vote_is_not_locked():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    manager.join_session(code, "left_judge")
+    await manager.lock_vote(code, "left", "white")
+    result = await manager.update_settings(code, False, "squat")
+    assert result == {"success": True, "lift_type_locked": False}
+    assert manager.sessions[code]["settings"]["show_explanations"] is False
+
+
+async def test_update_settings_lift_type_locked_while_results_shown():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    for pos in ("left", "center", "right"):
+        manager.join_session(code, f"{pos}_judge")
+        await manager.lock_vote(code, pos, "white")
+    result = await manager.update_settings(code, True, "deadlift")
+    assert result["lift_type_locked"] is True
+    assert manager.sessions[code]["settings"]["lift_type"] == "squat"
+
+
+async def test_update_settings_lift_type_free_again_after_next_lift():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    manager.join_session(code, "left_judge")
+    await manager.lock_vote(code, "left", "white")
+    await manager.reset_for_next_lift(code)
+    result = await manager.update_settings(code, True, "bench")
+    assert result == {"success": True, "lift_type_locked": False}
+    assert manager.sessions[code]["settings"]["lift_type"] == "bench"
+
+
+async def test_lock_vote_rejects_reason_of_another_lift_type():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    await manager.update_settings(code, True, "bench")
+    manager.join_session(code, "left_judge")
+    result = await manager.lock_vote(code, "left", "red", reason="reasons.squat.red.depth")
+    assert result == {"success": False, "error": "Reason lift mismatch"}
+    assert manager.sessions[code]["judges"]["left"]["locked"] is False
+
+
+async def test_lock_vote_resend_of_stored_vote_stays_idempotent_after_mismatch_check():
+    manager = SessionManager()
+    code = await manager.create_session("Test")
+    manager.join_session(code, "left_judge")
+    await manager.lock_vote(code, "left", "red", reason="reasons.squat.red.depth")
+    result = await manager.lock_vote(code, "left", "red", reason="reasons.squat.red.depth")
+    assert result["error"] == "Vote already locked"
+
+
 async def test_update_settings_stores_require_reasons():
     manager = SessionManager()
     code = await manager.create_session("Test")
-    result = manager.update_settings(code, True, "bench", require_reasons=True)
+    result = await manager.update_settings(code, True, "bench", require_reasons=True)
     assert result["success"] is True
     assert manager.sessions[code]["settings"]["require_reasons"] is True
 
@@ -588,7 +652,7 @@ async def test_load_snapshot_defaults_missing_lift_id(tmp_path):
 async def test_load_snapshot_keeps_stored_show_explanations(tmp_path):
     manager = SessionManager()
     code = await manager.create_session("Test")
-    manager.update_settings(code, False, "squat")
+    await manager.update_settings(code, False, "squat")
     path = str(tmp_path / "sessions.json")
     manager.save_snapshot(path)
 

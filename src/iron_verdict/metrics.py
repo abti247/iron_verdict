@@ -107,7 +107,7 @@ ws_roundtrip = Histogram(
 
 # Fixed label values show up as 0 from the start, so rate() and alerts see them
 # before the first increment.
-for _code in ("invalid", "lift_changed", "reason_required"):
+for _code in ("invalid", "lift_changed", "reason_lift_mismatch", "reason_required"):
     votes_rejected.labels(code=_code)
 for _reason in DISCONNECT_REASONS:
     ws_disconnects.labels(reason=_reason)
