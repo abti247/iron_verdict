@@ -11,6 +11,8 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ### Changed
 
 ### Fixed
+- The chief referee can no longer change the lift type once a judge has voted on the current lift; a hint asks to press "Next Lift" first, so a reason chosen for one lift no longer appears under another
+- A judge's reason picked for the previous lift type is cleared when the lift type changes, and a vote sent with such a reason (e.g. after a connection loss) is refused with a request to choose the reason again
 
 ### Removed
 
