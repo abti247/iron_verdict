@@ -182,8 +182,11 @@ export function handleSettingsUpdate(c, message) {
         c.settings.showExplanations = message.showExplanations;
     }
     if (message.liftType !== undefined) {
-        // A reason chosen but not yet locked belongs to the old lift type (#254).
-        if (message.liftType !== c.settings.liftType && !c.judge.voteLocked) {
+        // A reason chosen but not yet locked must be of the lift type the server has (#254).
+        // Compared with the reason id, not the local lift type: on the head judge's device
+        // the select has already written the requested lift type before this broadcast.
+        const reason = c.judge.selectedReason;
+        if (reason && !c.judge.voteLocked && !reason.startsWith(`reasons.${message.liftType}.`)) {
             c.judge.selectedReason = null;
         }
         c.settings.liftType = message.liftType;

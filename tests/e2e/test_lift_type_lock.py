@@ -77,6 +77,32 @@ def test_reason_chosen_but_not_locked_is_dropped_when_lift_type_changes(competit
     expect(display.locator(".display-full .display-orb-reason", has_text="Elbow depth")).to_be_visible()
 
 
+def test_chief_referees_own_unlocked_reason_is_dropped_when_lift_type_changes(competition):
+    """Reasons are mandatory. The chief referee picks red and the squat reason
+    "Depth" without locking in, then switches the lift type to "Bench Press"
+    (no one has voted yet, so it is allowed).
+
+    The chief referee's own selection is cleared just like a side judge's:
+    LOCK IN disappears until a bench reason is picked.
+    """
+    head, left, right = competition.join_all_judges()
+    head.get_by_test_id("require-reasons-checkbox").check()
+
+    head.locator(".vote-btn.vote-red").click()
+    head.locator(".reason-item", has_text="Depth").click()
+    expect(head.locator(".lock-btn")).to_be_visible()
+
+    head.get_by_test_id("lift-type-select").select_option("bench")
+
+    expect(head.locator(".reason-item", has_text="Elbow depth")).to_be_visible()
+    expect(head.locator(".reason-item.selected")).to_have_count(0)
+    expect(head.locator(".lock-btn")).not_to_be_visible()
+
+    head.locator(".reason-item", has_text="Elbow depth").click()
+    head.locator(".lock-btn").click()
+    expect(head.locator(".locked-status")).to_be_visible()
+
+
 def test_refused_lift_type_change_after_chief_referee_reload(competition):
     """The chief referee's lift type change is refused, then the chief referee
     reloads the page.
