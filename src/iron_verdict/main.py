@@ -809,6 +809,8 @@ async def websocket_endpoint(websocket: WebSocket):
                         })
                     elif result["error"] == "Lift changed":
                         await reject_vote("lift_changed", result["error"])
+                    elif result["error"] == "Reason lift mismatch":
+                        await reject_vote("reason_lift_mismatch", "Reason does not match the lift type")
                     elif result["error"] == "Reason required":
                         await reject_vote("reason_required", "Reason required before locking in")
                     else:
@@ -967,7 +969,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         "message": "Only head judge can update settings"
                     })
                     continue
-                result = session_manager.update_settings(
+                result = await session_manager.update_settings(
                     session_code,
                     message.get("showExplanations", True),
                     message.get("liftType", "squat"),
@@ -990,6 +992,10 @@ async def websocket_endpoint(websocket: WebSocket):
                             "requireReasons": session_settings["require_reasons"],
                         }
                     )
+                    # Sent after the broadcast, which already put the head judge's
+                    # select back to the real lift type (#254).
+                    if result["lift_type_locked"]:
+                        await websocket.send_json({"type": "settings_rejected", "code": "lift_type_locked"})
             elif message_type in ("pause_start", "pause_end"):
                 if not session_code or not role:
                     continue

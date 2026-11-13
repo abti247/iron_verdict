@@ -149,11 +149,12 @@ class SessionManager:
                 None skips the check (clients from before lift_id existed).
 
         Checks run in this order: session, position, lift, already locked,
-        mandatory reason (red/yellow/blue without reason while require_reasons is on).
+        reason of another lift type, mandatory reason (red/yellow/blue without
+        reason while require_reasons is on).
 
         Returns:
             Dict with success status and all_locked flag. Failure errors the caller maps:
-            "Lift changed", "Reason required", and "Vote already locked" (carries the
+            "Lift changed", "Reason lift mismatch", "Reason required", and "Vote already locked" (carries the
             stored current_vote/current_reason).
         """
         async with self._lock:
@@ -179,7 +180,13 @@ class SessionManager:
                 }
 
             # After the lift and already-locked checks: a stale vote is "Lift changed"
-            # and a resend of a stored vote stays idempotent, even if reasons became mandatory meanwhile.
+            # and a resend of a stored vote stays idempotent, even if reasons became mandatory
+            # or the lift type changed meanwhile.
+            # A reason id carries its lift type (reasons.<lift>.<colour>.<name>); one chosen
+            # before the lift type changed must not be shown under the new one (#254).
+            if reason is not None and not reason.startswith(f"reasons.{session['settings']['lift_type']}."):
+                return {"success": False, "error": "Reason lift mismatch"}
+
             if session["settings"].get("require_reasons", False) and color != "white" and not reason:
                 return {"success": False, "error": "Reason required"}
 
@@ -225,18 +232,36 @@ class SessionManager:
 
             return {"success": True, "lift_id": session["lift_id"]}
 
-    def update_settings(self, code: str, show_explanations: bool, lift_type: str, require_reasons: bool = False) -> Dict[str, Any]:
-        """Update head judge display settings."""
-        if code not in self.sessions:
-            return {"success": False, "error": "Session not found"}
-        if lift_type not in VALID_LIFT_TYPES:
-            return {"success": False, "error": "Invalid lift type"}
-        session = self.sessions[code]
-        session["settings"]["show_explanations"] = show_explanations
-        session["settings"]["lift_type"] = lift_type
-        session["settings"]["require_reasons"] = require_reasons
-        session["last_activity"] = datetime.now()
-        return {"success": True}
+    async def update_settings(
+        self, code: str, show_explanations: bool, lift_type: str, require_reasons: bool = False
+    ) -> Dict[str, Any]:
+        """Update head judge display settings.
+
+        The lift type stays as it is once a judge of the current lift has voted
+        (also while the result is shown) until the next lift (#254): a reason
+        already given belongs to the old lift type. The other settings are still
+        applied. Runs under the session lock so it cannot interleave with lock_vote.
+
+        Returns:
+            {"success": True, "lift_type_locked": bool} — lift_type_locked is True
+            when a lift type change was refused. Failure errors: "Session not found",
+            "Invalid lift type".
+        """
+        async with self._lock:
+            if code not in self.sessions:
+                return {"success": False, "error": "Session not found"}
+            if lift_type not in VALID_LIFT_TYPES:
+                return {"success": False, "error": "Invalid lift type"}
+            session = self.sessions[code]
+            settings = session["settings"]
+            any_vote = any(j["locked"] for j in session["judges"].values())
+            lift_type_locked = any_vote and lift_type != settings["lift_type"]
+            settings["show_explanations"] = show_explanations
+            if not lift_type_locked:
+                settings["lift_type"] = lift_type
+            settings["require_reasons"] = require_reasons
+            session["last_activity"] = datetime.now()
+            return {"success": True, "lift_type_locked": lift_type_locked}
 
     def start_pause(
         self,
