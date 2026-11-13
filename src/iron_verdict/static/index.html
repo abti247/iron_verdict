@@ -601,6 +601,8 @@
                     <option value="deadlift" x-text="t('liftTypes.deadlift')"></option>
                 </select>
             </div>
+            <div class="settings-error" data-testid="lift-type-locked" role="alert"
+                 x-show="$store.settings.liftTypeLocked" x-text="t('judge.settings.liftTypeLocked')"></div>
             <div class="head-offline-note" data-testid="head-offline"
                  x-show="!headCanSend()" x-text="t('judge.headOffline')"></div>
         </div>

@@ -50,6 +50,9 @@ export function handleJoinSuccess(c, message) {
         }
     }
 
+    // A refused lift type change belongs to the connection it was answered on.
+    c.settings.liftTypeLocked = false;
+
     // Server state is always authoritative — restoring from localStorage could bleed
     // settings from a previous session (e.g. deadlift cached into a new squat session).
     const settings = message.session_state?.settings;
@@ -141,6 +144,7 @@ export function handleShowResults(c, message) {
 export function handleResetForNextLift(c, message) {
     const voteWasSending = c.judge.voteState === 'sending';
     c.judge.resetVoting();
+    c.settings.liftTypeLocked = false;
     if (message.lift_id != null) c.judge.liftId = message.lift_id;
     // A vote still unconfirmed when the lift ends may or may not have counted — tell the judge the lift moved on.
     if (voteWasSending) c.judge.voteError = rejectionKey('lift_changed');
@@ -178,11 +182,21 @@ export function handleSettingsUpdate(c, message) {
         c.settings.showExplanations = message.showExplanations;
     }
     if (message.liftType !== undefined) {
+        // A reason chosen but not yet locked belongs to the old lift type (#254).
+        if (message.liftType !== c.settings.liftType && !c.judge.voteLocked) {
+            c.judge.selectedReason = null;
+        }
         c.settings.liftType = message.liftType;
     }
     if (message.requireReasons !== undefined) {
         c.settings.requireReasons = message.requireReasons;
     }
+}
+
+// The head judge's lift type change was refused (only code: lift_type_locked, #254).
+// The settings_update sent just before already put the select back to the real lift type.
+export function handleSettingsRejected(c, message) {
+    if (message.code === 'lift_type_locked') c.settings.liftTypeLocked = true;
 }
 
 export function handleServerRestarting(c, _message) {

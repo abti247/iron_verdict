@@ -343,6 +343,15 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .settings-bar input:disabled,
 .settings-bar select:disabled { opacity: 0.4; cursor: not-allowed; }
 
+.settings-error {
+    margin-top: 10px;
+    padding: 8px 12px;
+    font-size: 14px;
+    color: var(--blood-bright);
+    border: 1px solid var(--blood-bright);
+    background: var(--blood-glow);
+}
+
 .head-offline-note {
     margin-top: 10px;
     font-size: 14px;

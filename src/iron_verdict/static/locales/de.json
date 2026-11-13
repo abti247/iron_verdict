@@ -97,6 +97,7 @@
     "voteRejected": {
       "liftChanged": "Der nächste Versuch hat begonnen – bitte für den aktuellen Versuch abstimmen.",
       "reasonRequired": "Ein Grund ist erforderlich – bitte Grund wählen und erneut bestätigen.",
+      "reasonLiftMismatch": "Die Disziplin wurde geändert – bitte den Grund neu wählen und erneut bestätigen.",
       "invalid": "Die Stimme wurde vom Server nicht angenommen. Bitte erneut abstimmen."
     },
     "back": "zurück",
@@ -109,7 +110,8 @@
     "results": "Ergebnisse",
     "settings": {
       "showReasons": "Gründe auf Anzeige zeigen",
-      "requireReasons": "Gründe erforderlich"
+      "requireReasons": "Gründe erforderlich",
+      "liftTypeLocked": "Disziplin kann nicht geändert werden, weil bereits abgestimmt wurde. Bitte „Nächster Versuch“ drücken."
     },
     "colors": {
       "white": "WEISS",
