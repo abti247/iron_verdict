@@ -11,6 +11,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ### Changed
 
 ### Fixed
+- The chief referee's Start Timer, Reset Timer, Next Lift and End Session buttons are larger and easier to hit, especially on a tablet in portrait
 
 ### Removed
 
