@@ -162,10 +162,24 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     pointer-events: none;
 }
 
+/* Selected colour (#258): a thick green border (the LOCK IN colour) plus the
+   "✓ SELECTED" mark, so the choice is visible on the light White field too
+   and without telling colours apart. */
 .vote-btn.selected {
     transform: scale(0.96);
-    border-color: #fff !important;
+    border: 4px solid var(--success);
     box-shadow: inset 0 0 30px rgba(255,255,255,0.1);
+}
+
+/* Absolutely placed so the colour name does not move when the mark appears. */
+.vote-selected-mark {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 8px;
+    font-size: 0.7em;
+    letter-spacing: 2px;
+    text-align: center;
 }
 
 .vote-white {

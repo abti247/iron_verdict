@@ -93,6 +93,7 @@
   "judge": {
     "lockIn": "BESTÄTIGEN",
     "voteLocked": "Stimme abgegeben",
+    "selected": "AUSGEWÄHLT",
     "voteSending": "Wird gesendet…",
     "voteRejected": {
       "liftChanged": "Der nächste Versuch hat begonnen – bitte für den aktuellen Versuch abstimmen.",

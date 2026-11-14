@@ -510,23 +510,31 @@
         <div class="vote-grid" x-show="!$store.judge.showingReasonStep" :style="$store.judge.voteLocked ? 'opacity:0.35;pointer-events:none' : ''">
             <button class="vote-btn vote-white cut-corner-sm"
                     :class="$store.judge.selectedVote === 'white' && 'selected'"
-                    @click="$store.judge.selectVote('white')" :disabled="$store.judge.voteLocked"
-                    x-text="t('judge.colors.white')">
+                    @click="$store.judge.selectVote('white')" :disabled="$store.judge.voteLocked">
+                <span x-text="t('judge.colors.white')"></span>
+                <span class="vote-selected-mark" data-testid="vote-selected-mark"
+                      x-show="$store.judge.selectedVote === 'white'" x-text="'✓ ' + t('judge.selected')"></span>
             </button>
             <button class="vote-btn vote-red cut-corner-sm"
                     :class="$store.judge.selectedVote === 'red' && 'selected'"
-                    @click="$store.judge.selectVote('red')" :disabled="$store.judge.voteLocked"
-                    x-text="t('judge.colors.red')">
+                    @click="$store.judge.selectVote('red')" :disabled="$store.judge.voteLocked">
+                <span x-text="t('judge.colors.red')"></span>
+                <span class="vote-selected-mark" data-testid="vote-selected-mark"
+                      x-show="$store.judge.selectedVote === 'red'" x-text="'✓ ' + t('judge.selected')"></span>
             </button>
             <button class="vote-btn vote-blue cut-corner-sm"
                     :class="$store.judge.selectedVote === 'blue' && 'selected'"
-                    @click="$store.judge.selectVote('blue')" :disabled="$store.judge.voteLocked"
-                    x-text="t('judge.colors.blue')">
+                    @click="$store.judge.selectVote('blue')" :disabled="$store.judge.voteLocked">
+                <span x-text="t('judge.colors.blue')"></span>
+                <span class="vote-selected-mark" data-testid="vote-selected-mark"
+                      x-show="$store.judge.selectedVote === 'blue'" x-text="'✓ ' + t('judge.selected')"></span>
             </button>
             <button class="vote-btn vote-yellow cut-corner-sm"
                     :class="$store.judge.selectedVote === 'yellow' && 'selected'"
-                    @click="$store.judge.selectVote('yellow')" :disabled="$store.judge.voteLocked"
-                    x-text="t('judge.colors.yellow')">
+                    @click="$store.judge.selectVote('yellow')" :disabled="$store.judge.voteLocked">
+                <span x-text="t('judge.colors.yellow')"></span>
+                <span class="vote-selected-mark" data-testid="vote-selected-mark"
+                      x-show="$store.judge.selectedVote === 'yellow'" x-text="'✓ ' + t('judge.selected')"></span>
             </button>
         </div>
 
