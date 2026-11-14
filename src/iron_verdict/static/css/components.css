@@ -318,7 +318,9 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     gap: 8px;
 }
 
-.head-grid .btn-blood { font-size: 16px; padding: 12px; letter-spacing: 2px; }
+/* 72 px / 20 px on every screen size (#257): easy to hit on a tablet in portrait,
+   still about a third of the colour fields so the vote keeps visual priority. */
+.head-grid .btn-blood { font-size: 20px; padding: 12px; letter-spacing: 2px; min-height: 72px; }
 
 .settings-bar {
     display: flex;
