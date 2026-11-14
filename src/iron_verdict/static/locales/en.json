@@ -93,7 +93,6 @@
   "judge": {
     "lockIn": "LOCK IN",
     "voteLocked": "Vote Locked",
-    "selected": "SELECTED",
     "voteSending": "Sending…",
     "voteRejected": {
       "liftChanged": "The next lift has started — please vote for the current lift.",

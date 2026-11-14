@@ -104,11 +104,4 @@ describe('locale files', () => {
             resolve(__dirname, `../../src/iron_verdict/static/locales/${lang}.json`), 'utf-8'));
         expect(Object.keys(load('de').privacy).sort()).toEqual(Object.keys(load('en').privacy).sort());
     });
-
-    it('selected-colour mark is translated (#258)', () => {
-        const load = (lang) => JSON.parse(readFileSync(
-            resolve(__dirname, `../../src/iron_verdict/static/locales/${lang}.json`), 'utf-8'));
-        expect(load('en').judge.selected).toBe('SELECTED');
-        expect(load('de').judge.selected).toBe('AUSGEWÄHLT');
-    });
 });
