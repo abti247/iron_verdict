@@ -4,7 +4,8 @@ Feedback from a competition: a judge could not tell that White was selected.
 The old mark — a white border on the light White button — was practically
 invisible. A selected colour field now has a thick green border (the colour of
 the LOCK IN button) and reads "✓ SELECTED" (German "✓ AUSGEWÄHLT"), so the
-selection is visible without telling colours apart. Only White stays on the
+selection is visible without telling colours apart. The German text is pinned
+in ``tests/js/i18n.test.js``. Only White stays on the
 colour step after the tap; the other colours switch to the reason step, so
 those are checked via "Back".
 """
@@ -32,7 +33,7 @@ def test_selected_white_is_marked_and_mark_moves_and_clears(competition):
     expect(_mark(left, "white")).to_be_visible()
     expect(_mark(left, "white")).to_have_text("✓ SELECTED")
     expect(white).to_have_css("border-top-color", GREEN)
-    assert float(white.evaluate("el => parseFloat(getComputedStyle(el).borderTopWidth)")) >= 4
+    expect(white).to_have_css("border-top-width", "4px")
     for color in ("red", "blue", "yellow"):
         expect(_mark(left, color)).not_to_be_visible()
 
@@ -53,16 +54,3 @@ def test_selected_white_is_marked_and_mark_moves_and_clears(competition):
         expect(_mark(left, color)).not_to_be_visible()
     expect(white).not_to_have_css("border-top-color", GREEN)
 
-
-def test_selected_mark_is_translated_to_german(competition):
-    """Side judge with German UI taps WEISS → the field reads "✓ AUSGEWÄHLT"."""
-    competition.create_session_and_join_head()
-    ctx = competition.new_context()
-    ctx.add_init_script("localStorage.setItem('iron-verdict-lang', 'de')")
-    page = ctx.new_page()
-    page.goto(f"{competition.url}/?session={competition.session_code}")
-    page.locator(".role-btn", has_text="Links").click()
-    page.locator(".judge-wrap").wait_for(state="visible")
-
-    page.locator(".vote-btn.vote-white").click()
-    expect(_mark(page, "white")).to_have_text("✓ AUSGEWÄHLT")
