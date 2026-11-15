@@ -11,10 +11,16 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ### Changed
 
 ### Fixed
+
+### Removed
+
+## [0.7.2] - 2026-11-15
+
+### Fixed
 - The chief referee's Start Timer, Reset Timer, Next Lift and End Session buttons are larger and easier to hit, especially on a tablet in portrait
 - A judge's selected colour is clearly marked with a thick green border, also on the White button where the selection was hard to see
 
-### Removed
+[0.7.2]: https://github.com/abti247/iron_verdict/compare/v0.7.1...v0.7.2
 
 ## [0.7.1] - 2026-11-13
 
